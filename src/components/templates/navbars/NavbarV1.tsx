@@ -481,7 +481,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[44px] h-[44px] xl:w-[48px] xl:h-[48px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
+                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
                     fill
                     sizes="48px"
                     className="object-contain"
@@ -846,7 +846,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[64px] h-[64px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
+                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
                     fill
                     sizes="64px"
                     className="object-contain"
@@ -862,7 +862,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <div className="flex items-center justify-between w-full border-b border-border/10 pb-1 gap-4">
                   {/* Logo Brand Name Text Only */}
                   <Link href="/" className="text-lg xl:text-xl uppercase text-foreground transition-colors hover:text-primary font-black tracking-tighter font-logo shrink-0">
-                    {settings.brandName || "SWAPNOBAZ"}
+                    {settings.brandName || "DHAKAFAIRPRICE"}
                   </Link>
 
                   {/* Right-side Utilities */}

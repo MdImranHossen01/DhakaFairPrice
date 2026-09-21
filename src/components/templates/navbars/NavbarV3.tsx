@@ -137,7 +137,7 @@ export default function NavbarV3() {
             {/* Center: Logo */}
             <div className="absolute left-1/2 -translate-x-1/2">
               <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">
-                Swapnobaz
+                Dhaka Fair Price
               </Link>
             </div>
 

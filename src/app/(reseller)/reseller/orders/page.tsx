@@ -130,8 +130,8 @@ function OrdersContent() {
 
   const getResellerBranding = () => {
     return {
-      brandName: reseller?.storeName || settings?.brandName || 'Swapnobaz',
-      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || 'Swapnobaz',
+      brandName: reseller?.storeName || settings?.brandName || 'Dhaka Fair Price',
+      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || 'Dhaka Fair Price',
       contact: {
         phone: reseller?.phone || settings?.contact?.phone || '',
         email: reseller?.email || settings?.contact?.email || '',

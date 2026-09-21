@@ -1,4 +1,4 @@
-﻿# Swapnobaz — Reseller Manual
+﻿# Dhaka Fair Price — Reseller Manual
 **Version:** 1.0 | **Last Updated:** September 2026
 **Access URL:** `/reseller/dashboard`
 **Audience:** Registered Resellers / Tenant Store Owners
@@ -28,8 +28,8 @@
 
 ## 1. Getting Started
 
-### What is Swapnobaz Reseller?
-As a reseller, you operate your own branded online storefront powered by the Swapnobaz platform. The Mother system provides you with a product catalog; you set your own retail prices and manage your own customers.
+### What is Dhaka Fair Price Reseller?
+As a reseller, you operate your own branded online storefront powered by the Dhaka Fair Price platform. The Mother system provides you with a product catalog; you set your own retail prices and manage your own customers.
 
 ### Account Activation
 1. Register at the main platform
@@ -203,7 +203,7 @@ A complete transaction-by-transaction history of all money movements in your sto
 
 **URL:** `/reseller/wallet`
 
-Your wallet represents your earnings from the Swapnobaz platform.
+Your wallet represents your earnings from the Dhaka Fair Price platform.
 
 ### How the Wallet Works
 - When a customer order is confirmed and delivered, your profit margin is credited to your wallet

@@ -19,8 +19,8 @@ import GlobalSettings from '@/models/GlobalSettings';
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'About Us | Swapnobaz',
-  description: 'Swapnobaz is Bangladesh\'s leading B2B + B2C Multi-Vendor Dropshipping Platform & SaaS, empowering resellers and entrepreneurs to launch branded online stores with zero inventory capital.',
+  title: 'About Us | Dhaka Fair Price',
+  description: 'Dhaka Fair Price is Bangladesh\'s leading B2B + B2C Multi-Vendor Dropshipping Platform & SaaS, empowering resellers and entrepreneurs to launch branded online stores with zero inventory capital.',
 };
 
 async function getSettings() {
@@ -29,10 +29,10 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Swapnobaz",
+        brandName: "Dhaka Fair Price",
         siteDescription: "Premium B2B + B2C Multi-Vendor Dropshipping Platform & SaaS",
         contact: {
-          email: "support@swapnobaz.com",
+          email: "dhakafairprice@gmail.com",
           phone: "+8801234567890",
           address: "Dhaka, Bangladesh"
         }
@@ -47,7 +47,7 @@ async function getSettings() {
 
 export default async function AboutPage() {
   const settings = await getSettings();
-  const brandName = settings?.brandName || "Swapnobaz";
+  const brandName = settings?.brandName || "Dhaka Fair Price";
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -153,7 +153,7 @@ export default async function AboutPage() {
               <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
                 <Cpu className="h-6 w-6" />
               </div>
-              <h3 className="text-2xl font-black text-foreground">How Swapnobaz Works</h3>
+              <h3 className="text-2xl font-black text-foreground">How Dhaka Fair Price Works</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Our platform operates on a reverse order pipeline:
               </p>

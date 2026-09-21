@@ -1,4 +1,4 @@
-name: Deploy Swapnobaz to DigitalOcean
+name: Deploy Dhaka Fair Price to DigitalOcean
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
 
 env:
   DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-  DOCKER_IMAGE_NAME: swapnobaz-app
-  DOCKER_IMAGE_TAG: ${{ secrets.DOCKER_HUB_USERNAME }}/swapnobaz-app:latest
+  DOCKER_IMAGE_NAME: dhakafairprice-app
+  DOCKER_IMAGE_TAG: ${{ secrets.DOCKER_HUB_USERNAME }}/dhakafairprice-app:latest
 
 jobs:
   build-and-push:
@@ -53,8 +53,8 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            mkdir -p ~/swapnobaz
-            cd ~/swapnobaz
+            mkdir -p ~/dhakafairprice
+            cd ~/dhakafairprice
 
             cat << 'EOF' > .env.local
             ${{ secrets.ENV_FILE }}
@@ -64,10 +64,10 @@ jobs:
             services:
               web:
                 image: ${{ env.DOCKER_IMAGE_TAG }}
-                container_name: swapnobaz-app
+                container_name: dhakafairprice-app
                 restart: unless-stopped
                 ports:
-                  - "3005:3000"
+                  - "3004:3000"
                 env_file:
                   - .env.local
                 deploy:

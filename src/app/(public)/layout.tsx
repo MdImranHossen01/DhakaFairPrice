@@ -36,7 +36,7 @@ export default async function PublicLayout({ children }: { children: React.React
   // Only show blocker if expired and NOT a super admin
   const showBlocker = isExpired && !isSuperAdmin;
 
-  const marqueeText = settings?.marqueeText || 'Welcome to Swapnobaz! Free shipping on orders over $500.';
+  const marqueeText = settings?.marqueeText || 'Welcome to Dhaka Fair Price! Free shipping on orders over $500.';
   const ui = {
     layout: settings?.uiTemplates?.layout || 'v1',
     navbar: settings?.uiTemplates?.navbar || 'v1',
@@ -45,7 +45,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
   return (
     <>
-      {showBlocker && <SubscriptionBlocker brandName={settings?.brandName || 'Swapnobaz'} />}
+      {showBlocker && <SubscriptionBlocker brandName={settings?.brandName || 'Dhaka Fair Price'} />}
       <Navbar style={ui.navbar} initialCategories={initialCategories} initialBrands={initialBrands} />
       <main className="flex-1">{children}</main>
       <div className="pb-16 md:pb-0">

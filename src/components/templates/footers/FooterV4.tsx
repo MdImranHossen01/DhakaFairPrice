@@ -34,7 +34,7 @@ export default function FooterV4() {
                <div className="md:col-span-4 space-y-10">
                   <div className="space-y-4">
                      <Link href="/" className="text-5xl font-serif italic tracking-tighter hover:opacity-70 transition-opacity">
-                        Swapnobaz
+                        Dhaka Fair Price
                      </Link>
                      <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.4em] text-[9px]">
                         <Star className="h-3 w-3 fill-current" /> The Boutique Atelier
@@ -105,7 +105,7 @@ export default function FooterV4() {
                      </div>
                      <div className="flex items-center gap-4 text-sm font-serif italic text-muted-foreground">
                         <Mail className="h-5 w-5 text-primary shrink-0" />
-                        <span>{settings?.contact?.email || 'concierge@Swapnobaz.com'}</span>
+                        <span>{settings?.contact?.email || 'dhakafairprice@gmail.com'}</span>
                      </div>
                   </div>
                </div>
@@ -113,7 +113,7 @@ export default function FooterV4() {
 
             {/* Elegant Legal Footer */}
             <div className="pt-16 border-t border-neutral-100 dark:border-neutral-900 flex flex-col md:flex-row items-center justify-between gap-8">
-               <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">© {currentYear} Swapnobaz Boutique. All Essence Reserved.</p>
+               <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">© {currentYear} Dhaka Fair Price Boutique. All Essence Reserved.</p>
                <div className="flex gap-12 text-[10px] font-black uppercase tracking-[0.3em] text-neutral-400">
                   <Link href="#" className="hover:text-primary transition-colors">Privacy</Link>
                   <Link href="#" className="hover:text-primary transition-colors">Legal</Link>

@@ -20,8 +20,8 @@ import {
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Swapnobaz',
-  description: 'Learn how Swapnobaz protects your personal data, enforces multi-tenant database isolation, and secures e-commerce transactions.',
+  title: 'Privacy Policy | Dhaka Fair Price',
+  description: 'Learn how Dhaka Fair Price protects your personal data, enforces multi-tenant database isolation, and secures e-commerce transactions.',
 };
 
 async function getSettings() {
@@ -30,9 +30,9 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Swapnobaz",
+        brandName: "Dhaka Fair Price",
         contact: {
-          email: "support@swapnobaz.com",
+          email: "dhakafairprice@gmail.com",
           phone: "+8801234567890",
           address: "Dhaka, Bangladesh"
         }
@@ -42,9 +42,9 @@ async function getSettings() {
   } catch (error) {
     console.error('Error fetching settings for privacy page:', error);
     return {
-      brandName: "Swapnobaz",
+      brandName: "Dhaka Fair Price",
       contact: {
-        email: "support@swapnobaz.com",
+        email: "dhakafairprice@gmail.com",
         phone: "+8801234567890",
         address: "Dhaka, Bangladesh"
       }
@@ -54,8 +54,8 @@ async function getSettings() {
 
 export default async function PrivacyPage() {
   const settings = await getSettings();
-  const brandName = settings?.brandName || "Swapnobaz";
-  const contactEmail = settings?.contact?.email || "support@swapnobaz.com";
+  const brandName = settings?.brandName || "Dhaka Fair Price";
+  const contactEmail = settings?.contact?.email || "dhakafairprice@gmail.com";
   const contactPhone = settings?.contact?.phone || "+880 1234-567890";
   const effectiveDate = "July 19, 2026";
 

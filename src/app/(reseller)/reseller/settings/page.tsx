@@ -396,11 +396,11 @@ function DomainTab({ reseller, onSave, saving }: { reseller: any; onSave: (p: an
           </p>
           <div className="flex items-center gap-2 max-w-md">
             <Input value={subdomain} onChange={e => setSubdomain(e.target.value)} placeholder="mystore" className="font-mono text-sm" />
-            <span className="text-sm font-bold text-primary whitespace-nowrap">.swapnobaz.com</span>
+            <span className="text-sm font-bold text-primary whitespace-nowrap">.dhakafairprice.com</span>
           </div>
           {subdomain && (
             <p className="text-xs text-muted-foreground pt-1">
-              🔗 আপনার লাইভ স্টোর লিংক: <a href={`https://${subdomain}.swapnobaz.com`} target="_blank" rel="noreferrer" className="text-primary font-semibold underline underline-offset-2">https://{subdomain}.swapnobaz.com</a>
+              🔗 আপনার লাইভ স্টোর লিংক: <a href={`https://${subdomain}.dhakafairprice.com`} target="_blank" rel="noreferrer" className="text-primary font-semibold underline underline-offset-2">https://{subdomain}.dhakafairprice.com</a>
             </p>
           )}
         </div>

@@ -102,24 +102,24 @@ export async function generateMetadata(): Promise<Metadata> {
       appleWebApp: {
         capable: true,
         statusBarStyle: 'default',
-        title: settings.brandName || "Swapnobaz",
+        title: settings.brandName || "Dhaka Fair Price",
       },
       formatDetection: {
         telephone: false,
       },
       openGraph: {
-        title: settings.metaTitle || settings.brandName || "Swapnobaz",
+        title: settings.metaTitle || settings.brandName || "Dhaka Fair Price",
         description: settings.metaDescription || settings.brandName || "Your ultimate destination for quality products.",
         url: baseUrl,
-        siteName: settings.brandName || "Swapnobaz",
+        siteName: settings.brandName || "Dhaka Fair Price",
         type: 'website',
         images: settings.logoUrl
-          ? [{ url: settings.logoUrl.startsWith('http') ? settings.logoUrl : `${baseUrl}${settings.logoUrl}`, width: 1200, height: 630, alt: settings.brandName || 'Swapnobaz' }]
+          ? [{ url: settings.logoUrl.startsWith('http') ? settings.logoUrl : `${baseUrl}${settings.logoUrl}`, width: 1200, height: 630, alt: settings.brandName || 'Dhaka Fair Price' }]
           : [],
       },
       twitter: {
         card: 'summary_large_image',
-        title: settings.metaTitle || settings.brandName || "Swapnobaz",
+        title: settings.metaTitle || settings.brandName || "Dhaka Fair Price",
         description: settings.metaDescription || settings.brandName || "Your ultimate destination for quality products.",
         site: settings.socialLinks?.twitter ? `@${settings.socialLinks.twitter.replace(/.*twitter\.com\//, '').replace(/.*x\.com\//, '').replace('@', '')}` : undefined,
         images: settings.logoUrl
@@ -140,7 +140,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch (error) {
     return {
-      title: "Swapnobaz",
+      title: "Dhaka Fair Price",
       description: "Your ultimate destination for quality products.",
     };
   }

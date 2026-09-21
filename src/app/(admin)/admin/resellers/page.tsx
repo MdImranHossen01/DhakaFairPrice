@@ -210,12 +210,12 @@ export default function AdminResellersPage() {
                         <TableCell>
                           <div className="space-y-1">
                             <a
-                              href={`https://${r.subdomain}.swapnobaz.com`}
+                              href={`https://${r.subdomain}.dhakafairprice.com`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-semibold"
                             >
-                              {r.subdomain}.swapnobaz.com
+                              {r.subdomain}.dhakafairprice.com
                               <ExternalLink className="h-3 w-3" />
                             </a>
                             {r.customDomain && (
@@ -291,12 +291,12 @@ export default function AdminResellersPage() {
 
                     <div className="text-xs space-y-1">
                       <a
-                        href={`https://${r.subdomain}.swapnobaz.com`}
+                        href={`https://${r.subdomain}.dhakafairprice.com`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
                       >
-                        {r.subdomain}.swapnobaz.com
+                        {r.subdomain}.dhakafairprice.com
                         <ExternalLink className="h-3 w-3" />
                       </a>
                       {r.customDomain && (

@@ -91,7 +91,7 @@ export default function ResellerSalesReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Swapnobaz E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">Dhaka Fair Price E-Commerce</h2>
         <h3 className="text-lg font-semibold text-slate-700">Reseller Sales & Performance Report</h3>
       </div>
 
@@ -130,7 +130,7 @@ export default function ResellerSalesReportPage() {
                           <Store className="h-3.5 w-3.5 text-primary" />
                           {r.storeName}
                         </div>
-                        <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.swapnobaz.com</div>
+                        <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.dhakafairprice.com</div>
                       </td>
                       <td className="p-2.5 text-left">
                         <div className="font-medium text-foreground">{r.ownerName}</div>

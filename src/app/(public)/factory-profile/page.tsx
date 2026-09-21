@@ -27,8 +27,8 @@ import { Button } from '@/components/ui/button';
 import { CounterSection } from './CounterSection';
 
 export const metadata: Metadata = {
-  title: 'Factory Profile | Swapnobaz',
-  description: 'Swapnobaz - State-of-the-art underwear and apparel manufacturing facility in Dhaka, Bangladesh. Specializing in high-capacity OEM & private label production for global brands.',
+  title: 'Factory Profile | Dhaka Fair Price',
+  description: 'Dhaka Fair Price - State-of-the-art underwear and apparel manufacturing facility in Dhaka, Bangladesh. Specializing in high-capacity OEM & private label production for global brands.',
 };
 
 async function getSettings() {
@@ -37,9 +37,9 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Swapnobaz",
+        brandName: "Dhaka Fair Price",
         contact: {
-          email: "info@swapnobaz.com",
+          email: "dhakafairprice@gmail.com",
           phone: "+8801724-338581",
           address: "Sarkarbari, Helal Market, Uttar Khan, Dhaka, Bangladesh"
         }
@@ -54,8 +54,8 @@ async function getSettings() {
 
 export default async function FactoryProfilePage() {
   const settings = await getSettings();
-  const brandName = settings?.brandName || "Swapnobaz";
-  const contactEmail = settings?.contact?.email || "info@swapnobaz.com";
+  const brandName = settings?.brandName || "Dhaka Fair Price";
+  const contactEmail = settings?.contact?.email || "dhakafairprice@gmail.com";
   const contactPhone = settings?.contact?.phone || "+8801724-338581";
   const factoryAddress = settings?.contact?.address || "Sarkarbari, Helal Market, Uttar Khan, Dhaka, Bangladesh";
 

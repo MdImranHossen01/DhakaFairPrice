@@ -33,7 +33,7 @@ export default function FooterV3() {
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-primary">
                      <Cpu className="h-6 w-6" />
-                     <span className="font-black text-sm sm:text-base md:text-xl tracking-tighter break-words max-w-[200px] md:max-w-none">Swapnobaz</span>
+                     <span className="font-black text-sm sm:text-base md:text-xl tracking-tighter break-words max-w-[200px] md:max-w-none">Dhaka Fair Price</span>
                   </div>
                   <p className="text-[10px] text-neutral-500 uppercase tracking-widest leading-relaxed">
                      Systematic commerce architecture. High-precision retail logistics. Distributed from DHAKA_HQ.
@@ -83,7 +83,7 @@ export default function FooterV3() {
                   <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Comm_Links</h4>
                   <div className="space-y-4">
                      <div className="flex items-center gap-4 text-xs text-neutral-400">
-                        <Mail className="h-4 w-4 text-primary" /> {settings?.contact?.email || 'support@swapnobaz.com'}
+                        <Mail className="h-4 w-4 text-primary" /> {settings?.contact?.email || 'dhakafairprice@gmail.com'}
                      </div>
                      <div className="flex items-center gap-4 text-xs text-neutral-400">
                         <Phone className="h-4 w-4 text-primary" /> {settings?.contact?.phone || '+880 1234 5678'}

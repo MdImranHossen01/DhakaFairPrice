@@ -1,6 +1,6 @@
-# Project Proposal: Swapnobaz – Premium B2B + B2C Multi-Vendor Dropshipping Platform & SaaS
+# Project Proposal: Dhaka Fair Price – Premium B2B + B2C Multi-Vendor Dropshipping Platform & SaaS
 
-**Prepared For:** Reza (Client) & Swapnobaz Team  
+**Prepared For:** Reza (Client) & Dhaka Fair Price Team  
 **Prepared By:** Md. Imran Hossen  
 **Date:** July 19, 2026  
 **Subject:** Updated Project Proposal & Agreement with Clarification Checklist  
@@ -36,7 +36,7 @@ Below is the complete status breakdown of all requested features under the **Bas
 *   **1. Multi-Tenant SaaS**
     *   **Unlimited Reseller Websites** `[Included]` – Resellers can register and automatically get their own stores.
     *   **Custom Domain Mapping** `[Included]` – DNS CNAME configuration support for resellers to point their custom domains.
-    *   **Subdomain Support** `[Included]` – Dynamic subdomains (e.g., `reseller.swapnobaz.com`).
+    *   **Subdomain Support** `[Included]` – Dynamic subdomains (e.g., `reseller.dhakafairprice.com`).
     *   **Individual Admin Panel** `[Included]` – Private dashboard for each reseller to customize settings, logos, and check sales.
     *   **Independent Database Isolation** `[Partially Included]` – **Logical Isolation:** MongoDB scopes all queries by `tenantId`/`resellerId` to ensure complete data security. *Physical Database Isolation (separate database per tenant)* is excluded as it requires enterprise cloud clusters and high infrastructure budgets.
 

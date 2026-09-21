@@ -56,31 +56,31 @@ const Reseller = mongoose.models.Reseller || mongoose.model('Reseller', Reseller
 const usersToSeed = [
   // 1. Super Admin Role (Mandatory Rule: imranshuvo101@gmail.com must be super_admin)
   { name: 'Imran Hossen (Super Admin 1)', email: 'imranshuvo101@gmail.com', role: 'super_admin', phone: '01700000001' },
-  { name: 'Super Admin Two', email: 'superadmin2@swapnobaz.com', role: 'super_admin', phone: '01700000002' },
+  { name: 'Super Admin Two', email: 'dhakafairprice@gmail.com', role: 'super_admin', phone: '01700000002' },
 
   // 2. Admin Role
-  { name: 'Admin One', email: 'admin1@swapnobaz.com', role: 'admin', phone: '01700000003' },
-  { name: 'Admin Two', email: 'admin2@swapnobaz.com', role: 'admin', phone: '01700000004' },
+  { name: 'Admin One', email: 'dhakafairprice@gmail.com', role: 'admin', phone: '01700000003' },
+  { name: 'Admin Two', email: 'dhakafairprice@gmail.com', role: 'admin', phone: '01700000004' },
 
   // 3. Manager Role
-  { name: 'Manager One', email: 'manager1@swapnobaz.com', role: 'manager', phone: '01700000005' },
-  { name: 'Manager Two', email: 'manager2@swapnobaz.com', role: 'manager', phone: '01700000006' },
+  { name: 'Manager One', email: 'dhakafairprice@gmail.com', role: 'manager', phone: '01700000005' },
+  { name: 'Manager Two', email: 'dhakafairprice@gmail.com', role: 'manager', phone: '01700000006' },
 
   // 4. Moderator Role
-  { name: 'Moderator One', email: 'moderator1@swapnobaz.com', role: 'moderator', phone: '01700000007' },
-  { name: 'Moderator Two', email: 'moderator2@swapnobaz.com', role: 'moderator', phone: '01700000008' },
+  { name: 'Moderator One', email: 'dhakafairprice@gmail.com', role: 'moderator', phone: '01700000007' },
+  { name: 'Moderator Two', email: 'dhakafairprice@gmail.com', role: 'moderator', phone: '01700000008' },
 
   // 5. Supplier Role
-  { name: 'Supplier One', email: 'supplier1@swapnobaz.com', role: 'supplier', phone: '01700000009' },
-  { name: 'Supplier Two', email: 'supplier2@swapnobaz.com', role: 'supplier', phone: '01700000010' },
+  { name: 'Supplier One', email: 'dhakafairprice@gmail.com', role: 'supplier', phone: '01700000009' },
+  { name: 'Supplier Two', email: 'dhakafairprice@gmail.com', role: 'supplier', phone: '01700000010' },
 
   // 6. Reseller Role
-  { name: 'Reseller One', email: 'reseller1@swapnobaz.com', role: 'reseller', phone: '01700000011', subdomain: 'reseller1store', storeName: 'Reseller One Store' },
-  { name: 'Reseller Two', email: 'reseller2@swapnobaz.com', role: 'reseller', phone: '01700000012', subdomain: 'reseller2store', storeName: 'Reseller Two Store' },
+  { name: 'Reseller One', email: 'dhakafairprice@gmail.com', role: 'reseller', phone: '01700000011', subdomain: 'reseller1store', storeName: 'Reseller One Store' },
+  { name: 'Reseller Two', email: 'dhakafairprice@gmail.com', role: 'reseller', phone: '01700000012', subdomain: 'reseller2store', storeName: 'Reseller Two Store' },
 
   // 7. General Customer User Role
-  { name: 'Customer One', email: 'user1@swapnobaz.com', role: 'user', phone: '01700000013' },
-  { name: 'Customer Two', email: 'user2@swapnobaz.com', role: 'user', phone: '01700000014' },
+  { name: 'Customer One', email: 'dhakafairprice@gmail.com', role: 'user', phone: '01700000013' },
+  { name: 'Customer Two', email: 'dhakafairprice@gmail.com', role: 'user', phone: '01700000014' },
 ];
 
 async function seed() {
@@ -126,7 +126,7 @@ async function seed() {
             status: 'active',
             contact: { email: u.email, phone: u.phone }
           });
-          console.log(`  -> Created Reseller Profile: ${u.subdomain}.swapnobaz.com`);
+          console.log(`  -> Created Reseller Profile: ${u.subdomain}.dhakafairprice.com`);
         }
       }
     }

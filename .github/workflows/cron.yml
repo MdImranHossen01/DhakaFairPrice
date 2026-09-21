@@ -16,7 +16,7 @@ jobs:
           response=$(curl -s -o /dev/null -w "%{http_code}" \
             -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://www.swapnobaz.com/api/cron/sync-courier-status")
+            "https://www.dhakafairprice.com/api/cron/sync-courier-status")
           echo "Response HTTP status: $response"
           if [ "$response" != "200" ]; then
             echo "❌ Courier sync failed with HTTP $response"

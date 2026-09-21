@@ -96,7 +96,7 @@ export function ResellerSidebar({
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-black text-sm leading-tight truncate">{reseller.storeName}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{reseller.subdomain}.swapnobaz.com</p>
+            <p className="text-[11px] text-muted-foreground truncate">{reseller.subdomain}.dhakafairprice.com</p>
           </div>
         </div>
         <div className="flex items-center justify-between pt-1">
@@ -215,7 +215,7 @@ export function ResellerSidebar({
             <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> স্টোর লিংক</span>
             <Badge variant="outline" className="text-[9px] px-1 py-0">Live</Badge>
           </div>
-          <p className="text-[11px] font-mono text-muted-foreground truncate">{reseller.subdomain}.swapnobaz.com</p>
+          <p className="text-[11px] font-mono text-muted-foreground truncate">{reseller.subdomain}.dhakafairprice.com</p>
           <div className="grid grid-cols-2 gap-1.5 pt-0.5">
             <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={copyStoreLink}>
               <Copy className="h-3 w-3 mr-1" /> কপি

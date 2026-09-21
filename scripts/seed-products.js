@@ -15,7 +15,7 @@ if (fs.existsSync(envPath)) {
 }
 
 if (!mongodbUri) {
-  mongodbUri = 'mongodb+srv://Swapnobaz:xI2QuBaFZsYQ5vRD@cluster0.e5n1hnl.mongodb.net/Swapnobaz';
+  mongodbUri = 'mongodb+srv://Dhaka Fair Price:xI2QuBaFZsYQ5vRD@cluster0.e5n1hnl.mongodb.net/Dhaka Fair Price';
 }
 
 console.log('Connecting to MongoDB...');

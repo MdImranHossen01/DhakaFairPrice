@@ -1,10 +1,10 @@
 services:
   web:
     image: ${DOCKER_IMAGE_TAG}
-    container_name: swapnobaz-app
+    container_name: dhakafairprice-app
     restart: unless-stopped
     ports:
-      - "3005:3000"
+      - "3004:3000"
     env_file:
       - .env.local
     deploy:

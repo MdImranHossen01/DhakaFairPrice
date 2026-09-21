@@ -1,6 +1,6 @@
-# Swapnobaz – Production VPS Deployment & Configuration Manual
+# Dhaka Fair Price – Production VPS Deployment & Configuration Manual
 
-This guide walks through deploying the **Swapnobaz** Multi-Tenant Next.js platform on a Linux VPS (Ubuntu 22.04 / 24.04 LTS) using **Node.js, PM2, Nginx, SSL (Let's Encrypt Certbot), Redis, and MongoDB Atlas**.
+This guide walks through deploying the **Dhaka Fair Price** Multi-Tenant Next.js platform on a Linux VPS (Ubuntu 22.04 / 24.04 LTS) using **Node.js, PM2, Nginx, SSL (Let's Encrypt Certbot), Redis, and MongoDB Atlas**.
 
 ---
 
@@ -67,10 +67,10 @@ sudo npm install -g pm2
 
 Create application directory:
 ```bash
-sudo mkdir -p /var/www/swapnobaz
-sudo chown -R $USER:$USER /var/www/swapnobaz
-git clone https://github.com/your-username/Swapnobaz.git /var/www/swapnobaz
-cd /var/www/swapnobaz
+sudo mkdir -p /var/www/dhakafairprice
+sudo chown -R $USER:$USER /var/www/dhakafairprice
+git clone https://github.com/your-username/Dhaka Fair Price.git /var/www/dhakafairprice
+cd /var/www/dhakafairprice
 ```
 
 Install production dependencies:
@@ -89,15 +89,15 @@ NODE_ENV=production
 PORT=3000
 
 # Base Domain
-NEXT_PUBLIC_BASE_DOMAIN=swapnobaz.com
-NEXT_PUBLIC_APP_URL=https://swapnobaz.com
+NEXT_PUBLIC_BASE_DOMAIN=dhakafairprice.com
+NEXT_PUBLIC_APP_URL=https://dhakafairprice.com
 
 # Database Connection
-MONGODB_URI=mongodb+srv://<db_user>:<db_pass>@cluster0.mongodb.net/swapnobaz?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<db_user>:<db_pass>@cluster0.mongodb.net/dhakafairprice?retryWrites=true&w=majority
 
 # NextAuth / Auth.js
 NEXTAUTH_SECRET=generate_strong_secret_with_openssl_rand_hex_32
-NEXTAUTH_URL=https://swapnobaz.com
+NEXTAUTH_URL=https://dhakafairprice.com
 
 # Queue Redis
 REDIS_URL=redis://127.0.0.1:6379
@@ -128,15 +128,15 @@ npm run build
 
 ## 🔄 5. PM2 Process Configuration
 
-Create an `ecosystem.config.js` file inside `/var/www/swapnobaz`:
+Create an `ecosystem.config.js` file inside `/var/www/dhakafairprice`:
 ```javascript
 module.exports = {
   apps: [
     {
-      name: 'swapnobaz-app',
+      name: 'dhakafairprice-app',
       script: 'npm',
       args: 'run start',
-      cwd: '/var/www/swapnobaz',
+      cwd: '/var/www/dhakafairprice',
       instances: 'max',
       exec_mode: 'cluster',
       env: {
@@ -161,15 +161,15 @@ pm2 startup
 
 Create a new Nginx configuration:
 ```bash
-sudo nano /etc/nginx/sites-available/swapnobaz
+sudo nano /etc/nginx/sites-available/dhakafairprice
 ```
 
-Add the following block to support both apex domain (`swapnobaz.com`), `www`, and all reseller subdomains (`*.swapnobaz.com`):
+Add the following block to support both apex domain (`dhakafairprice.com`), `www`, and all reseller subdomains (`*.dhakafairprice.com`):
 
 ```nginx
 server {
     listen 80;
-    server_name swapnobaz.com www.swapnobaz.com *.swapnobaz.com;
+    server_name dhakafairprice.com www.dhakafairprice.com *.dhakafairprice.com;
 
     client_max_body_size 50M;
 
@@ -189,7 +189,7 @@ server {
 
 Enable configuration and test Nginx:
 ```bash
-sudo ln -s /etc/nginx/sites-available/swapnobaz /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/dhakafairprice /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -201,12 +201,12 @@ sudo systemctl restart nginx
 To secure both the root domain and all reseller subdomains, obtain a wildcard certificate:
 
 ```bash
-sudo certbot --nginx -d swapnobaz.com -d www.swapnobaz.com
+sudo certbot --nginx -d dhakafairprice.com -d www.dhakafairprice.com
 ```
 
-For wildcard DNS challenge (e.g. `*.swapnobaz.com`):
+For wildcard DNS challenge (e.g. `*.dhakafairprice.com`):
 ```bash
-sudo certbot certonly --manual --preferred-challenges dns -d swapnobaz.com -d "*.swapnobaz.com"
+sudo certbot certonly --manual --preferred-challenges dns -d dhakafairprice.com -d "*.dhakafairprice.com"
 ```
 Follow the interactive prompt to add the TXT record in your DNS provider (Cloudflare, Namecheap, etc.).
 
@@ -243,7 +243,7 @@ chmod +x /usr/local/bin/backup-mongodb.sh
 ---
 
 ## 🏁 9. Deployment Verification
-1. Access `https://swapnobaz.com` to confirm Mother storefront loads.
-2. Login to `https://swapnobaz.com/login` using `imranshuvo101@gmail.com` (`Password123!`).
+1. Access `https://dhakafairprice.com` to confirm Mother storefront loads.
+2. Login to `https://dhakafairprice.com/login` using `imranshuvo101@gmail.com` (`Password123!`).
 3. Navigate to `/admin/system-design` to test dynamic theme styling.
-4. Verify subdomains (e.g., `reseller1.swapnobaz.com`).
+4. Verify subdomains (e.g., `reseller1.dhakafairprice.com`).

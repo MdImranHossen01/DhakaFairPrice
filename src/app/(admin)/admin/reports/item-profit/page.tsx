@@ -91,7 +91,7 @@ export default function ItemProfitReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Swapnobaz E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">Dhaka Fair Price E-Commerce</h2>
         <h3 className="text-lg font-semibold text-slate-700">Item Wise Profit Report</h3>
       </div>
 

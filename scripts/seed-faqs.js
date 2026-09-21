@@ -4,7 +4,7 @@ require('dotenv').config({ path: '.env' });
 
 const faqsData = [
   {
-    question: 'How do I place an order on Swapnobaz?',
+    question: 'How do I place an order on Dhaka Fair Price?',
     answer: 'To place an order, browse our collection, select your preferred size or color variant, and click "Add to Cart" or "Buy Now". Proceed to the checkout page, enter your delivery address and contact number, choose your payment method (Cash on Delivery or Mobile Banking), and confirm your order.',
     order: 1,
     isActive: true,
@@ -39,8 +39,8 @@ const faqsData = [
     resellerId: null
   },
   {
-    question: 'What is the Swapnobaz Reseller Program?',
-    answer: 'The Swapnobaz Reseller Program allows entrepreneurs to start their own online dropshipping business with zero capital. You get your own branded storefront and custom domain to sell quality products at your own prices, while Swapnobaz handles inventory, packaging, and courier delivery.',
+    question: 'What is the Dhaka Fair Price Reseller Program?',
+    answer: 'The Dhaka Fair Price Reseller Program allows entrepreneurs to start their own online dropshipping business with zero capital. You get your own branded storefront and custom domain to sell quality products at your own prices, while Dhaka Fair Price handles inventory, packaging, and courier delivery.',
     order: 6,
     isActive: true,
     resellerId: null
@@ -68,7 +68,7 @@ const faqsData = [
   },
   {
     question: 'How can I contact customer support?',
-    answer: 'Our customer support team is available 6 days a week (9:00 AM to 10:00 PM). You can reach us via our Contact Us page (/contact), email us at support@swapnobaz.com, or call our direct customer helpline.',
+    answer: 'Our customer support team is available 6 days a week (9:00 AM to 10:00 PM). You can reach us via our Contact Us page (/contact), email us at dhakafairprice@gmail.com, or call our direct customer helpline.',
     order: 10,
     isActive: true,
     resellerId: null
@@ -77,7 +77,7 @@ const faqsData = [
 
 async function seed() {
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/swapnobaz';
+    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/dhakafairprice';
     await mongoose.connect(uri);
     const db = mongoose.connection.db;
     

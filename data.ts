@@ -1,5 +1,5 @@
 export const productTitles = [
-  "Swapnobaz Wellness Pro",
+  "Dhaka Fair Price Wellness Pro",
   "Urban Velocity Sneakers",
   "CloudWalk Elite Performance",
   "Stealth Neo-Classic Lows",

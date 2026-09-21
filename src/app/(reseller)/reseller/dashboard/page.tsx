@@ -31,7 +31,7 @@ export default function ResellerDashboard() {
     const rawDomain = data?.reseller?.customDomain?.trim();
     const liveUrl = rawDomain
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`)
-      : `https://${data?.reseller?.subdomain}.swapnobaz.com`;
+      : `https://${data?.reseller?.subdomain}.dhakafairprice.com`;
     navigator.clipboard.writeText(liveUrl);
     toast.success('স্টোর লিংক কপি হয়েছে!');
   };
@@ -60,7 +60,7 @@ export default function ResellerDashboard() {
   const { reseller, recentOrders = [], recentTransactions = [], stats = {} } = data;
   const storeLink = reseller.customDomain?.trim()
     ? (reseller.customDomain.trim().startsWith('http') ? reseller.customDomain.trim() : `https://${reseller.customDomain.trim()}`)
-    : `https://${reseller.subdomain}.swapnobaz.com`;
+    : `https://${reseller.subdomain}.dhakafairprice.com`;
 
   const statusColorMap: Record<string, string> = {
     active: 'bg-green-500/10 text-green-600 border-green-500/20',

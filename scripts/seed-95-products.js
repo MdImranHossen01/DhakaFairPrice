@@ -3,7 +3,7 @@ dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const mongoose = require('mongoose');
 
-const mongodbUri = 'mongodb+srv://Swapnobaz:BTtBOFh2xOiOcMs4@cluster0.rt9lqu4.mongodb.net/Swapnobaz?retryWrites=true&w=majority';
+const mongodbUri = 'mongodb+srv://Dhaka Fair Price:BTtBOFh2xOiOcMs4@cluster0.rt9lqu4.mongodb.net/Dhaka Fair Price?retryWrites=true&w=majority';
 
 console.log('Connecting to MongoDB for Product Seeding...');
 
@@ -800,7 +800,7 @@ async function seed() {
       await Product.create({
         name: p.name,
         slug: slug,
-        description: `High-quality ${p.name}. Crafted with premium materials for maximum durability and comfort. Available now on Swapnobaz platform.`,
+        description: `High-quality ${p.name}. Crafted with premium materials for maximum durability and comfort. Available now on Dhaka Fair Price platform.`,
         price: p.price,
         salePrice: p.salePrice,
         purchasePrice: p.purchasePrice,

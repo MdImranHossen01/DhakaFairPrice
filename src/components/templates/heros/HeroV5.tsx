@@ -93,7 +93,7 @@ export default function HeroV5({ banners }: HeroV5Props) {
 
          {/* Vertical Aesthetic Tag */}
          <div className="absolute right-12 top-1/2 -translate-y-1/2 rotate-180 [writing-mode:vertical-rl] text-[9px] font-black tracking-[0.6em] text-neutral-300 uppercase select-none pointer-events-none hidden xl:block">
-            DESIGNED FOR DISCOVERY • Swapnobaz.2026
+            DESIGNED FOR DISCOVERY • Dhaka Fair Price.2026
          </div>
 
          <style jsx>{`

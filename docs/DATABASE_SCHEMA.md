@@ -1,6 +1,6 @@
-# Swapnobaz – Database Schema & Collection Architecture
+# Dhaka Fair Price – Database Schema & Collection Architecture
 
-This document details the MongoDB data structures, collection models, logical tenancy partitions, and relations implemented across the **Swapnobaz** B2B/B2C Multi-Vendor Dropshipping Platform.
+This document details the MongoDB data structures, collection models, logical tenancy partitions, and relations implemented across the **Dhaka Fair Price** B2B/B2C Multi-Vendor Dropshipping Platform.
 
 ---
 
@@ -52,7 +52,7 @@ Stores tenant/storefront information, custom domains, subdomains, branding setti
 | `_id` | ObjectId | Primary Key | Unique Reseller ID |
 | `ownerId` | ObjectId | Foreign Key | Linked `users._id` (Owner) |
 | `storeName` | String | | Public storefront name |
-| `subdomain` | String | Unique | Subdomain slug (e.g. `trendy.swapnobaz.com`) |
+| `subdomain` | String | Unique | Subdomain slug (e.g. `trendy.dhakafairprice.com`) |
 | `customDomain` | String | Unique, Sparse | Custom DNS CNAME domain (e.g. `shoptrendy.com`) |
 | `logo` / `favicon` | String | | Storefront branding assets |
 | `status` | String | Indexed | `pending`, `active`, `suspended` |
@@ -65,7 +65,7 @@ Stores tenant/storefront information, custom domains, subdomains, branding setti
 ---
 
 ### 3. `products` Collection (`Product.ts`)
-The Mother Master Catalog containing all products manufactured or sourced by Swapnobaz.
+The Mother Master Catalog containing all products manufactured or sourced by Dhaka Fair Price.
 
 | Field Name | BSON Type | Index | Description |
 | :--- | :--- | :--- | :--- |
@@ -106,7 +106,7 @@ Links master products to specific reseller storefronts with custom retail pricin
 ---
 
 ### 5. `orders` Collection (`Order.ts`)
-Master order records placed directly on the main Swapnobaz store or routed from resellers.
+Master order records placed directly on the main Dhaka Fair Price store or routed from resellers.
 
 | Field Name | BSON Type | Index | Description |
 | :--- | :--- | :--- | :--- |

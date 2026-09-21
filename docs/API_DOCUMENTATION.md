@@ -1,6 +1,6 @@
-# Swapnobaz – REST API Specification & Integration Reference
+# Dhaka Fair Price – REST API Specification & Integration Reference
 
-This document outlines the RESTful API endpoints for the **Swapnobaz** platform, covering Public Storefront, Reseller Multi-Tenancy, Mother Catalog, Order Processing, Shipping/Courier, Fraud Checks, and Webhooks.
+This document outlines the RESTful API endpoints for the **Dhaka Fair Price** platform, covering Public Storefront, Reseller Multi-Tenancy, Mother Catalog, Order Processing, Shipping/Courier, Fraud Checks, and Webhooks.
 
 ---
 
@@ -40,7 +40,7 @@ Fetch catalog products with pagination, search, category, and price filters.
       "price": 220,
       "regularPrice": 350,
       "stock": 1400,
-      "images": ["https://cdn.swapnobaz.com/p1.webp"],
+      "images": ["https://cdn.dhakafairprice.com/p1.webp"],
       "variants": [
         { "color": "Black", "size": "L", "stock": 450, "price": 220 }
       ]
@@ -219,9 +219,9 @@ A ready-to-import Postman JSON template:
 ```json
 {
   "info": {
-    "name": "Swapnobaz Platform APIs",
-    "_postman_id": "swapnobaz-api-v1",
-    "description": "Comprehensive Postman collection for Swapnobaz Dropshipping & SaaS platform",
+    "name": "Dhaka Fair Price Platform APIs",
+    "_postman_id": "dhakafairprice-api-v1",
+    "description": "Comprehensive Postman collection for Dhaka Fair Price Dropshipping & SaaS platform",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

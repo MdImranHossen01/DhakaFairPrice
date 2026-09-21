@@ -205,7 +205,7 @@ export default function AdminCatalogPage() {
             { key: 'certifications', label: 'Certifications', placeholder: 'ISO, BSCI Certified' },
             { key: 'markets', label: 'Primary Markets', placeholder: 'EU, USA, Mid-East' },
             { key: 'phone', label: 'Phone / WhatsApp', placeholder: '+880 1724-338581' },
-            { key: 'email', label: 'Factory Email', placeholder: 'info@swapnobaz.com' },
+            { key: 'email', label: 'Factory Email', placeholder: 'dhakafairprice@gmail.com' },
           ].map(({ key, label, placeholder }) => (
             <div key={key} className="space-y-1.5">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">{label}</label>

@@ -19,8 +19,8 @@ import {
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'Reseller Program | Swapnobaz',
-  description: 'Swapnobaz Reseller Program - Launch your branded e-commerce business with zero upfront capital. Sell quality products at your own prices and earn high profit margins.',
+  title: 'Reseller Program | Dhaka Fair Price',
+  description: 'Dhaka Fair Price Reseller Program - Launch your branded e-commerce business with zero upfront capital. Sell quality products at your own prices and earn high profit margins.',
 };
 
 const steps = [
@@ -86,7 +86,7 @@ const features = [
 const faqs = [
   {
     q: 'Are there any registration or membership fees to join?',
-    a: 'No, joining the Swapnobaz Reseller Program is 100% free with no hidden charges or subscription fees.',
+    a: 'No, joining the Dhaka Fair Price Reseller Program is 100% free with no hidden charges or subscription fees.',
   },
   {
     q: 'Under whose brand name are the parcels delivered?',
@@ -94,7 +94,7 @@ const faqs = [
   },
   {
     q: 'How and when do I receive my profits?',
-    a: 'As soon as an order is marked delivered, your profit margin is automatically credited to your Swapnobaz wallet, which you can withdraw anytime.',
+    a: 'As soon as an order is marked delivered, your profit margin is automatically credited to your Dhaka Fair Price wallet, which you can withdraw anytime.',
   },
   {
     q: 'What happens if a customer returns a parcel?',
@@ -167,7 +167,7 @@ export default function ResellerProgramPage() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-foreground">
-              How Does <span className="text-primary">Swapnobaz Reselling</span> Work?
+              How Does <span className="text-primary">Dhaka Fair Price Reselling</span> Work?
             </h2>
             <p className="text-muted-foreground text-sm sm:text-base">
               Run your automated e-commerce business in 4 simple steps
@@ -205,7 +205,7 @@ export default function ResellerProgramPage() {
               Empowering Entrepreneurs
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-foreground">
-              Why Choose the <span className="text-primary">Swapnobaz Platform?</span>
+              Why Choose the <span className="text-primary">Dhaka Fair Price Platform?</span>
             </h2>
             <p className="text-muted-foreground text-sm sm:text-base">
               We provide you with complete e-commerce technology, inventory, and logistics support

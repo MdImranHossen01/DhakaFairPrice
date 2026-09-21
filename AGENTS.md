@@ -34,7 +34,7 @@ This project is a multi-version and multi tenant e-commerce platform. It is desi
 
 ---
 
-# Swapnobaz Agent Guidelines & Standard Operating Procedures (SOP)
+# Dhaka Fair Price Agent Guidelines & Standard Operating Procedures (SOP)
 
 ## 1. Multi-Tenant / Dropshipping Scope Isolation
 - Every database query in storefront contexts MUST include a logical partition key filtering by the appropriate `resellerId` / `tenantId`.

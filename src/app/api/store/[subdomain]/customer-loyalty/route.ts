@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         $or: [
           { phone: normalizedPhone },
           { email: `${normalizedPhone}@store.com` },
-          { email: `${normalizedPhone}@swapnobaz.com` }
+          { email: `${normalizedPhone}@dhakafairprice.com` }
         ]
       }).lean();
     }

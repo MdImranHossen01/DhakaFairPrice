@@ -1,4 +1,4 @@
-﻿# Swapnobaz — Admin Manual
+﻿# Dhaka Fair Price — Admin Manual
 **Version:** 1.0 | **Last Updated:** September 2026
 **Access URL:** `/admin/dashboard`
 **Roles Covered:** `super_admin`, `admin`, `manager`, `moderator`
