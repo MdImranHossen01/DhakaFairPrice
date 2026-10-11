@@ -107,14 +107,14 @@ export async function POST(req: NextRequest) {
       targetUser = await User.findOne({
         $or: [
           { phone: normalizedPhone },
-          { email: `${normalizedPhone}@swapnobaz.com` },
+          { email: `${normalizedPhone}@dhakafairprice.com` },
         ]
       });
 
       if (!targetUser) {
         targetUser = await User.create({
           name: cleanName,
-          email: `${normalizedPhone}@swapnobaz.com`,
+          email: `${normalizedPhone}@dhakafairprice.com`,
           phone: normalizedPhone,
           role: 'user',
           addresses: [{
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
         zipCode: '0000',
         country: 'Bangladesh',
       },
-      customerNote: notes || 'Direct Order placed via Swapnobaz AI Assistant',
+      customerNote: notes || 'Direct Order placed via Dhaka Fair Price AI Assistant',
       systemNote: 'AI Chat Assistant Order Placement',
     });
 

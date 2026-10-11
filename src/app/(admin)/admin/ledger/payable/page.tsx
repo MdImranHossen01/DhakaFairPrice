@@ -270,7 +270,7 @@ export default function PayableLedgerPage() {
                             <Store className="h-3.5 w-3.5 text-primary" />
                             {r.storeName}
                           </div>
-                          <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.swapnobaz.com</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.dhakafairprice.com</div>
                         </td>
                         <td className="p-3 text-left">
                           <div className="font-medium text-foreground">{r.ownerName}</div>

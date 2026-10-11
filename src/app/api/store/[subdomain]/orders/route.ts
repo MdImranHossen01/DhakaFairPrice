@@ -141,7 +141,7 @@ export async function POST(
           ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
           ...(customer.email ? [{ email: customer.email.toLowerCase().trim() }] : []),
           ...(normalizedPhone ? [{ email: `${normalizedPhone}@store.com` }] : []),
-          ...(normalizedPhone ? [{ email: `${normalizedPhone}@swapnobaz.com` }] : [])
+          ...(normalizedPhone ? [{ email: `${normalizedPhone}@dhakafairprice.com` }] : [])
         ]
       }).session(sessionConn);
 

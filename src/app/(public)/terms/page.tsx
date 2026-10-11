@@ -21,8 +21,8 @@ import {
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Swapnobaz',
-  description: 'Terms and conditions governing the use of the Swapnobaz B2B + B2C Multi-Vendor Dropshipping Platform & SaaS.',
+  title: 'Terms of Service | Dhaka Fair Price',
+  description: 'Terms and conditions governing the use of the Dhaka Fair Price B2B + B2C Multi-Vendor Dropshipping Platform & SaaS.',
 };
 
 async function getSettings() {
@@ -31,10 +31,10 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Swapnobaz",
+        brandName: "Dhaka Fair Price",
         contact: {
-          email: "support@swapnobaz.com",
-          phone: "+8801234567890",
+          email: "dhakafairprice@gmail.com",
+          phone: "+8801816879730",
           address: "Dhaka, Bangladesh"
         }
       };
@@ -43,10 +43,10 @@ async function getSettings() {
   } catch (error) {
     console.error('Error fetching settings for terms page:', error);
     return {
-      brandName: "Swapnobaz",
+      brandName: "Dhaka Fair Price",
       contact: {
-        email: "support@swapnobaz.com",
-        phone: "+8801234567890",
+        email: "dhakafairprice@gmail.com",
+        phone: "+8801816879730",
         address: "Dhaka, Bangladesh"
       }
     };
@@ -55,9 +55,9 @@ async function getSettings() {
 
 export default async function TermsPage() {
   const settings = await getSettings();
-  const brandName = settings?.brandName || "Swapnobaz";
-  const contactEmail = settings?.contact?.email || "support@swapnobaz.com";
-  const contactPhone = settings?.contact?.phone || "+880 1234-567890";
+  const brandName = settings?.brandName || "Dhaka Fair Price";
+  const contactEmail = settings?.contact?.email || "dhakafairprice@gmail.com";
+  const contactPhone = settings?.contact?.phone || "+880 1816-879730";
   const effectiveDate = "July 19, 2026";
 
   return (

@@ -19,7 +19,7 @@ interface LogoProps {
 export function Logo({ className, imageClassName, textClassName, showText = true, onClick, sizes, src }: LogoProps) {
   const { brandName, logoUrl } = useSettings();
 
-  const finalBrandName = brandName || "Swapnobaz";
+  const finalBrandName = brandName || "Dhaka Fair Price";
   const finalLogoUrl = src || logoUrl || "/logo.webp";
 
   return (

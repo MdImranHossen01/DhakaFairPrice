@@ -63,9 +63,9 @@ export default function CatalogPage() {
     }
     setSubmitting(true);
     try {
-      const phone = catalog?.companyInfo?.phone || '+8801724338581';
+      const phone = catalog?.companyInfo?.phone || '+8801816879730';
       const cleanNum = phone.replace(/[^0-9]/g, '');
-      const msg = `*B2B Inquiry from Swapnobaz Catalog:*\nName: ${formData.name}\nCompany: ${formData.company || 'N/A'}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nCategory: ${formData.category}\nQty: ${formData.quantity} pcs\nMessage: ${formData.message}`;
+      const msg = `*B2B Inquiry from Dhaka Fair Price Catalog:*\nName: ${formData.name}\nCompany: ${formData.company || 'N/A'}\nEmail: ${formData.email}\nPhone: ${formData.phone}\nCategory: ${formData.category}\nQty: ${formData.quantity} pcs\nMessage: ${formData.message}`;
       const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(msg)}`;
 
       await Swal.fire({
@@ -112,7 +112,7 @@ export default function CatalogPage() {
             <a href="#quote" className="bg-white text-primary font-black px-8 py-3 rounded-full hover:bg-neutral-100 transition-all shadow-lg text-sm">
               Get Custom Quote
             </a>
-            <a href={`https://wa.me/${(companyInfo?.phone || '+8801724338581').replace(/[^0-9]/g, '')}`}
+            <a href={`https://wa.me/${(companyInfo?.phone || '+8801816879730').replace(/[^0-9]/g, '')}`}
               target="_blank" rel="noopener noreferrer"
               className="border border-white/40 hover:bg-white/10 font-bold px-8 py-3 rounded-full transition-all text-sm flex items-center gap-2">
               Contact Bangladesh Factory <ExternalLink className="h-4 w-4" />
@@ -145,7 +145,7 @@ export default function CatalogPage() {
       <div className="container mx-auto px-4 max-w-6xl py-16 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-7 space-y-8">
           <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-200/60 dark:border-zinc-800 shadow-xl space-y-6">
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">About Swapnobaz</h2>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">About Dhaka Fair Price</h2>
             <p className="text-slate-600 dark:text-zinc-400 leading-relaxed font-medium whitespace-pre-line">
               {companyInfo?.about}
             </p>

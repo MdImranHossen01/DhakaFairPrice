@@ -22,8 +22,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | Swapnobaz',
-  description: 'Get in touch with Swapnobaz for reseller onboarding, supplier partnerships, customer support, and dropshipping platform inquiries.',
+  title: 'Contact Us | Dhaka Fair Price',
+  description: 'Get in touch with Dhaka Fair Price for reseller onboarding, supplier partnerships, customer support, and dropshipping platform inquiries.',
 };
 
 async function getSettings() {
@@ -32,10 +32,10 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Swapnobaz",
+        brandName: "Dhaka Fair Price",
         contact: {
-          email: "support@swapnobaz.com",
-          phone: "+8801234567890",
+          email: "dhakafairprice@gmail.com",
+          phone: "+8801816879730",
           address: "Dhaka, Bangladesh"
         },
         socialLinks: {}
@@ -45,10 +45,10 @@ async function getSettings() {
   } catch (error) {
     console.error('Error fetching settings for contact page:', error);
     return {
-      brandName: "Swapnobaz",
+      brandName: "Dhaka Fair Price",
       contact: {
-        email: "support@swapnobaz.com",
-        phone: "+8801234567890",
+        email: "dhakafairprice@gmail.com",
+        phone: "+8801816879730",
         address: "Dhaka, Bangladesh"
       },
       socialLinks: {}
@@ -59,7 +59,7 @@ async function getSettings() {
 export default async function ContactPage() {
   const settings = await getSettings();
 
-  const { contact = {}, socialLinks, brandName = "Swapnobaz" } = settings as {
+  const { contact = {}, socialLinks, brandName = "Dhaka Fair Price" } = settings as {
     contact?: { email?: string; phone?: string; address?: string };
     socialLinks?: { 
       facebook?: string; 
@@ -72,8 +72,8 @@ export default async function ContactPage() {
     brandName?: string;
   };
 
-  const contactEmail = contact?.email || "support@swapnobaz.com";
-  const contactPhone = contact?.phone || "+8801234567890";
+  const contactEmail = contact?.email || "dhakafairprice@gmail.com";
+  const contactPhone = contact?.phone || "+8801816879730";
   const contactAddress = contact?.address || "Dhaka, Bangladesh";
 
   const contactItems = [
@@ -259,7 +259,7 @@ export default async function ContactPage() {
 
               <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-md border border-border bg-muted">
                 <iframe
-                  title="Swapnobaz Hub Location"
+                  title="Dhaka Fair Price Hub Location"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}

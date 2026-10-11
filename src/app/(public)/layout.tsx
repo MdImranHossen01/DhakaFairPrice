@@ -27,7 +27,7 @@ export default async function PublicLayout({ children }: { children: React.React
     console.error('Failed to fetch settings/categories/brands:', error);
   }
 
-  const marqueeText = settings?.marqueeText || 'Welcome to Swapnobaz! Free shipping on orders over $500.';
+  const marqueeText = settings?.marqueeText || 'Welcome to Dhaka Fair Price! Free shipping on orders over $500.';
   const ui = {
     layout: settings?.uiTemplates?.layout || 'v1',
     navbar: settings?.uiTemplates?.navbar || 'v1',

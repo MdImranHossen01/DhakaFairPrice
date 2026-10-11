@@ -230,7 +230,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
   const storeHomeUrl = customDomain?.trim()
     ? (customDomain.trim().startsWith("http") ? customDomain.trim() : `https://${customDomain.trim()}`)
     : subdomain?.trim()
-    ? `https://${subdomain.trim()}.swapnobaz.com`
+    ? `https://${subdomain.trim()}.dhakafairprice.com`
     : "/"
 
   return (
@@ -265,7 +265,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
                 </span>
                 {subdomain && (
                   <span className="text-[9px] text-slate-400 truncate max-w-[140px]">
-                    {subdomain}.swapnobaz.com
+                    {subdomain}.dhakafairprice.com
                   </span>
                 )}
               </div>

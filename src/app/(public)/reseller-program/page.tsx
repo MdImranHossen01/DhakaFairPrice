@@ -71,7 +71,7 @@ export default function ResellerProgramPage() {
         { text: 'সেন্ট্রাল কুরিয়ার ডেলিভারি ও ফুলফিলমেন্ট', highlight: false },
         { text: 'bKash / Nagad / Rocket পেমেন্ট গেটওয়ে', highlight: false },
         { text: 'Server-Side Tracking (CAPI, Pixel, GA4) - ফ্রি', highlight: true },
-        { text: 'Swapnobaz Next.js Store Admin Panel', highlight: false },
+        { text: 'Dhaka Fair Price Next.js Store Admin Panel', highlight: false },
         { text: 'Website Video Tutorial', highlight: false },
         { text: '১টি Logo Design', highlight: false },
         { text: '৩টি Cover Photo Design', highlight: false },
@@ -108,7 +108,7 @@ export default function ResellerProgramPage() {
         { text: 'সেন্ট্রাল কুরিয়ার ডেলিভারি ও ফুলফিলমেন্ট', highlight: false },
         { text: 'bKash / Nagad / Rocket পেমেন্ট গেটওয়ে', highlight: false },
         { text: 'Server-Side Tracking (CAPI, Pixel, GA4) - ফ্রি', highlight: true },
-        { text: 'Swapnobaz Next.js Store Admin Panel', highlight: false },
+        { text: 'Dhaka Fair Price Next.js Store Admin Panel', highlight: false },
         { text: 'Website Video Tutorial', highlight: false },
         { text: '১টি Logo Design', highlight: false },
         { text: '৫টি Cover Photo Design', highlight: false },
@@ -145,7 +145,7 @@ export default function ResellerProgramPage() {
         { text: 'সেন্ট্রাল কুরিয়ার ডেলিভারি ও ফুলফিলমেন্ট', highlight: false },
         { text: 'bKash / Nagad / Rocket পেমেন্ট গেটওয়ে', highlight: false },
         { text: 'Server-Side Tracking (CAPI, Pixel, GA4) - ফ্রি', highlight: true },
-        { text: 'Swapnobaz Next.js Store Admin Panel', highlight: false },
+        { text: 'Dhaka Fair Price Next.js Store Admin Panel', highlight: false },
         { text: 'Website Video Tutorial', highlight: false },
         { text: '১টি Logo Design', highlight: false },
         { text: '১০টি Cover Photo Design', highlight: false },
@@ -242,7 +242,7 @@ export default function ResellerProgramPage() {
     },
     {
       q: 'আমাদের ওয়েবসাইট কি WordPress নাকি Next.js?',
-      a: 'Swapnobaz প্ল্যাটফর্ম ১০০% আধুনিক Next.js টেকনোলজিতে তৈরি। এটি সাধারণ WordPress ওয়েবসাইটের চেয়ে বহুগুণ দ্রুতগতির, সিকিউর এবং মোবাইল-অপ্টিমাইজড।',
+      a: 'Dhaka Fair Price প্ল্যাটফর্ম ১০০% আধুনিক Next.js টেকনোলজিতে তৈরি। এটি সাধারণ WordPress ওয়েবসাইটের চেয়ে বহুগুণ দ্রুতগতির, সিকিউর এবং মোবাইল-অপ্টিমাইজড।',
     },
     {
       q: 'Server-Side Tracking কি সত্যিই ফ্রি?',
@@ -769,7 +769,7 @@ export default function ResellerProgramPage() {
                     <td className="p-3.5 text-center font-bold text-emerald-600">ফ্রি অন্তর্ভুক্ত</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 px-6 text-slate-600">Swapnobaz Store Admin Panel</td>
+                    <td className="p-3.5 px-6 text-slate-600">Dhaka Fair Price Store Admin Panel</td>
                     <td className="p-3.5 text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto" /></td>
                     <td className="p-3.5 text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto" /></td>
                     <td className="p-3.5 text-center"><Check className="h-4 w-4 text-emerald-600 mx-auto" /></td>

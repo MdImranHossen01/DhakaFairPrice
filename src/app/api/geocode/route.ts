@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
       {
         headers: {
-          'User-Agent': 'Swapnobaz/1.0 (imranshuvo101@gmail.com)',
+          'User-Agent': 'DhakaFairPrice/1.0 (imranshuvo101@gmail.com)',
         },
       }
     );

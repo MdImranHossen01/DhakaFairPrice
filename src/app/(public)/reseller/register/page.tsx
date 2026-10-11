@@ -279,13 +279,13 @@ export default function ResellerRegisterPage() {
                     className="rounded-r-none border-r-0 font-medium"
                   />
                   <span className="h-10 px-3 bg-muted border border-l-0 text-xs sm:text-sm font-semibold text-muted-foreground flex items-center rounded-r-md select-none">
-                    .swapnobaz.com
+                    .dhakafairprice.com
                   </span>
                 </div>
                 {subdomainValue && (
                   <p className="text-[11px] text-primary mt-1 font-medium flex items-center gap-1">
                     <Globe className="h-3 w-3" />
-                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().trim()}.swapnobaz.com</strong>
+                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().trim()}.dhakafairprice.com</strong>
                   </p>
                 )}
                 {form.formState.errors.subdomain && (

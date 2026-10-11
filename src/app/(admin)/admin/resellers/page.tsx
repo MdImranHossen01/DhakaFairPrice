@@ -272,13 +272,13 @@ export default function AdminResellersPage() {
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <a
-                                href={`https://${r.subdomain}.swapnobaz.com`}
+                                href={`https://${r.subdomain}.dhakafairprice.com`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-semibold max-w-full"
-                                title={`${r.subdomain}.swapnobaz.com`}
+                                title={`${r.subdomain}.dhakafairprice.com`}
                               >
-                                <span className="truncate">{r.subdomain}.swapnobaz.com</span>
+                                <span className="truncate">{r.subdomain}.dhakafairprice.com</span>
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
                             </div>
@@ -370,12 +370,12 @@ export default function AdminResellersPage() {
                     <div className="text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <a
-                          href={`https://${r.subdomain}.swapnobaz.com`}
+                          href={`https://${r.subdomain}.dhakafairprice.com`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
                         >
-                          {r.subdomain}.swapnobaz.com
+                          {r.subdomain}.dhakafairprice.com
                           <ExternalLink className="h-3 w-3" />
                         </a>
                         <Button
@@ -480,7 +480,7 @@ export default function AdminResellersPage() {
             <div className="space-y-1.5 p-3.5 rounded-lg border bg-muted/20">
               <label className="text-xs font-bold text-foreground">Free Store Subdomain</label>
               <p className="text-[11px] text-muted-foreground">
-                Set unique subdomain name on swapnobaz platform:
+                Set unique subdomain name on dhakafairprice platform:
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <Input
@@ -490,19 +490,19 @@ export default function AdminResellersPage() {
                   className="font-mono text-sm h-9 bg-background"
                 />
                 <span className="text-xs font-bold text-primary whitespace-nowrap bg-primary/10 px-2.5 py-2 rounded-md border border-primary/20">
-                  .swapnobaz.com
+                  .dhakafairprice.com
                 </span>
               </div>
               {editSubdomain && (
                 <div className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1">
                   <span>Preview Store:</span>
                   <a
-                    href={`https://${editSubdomain}.swapnobaz.com`}
+                    href={`https://${editSubdomain}.dhakafairprice.com`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline font-semibold inline-flex items-center gap-0.5"
                   >
-                    https://{editSubdomain}.swapnobaz.com
+                    https://{editSubdomain}.dhakafairprice.com
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>

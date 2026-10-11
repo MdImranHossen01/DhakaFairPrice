@@ -31,7 +31,7 @@ export default function SubscriptionBlocker({ brandName, expiryDate }: Subscript
           </p>
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2 text-green-600 font-bold">
-              <MessageCircle className="h-4 w-4" /> WhatsApp: +8801919011101
+              <MessageCircle className="h-4 w-4" /> WhatsApp: +8801816879730
             </div>
             <div className="flex items-center justify-center gap-2 text-blue-600 font-bold">
               <Globe className="h-4 w-4" /> Visit: www.jiapixel.com
@@ -41,7 +41,7 @@ export default function SubscriptionBlocker({ brandName, expiryDate }: Subscript
 
         <div className="pt-4">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-            Infrastructure Powered by Swapnobaz SaaS Platform
+            Infrastructure Powered by Dhaka Fair Price SaaS Platform
           </p>
         </div>
       </div>
