@@ -47,8 +47,9 @@ export default function StoreLoginPage() {
       const role = (session.user as any)?.role;
       const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect');
       if (callbackUrl) { router.replace(callbackUrl); }
+      // If logged in from their own store domain (subdomain is present), go to /dashboard on this domain
+      else if (role === 'reseller') { router.replace('/dashboard'); }
       else if (role === 'admin' || role === 'super_admin') { router.replace('/admin/dashboard'); }
-      else if (role === 'reseller') { router.replace('/reseller/dashboard'); }
       else { router.replace('/'); }
     }
   }, [status, session, router, searchParams]);

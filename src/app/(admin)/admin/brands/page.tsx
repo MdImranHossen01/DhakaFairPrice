@@ -131,7 +131,7 @@ export default function BrandsPage() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this brand delete!",
+      text:"You won't be able to revert this brand delete!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -291,7 +291,7 @@ export default function BrandsPage() {
               ) : brands.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                    No brands found. Click "Add Brand" to create one.
+                    No brands found. Click"Add Brand" to create one.
                   </TableCell>
                 </TableRow>
               ) : (

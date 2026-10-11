@@ -268,7 +268,7 @@ function ExpensesIncomesContent() {
             <Select value={typeFilter} onValueChange={(val: any) => setTypeFilter(val)}>
               <SelectTrigger className="w-full sm:w-36">
                 <SelectValue placeholder="All Types">
-                  {typeFilter === "all" ? "All Types" : typeFilter === "expense" ? "Expense" : typeFilter === "income" ? "Income" : "All Types"}
+                  {typeFilter ==="all" ?"All Types" : typeFilter ==="expense" ?"Expense" : typeFilter ==="income" ?"Income" :"All Types"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>

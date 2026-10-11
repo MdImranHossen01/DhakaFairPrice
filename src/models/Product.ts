@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   resellerPrice?: number;
   discountRate?: number;
   sku: string;
+  barcode?: string;
   stock: number;
   categories: mongoose.Types.ObjectId[];
   brand?: mongoose.Types.ObjectId;
@@ -36,6 +37,7 @@ export interface IProduct extends Document {
     discountRate?: number;
     stock: number;
     sku?: string;
+    barcode?: string;
     image?: string;
     images?: string[];
     batches?: {
@@ -86,6 +88,11 @@ const ProductSchema: Schema<IProduct> = new Schema(
       unique: true,
       sparse: true
     },
+    barcode: {
+      type: String,
+      sparse: true,
+      trim: true,
+    },
     stock: { type: Number, required: true, default: 0, min: [0, 'Stock cannot be negative'] },
     categories: [{ type: Schema.Types.ObjectId, ref: 'Category' }],
     brand: { type: Schema.Types.ObjectId, ref: 'Brand' },
@@ -115,6 +122,7 @@ const ProductSchema: Schema<IProduct> = new Schema(
         discountRate: { type: Number },
         stock: { type: Number, required: true, default: 0, min: [0, 'Stock cannot be negative'] },
         sku: { type: String },
+        barcode: { type: String, trim: true },
         image: { type: String },
         images: [{ type: String }],
         batches: [

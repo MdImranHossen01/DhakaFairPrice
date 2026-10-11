@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import Swal from 'sweetalert2';
 
 import { CategoryNav } from '@/components/layout/CategoryNav';
@@ -195,8 +196,8 @@ export default function NavbarV2() {
             />
 
             <Link href="/" className={`text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-all flex items-center gap-2 group ${!isHomePage || isScrolled ? 'text-foreground' : 'text-white'}`}>
-              <Image src="/logo.webp" width={40} height={40} alt="Dhaka Fair Price Logo" className="object-contain" />
-              {settings?.brandName || 'Dhaka Fair Price'}
+              <Image src="/logo.webp" width={40} height={40} alt="Swapnobaz Logo" className="object-contain" />
+              {settings?.brandName || 'Swapnobaz'}
             </Link>
           </div>
 
@@ -340,12 +341,10 @@ export default function NavbarV2() {
                     <DropdownMenuTrigger asChild>
                       <button className="flex items-center gap-2 group cursor-pointer outline-none">
                         <div className="h-9 w-9 rounded-full border-2 border-primary/50 overflow-hidden group-hover:scale-110 transition-transform">
-                          <Image
-                            src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || '')}`}
-                            alt={session.user?.name || 'User'}
-                            width={36}
-                            height={36}
-                            className="h-full w-full object-cover"
+                          <UserAvatar
+                            src={profile?.image || session.user?.image}
+                            name={session.user?.name}
+                            size={36}
                           />
                         </div>
                       </button>

@@ -42,9 +42,13 @@ export interface IGlobalSettings extends Document {
       clientId?: string;
       clientSecret?: string;
       storeId?: string;
+      username?: string;
+      password?: string;
+      isSandbox?: boolean;
     };
     redx?: {
       apiKey?: string;
+      isSandbox?: boolean;
     };
     bdCourier?: {
       apiKey?: string;

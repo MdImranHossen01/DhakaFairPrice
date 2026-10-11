@@ -5,7 +5,7 @@ export default async function SystemDesignLayout({ children }: { children: React
   const session = await auth();
   const role = (session?.user as any)?.role;
 
-  if (!session || role !== 'super_admin') {
+  if (!session || (role !== 'super_admin' && role !== 'admin')) {
     redirect('/admin/dashboard');
   }
 

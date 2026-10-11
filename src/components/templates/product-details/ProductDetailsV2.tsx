@@ -24,7 +24,7 @@ export default async function ProductDetailsV2({ product }: { product: any }) {
   ]);
 
   return (
-    <div className="w-full py-4 md:py-6">
+    <div className="w-full px-4 lg:px-8 mx-auto py-4 md:py-6">
       {productSchema && (
         <Script
           id="product-schema-v2"
@@ -40,17 +40,18 @@ export default async function ProductDetailsV2({ product }: { product: any }) {
         />
       )}
 
-      {/* Luxury Breadcrumb */}
-      <div className="mb-12 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60 overflow-hidden">
-        <Link href="/" className="hover:text-primary transition-colors shrink-0">Discovery</Link>
-        <ChevronRight className="h-3 w-3 shrink-0" />
-        <Link href="/shop" className="hover:text-primary transition-colors shrink-0">Collection</Link>
-        <ChevronRight className="h-3 w-3 shrink-0" />
-        <span className="text-foreground truncate">{product.name}</span>
+      {/* Aarong Style Breadcrumb */}
+      <div className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground/80 px-1 lg:px-2">
+        <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+        <span>/</span>
+        <Link href="/shop" className="hover:text-primary transition-colors">Shop</Link>
+        <span>/</span>
+        <span className="text-foreground font-medium truncate">{product.name}</span>
       </div>
 
-      <ProductDetailsV2Client product={product} />
+      <div className="p-0">
+        <ProductDetailsV2Client product={product} />
+      </div>
     </div>
   );
 }
-

@@ -41,7 +41,7 @@ export default function SubscriptionBlocker({ brandName, expiryDate }: Subscript
 
         <div className="pt-4">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-            Infrastructure Powered by Dhaka Fair Price SaaS Platform
+            Infrastructure Powered by Swapnobaz SaaS Platform
           </p>
         </div>
       </div>

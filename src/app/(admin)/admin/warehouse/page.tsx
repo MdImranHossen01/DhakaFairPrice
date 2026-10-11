@@ -90,7 +90,7 @@ export default function AdminWarehousePage() {
   );
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 font-sans">
+    <div className="flex-1 space-y-4  font-sans">
       <div className="border-b pb-3">
         <h1 className="text-xl md:text-2xl font-bold tracking-tight">গুদাম ও ইনভেন্টরি কন্ট্রোল</h1>
         <p className="text-xs md:text-sm text-muted-foreground mt-0.5">গুদামের পণ্যের স্টক লেভেল পর্যবেক্ষণ ও সমন্বয় করুন</p>

@@ -10,7 +10,10 @@ export async function GET() {
     await connectToDatabase();
     // Only return admin/global banners (resellerId: null).
     // Reseller banners are served via /api/reseller/cms/banners for their own storefronts.
-    const banners = await Banner.find({ isActive: true, resellerId: null }).sort({ order: 1 });
+    const banners = await Banner.find({
+      isActive: true,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    }).sort({ order: 1 });
     return NextResponse.json(banners);
   } catch (error) {
     console.error('Error fetching banners:', error);

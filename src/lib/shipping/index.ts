@@ -13,6 +13,7 @@ export interface ShippingOrderData {
   item_weight?: number;
   delivery_type?: number;
   item_type?: number;
+  item_description?: string;
 }
 
 export interface ShippingOrderResponse {

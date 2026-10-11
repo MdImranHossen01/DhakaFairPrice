@@ -17,45 +17,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Truck, CreditCard, Globe, X, BarChart3 } from 'lucide-react';
+import { Loader2, CreditCard, Globe, X, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PasswordChangeForm } from '@/components/user/PasswordChangeForm';
-
-
-const FONT_OPTIONS = [
-  { id: 'inter', label: 'Inter (Modern Sans)' },
-  { id: 'poppins', label: 'Poppins (Round Sans)' },
-  { id: 'roboto', label: 'Roboto (Clean Sans)' },
-  { id: 'montserrat', label: 'Montserrat (Elegant Sans)' },
-  { id: 'playfair', label: 'Playfair Display (Serif)' },
-  { id: 'lora', label: 'Lora (Classic Serif)' },
-  { id: 'outfit', label: 'Outfit (Contemporary Sans)' },
-  { id: 'urbanist', label: 'Urbanist (Geometric Sans)' },
-  { id: 'manrope', label: 'Manrope (Modern Humanist)' },
-  { id: 'open-sans', label: 'Open Sans (Neutral Sans)' },
-  { id: 'lato', label: 'Lato (Friendly Sans)' },
-  { id: 'oswald', label: 'Oswald (Strong/Logo)' },
-  { id: 'raleway', label: 'Raleway (Elegant Sans)' },
-  { id: 'nunito', label: 'Nunito (Soft Round)' },
-  { id: 'ubuntu', label: 'Ubuntu (Technical Sans)' },
-  { id: 'merriweather', label: 'Merriweather (Bold Serif)' },
-  { id: 'kanit', label: 'Kanit (Modern Thai/Bold)' },
-  { id: 'quicksand', label: 'Quicksand (Playful Round)' },
-  { id: 'josefin-sans', label: 'Josefin Sans (Geometric/Logo)' },
-  { id: 'syne', label: 'Syne (Artistic/Trendy)' },
-  { id: 'space-grotesk', label: 'Space Grotesk (Futuristic/Tech)' },
-  { id: 'orbitron', label: 'Orbitron (Futuristic)' },
-  { id: 'jost', label: 'Jost (Sporty/Clean)' },
-  { id: 'geist', label: 'Geist (Next.js Default)' },
-];
 
 const settingsSchema = z.object({
   brandName: z.string().min(2, 'Brand Name is required'),
@@ -362,7 +327,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Global Settings</h1>
         <Button type="submit" form="settings-form" disabled={submitting}>
@@ -372,11 +337,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
@@ -396,7 +360,7 @@ export default function SettingsPage() {
                       <FormItem>
                         <FormLabel className="text-sm font-semibold text-gray-700">Brand Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Dhaka Fair Price" {...field} className="h-12 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-primary transition-all" />
+                          <Input placeholder="Swapnobaz" {...field} className="h-12 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-primary transition-all" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -474,7 +438,7 @@ export default function SettingsPage() {
                         <FormItem>
                           <FormLabel>Global Meta Title</FormLabel>
                           <FormControl>
-                            <Input placeholder="Dhaka Fair Price | Best Ecommerce in BD" {...field} />
+                            <Input placeholder="Swapnobaz | Best Ecommerce in BD" {...field} />
                           </FormControl>
                           <FormDescription>Used as the primary browser title for the home page.</FormDescription>
                           <FormMessage />
@@ -488,7 +452,7 @@ export default function SettingsPage() {
                         <FormItem>
                           <FormLabel>Global Meta Description</FormLabel>
                           <FormControl>
-                            <Input placeholder="Shop the best products at Dhaka Fair Price..." {...field} />
+                            <Input placeholder="Shop the best products at Swapnobaz..." {...field} />
                           </FormControl>
                           <FormDescription>Used for search engine snippets and social sharing.</FormDescription>
                           <FormMessage />
@@ -649,150 +613,6 @@ export default function SettingsPage() {
                         </FormItem>
                       )}
                     />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="appearance" className="space-y-4">
-              <Card className="border-2 border-primary/10 shadow-none overflow-hidden rounded-3xl">
-                <CardHeader className="bg-primary/5 border-b">
-                  <CardTitle>Brand Aesthetics</CardTitle>
-                  <CardDescription>Choose a theme that matches your brand identity.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <FormField
-                    control={form.control}
-                    name="uiTemplates.theme"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4">
-                        <FormLabel className="text-base font-bold">Storefront Theme Preset</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 rounded-2xl bg-background border-2 border-muted hover:border-primary/50 transition-all text-lg font-medium">
-                              <SelectValue placeholder="Select a theme" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-2xl p-2 max-h-[400px]">
-                            {[
-                              { id: 'default', label: 'Default (System)', color: 'bg-slate-500' },
-                              { id: 'black', label: 'Black and White Theme', color: 'bg-black' },
-                              { id: 'caffeine', label: 'Caffeine Theme', color: 'bg-[#6F4E37]' },
-                              { id: 'claude', label: 'Claude Theme', color: 'bg-[#D97757]' },
-                              { id: 'elegant', label: 'Elegant Luxury Theme', color: 'bg-[#D4AF37]' },
-                              { id: 'marvel', label: 'Marvel Theme', color: 'bg-[#ED1D24]' },
-                              { id: 'material', label: 'Material Design Theme', color: 'bg-[#6200EE]' },
-                              { id: 'midnight', label: 'Midnight Bloom Theme', color: 'bg-[#2D1B69]' },
-                              { id: 'nature', label: 'Nature Theme', color: 'bg-[#2E7D32]' },
-                              { id: 'perplexity', label: 'Perplexity Theme', color: 'bg-[#202124]' },
-                              { id: 'slack', label: 'Slack Theme', color: 'bg-[#4A154B]' },
-                              { id: 'summer', label: 'Summer Theme', color: 'bg-[#FFD700]' },
-                              { id: 'sunset', label: 'Sunset Theme', color: 'bg-[#FD5E53]' },
-                              { id: 'valorant', label: 'Valorant Theme', color: 'bg-[#FF4655]' },
-                              { id: 'supabase', label: 'Supabase Theme', color: 'bg-[#3ECF8E]' },
-                              { id: 'amber', label: 'Amber Minimal Theme', color: 'bg-[#FFBF00]' },
-                              { id: 'catppuccin', label: 'Catppuccin Theme', color: 'bg-[#CBA6F7]' },
-                              { id: 'clay', label: 'Claymorphism Theme', color: 'bg-[#91A6FF]' },
-                              { id: 'cyberpunk', label: 'Cyberpunk Theme', color: 'bg-[#FF00FF]' },
-                              { id: 'darkmatter', label: 'Dark Matter Theme', color: 'bg-[#000000]' },
-                              { id: 'ocean', label: 'Ocean Breeze Theme', color: 'bg-[#0077BE]' },
-                              { id: 'quantum', label: 'Quantum Rose Theme', color: 'bg-[#FF1493]' },
-                              { id: 't3', label: 'T3 Chat Theme', color: 'bg-[#E02424]' },
-                              { id: 'tangerine', label: 'Tangerine Theme', color: 'bg-[#F28500]' },
-                              { id: 'vintage', label: 'Vintage Paper Theme', color: 'bg-[#F5F5DC]' },
-                              { id: 'green', label: 'Green Theme', color: 'bg-green-500' },
-                              { id: 'red', label: 'Red Theme', color: 'bg-red-500' },
-                              { id: 'rose', label: 'Rose Theme', color: 'bg-rose-500' },
-                              { id: 'orange', label: 'Orange Theme', color: 'bg-orange-500' },
-                              { id: 'blue', label: 'Blue Theme', color: 'bg-blue-500' },
-                              { id: 'yellow', label: 'Yellow Theme', color: 'bg-yellow-500' },
-                              { id: 'violet', label: 'Violet Theme', color: 'bg-violet-500' }
-                            ].map((t) => (
-                              <SelectItem key={t.id} value={t.id} className="rounded-xl h-12">
-                                <div className="flex items-center gap-3">
-                                  <div className={`h-4 w-4 rounded-full ${t.color} border border-black/10`} />
-                                  <span className="font-medium">{t.label}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm">
-                          Switching themes will instantly update your storefront colors, fonts, and overall vibe.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Logo Font Selection */}
-                  <FormField
-                    control={form.control}
-                    name="uiTemplates.logoFont"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4 mt-6">
-                        <FormLabel className="text-base font-bold">Logo Typography</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 rounded-2xl bg-background border-2 border-muted hover:border-primary/50 transition-all text-lg font-medium">
-                              <SelectValue placeholder="Select a font for logo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-2xl p-2 max-h-[300px]">
-                            {FONT_OPTIONS.map((f) => (
-                              <SelectItem key={f.id} value={f.id} className="rounded-xl h-12">
-                                <span className="font-medium">{f.label}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm">
-                          Select the font style for your Brand Name in the logo.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Body Font Selection */}
-                  <FormField
-                    control={form.control}
-                    name="uiTemplates.bodyFont"
-                    render={({ field }) => (
-                      <FormItem className="space-y-4 mt-6">
-                        <FormLabel className="text-base font-bold">Global Body Typography</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="h-14 rounded-2xl bg-background border-2 border-muted hover:border-primary/50 transition-all text-lg font-medium">
-                              <SelectValue placeholder="Select a font for body" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-2xl p-2 max-h-[300px]">
-                            {FONT_OPTIONS.map((f) => (
-                              <SelectItem key={f.id} value={f.id} className="rounded-xl h-12">
-                                <span className="font-medium">{f.label}</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription className="text-sm">
-                          This font will be applied to all text across your storefront.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="mt-8 p-6 rounded-3xl bg-muted/30 border-2 border-dashed border-muted flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="h-12 w-12 rounded-full bg-background flex items-center justify-center">
-                      <Truck className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold">Live Preview (Coming Soon)</h4>
-                      <p className="text-xs text-muted-foreground max-w-[250px] mx-auto">
-                        In the next update, you'll be able to see a live preview of the theme before applying it.
-                      </p>
-                    </div>
                   </div>
                 </CardContent>
               </Card>

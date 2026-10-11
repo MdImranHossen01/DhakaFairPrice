@@ -26,9 +26,9 @@ const createSchema = (isLoggedIn: boolean) => z.object({
     .max(30, 'Subdomain cannot exceed 30 characters')
     .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Only lowercase letters, numbers, and hyphens (-) are allowed'),
   phone: z.string().min(11, 'Please enter a valid 11-digit phone number'),
-  division: z.string().min(1, 'Please select your division (বিভাগ)'),
-  district: z.string().min(1, 'Please select your district (জেলা)'),
-  thana: z.string().min(1, 'Please select your thana/upazila (থানা/উপজেলা)'),
+  division: z.string().min(1, 'Please select your division'),
+  district: z.string().min(1, 'Please select your district'),
+  thana: z.string().min(1, 'Please select your thana/upazila'),
   address: z.string().min(5, 'Please enter complete pickup address (Road, House, Area)'),
   hubName: z.string().optional(),
   description: z.string().optional(),
@@ -279,13 +279,13 @@ export default function ResellerRegisterPage() {
                     className="rounded-r-none border-r-0 font-medium"
                   />
                   <span className="h-10 px-3 bg-muted border border-l-0 text-xs sm:text-sm font-semibold text-muted-foreground flex items-center rounded-r-md select-none">
-                    .dhakafairprice.com
+                    .swapnobaz.com
                   </span>
                 </div>
                 {subdomainValue && (
                   <p className="text-[11px] text-primary mt-1 font-medium flex items-center gap-1">
                     <Globe className="h-3 w-3" />
-                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().trim()}.dhakafairprice.com</strong>
+                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().trim()}.swapnobaz.com</strong>
                   </p>
                 )}
                 {form.formState.errors.subdomain && (
@@ -303,7 +303,7 @@ export default function ResellerRegisterPage() {
             <div className="space-y-4 p-4 rounded-xl bg-primary/5 border border-primary/20">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                  <Truck className="h-4 w-4" /> Warehouse & Pickup Point (পিকআপ পয়েন্ট)
+                  <Truck className="h-4 w-4" /> Warehouse & Pickup Location
                 </div>
                 <span className="text-[11px] text-muted-foreground">For Courier Delivery & Returns</span>
               </div>
@@ -311,13 +311,13 @@ export default function ResellerRegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Division Dropdown */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Division / বিভাগ <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">Division <span className="text-destructive">*</span></Label>
                   <select
                     value={selectedDivision}
                     onChange={handleDivisionChange}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">-- বিভাগ নির্বাচন করুন --</option>
+                    <option value="">-- Select Division --</option>
                     {divisions.map(div => (
                       <option key={div} value={div}>{div}</option>
                     ))}
@@ -329,14 +329,14 @@ export default function ResellerRegisterPage() {
 
                 {/* District Dropdown */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">District / জেলা <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">District <span className="text-destructive">*</span></Label>
                   <select
                     value={selectedDistrict}
                     onChange={handleDistrictChange}
                     disabled={!selectedDivision}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{selectedDivision ? '-- জেলা নির্বাচন করুন --' : '-- আগে বিভাগ বাছুন --'}</option>
+                    <option value="">{selectedDivision ? '-- Select District --' : '-- Select Division First --'}</option>
                     {availableDistricts.map(dist => (
                       <option key={dist} value={dist}>{dist}</option>
                     ))}
@@ -348,13 +348,13 @@ export default function ResellerRegisterPage() {
 
                 {/* Thana Dropdown */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Thana / থানা / উপজেলা <span className="text-destructive">*</span></Label>
+                  <Label className="text-xs font-semibold">Thana / Upazila <span className="text-destructive">*</span></Label>
                   <select
                     {...form.register('thana')}
                     disabled={!selectedDistrict}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{selectedDistrict ? '-- থানা বাছুন --' : '-- আগে জেলা বাছুন --'}</option>
+                    <option value="">{selectedDistrict ? '-- Select Thana --' : '-- Select District First --'}</option>
                     {availableThanas.map(th => (
                       <option key={th} value={th}>{th}</option>
                     ))}
@@ -368,7 +368,7 @@ export default function ResellerRegisterPage() {
               {/* Detailed Address */}
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
-                  Detailed Pickup Address (Road, House, Landmark) / বিস্তারিত পিকআপ ঠিকানা <span className="text-destructive">*</span>
+                  Detailed Pickup Address (Road, House, Landmark) <span className="text-destructive">*</span>
                 </Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -385,7 +385,7 @@ export default function ResellerRegisterPage() {
 
               {/* Hub / Warehouse Nickname (Optional) */}
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Warehouse / Hub Name (ঐচ্ছিক)</Label>
+                <Label className="text-xs font-semibold">Warehouse / Hub Name (Optional)</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input 

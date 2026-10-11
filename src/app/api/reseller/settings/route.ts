@@ -98,17 +98,20 @@ export async function PATCH(request: NextRequest) {
     }
     if (faviconUrl !== undefined) updatePayload.faviconUrl = faviconUrl;
 
-    // Domain
-    if (subdomain && subdomain !== reseller?.subdomain) {
-      const cleanSub = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
-      const existing = await Reseller.findOne({ subdomain: cleanSub, _id: { $ne: resellerId } });
-      if (existing) {
-        return NextResponse.json({ error: 'এই সাব-ডোমেইনটি ইতিমধ্যে ব্যবহৃত হচ্ছে' }, { status: 400 });
+    // Domain - Only admin/super_admin are permitted to modify reseller domains
+    const userRole = (session.user as any).role;
+    if (['admin', 'super_admin'].includes(userRole)) {
+      if (subdomain && subdomain !== reseller?.subdomain) {
+        const cleanSub = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        const existing = await Reseller.findOne({ subdomain: cleanSub, _id: { $ne: resellerId } });
+        if (existing) {
+          return NextResponse.json({ error: 'This subdomain is already in use.' }, { status: 400 });
+        }
+        updatePayload.subdomain = cleanSub;
       }
-      updatePayload.subdomain = cleanSub;
-    }
-    if (customDomain !== undefined) {
-      updatePayload.customDomain = customDomain.toLowerCase().trim();
+      if (customDomain !== undefined) {
+        updatePayload.customDomain = customDomain.toLowerCase().trim();
+      }
     }
 
     // Contact (merge field by field)

@@ -18,6 +18,8 @@ import FacebookPixel from "./components/FacebookPixel";
 import TikTokPixel from "./components/TikTokPixel";
 import { headers } from "next/headers";
 import { getCachedSettings } from "@/lib/data-fetching";
+import dbConnect from "@/lib/db";
+import Reseller from "@/models/Reseller";
 
 
 const geistSans = Geist({
@@ -76,12 +78,86 @@ function getGoogleFontsUrl(fonts: string[]) {
 
 export const dynamic = 'force-dynamic';
 
+async function getResellerFromHeaders(headersList: Headers) {
+  try {
+    const resellerSubdomain = headersList.get('x-reseller-subdomain');
+    await dbConnect();
+    if (resellerSubdomain) {
+      const reseller = await Reseller.findOne({ subdomain: resellerSubdomain })
+        .select('storeName logoUrl faviconUrl description subdomain customDomain')
+        .lean();
+      if (reseller) return reseller;
+    }
+
+    const hostname = headersList.get('host') || '';
+    const cleanHost = hostname.split(':')[0].toLowerCase();
+
+    if (cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1' && !/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) {
+      if (cleanHost.endsWith('.swapnobaz.com')) {
+        const sub = cleanHost.replace('.swapnobaz.com', '');
+        if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'app') {
+          return await Reseller.findOne({ subdomain: sub })
+            .select('storeName logoUrl faviconUrl description subdomain customDomain')
+            .lean();
+        }
+      } else if (cleanHost !== 'swapnobaz.com' && cleanHost !== 'www.swapnobaz.com') {
+        const withoutWww = cleanHost.replace(/^www\./, '');
+        return await Reseller.findOne({
+          $or: [
+            { customDomain: cleanHost },
+            { customDomain: withoutWww },
+            { customDomain: `www.${withoutWww}` }
+          ],
+          status: 'active'
+        })
+        .select('storeName logoUrl faviconUrl description subdomain customDomain')
+        .lean();
+      }
+    }
+  } catch (err) {
+    console.error('Error resolving reseller in layout:', err);
+  }
+  return null;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
   const hostname = headersList.get('host') || 'localhost';
   const baseUrl = `https://${hostname}`;
 
   try {
+    const reseller = await getResellerFromHeaders(headersList);
+    if (reseller) {
+      const favicon = reseller.faviconUrl || reseller.logoUrl || '/favicon.ico';
+      return {
+        metadataBase: new URL(baseUrl),
+        title: {
+          default: reseller.storeName || 'Online Store',
+          template: `%s | ${reseller.storeName || 'Store'}`,
+        },
+        description: reseller.description || `Shop at ${reseller.storeName}`,
+        icons: {
+          icon: [
+            { url: favicon },
+            { url: favicon, sizes: '32x32' },
+            { url: favicon, sizes: '16x16' },
+            { url: favicon, sizes: '192x192' },
+            { url: favicon, sizes: '512x512' },
+          ],
+          shortcut: favicon,
+          apple: reseller.logoUrl || favicon,
+        },
+        openGraph: {
+          title: reseller.storeName,
+          description: reseller.description || `Shop at ${reseller.storeName}`,
+          url: baseUrl,
+          siteName: reseller.storeName,
+          images: reseller.logoUrl ? [{ url: reseller.logoUrl }] : [],
+          type: 'website',
+        },
+      };
+    }
+
     const settings = await getCachedSettings();
 
     if (!settings) throw new Error("No settings found");
@@ -102,24 +178,24 @@ export async function generateMetadata(): Promise<Metadata> {
       appleWebApp: {
         capable: true,
         statusBarStyle: 'default',
-        title: settings.brandName || "Dhaka Fair Price",
+        title: settings.brandName || "Swapnobaz",
       },
       formatDetection: {
         telephone: false,
       },
       openGraph: {
-        title: settings.metaTitle || settings.brandName || "Dhaka Fair Price",
+        title: settings.metaTitle || settings.brandName || "Swapnobaz",
         description: settings.metaDescription || settings.brandName || "Your ultimate destination for quality products.",
         url: baseUrl,
-        siteName: settings.brandName || "Dhaka Fair Price",
+        siteName: settings.brandName || "Swapnobaz",
         type: 'website',
         images: settings.logoUrl
-          ? [{ url: settings.logoUrl.startsWith('http') ? settings.logoUrl : `${baseUrl}${settings.logoUrl}`, width: 1200, height: 630, alt: settings.brandName || 'Dhaka Fair Price' }]
+          ? [{ url: settings.logoUrl.startsWith('http') ? settings.logoUrl : `${baseUrl}${settings.logoUrl}`, width: 1200, height: 630, alt: settings.brandName || 'Swapnobaz' }]
           : [],
       },
       twitter: {
         card: 'summary_large_image',
-        title: settings.metaTitle || settings.brandName || "Dhaka Fair Price",
+        title: settings.metaTitle || settings.brandName || "Swapnobaz",
         description: settings.metaDescription || settings.brandName || "Your ultimate destination for quality products.",
         site: settings.socialLinks?.twitter ? `@${settings.socialLinks.twitter.replace(/.*twitter\.com\//, '').replace(/.*x\.com\//, '').replace('@', '')}` : undefined,
         images: settings.logoUrl
@@ -140,7 +216,7 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch (error) {
     return {
-      title: "Dhaka Fair Price",
+      title: "Swapnobaz",
       description: "Your ultimate destination for quality products.",
     };
   }
@@ -152,10 +228,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const headersList = await headers();
-  // proxy.ts sets this header on every reseller store request (subdomain or custom domain).
-  // If present, we must NOT load the mother shop pixel — it would claim window.fbq first
-  // and silently block the reseller's own pixel from initialising.
-  const isResellerStorePage = !!headersList.get('x-reseller-subdomain');
+  const reseller = await getResellerFromHeaders(headersList);
+  const isResellerStorePage = !!reseller;
+  const resellerFavicon = reseller?.faviconUrl || reseller?.logoUrl || null;
 
   const settings = await getCachedSettings();
 
@@ -189,6 +264,18 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
+        {resellerFavicon ? (
+          <>
+            <link rel="icon" href={resellerFavicon} sizes="any" />
+            <link rel="shortcut icon" href={resellerFavicon} />
+            <link rel="apple-touch-icon" href={resellerFavicon} />
+          </>
+        ) : (
+          <>
+            <link rel="icon" href="/favicon.ico" sizes="any" />
+            <link rel="shortcut icon" href="/favicon.ico" />
+          </>
+        )}
         <link rel="preload" as="image" href="/assets/login_banner_v2.webp" />
         <link rel="preload" as="image" href="/assets/register_banner_v2.webp" />
         <link rel="preload" as="image" href="/assets/forgetpassrod.webp" />

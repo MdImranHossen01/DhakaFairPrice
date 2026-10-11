@@ -4,7 +4,7 @@ import connectToDatabase from '@/lib/db';
 import BusinessLoan from '@/models/BusinessLoan';
 import LoanProvider from '@/models/LoanProvider';
 import LedgerAccount from '@/models/LedgerAccount';
-import LedgerTransaction from '@/models/LedgerTransaction';
+import { logLedgerTransaction } from '@/lib/ledgerHelper';
 
 export async function GET(req: NextRequest) {
   try {
@@ -97,18 +97,14 @@ export async function POST(req: NextRequest) {
       status: 'Active'
     });
 
-    // Credit the receiving account balance
-    account.currentBalance += principal;
-    await account.save();
-
-    await LedgerTransaction.create({
-      account: account._id,
-      date: txDate,
-      description: `Business Loan Inflow: ${loanId} from ${finalLenderName}`,
-      type: 'credit',
-      amount: principal,
-      balanceAfter: account.currentBalance
-    });
+    await logLedgerTransaction(
+      account.code as 'CASH' | 'BANK' | 'AR' | 'AP',
+      'debit',
+      principal,
+      `Business Loan Inflow: ${loanId} from ${finalLenderName}`,
+      loanId,
+      txDate
+    );
 
     return NextResponse.json({ message: 'Business loan recorded successfully', loan });
   } catch (error: any) {

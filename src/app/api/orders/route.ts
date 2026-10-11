@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
           ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
           ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
           ...(normalizedPhone ? [{ email: `${normalizedPhone}@store.com` }] : []),
-          ...(normalizedPhone ? [{ email: `${normalizedPhone}@dhakafairprice.com` }] : [])
+          ...(normalizedPhone ? [{ email: `${normalizedPhone}@swapnobaz.com` }] : [])
         ]
       }).session(session);
 

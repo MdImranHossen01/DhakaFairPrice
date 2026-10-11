@@ -67,7 +67,7 @@ export default function BrandSalesReportPage() {
   const years = Array.from({ length: 5 }, (_, i) => (currentDate.getFullYear() - i).toString());
 
   return (
-    <div className="flex-1 space-y-4 md:space-y-6 px-0 py-2 md:p-8">
+    <div className="flex-1 space-y-4 md:space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
@@ -122,7 +122,7 @@ export default function BrandSalesReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Dhaka Fair Price E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">Swapnobaz E-Commerce</h2>
         <h3 className="text-lg font-semibold text-slate-700">Brand Wise Sales Report</h3>
         <p className="text-xs text-slate-500">Period: {data?.monthName} {data?.year}</p>
       </div>

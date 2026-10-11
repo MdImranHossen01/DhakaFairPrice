@@ -183,7 +183,7 @@ function ProductsContent() {
   const handleDelete = async (id: string, name: string) => {
     const result = await Swal.fire({
       title: 'Delete Product?',
-      text: `Remove "${name}" from your store?`,
+      text: `Remove"${name}" from your store?`,
       icon: 'warning', showCancelButton: true,
       confirmButtonColor: '#ef4444', confirmButtonText: 'Yes, remove it!',
       customClass: { popup: 'rounded-xl', confirmButton: 'rounded-lg px-4 py-2 font-bold', cancelButton: 'rounded-lg px-4 py-2' },
@@ -240,7 +240,7 @@ function ProductsContent() {
   };
 
   return (
-    <div className="flex-1 space-y-3 sm:space-y-4 px-0 py-2 sm:p-6 md:p-8">
+    <div className="flex-1 space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">My Store Products</h2>

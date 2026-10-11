@@ -63,8 +63,8 @@ export default function ResellerLedgerPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Accounts Ledger</h2>
           <p className="text-xs md:text-sm text-muted-foreground">Complete financial record of your store account</p>
@@ -74,7 +74,7 @@ export default function ResellerLedgerPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4 px-1 md:px-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4">
         {[
           { label: 'Available Balance', value: balance.available, color: 'text-green-600' },
           { label: 'Pending Balance', value: balance.pending, color: 'text-yellow-600' },
@@ -92,7 +92,7 @@ export default function ResellerLedgerPage() {
         ))}
       </div>
 
-      <div className="relative flex-1 max-w-sm px-1 md:px-0">
+      <div className="relative flex-1 max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search descriptions or ref..." className="pl-8 h-9 text-xs md:text-sm" value={search} onChange={handleSearchChange} />
       </div>

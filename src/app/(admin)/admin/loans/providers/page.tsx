@@ -82,7 +82,7 @@ export default function LoanProvidersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
         <div>

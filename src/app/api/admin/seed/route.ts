@@ -14,27 +14,27 @@ export async function GET(req: NextRequest) {
     const usersToSeed = [
       // 1. Super Admin Role (Mandatory Rule: imranshuvo101@gmail.com must be super_admin)
       { name: 'Imran Hossen (Super Admin 1)', email: 'imranshuvo101@gmail.com', role: 'super_admin' as const, phone: '01700000001' },
-      { name: 'Super Admin Two', email: 'dhakafairprice@gmail.com', role: 'super_admin' as const, phone: '01700000002' },
+      { name: 'Super Admin Two', email: 'superadmin2@swapnobaz.com', role: 'super_admin' as const, phone: '01700000002' },
 
       // 2. Admin Role
-      { name: 'Admin One', email: 'dhakafairprice@gmail.com', role: 'admin' as const, phone: '01700000003' },
-      { name: 'Admin Two', email: 'dhakafairprice@gmail.com', role: 'admin' as const, phone: '01700000004' },
+      { name: 'Admin One', email: 'admin1@swapnobaz.com', role: 'admin' as const, phone: '01700000003' },
+      { name: 'Admin Two', email: 'admin2@swapnobaz.com', role: 'admin' as const, phone: '01700000004' },
 
       // 3. Manager Role
-      { name: 'Manager One', email: 'dhakafairprice@gmail.com', role: 'manager' as const, phone: '01700000005' },
-      { name: 'Manager Two', email: 'dhakafairprice@gmail.com', role: 'manager' as const, phone: '01700000006' },
+      { name: 'Manager One', email: 'manager1@swapnobaz.com', role: 'manager' as const, phone: '01700000005' },
+      { name: 'Manager Two', email: 'manager2@swapnobaz.com', role: 'manager' as const, phone: '01700000006' },
 
       // 4. Moderator Role
-      { name: 'Moderator One', email: 'dhakafairprice@gmail.com', role: 'moderator' as const, phone: '01700000007' },
-      { name: 'Moderator Two', email: 'dhakafairprice@gmail.com', role: 'moderator' as const, phone: '01700000008' },
+      { name: 'Moderator One', email: 'moderator1@swapnobaz.com', role: 'moderator' as const, phone: '01700000007' },
+      { name: 'Moderator Two', email: 'moderator2@swapnobaz.com', role: 'moderator' as const, phone: '01700000008' },
 
       // 5. Reseller Role
-      { name: 'Reseller One', email: 'dhakafairprice@gmail.com', role: 'reseller' as const, phone: '01700000011', subdomain: 'reseller1store', storeName: 'Reseller One Store' },
-      { name: 'Reseller Two', email: 'dhakafairprice@gmail.com', role: 'reseller' as const, phone: '01700000012', subdomain: 'reseller2store', storeName: 'Reseller Two Store' },
+      { name: 'Reseller One', email: 'reseller1@swapnobaz.com', role: 'reseller' as const, phone: '01700000011', subdomain: 'reseller1store', storeName: 'Reseller One Store' },
+      { name: 'Reseller Two', email: 'reseller2@swapnobaz.com', role: 'reseller' as const, phone: '01700000012', subdomain: 'reseller2store', storeName: 'Reseller Two Store' },
 
       // 7. General Customer User Role
-      { name: 'Customer One', email: 'dhakafairprice@gmail.com', role: 'user' as const, phone: '01700000013' },
-      { name: 'Customer Two', email: 'dhakafairprice@gmail.com', role: 'user' as const, phone: '01700000014' },
+      { name: 'Customer One', email: 'user1@swapnobaz.com', role: 'user' as const, phone: '01700000013' },
+      { name: 'Customer Two', email: 'user2@swapnobaz.com', role: 'user' as const, phone: '01700000014' },
     ];
 
     const results = [];

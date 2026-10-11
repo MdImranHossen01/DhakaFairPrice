@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const prompt = `Write a premium, engaging, and detailed product description for a product named "${name}"${category ? ` in the category "${category}"` : ''}.${features ? ` Highlight the following features: ${features}.` : ''} Output ONLY the formatted HTML description (using clean tags like <p>, <ul>, <li>, <strong>) and nothing else. No markdown block formatting, no preamble.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 

@@ -23,7 +23,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from"@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from"@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -60,7 +60,7 @@ export default function LandingPagesPage() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text:"You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -135,7 +135,7 @@ export default function LandingPagesPage() {
   });
 
   return (
-    <div className="px-0 py-4 md:p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
@@ -196,8 +196,8 @@ export default function LandingPagesPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={page.isActive ? "default" : "secondary"} className="rounded-full px-3">
-                    {page.isActive ? "Active" : "Inactive"}
+                  <Badge variant={page.isActive ?"default" :"secondary"} className="rounded-full px-3">
+                    {page.isActive ?"Active" :"Inactive"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-center">

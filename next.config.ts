@@ -12,7 +12,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'ibb.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
         port: '',
         pathname: '/**',
       },
@@ -31,6 +43,24 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'ui-avatars.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'secure.gravatar.com',
         port: '',
         pathname: '/**',
       },

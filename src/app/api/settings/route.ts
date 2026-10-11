@@ -38,9 +38,9 @@ export async function GET() {
     const settings = await GlobalSettings.findOne().sort({ updatedAt: -1 });
     if (!settings) {
       return NextResponse.json({
-        brandName: process.env.NEXT_PUBLIC_STORE_NAME || "Dhaka Fair Price",
+        brandName: process.env.NEXT_PUBLIC_STORE_NAME || "Swapnobaz",
         contact: {
-          email: "dhakafairprice@gmail.com",
+          email: "support@swapnobaz.com",
           phone: "+8801234567890",
           address: "Dhaka, Bangladesh"
         },
@@ -53,8 +53,8 @@ export async function GET() {
           tiktok: '',
           whatsapp: ''
         },
-        marqueeText: "Welcome to Dhaka Fair Price!",
-        metaTitle: process.env.NEXT_PUBLIC_STORE_NAME || "Dhaka Fair Price",
+        marqueeText: "Welcome to Swapnobaz!",
+        metaTitle: process.env.NEXT_PUBLIC_STORE_NAME || "Swapnobaz",
         metaDescription: "The most popular online shop in Bangladesh.",
         logoUrl: "/logo.webp",
         freeDeliveryThreshold: 0,
@@ -137,14 +137,14 @@ export async function POST(req: NextRequest) {
       'superAdminNote'
     ];
 
-    const isSuperAdmin = (session.user as any).role === 'super_admin';
+    const canManageSystemFields = ['super_admin', 'admin'].includes((session.user as any).role);
     const allowedBody: any = {};
 
     Object.keys(body).forEach((key) => {
       if (allowedFields.includes(key)) {
         allowedBody[key] = body[key];
       }
-      if (superAdminFields.includes(key) && isSuperAdmin) {
+      if (superAdminFields.includes(key) && canManageSystemFields) {
         allowedBody[key] = body[key];
       }
     });

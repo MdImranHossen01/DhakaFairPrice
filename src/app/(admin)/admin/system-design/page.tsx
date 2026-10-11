@@ -30,10 +30,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from"@/components/ui/select";
 import { ImageUpload } from '@/components/ui/image-upload';
 
-const TEMPLATE_OPTIONS = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'aarong'];
+const TEMPLATE_OPTIONS = ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7'];
 const THEME_OPTIONS = ['default', 'emerald', 'black', 'caffeine', 'claude', 'elegant', 'marvel', 'material', 'midnight', 'nature', 'perplexity', 'slack', 'summer', 'sunset', 'valorant', 'supabase', 'amber', 'catppuccin', 'clay', 'cyberpunk', 'darkmatter', 'ocean', 'quantum', 't3', 'tangerine', 'vintage', 'green', 'red', 'rose', 'orange', 'blue', 'yellow', 'violet'];
 
 const TEMPLATE_CONFIG = [
@@ -173,7 +173,7 @@ export default function SuperConfigPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Brand Identity */}
-        <Card className="lg:col-span-2 border-none shadow-2xl bg-white/80 backdrop-blur-xl overflow-hidden">
+        <Card className="lg:col-span-3 border-none shadow-2xl bg-white/80 backdrop-blur-xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-5 md:p-8">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg shrink-0">
@@ -232,68 +232,6 @@ export default function SuperConfigPage() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* SaaS Subscription Control */}
-        <Card className="lg:col-span-1 border-2 border-red-500/20 shadow-none overflow-hidden rounded-3xl bg-white/50 backdrop-blur-sm">
-          <CardHeader className="bg-red-500/5 border-b">
-              <CardTitle className="flex items-center gap-2 text-red-700">
-                <CreditCard className="h-5 w-5" /> Subscription Control
-              </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="sub-expiry" className="font-bold text-xs text-gray-600">Expiry Date & Time</Label>
-                <input 
-                  id="sub-expiry" 
-                  type="datetime-local" 
-                  value={(() => {
-                    if (!settings?.saasSubscription?.expiryDate) return '';
-                    const date = new Date(settings.saasSubscription.expiryDate);
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    const hours = String(date.getHours()).padStart(2, '0');
-                    const minutes = String(date.getMinutes()).padStart(2, '0');
-                    return `${year}-${month}-${day}T${hours}:${minutes}`;
-                  })()}
-                  onChange={(e) => {
-                    const localDate = new Date(e.target.value);
-                    setSettings({
-                      ...(settings ?? {}), 
-                      saasSubscription: {
-                        ...(settings?.saasSubscription || {}),
-                        expiryDate: localDate.toISOString()
-                      }
-                    });
-                  }} 
-                  className="w-full h-12 rounded-xl border-2 bg-white px-4 text-sm focus:border-red-500 outline-none transition-all" 
-                />
-                <p className="text-[10px] text-muted-foreground italic">Set when the tenant's access will automatically expire.</p>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-xs text-gray-600">Access Status</Label>
-                <Select 
-                  value={settings?.saasSubscription?.status || 'Active'} 
-                  onValueChange={(v) => setSettings({
-                    ...settings, 
-                    saasSubscription: {
-                      ...(settings?.saasSubscription || {}),
-                      status: v
-                    }
-                  })}
-                >
-                  <SelectTrigger className="h-12 rounded-xl border-2 bg-white focus:border-red-500 transition-all">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Active">Active (Live)</SelectItem>
-                    <SelectItem value="Expired">Expired (Blocked)</SelectItem>
-                    <SelectItem value="Suspended">Suspended (Manual Block)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
           </CardContent>
         </Card>
       </div>
@@ -773,7 +711,7 @@ export default function SuperConfigPage() {
                  <div key={template.id} className="space-y-2">
                    <Label className="font-bold text-[10px] uppercase tracking-wider opacity-60">{template.label}</Label>
                    <Select 
-                     value={ui[template.id] ?? 'v1'} 
+                     value={ui[template.id] === 'aarong' ? (template.id === 'productCard' ? 'v7' : 'v6') : (ui[template.id] ?? 'v1')} 
                      onValueChange={(v) => updateTemplate(template.id, v)}
                    >
                      <SelectTrigger className="h-12 rounded-xl bg-background border-2 border-muted hover:border-primary/50 transition-colors">
@@ -782,7 +720,7 @@ export default function SuperConfigPage() {
                      <SelectContent className="rounded-xl">
                        {TEMPLATE_OPTIONS.map(o => (
                          <SelectItem key={o} value={o} className="rounded-lg">
-                           {o === 'aarong' ? 'Aarong Premium Layout' : `Version ${o.toUpperCase()}`}
+                           {`Version ${o.toUpperCase()}`}
                          </SelectItem>
                        ))}
                      </SelectContent>
@@ -811,40 +749,6 @@ export default function SuperConfigPage() {
                 </div>
            </CardContent>
         </Card>
-
-        {/* Super Admin Note Section */}
-        <Card className="lg:col-span-3 w-full border-none shadow-2xl bg-white/80 backdrop-blur-xl overflow-hidden rounded-3xl">
-          <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-5 md:p-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg shrink-0">
-                <Database className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <div>
-                <CardTitle className="text-xl md:text-2xl font-bold leading-tight">Super Admin Note</CardTitle>
-                <CardDescription className="text-indigo-100 text-xs md:text-sm mt-1">
-                  Save project credentials, API keys, and system notes securely.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-5 md:p-8">
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                Credentials & System Notes
-              </Label>
-              <textarea
-                value={settings?.superAdminNote || ''}
-                onChange={(e) => setSettings({
-                  ...(settings ?? {}),
-                  superAdminNote: e.target.value
-                })}
-                placeholder="Enter database URLs, credentials, courier secrets, or private dev notes..."
-                className="w-full min-h-[200px] p-4 rounded-xl border-2 border-gray-100 bg-gray-50 focus:border-indigo-500 focus:bg-white outline-none transition-all resize-y font-mono text-sm shadow-inner"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
       </div>
     </div>
   );

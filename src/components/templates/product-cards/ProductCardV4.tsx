@@ -204,12 +204,12 @@ export default function ProductCardV4({ product: initialProduct, isFlashSale }: 
         {/* Elegant Overlays */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
           {discount > 0 && (
-            <span className="bg-white/80 backdrop-blur-md text-primary text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm">
-              Selection -{discount}%
+            <span className="bg-background/90 backdrop-blur-md text-primary border border-primary/20 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+              -{discount}% OFF
             </span>
           )}
           {isFlashSale && (
-            <span className="bg-primary text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] shadow-sm animate-pulse">
+            <span className="bg-primary text-primary-foreground text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm animate-pulse">
               Flash Deal
             </span>
           )}
@@ -222,11 +222,10 @@ export default function ProductCardV4({ product: initialProduct, isFlashSale }: 
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  variant="secondary"
-                  className="h-10 w-10 rounded-full shadow-xl bg-white/90 dark:bg-neutral-900/90 hover:bg-primary hover:text-white transition-colors"
+                  className="h-10 w-10 rounded-full shadow-lg bg-background text-foreground hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all duration-200"
                   onClick={handleFavorite}
                 >
-                  <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : ''}`} />
+                  <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : 'text-foreground'}`} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -238,11 +237,10 @@ export default function ProductCardV4({ product: initialProduct, isFlashSale }: 
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  variant="secondary"
-                  className="h-10 w-10 rounded-full shadow-xl bg-white/90 dark:bg-neutral-900/90 hover:bg-primary hover:text-white transition-colors"
+                  className="h-10 w-10 rounded-full shadow-lg bg-background text-foreground hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all duration-200"
                   onClick={handleQuickView}
                 >
-                  <Search className="h-4 w-4" />
+                  <Search className="h-4 w-4 text-foreground hover:text-inherit" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -287,7 +285,7 @@ export default function ProductCardV4({ product: initialProduct, isFlashSale }: 
               </span>
             )}
           </div>
-          {product.isNewArrival && <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-[0.3em]">New Collection</span>}
+          {product.isNewArrival && <span className="text-[9px] font-bold text-primary uppercase tracking-[0.3em]">New Collection</span>}
         </div>
 
         <Button

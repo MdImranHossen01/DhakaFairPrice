@@ -66,7 +66,7 @@ export default function AdminActivityLogsPage() {
   );
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">অডিট এবং সিকিউরিটি লগ</h1>
         <p className="text-sm text-muted-foreground">প্ল্যাটফর্মের সকল অ্যাডমিন এবং ইউজার অ্যাকশন এখানে অডিট করুন</p>

@@ -17,11 +17,11 @@ export function Marquee({ marqueeText: initialText }: { marqueeText?: string }) 
         if (!res.ok) throw new Error('Failed to fetch settings');
 
         const data = await res.json();
-        setMarqueeText(data.marqueeText || 'Welcome to Dhaka Fair Price! Free shipping on orders over ৳500.');
+        setMarqueeText(data.marqueeText || 'Welcome to Swapnobaz! Free shipping on orders over ৳500.');
       } catch (error: any) {
         if (error.name !== 'AbortError') {
           console.error('Error fetching marquee text:', error);
-          setMarqueeText('Welcome to Dhaka Fair Price! Free shipping on orders over ৳500.');
+          setMarqueeText('Welcome to Swapnobaz! Free shipping on orders over ৳500.');
         }
       }
     }

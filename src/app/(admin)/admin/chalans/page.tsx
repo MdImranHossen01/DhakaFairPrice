@@ -374,7 +374,7 @@ function ClientChalansContent() {
   const handleDeleteChalan = async (chalanId: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text:"You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -410,7 +410,7 @@ function ClientChalansContent() {
   );
 
   return (
-    <div className="flex-1 space-y-4 md:space-y-6 px-0 py-2 md:p-8">
+    <div className="flex-1 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h2 className="text-xl md:text-3xl font-bold tracking-tight">Delivery Challans</h2>

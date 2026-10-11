@@ -203,3 +203,93 @@ export async function backfillPayoutsToLedger() {
     console.error('[Ledger] Error backfilling payouts to ledger:', error);
   }
 }
+
+/**
+ * Clean up orphan ledger transactions for deleted orders, payouts, and loans
+ * and recalculate balances automatically.
+ */
+export async function cleanOrphanLedgerTransactions() {
+  try {
+    await connectToDatabase();
+    
+    // Dynamically import models to prevent circular dependency issues
+    const Order = (await import('@/models/Order')).default;
+    const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+    const BusinessLoan = (await import('@/models/BusinessLoan')).default;
+    const mongoose = (await import('mongoose')).default;
+
+    const transactions = await LedgerTransaction.find();
+    let deletedCount = 0;
+
+    for (const tx of transactions) {
+      if (!tx.reference) continue;
+
+      // 1. Check Order references (e.g. ORDER-XXXX)
+      if (tx.reference.startsWith('ORDER-')) {
+        const shortId = tx.reference.replace('ORDER-', '');
+        const orderExists = await Order.findOne({ shortId });
+        if (!orderExists) {
+          await LedgerTransaction.findByIdAndDelete(tx._id);
+          deletedCount++;
+          continue;
+        }
+      }
+
+      // 2. Check Payout references (e.g. PAYOUT-XXXX)
+      if (tx.reference.startsWith('PAYOUT-')) {
+        const shortId = tx.reference.replace('PAYOUT-', '');
+        // The shortId is the last 8 chars of the _id for Wallet Transactions.
+        // We'll search by checking if any ID ends with shortId, or just let it be loose.
+        // But MongoDB cannot easily query by suffix of _id. We can find all and check.
+        // But since this is a clean job, let's use the description or just a regex if needed.
+        // To be safe, let's fetch payouts that could match or just query by string representation.
+        // Since we created it by `payoutTx._id.toString().slice(-8).toUpperCase()`, it's not simple.
+        // But actually, we don't often delete payouts.
+        // Wait, how do we query it?
+        // Let's use aggregate or a regex on the reference, but we only have `reference`.
+        // If we really need to find if the payout exists, we can use $where or just find all and filter in JS if it's not too large.
+        // Or we just find transactions with type: payout_released and compare.
+      }
+
+      // 3. Check Loan references (e.g. LOAN-2026-XXXX-XXXX)
+      if (tx.reference.startsWith('LOAN-')) {
+        const loanExists = await BusinessLoan.findOne({ loanId: tx.reference });
+        if (!loanExists) {
+          await LedgerTransaction.findByIdAndDelete(tx._id);
+          deletedCount++;
+          continue;
+        }
+      }
+    }
+    
+    // Also clean PAYOUT orphans (Find all cleared payouts, and if we have a payout ledger without matching payout)
+    // To handle payout orphans accurately, we get all valid payout references first:
+    const payouts = await ResellerWalletTransaction.find({ type: 'payout_released' });
+    const validPayoutRefs = new Set(payouts.map(p => `PAYOUT-${p._id.toString().slice(-8).toUpperCase()}`));
+    
+    for (const tx of transactions) {
+      if (tx.reference && tx.reference.startsWith('PAYOUT-')) {
+        if (!validPayoutRefs.has(tx.reference)) {
+          await LedgerTransaction.findByIdAndDelete(tx._id);
+          deletedCount++;
+        }
+      }
+    }
+
+    if (deletedCount > 0) {
+      // Recalculate all accounts if any orphans were deleted
+      const accounts = await LedgerAccount.find({});
+      for (const acc of accounts) {
+        if (acc.code) {
+          await recalculateLedgerBalance(acc.code as any);
+        }
+      }
+    }
+
+    return deletedCount;
+  } catch (err) {
+    console.error('[Ledger] Error auto-cleaning orphan transactions:', err);
+    return 0;
+  }
+}
+

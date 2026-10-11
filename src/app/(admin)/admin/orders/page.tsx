@@ -53,7 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu";
+} from"@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -163,6 +163,9 @@ function OrdersContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
+  const isSteadfastConfigured = Boolean(settings?.courierConfig?.steadfast?.apiKey && settings?.courierConfig?.steadfast?.secretKey);
+  const isPathaoConfigured = Boolean(settings?.courierConfig?.pathao?.clientId && settings?.courierConfig?.pathao?.clientSecret);
+  const isRedxConfigured = Boolean(settings?.courierConfig?.redx?.apiKey);
  
   // Debounce search term
   useEffect(() => {
@@ -363,7 +366,7 @@ function OrdersContent() {
 
     const result = await Swal.fire({
       title: 'Bulk Update?',
-      text: `Are you sure you want to update ${selectedIds.length} orders to "${status}"?`,
+      text: `Are you sure you want to update ${selectedIds.length} orders to"${status}"?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',
@@ -514,7 +517,7 @@ function OrdersContent() {
   const deleteOrder = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "This order will be permanently deleted from the database!",
+      text:"This order will be permanently deleted from the database!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',
@@ -577,6 +580,80 @@ function OrdersContent() {
     }
   };
 
+  const handleSendToPathao = async (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    const result = await Swal.fire({
+      title: 'Send to Pathao?',
+      text: `Are you sure you want to send ${ids.length} order(s) to Pathao Courier?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      confirmButtonText: 'Yes, send to Pathao!'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setBulkActionLoading(true);
+    try {
+      const res = await fetch('/api/admin/courier/pathao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: ids }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        const hasFailures = data.results && data.results.some((r: any) => !r.success);
+        if (hasFailures) {
+          const firstFail = data.results.find((r: any) => !r.success);
+          toast.error(`${data.message || 'Partial booking'}. Reason: ${firstFail?.message || 'Unknown error'}`);
+        } else {
+          toast.success(data.message || 'Orders sent to Pathao successfully');
+        }
+        if (ids.length > 1) setSelectedIds([]);
+        fetchOrders();
+      } else {
+        toast.error(data.message || 'Pathao submission failed');
+      }
+    } catch (error) {
+      toast.error('Error sending to Pathao');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleSendToRedx = async (orderId: string) => {
+    const result = await Swal.fire({
+      title: 'Send to RedX?',
+      text: 'Are you sure you want to send this order to RedX Courier?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, send to RedX!'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/book-courier`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'redx' }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Order sent to RedX successfully');
+        fetchOrders();
+      } else {
+        toast.error(data.message || 'RedX submission failed');
+      }
+    } catch (error) {
+      toast.error('Error sending to RedX');
+    }
+  };
+
   const handleHoldOrder = async (orderId: string) => {
     const result = await Swal.fire({
       title: 'Hold Order',
@@ -607,7 +684,7 @@ function OrdersContent() {
   const handleCancelOrder = async (orderId: string) => {
     const result = await Swal.fire({
       title: 'Cancel Order?',
-      text: "Are you sure you want to cancel this order?",
+      text:"Are you sure you want to cancel this order?",
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -648,7 +725,7 @@ function OrdersContent() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-shrink-0">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight whitespace-nowrap">Order Management</h2>
@@ -690,7 +767,7 @@ function OrdersContent() {
                     setResellerFilter('all');
                     setCurrentPage(1);
                   }}
-                  className={resellerFilter === 'all' ? "bg-accent font-bold" : ""}
+                  className={resellerFilter === 'all' ?"bg-accent font-bold" :""}
                 >
                   All Resellers
                 </DropdownMenuItem>
@@ -701,7 +778,7 @@ function OrdersContent() {
                       setResellerFilter(r._id);
                       setCurrentPage(1);
                     }}
-                    className={resellerFilter === r._id ? "bg-accent font-bold" : ""}
+                    className={resellerFilter === r._id ?"bg-accent font-bold" :""}
                   >
                     {r.storeName}
                   </DropdownMenuItem>
@@ -774,7 +851,7 @@ function OrdersContent() {
                       setStatusFilter(status.value);
                       setCurrentPage(1);
                     }}
-                    className={statusFilter === status.value ? "bg-accent font-bold" : ""}
+                    className={statusFilter === status.value ?"bg-accent font-bold" :""}
                   >
                     <div className="flex items-center justify-between w-full text-xs">
                       <span>{status.label}</span>
@@ -975,7 +1052,7 @@ function OrdersContent() {
                 </TableRow>
               ) : (
                 filteredOrders.map((order) => (
-                  <TableRow key={order._id} className={selectedIds.includes(order._id) ? "bg-muted/50" : ""}>
+                  <TableRow key={order._id} className={selectedIds.includes(order._id) ?"bg-muted/50" :""}>
                     <TableCell>
                       <Checkbox
                         checked={selectedIds.includes(order._id)}
@@ -1238,7 +1315,7 @@ function OrdersContent() {
                 <div
                   key={order._id}
                   className={`bg-card border border-border/90 rounded-xl p-3 text-xs space-y-2 shadow-xs transition-colors ${
-                    selectedIds.includes(order._id) ? "border-primary bg-primary/5" : ""
+                    selectedIds.includes(order._id) ?"border-primary bg-primary/5" :""
                   }`}
                 >
                   {/* Card Header */}

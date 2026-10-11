@@ -63,7 +63,7 @@ export default function PayableLedgerPage() {
   );
 
   return (
-    <div className="flex-1 space-y-6 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
         <div>
@@ -270,7 +270,7 @@ export default function PayableLedgerPage() {
                             <Store className="h-3.5 w-3.5 text-primary" />
                             {r.storeName}
                           </div>
-                          <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.dhakafairprice.com</div>
+                          <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.swapnobaz.com</div>
                         </td>
                         <td className="p-3 text-left">
                           <div className="font-medium text-foreground">{r.ownerName}</div>

@@ -10,23 +10,32 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Plus, 
-  Trash, 
-  Loader2, 
+import {
+  Plus,
+  Trash,
+  Loader2,
   ArrowLeft,
   X,
   PlusCircle,
-  Sparkles
+  Sparkles,
+  Barcode,
+  RefreshCw
 } from 'lucide-react';
+
+const generateRandomSku = () => {
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `SW-${randomNum}`;
+};
+
+const generateRandomBarcode = () => {
+  return `${Math.floor(100000000000 + Math.random() * 900000000000)}`;
+};
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +59,7 @@ const productSchema = z.object({
   discountRate: z.union([z.coerce.number().min(0).max(100), z.literal('')]).optional(),
   salePrice: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
   sku: z.string().optional(),
+  barcode: z.string().optional(),
   stock: z.union([z.coerce.number().int().min(0, 'Stock must be at least 0'), z.literal('')]),
   categories: z.array(z.string()).min(1, 'Select at least one category'),
   images: z.array(z.string()).default([]),
@@ -73,6 +83,7 @@ const productSchema = z.object({
       salePrice: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
       stock: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
       sku: z.string().optional(),
+      barcode: z.string().optional(),
     })).default([]),
   })).default([]),
 }).superRefine((data, ctx) => {
@@ -238,7 +249,8 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
     purchasePrice: initialData?.purchasePrice ?? '',
     discountRate: calculateDiscount(initialData?.price, initialData?.salePrice) || '',
     salePrice: initialData?.salePrice ?? '',
-    sku: initialData?.sku || '',
+    sku: initialData?.sku || generateRandomSku(),
+    barcode: initialData?.barcode || '',
     stock: initialData?.stock ?? '',
     categories: initialData?.categories?.map((c: any) => typeof c === 'object' ? c._id : c) || [],
     images: (() => {
@@ -299,7 +311,8 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
           stock: v.stock ?? '',
           discountRate: calculateDiscount(v.price, v.salePrice) || '',
           salePrice: v.salePrice ?? '',
-          sku: v.sku || ''
+          sku: v.sku || '',
+          barcode: v.barcode || '',
         });
       });
       return Object.values(colorGroups);
@@ -315,7 +328,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
     control: form.control,
     name: "attributes"
   });
-  
+
   const { fields: variantFields, append: appendVariant, remove: removeVariant } = useFieldArray({
     control: form.control,
     name: "variants"
@@ -360,6 +373,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
           discountRate: sizeInfo.discountRate === '' || isNaN(Number(sizeInfo.discountRate)) ? undefined : Number(sizeInfo.discountRate),
           stock: sizeInfo.stock === '' ? 0 : Number(sizeInfo.stock),
           sku: sizeInfo.sku || '',
+          barcode: sizeInfo.barcode || '',
         });
       });
     });
@@ -374,6 +388,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
 
     const cleanValues = {
       ...values,
+      barcode: values.barcode?.trim() || undefined,
       images: finalImages,
       price: values.price === '' ? 0 : Number(values.price),
       purchasePrice: values.purchasePrice === '' ? undefined : Number(values.purchasePrice),
@@ -462,24 +477,24 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
   return (
     <Form {...form}>
       <form
-          onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            console.error('Form validation errors:', errors);
-            const hasVariants = (form.getValues('variants') || []).length > 0;
-            if (hasVariants) {
-              toast.error('Please fill in all mandatory variant details (Price and SKU for each size).');
-            } else {
-              toast.error('Please fix the form errors before saving.');
-            }
-          })}
-          className="space-y-8 pb-10"
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.error('Form validation errors:', errors);
+          const hasVariants = (form.getValues('variants') || []).length > 0;
+          if (hasVariants) {
+            toast.error('Please fill in all mandatory variant details (Price and SKU for each size).');
+          } else {
+            toast.error('Please fix the form errors before saving.');
+          }
+        })}
+        className="space-y-8 pb-10"
       >
         <div className="flex items-center justify-between border-b pb-4">
           <div className="flex items-center gap-4">
-            <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={onCancel}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onCancel}
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -517,7 +532,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="slug"
@@ -525,9 +540,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <FormLabel>স্লাগ (Slug)</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="product-slug" 
-                            {...field} 
+                          <Input
+                            placeholder="product-slug"
+                            {...field}
                             onChange={(e) => {
                               field.onChange(sanitizeSlugInput(e.target.value));
                             }}
@@ -542,15 +557,54 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="sku"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          SKU (কোড)
-                          {variantFields.length > 0
-                            ? <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
-                            : <span className="ml-1 text-xs font-normal text-destructive">*</span>
-                          }
-                        </FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>
+                            SKU (কোড)
+                            {variantFields.length > 0
+                              ? <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
+                              : <span className="ml-1 text-xs font-normal text-destructive">*</span>
+                            }
+                          </FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange(generateRandomSku())}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
+                            title="অটো কোড তৈরি করুন"
+                          >
+                            <RefreshCw className="size-3" />
+                            Auto
+                          </button>
+                        </div>
                         <FormControl>
-                          <Input placeholder="STK-001" {...field} value={field.value || ''} />
+                          <Input placeholder="SW-1001" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="barcode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="flex items-center gap-1">
+                            <Barcode className="size-3.5 text-muted-foreground" />
+                            বারকোড (Barcode)
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
+                          </FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange(generateRandomBarcode())}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
+                            title="অটো বারকোড তৈরি করুন"
+                          >
+                            <RefreshCw className="size-3" />
+                            Auto
+                          </button>
+                        </div>
+                        <FormControl>
+                          <Input placeholder="যেমন 890123456789" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -582,7 +636,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       </div>
                       <FormControl>
                         <div className="min-h-[300px] border rounded-md overflow-hidden bg-background prose-sm max-w-none">
-                          <NovelEditor 
+                          <NovelEditor
                             initialValue={(() => {
                               try {
                                 return field.value ? JSON.parse(field.value) : undefined;
@@ -592,8 +646,8 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                   content: [{ type: 'paragraph', content: [{ type: 'text', text: field.value }] }]
                                 };
                               }
-                            })()} 
-                            onChange={field.onChange} 
+                            })()}
+                            onChange={field.onChange}
                           />
                         </div>
                       </FormControl>
@@ -611,12 +665,12 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {form.watch('images').map((url, index) => (
                     <div key={`${url}-${index}`} className="relative aspect-square rounded-md overflow-hidden border bg-muted">
-                      <Image 
-                        src={url} 
-                        alt={`Product image ${index + 1}`} 
+                      <Image
+                        src={url}
+                        alt={`Product image ${index + 1}`}
                         fill
                         sizes="(max-width: 768px) 50vw, 25vw"
-                        className="object-cover" 
+                        className="object-cover"
                       />
                       <button
                         type="button"
@@ -642,15 +696,15 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
               <div className="bg-primary/5 px-6 py-4 border-b border-primary/10 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-                    <PlusCircle className="h-5 w-5" /> 
+                    <PlusCircle className="h-5 w-5" />
                     ভ্যারিয়েশন ম্যানেজার (সাইজ ও কালার)
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">প্রতিটি কালার ভ্যারিয়েন্টের জন্য ছবি এবং সাইজ সেট করুন।</p>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   className="bg-background hover:bg-primary hover:text-white transition-all border-primary/20"
                   onClick={() => appendVariant({ color: '', images: [], sizes: [{ size: '', price: form.getValues('price') || '', stock: '', sku: '' }] })}
                 >
@@ -666,7 +720,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   <div className="space-y-6">
                     {variantFields.map((field, colorIndex) => {
                       const colorImages = form.watch(`variants.${colorIndex}.images`) || [];
-                      
+
                       return (
                         <div key={field.id} className="border border-muted rounded-xl p-4 md:p-6 bg-muted/10 relative space-y-6">
                           <button
@@ -680,9 +734,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="space-y-2">
                               <Label className="text-sm font-bold">কালার নাম</Label>
-                              <Input 
-                                {...form.register(`variants.${colorIndex}.color` as const)} 
-                                placeholder="যেমন: লাল" 
+                              <Input
+                                {...form.register(`variants.${colorIndex}.color` as const)}
+                                placeholder="যেমন: লাল"
                                 className="h-10 bg-background"
                               />
                             </div>
@@ -692,11 +746,11 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                               <div className="flex flex-wrap gap-2 items-center">
                                 {colorImages.map((imgUrl: string, imgIdx: number) => (
                                   <div key={imgIdx} className="relative h-16 w-16 rounded-lg overflow-hidden border bg-background group">
-                                    <Image 
-                                      src={imgUrl} 
-                                      alt="" 
-                                      fill 
-                                      className="object-cover" 
+                                    <Image
+                                      src={imgUrl}
+                                      alt=""
+                                      fill
+                                      className="object-cover"
                                     />
                                     <button
                                       type="button"
@@ -711,12 +765,12 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                     </button>
                                   </div>
                                 ))}
-                                <ImageUpload 
+                                <ImageUpload
                                   onUpload={(url) => {
                                     form.setValue(`variants.${colorIndex}.images`, [...colorImages, url]);
                                     form.trigger(`variants.${colorIndex}.images` as any);
-                                  }} 
-                                  compact 
+                                  }}
+                                  compact
                                   className="h-16 w-16"
                                 />
                               </div>
@@ -734,7 +788,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                   const currentSizes = form.getValues(`variants.${colorIndex}.sizes`) || [];
                                   form.setValue(`variants.${colorIndex}.sizes`, [
                                     ...currentSizes,
-                                    { size: '', price: form.getValues('price') || '', stock: '', sku: '' }
+                                    { size: '', price: form.getValues('price') || '', stock: '', sku: '', barcode: '' }
                                   ]);
                                 }}
                               >
@@ -861,6 +915,14 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                           }}
                                         />
                                       </div>
+                                      <div className="col-span-2 md:col-span-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">বারকোড</Label>
+                                        <Input
+                                          {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.barcode` as const)}
+                                          placeholder="ঐচ্ছিক"
+                                          className="h-9 mt-1"
+                                        />
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -898,10 +960,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                           }
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
                             value={field.value ?? ''}
                             onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
@@ -926,10 +988,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <FormLabel>ক্রয় মূল্য/খরচ (Tk)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0.00" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
                             value={field.value ?? ''}
                             onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
@@ -948,10 +1010,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <FormLabel>ডিসকাউন্ট (%)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             placeholder="0"
-                            {...field} 
+                            {...field}
                             value={field.value || ''}
                             onChange={(e) => {
                               const discount = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
@@ -977,10 +1039,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <FormLabel>অফার মূল্য (Tk)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             placeholder="0.00"
-                            {...field} 
+                            {...field}
                             value={field.value || ''}
                             onChange={(e) => {
                               const sale = parseFloat(e.target.value) || 0;
@@ -1008,10 +1070,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <FormLabel>স্টক পরিমাণ</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0" 
-                            {...field} 
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            {...field}
                             value={field.value ?? ''}
                             onChange={(e) => field.onChange(e.target.value === '' ? '' : (parseInt(e.target.value) || 0))}
                           />
@@ -1167,49 +1229,49 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="featured">ফিচার্ড প্রোডাক্ট</Label>
-                    <input 
-                        type="checkbox" 
-                        id="featured"
-                        {...form.register('isFeatured')} 
-                        className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform" 
-                    />
+                  <Label htmlFor="featured">ফিচার্ড প্রোডাক্ট</Label>
+                  <input
+                    type="checkbox"
+                    id="featured"
+                    {...form.register('isFeatured')}
+                    className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="new-arrival">নতুন আগমন (New Arrival)</Label>
-                    <input 
-                        type="checkbox" 
-                        id="new-arrival"
-                        {...form.register('isNewArrival')} 
-                        className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform" 
-                    />
+                  <Label htmlFor="new-arrival">নতুন আগমন (New Arrival)</Label>
+                  <input
+                    type="checkbox"
+                    id="new-arrival"
+                    {...form.register('isNewArrival')}
+                    className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="flash-sale">ফ্ল্যাশ সেল (Flash Sale)</Label>
-                    <input 
-                        type="checkbox" 
-                        id="flash-sale"
-                        {...form.register('isFlashSale')} 
-                        className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform" 
-                    />
+                  <Label htmlFor="flash-sale">ফ্ল্যাশ সেল (Flash Sale)</Label>
+                  <input
+                    type="checkbox"
+                    id="flash-sale"
+                    {...form.register('isFlashSale')}
+                    className="h-4 w-4 accent-primary cursor-pointer hover:scale-110 transition-transform"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="published">পাবলিশ করুন (স্টোরে লাইভ দেখাবে)</Label>
-                    <input 
-                        type="checkbox" 
-                        id="published"
-                        {...form.register('isPublished')} 
-                        className="h-4 w-4" 
-                    />
+                  <Label htmlFor="published">পাবলিশ করুন (স্টোরে লাইভ দেখাবে)</Label>
+                  <input
+                    type="checkbox"
+                    id="published"
+                    {...form.register('isPublished')}
+                    className="h-4 w-4"
+                  />
                 </div>
                 <div className="flex items-center justify-between border-t pt-4">
-                    <Label htmlFor="isShared" className="font-bold text-primary">অন্যান্য রিসেলারদের বিক্রয়ের জন্য শেয়ার করুন</Label>
-                    <input 
-                        type="checkbox" 
-                        id="isShared"
-                        {...form.register('isShared')} 
-                        className="h-5 w-5 accent-primary cursor-pointer hover:scale-110 transition-transform" 
-                    />
+                  <Label htmlFor="isShared" className="font-bold text-primary">অন্যান্য রিসেলারদের বিক্রয়ের জন্য শেয়ার করুন</Label>
+                  <input
+                    type="checkbox"
+                    id="isShared"
+                    {...form.register('isShared')}
+                    className="h-5 w-5 accent-primary cursor-pointer hover:scale-110 transition-transform"
+                  />
                 </div>
               </CardContent>
             </Card>

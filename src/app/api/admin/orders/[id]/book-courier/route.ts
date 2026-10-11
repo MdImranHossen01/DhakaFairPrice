@@ -72,11 +72,13 @@ export async function POST(
 
     const settings = await GlobalSettings.findOne(); // Fetch the singleton settings
 
-    if (!settings || !settings.courierConfig || settings.courierConfig.activeProvider === 'none') {
-      return NextResponse.json({ message: 'Courier service not configured' }, { status: 400 });
+    if (!settings || !settings.courierConfig) {
+      return NextResponse.json({ message: 'Courier service not configured in Settings.' }, { status: 400 });
     }
 
-    const { activeProvider, steadfast, pathao, redx } = settings.courierConfig;
+    const { steadfast, pathao, redx } = settings.courierConfig;
+    const requestedProvider = body.provider || body.courier || (steadfast?.apiKey ? 'steadfast' : pathao?.clientId ? 'pathao' : redx?.apiKey ? 'redx' : 'none');
+
     let provider = null;
     let courierName = '';
 
@@ -87,9 +89,29 @@ export async function POST(
       return NextResponse.json({ message: 'Recipient phone number is required for courier booking' }, { status: 400 });
     }
 
-    const addressParts = [addr.street, addr.city, addr.zipCode].filter(Boolean);
+    const addressParts = [addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean);
     if (addressParts.length === 0) {
-      return NextResponse.json({ message: 'At least one address part (street, city, or zip) is required' }, { status: 400 });
+      return NextResponse.json({ message: 'At least one address part is required' }, { status: 400 });
+    }
+
+    let orderStoreId = body.store_id;
+    if (!orderStoreId && order.resellerId) {
+      const Reseller = (await import('@/models/Reseller')).default;
+      const reseller = await Reseller.findById(order.resellerId);
+      if (reseller?.courierConfig?.pathao?.storeId) {
+        orderStoreId = Number(reseller.courierConfig.pathao.storeId);
+      }
+    }
+
+    let pickupNote = '';
+    if (order.pickupLocation?.address || order.pickupLocation?.phone) {
+      pickupNote = ` | 🚚 Pickup: ${order.pickupLocation.hubName || ''} ${order.pickupLocation.address || ''}, Ph: ${order.pickupLocation.phone || ''}`;
+    } else if (order.resellerId) {
+      const ResellerModel = (await import('@/models/Reseller')).default;
+      const r = await ResellerModel.findById(order.resellerId).select('pickupAddress storeName contact').lean();
+      if (r?.pickupAddress?.address) {
+        pickupNote = ` | 🚚 Pickup: ${r.pickupAddress.hubName || r.storeName} (${r.pickupAddress.address}, Ph: ${r.pickupAddress.phone || r.contact?.phone || ''})`;
+      }
     }
 
     const shippingData = {
@@ -98,29 +120,46 @@ export async function POST(
       recipient_phone: addr.phone ? addr.phone.replace(/\D/g, '').slice(-11) : "",
       recipient_address: addressParts.join(', '),
       cod_amount: order.paymentStatus === 'Paid' ? 0 : (order.totalAmount || 0),
-      note: body.note || `Payment: ${order.paymentMethod || "N/A"}`,
+      note: (body.note ? `${body.note}${pickupNote}` : `Order #${order.shortId || order._id.toString().slice(-8).toUpperCase()} - ${order.paymentMethod || "N/A"}${pickupNote}`).slice(0, 160),
       // Extra fields for Pathao/RedX
-      store_id: body.store_id || pathao?.storeId,
-      city_id: body.city_id,
-      zone_id: body.zone_id,
+      store_id: orderStoreId || pathao?.storeId,
+      city_id: body.city_id || 1,
+      zone_id: body.zone_id || 1,
       area_id: body.area_id,
+      item_weight: body.weight || 0.5,
+      item_quantity: (order.items || []).reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) || 1,
     };
 
-    const sApiKey = steadfast?.apiKey;
-    const sSecretKey = steadfast?.secretKey;
-
-    console.log('[Courier Booking] Using Provider:', activeProvider);
-    console.log('[Courier Booking] API Key exists:', !!sApiKey);
-
-    if (activeProvider === 'steadfast' && sApiKey && sSecretKey) {
-      provider = new SteadfastProvider(sApiKey, sSecretKey);
+    if (requestedProvider === 'steadfast') {
+      if (!steadfast?.apiKey || !steadfast?.secretKey) {
+        return NextResponse.json({ message: 'Steadfast API credentials (API Key & Secret Key) are missing in Settings > Courier.' }, { status: 400 });
+      }
+      provider = new SteadfastProvider(steadfast.apiKey, steadfast.secretKey);
       courierName = 'Steadfast';
-    } else if (activeProvider === 'pathao' && pathao?.clientId && pathao?.clientSecret) {
-      provider = new PathaoProvider(pathao.clientId, pathao.clientSecret, pathao.storeId || '');
+    } else if (requestedProvider === 'pathao') {
+      if (!pathao?.clientId || !pathao?.clientSecret) {
+        return NextResponse.json({ message: 'Pathao API credentials (Client ID & Client Secret) are missing in Settings > Courier.' }, { status: 400 });
+      }
+      provider = new PathaoProvider({
+        clientId: pathao.clientId,
+        clientSecret: pathao.clientSecret,
+        storeId: body.store_id || pathao.storeId,
+        username: pathao.username,
+        password: pathao.password,
+        isSandbox: pathao.isSandbox,
+      });
       courierName = 'Pathao';
-    } else if (activeProvider === 'redx' && redx?.apiKey) {
-      provider = new RedXProvider(redx.apiKey);
+    } else if (requestedProvider === 'redx') {
+      if (!redx?.apiKey) {
+        return NextResponse.json({ message: 'RedX API Key is missing in Settings > Courier.' }, { status: 400 });
+      }
+      provider = new RedXProvider({
+        apiKey: redx.apiKey,
+        isSandbox: redx.isSandbox,
+      });
       courierName = 'RedX';
+    } else {
+      return NextResponse.json({ message: 'No valid courier provider selected or configured.' }, { status: 400 });
     }
 
     if (provider) {
@@ -177,7 +216,7 @@ export async function POST(
       { _id: id },
       { $unset: { 'shippingDetails.courierStatus': '' } }
     );
-    console.error('[Courier Booking] No provider initialized. Active:', activeProvider);
+    console.error('[Courier Booking] No provider initialized. Requested:', requestedProvider);
     return NextResponse.json({ message: 'Courier provider not properly configured or keys missing' }, { status: 400 });
 
   } catch (error: any) {

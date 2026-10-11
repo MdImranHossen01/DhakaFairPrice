@@ -43,7 +43,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from"@/components/ui/select"
 import Swal from 'sweetalert2';
 import { slugify, sanitizeSlugInput } from '@/lib/slugify';
 
@@ -145,7 +145,7 @@ export default function CategoriesPage() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You are about to delete this category. This may affect related products!",
+      text:"You are about to delete this category. This may affect related products!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',
@@ -203,8 +203,8 @@ export default function CategoriesPage() {
               <DialogTitle>{editingCategory ? 'Edit' : 'Add'} Category</DialogTitle>
               <DialogDescription>
                 {editingCategory 
-                  ? "Update the category details." 
-                  : "Create a new category to organize your products."}
+                  ?"Update the category details." 
+                  :"Create a new category to organize your products."}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -222,30 +222,28 @@ export default function CategoriesPage() {
                     </FormItem>
                   )}
                 />
-                {!form.watch('parentCategory') || form.watch('parentCategory') === 'none' ? (
-                  <FormField
-                    control={form.control}
-                    name="slug"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Slug</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="category-slug" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(sanitizeSlugInput(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Unique URL-friendly name.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : null}
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slug</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="category-slug" 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(sanitizeSlugInput(e.target.value));
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Unique URL-friendly name.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="parentCategory"
@@ -254,15 +252,15 @@ export default function CategoriesPage() {
                       <FormLabel>Parent Category</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        defaultValue={field.value || "none"}
-                        value={field.value || "none"}
+                        defaultValue={field.value ||"none"}
+                        value={field.value ||"none"}
                       >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a parent category">
-                              {field.value && field.value !== "none"
-                                ? categories.find((c) => c._id === field.value)?.name || "Select a parent category"
-                                : "Select a parent category"}
+                              {field.value && field.value !=="none"
+                                ? categories.find((c) => c._id === field.value)?.name ||"Select a parent category"
+                                :"Select a parent category"}
                             </SelectValue>
                           </SelectTrigger>
                         </FormControl>
@@ -281,25 +279,23 @@ export default function CategoriesPage() {
                     </FormItem>
                   )}
                 />
-                {!form.watch('parentCategory') || form.watch('parentCategory') === 'none' ? (
-                  <FormField
-                    control={form.control}
-                    name="image"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category Image</FormLabel>
-                        <FormControl>
-                          <ImageUpload 
-                            value={field.value} 
-                            onUpload={(url) => field.onChange(url)} 
-                            aspect="square"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : null}
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category Image</FormLabel>
+                      <FormControl>
+                        <ImageUpload 
+                          value={field.value} 
+                          onUpload={(url) => field.onChange(url)} 
+                          aspect="square"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <DialogFooter>
                   <Button type="submit" disabled={submitting}>
                     {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

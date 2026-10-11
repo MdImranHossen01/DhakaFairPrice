@@ -140,9 +140,9 @@ function SourceProductsContent() {
     : 0;
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-5">
+    <div className="flex-1 space-y-4 md:space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Source B2B Products</h2>
           <p className="text-xs md:text-sm text-muted-foreground">
@@ -152,7 +152,7 @@ function SourceProductsContent() {
       </div>
 
       {/* Source Filter Tabs */}
-      <div className="flex items-center gap-2 flex-wrap px-1 md:px-0">
+      <div className="flex items-center gap-2 flex-wrap">
         {SOURCE_TABS.map(tab => {
           const Icon = tab.icon;
           const count = counts[tab.key];
@@ -176,7 +176,7 @@ function SourceProductsContent() {
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2 px-1 md:px-0 max-w-sm">
+      <form onSubmit={handleSearch} className="flex gap-2  max-w-sm">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -225,8 +225,8 @@ function SourceProductsContent() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground px-1 md:px-0">{total} টি প্রোডাক্ট পাওয়া গেছে</p>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 px-1 md:px-0">
+          <p className="text-xs text-muted-foreground">{total} টি প্রোডাক্ট পাওয়া গেছে</p>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
               const wholesalePrice = product.resellerPrice || product.purchasePrice || product.price || 0;
               const isSourced = product.isSourced;
@@ -281,7 +281,7 @@ function SourceProductsContent() {
                         {product.categories?.[0]?.name || 'Uncategorized'}
                       </span>
                       <span className={isAdmin ? 'text-blue-600 font-bold shrink-0' : 'text-purple-600 font-bold shrink-0 truncate max-w-[110px]'}>
-                        {isAdmin ? 'Dhaka Fair Price' : resellerStore}
+                        {isAdmin ? 'Swapnobaz' : resellerStore}
                       </span>
                     </div>
                     <p className="text-xs md:text-sm font-bold line-clamp-2 leading-snug">{product.name}</p>
@@ -370,7 +370,7 @@ function SourceProductsContent() {
                   <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedProduct.sku || '-'}</p>
                   <Badge className={`text-[9px] mt-1 ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                     {selectedProduct.sourceType === 'admin'
-                      ? 'Main Store (Dhaka Fair Price)'
+                      ? 'Main Store (Swapnobaz)'
                       : `Reseller: ${selectedProduct.uploadedBy?.storeName || selectedProduct.sourceStoreName || 'Reseller'}`}
                   </Badge>
                 </div>

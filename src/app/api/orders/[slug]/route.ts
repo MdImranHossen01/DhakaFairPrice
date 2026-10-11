@@ -22,7 +22,8 @@ export async function GET(
     await connectToDatabase();
     const order = await Order.findOne({ _id: slug })
       .populate('user', 'name email image')
-      .populate('items.product', 'name price images slug');
+      .populate('items.product', 'name price images slug uploadedBy')
+      .populate('resellerId', 'storeName subdomain pickupAddress contact');
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 const { auth } = NextAuth(authConfig);
 
 // Root domain — subdomains of this are treated as reseller stores
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
 // Subdomains reserved for the main platform (not reseller stores)
 const RESERVED_SUBDOMAINS = new Set(['www', 'admin', 'api', 'app', 'mail', 'smtp', 'ftp', 'cdn', 'static']);
 
@@ -36,7 +36,7 @@ export const proxy = auth(async (req) => {
   let targetSubdomain = extractSubdomain(hostname);
   const cleanHost = hostname.split(':')[0].toLowerCase();
 
-  // If not a subdomain of dhakafairprice.com, and not localhost/IP, check if it's a custom domain
+  // If not a subdomain of swapnobaz.com, and not localhost/IP, check if it's a custom domain
   if (cleanHost &&
       !nextUrl.pathname.startsWith('/api/') &&
       !targetSubdomain && 
@@ -69,8 +69,38 @@ export const proxy = auth(async (req) => {
                       nextUrl.pathname.startsWith("/reset-password");
 
   if (targetSubdomain) {
+    if (nextUrl.pathname === '/favicon.ico') {
+      const url = nextUrl.clone();
+      url.pathname = `/api/store/${targetSubdomain}/favicon`;
+      return NextResponse.rewrite(url);
+    }
+
+    // ── Reseller Dashboard via own domain ──────────────────────────────
+    // If the reseller visits /dashboard, /reseller, /reseller-dashboard, or any subpath
+    // from their own shop domain, rewrite it to the storefront reseller-panel route.
+    const isDashboardRoute =
+      nextUrl.pathname === '/dashboard' ||
+      nextUrl.pathname.startsWith('/dashboard/') ||
+      nextUrl.pathname === '/reseller' ||
+      nextUrl.pathname.startsWith('/reseller/') ||
+      nextUrl.pathname === '/reseller-dashboard' ||
+      nextUrl.pathname.startsWith('/reseller-dashboard/');
+
+    let resellerSubPath = '';
+    if (isDashboardRoute) {
+      const stripped = nextUrl.pathname
+        .replace(/^\/(reseller-dashboard|dashboard|reseller)/, '')
+        .replace(/^\//, '');
+      if (stripped && stripped !== 'dashboard') {
+        resellerSubPath = `/${stripped}`;
+      }
+    }
+
+    const rewrittenPath = isDashboardRoute
+      ? `/store/${targetSubdomain}/reseller-panel${resellerSubPath}`
+      : `/store/${targetSubdomain}${nextUrl.pathname === '/' ? '' : nextUrl.pathname}`;
+
     const url = nextUrl.clone();
-    const rewrittenPath = `/store/${targetSubdomain}${nextUrl.pathname === '/' ? '' : nextUrl.pathname}`;
     url.pathname = rewrittenPath;
     
     // To pass headers to Server Components (like app/layout.tsx headers()), 
@@ -161,8 +191,8 @@ export const proxy = auth(async (req) => {
       }
     }
 
-    // /admin/system-design strictly for super_admin only
-    if (nextUrl.pathname.startsWith("/admin/system-design") && role !== "super_admin") {
+    // /admin/system-design for super_admin and admin
+    if (nextUrl.pathname.startsWith("/admin/system-design") && role !== "super_admin" && role !== "admin") {
       return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
     }
   }
@@ -190,6 +220,6 @@ export const proxy = auth(async (req) => {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|assets|icons).*)',
+    '/((?!api|_next/static|_next/image|sitemap.xml|robots.txt|manifest.json|assets|icons).*)',
   ],
 };

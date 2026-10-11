@@ -26,8 +26,19 @@ import {
   ArrowLeft,
   X,
   PlusCircle,
-  Sparkles
+  Sparkles,
+  Barcode,
+  RefreshCw
 } from 'lucide-react';
+
+const generateRandomSku = () => {
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `SW-${randomNum}`;
+};
+
+const generateRandomBarcode = () => {
+  return `${Math.floor(100000000000 + Math.random() * 900000000000)}`;
+};
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +77,7 @@ const productSchema = z.object({
   discountRate: z.union([z.coerce.number().min(0).max(100), z.literal('')]).optional(),
   salePrice: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
   sku: z.string().optional(),
+  barcode: z.string().optional(),
   stock: z.union([z.coerce.number().int().min(0, 'Stock must be at least 0'), z.literal('')]).optional(),
   categories: z.array(z.string()).min(1, 'Select at least one category'),
   images: z.array(z.string()).default([]),
@@ -90,6 +102,7 @@ const productSchema = z.object({
       salePrice: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
       stock: z.union([z.coerce.number().min(0), z.literal('')]).optional(),
       sku: z.string().optional(),
+      barcode: z.string().optional(),
     })).default([]),
   })).default([]),
 }).superRefine((data, ctx) => {
@@ -193,7 +206,8 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     resellerPrice: initialData?.resellerPrice ?? '',
     discountRate: calculateDiscount(initialData?.price, initialData?.salePrice) || '',
     salePrice: initialData?.salePrice ?? '',
-    sku: initialData?.sku || '',
+    sku: initialData?.sku || generateRandomSku(),
+    barcode: initialData?.barcode || '',
     stock: initialData?.stock ?? '',
     categories: initialData?.categories?.map((c: any) => typeof c === 'object' ? c._id : c) || [],
     images: (() => {
@@ -255,7 +269,8 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
           stock: v.stock ?? '',
           discountRate: calculateDiscount(v.price, v.salePrice) || '',
           salePrice: v.salePrice ?? '',
-          sku: v.sku || ''
+          sku: v.sku || '',
+          barcode: v.barcode || '',
         });
       });
       return Object.values(colorGroups);
@@ -332,6 +347,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
           discountRate: sizeInfo.discountRate === '' || isNaN(Number(sizeInfo.discountRate)) ? undefined : Number(sizeInfo.discountRate),
           stock: sizeInfo.stock === '' ? 0 : Number(sizeInfo.stock),
           sku: sizeInfo.sku || '',
+          barcode: sizeInfo.barcode || '',
         });
       });
     });
@@ -388,6 +404,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     const cleanValues = {
       ...values,
       sku: derivedSku,
+      barcode: values.barcode?.trim() || undefined,
       images: finalImages,
       brand: values.brand || undefined,
       batches,
@@ -538,7 +555,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <FormField
                     control={form.control}
                     name="slug"
@@ -595,15 +612,54 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                     name="sku"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          SKU
-                          {variantFields.length > 0
-                            ? <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
-                            : <span className="ml-1 text-xs font-normal text-destructive">*</span>
-                          }
-                        </FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>
+                            SKU
+                            {variantFields.length > 0
+                              ? <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
+                              : <span className="ml-1 text-xs font-normal text-destructive">*</span>
+                            }
+                          </FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange(generateRandomSku())}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
+                            title="Auto-generate new SKU"
+                          >
+                            <RefreshCw className="size-3" />
+                            Auto
+                          </button>
+                        </div>
                         <FormControl>
-                          <Input placeholder="STK-001" {...field} value={field.value || ''} />
+                          <Input placeholder="SW-1001" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="barcode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="flex items-center gap-1">
+                            <Barcode className="size-3.5 text-muted-foreground" />
+                            Barcode
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
+                          </FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange(generateRandomBarcode())}
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
+                            title="Auto-generate barcode number"
+                          >
+                            <RefreshCw className="size-3" />
+                            Auto
+                          </button>
+                        </div>
+                        <FormControl>
+                          <Input placeholder="e.g. 890123456789" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -817,7 +873,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                   const currentSizes = form.getValues(`variants.${colorIndex}.sizes`) || [];
                                   form.setValue(`variants.${colorIndex}.sizes`, [
                                     ...currentSizes,
-                                    { size: '', price: form.getValues('price') || '', stock: '', sku: '' }
+                                    { size: '', price: form.getValues('price') || '', stock: '', sku: '', barcode: '' }
                                   ]);
                                 }}
                               >
@@ -981,6 +1037,14 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, undefined);
                                             }
                                           }}
+                                        />
+                                      </div>
+                                      <div className="col-span-2 md:col-span-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">Barcode</Label>
+                                        <Input
+                                          {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.barcode` as const)}
+                                          placeholder="Optional"
+                                          className="h-9 mt-1"
                                         />
                                       </div>
                                     </div>

@@ -39,7 +39,7 @@ Example output:
 {"metaTitle": "Title Here", "metaDescription": "Description Here", "tags": ["tag1", "tag2"], "faqs": [{"question": "Q?", "answer": "A"}]}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 

@@ -90,7 +90,7 @@ export default function LowStockPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 px-0 py-2 md:p-6 w-full max-w-full">
+    <div className="flex flex-col gap-4  py-2 md:p-6 w-full max-w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">

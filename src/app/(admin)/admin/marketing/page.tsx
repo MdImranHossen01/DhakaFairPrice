@@ -26,7 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from"@/components/ui/select";
 
 const marketingSettingsSchema = z.object({
   subscriptionConfig: z.object({
@@ -66,7 +66,7 @@ const marketingSettingsSchema = z.object({
     instructions: z.string().nullish().transform(val => val ?? ''),
   }).optional(),
   courierConfig: z.object({
-    activeProvider: z.string().default('none'),
+    activeProvider: z.string().default('steadfast'),
     steadfast: z.object({
       apiKey: z.string().nullish().transform(val => val ?? ''),
       secretKey: z.string().nullish().transform(val => val ?? ''),
@@ -75,9 +75,13 @@ const marketingSettingsSchema = z.object({
       clientId: z.string().nullish().transform(val => val ?? ''),
       clientSecret: z.string().nullish().transform(val => val ?? ''),
       storeId: z.string().nullish().transform(val => val ?? ''),
+      username: z.string().nullish().transform(val => val ?? ''),
+      password: z.string().nullish().transform(val => val ?? ''),
+      isSandbox: z.boolean().default(false),
     }).nullable().optional(),
     redx: z.object({
       apiKey: z.string().nullish().transform(val => val ?? ''),
+      isSandbox: z.boolean().default(false),
     }).nullable().optional(),
     bdCourier: z.object({
       apiKey: z.string().nullish().transform(val => val ?? ''),
@@ -133,10 +137,10 @@ export default function MarketingSettingsPage() {
         instructions: '',
       },
       courierConfig: {
-        activeProvider: 'none',
+        activeProvider: 'steadfast',
         steadfast: { apiKey: '', secretKey: '' },
-        pathao: { clientId: '', clientSecret: '', storeId: '' },
-        redx: { apiKey: '' },
+        pathao: { clientId: '', clientSecret: '', storeId: '', username: '', password: '', isSandbox: false },
+        redx: { apiKey: '', isSandbox: false },
         bdCourier: { apiKey: '' },
       },
       facebookDomainVerification: '',
@@ -208,9 +212,13 @@ export default function MarketingSettingsPage() {
                     clientId: result.data.courierConfig?.pathao?.clientId || '',
                     clientSecret: result.data.courierConfig?.pathao?.clientSecret || '',
                     storeId: result.data.courierConfig?.pathao?.storeId || '',
+                    username: result.data.courierConfig?.pathao?.username || '',
+                    password: result.data.courierConfig?.pathao?.password || '',
+                    isSandbox: result.data.courierConfig?.pathao?.isSandbox ?? false,
                   },
                   redx: {
                     apiKey: result.data.courierConfig?.redx?.apiKey || '',
+                    isSandbox: result.data.courierConfig?.redx?.isSandbox ?? false,
                   },
                   bdCourier: {
                     apiKey: result.data.courierConfig?.bdCourier?.apiKey || '',
@@ -301,7 +309,7 @@ export default function MarketingSettingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Marketing & Integration Settings</h1>
         <Button type="submit" form="marketing-settings-form" disabled={submitting}>
@@ -522,39 +530,17 @@ export default function MarketingSettingsPage() {
             </TabsContent>
 
             {/* 3. Courier Tab */}
-            <TabsContent value="courier" className="space-y-4">
+            <TabsContent value="courier" className="space-y-6">
+              {/* Delivery Charges Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5 text-primary" /> Courier & Shipping Rules
+                    <Truck className="h-5 w-5 text-primary" /> Delivery Charge Rules
                   </CardTitle>
-                  <CardDescription>Configure courier logistics and delivery charge parameters.</CardDescription>
+                  <CardDescription>Configure standard customer delivery fees for storefront checkouts.</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.activeProvider"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold">Active Provider</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-12 rounded-xl">
-                                <SelectValue placeholder="Select provider" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">None</SelectItem>
-                              <SelectItem value="steadfast">Steadfast</SelectItem>
-                              <SelectItem value="pathao">Pathao</SelectItem>
-                              <SelectItem value="redx">RedX</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="deliveryChargeInsideDhaka"
@@ -566,7 +552,7 @@ export default function MarketingSettingsPage() {
                               type="number"
                               {...field}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className="h-12 rounded-xl"
+                              className="h-11 rounded-xl font-semibold"
                             />
                           </FormControl>
                           <FormMessage />
@@ -584,7 +570,7 @@ export default function MarketingSettingsPage() {
                               type="number"
                               {...field}
                               onChange={(e) => field.onChange(Number(e.target.value))}
-                              className="h-12 rounded-xl"
+                              className="h-11 rounded-xl font-semibold"
                             />
                           </FormControl>
                           <FormMessage />
@@ -592,74 +578,208 @@ export default function MarketingSettingsPage() {
                       )}
                     />
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-2xl border">
-                    <div className="md:col-span-2 font-black text-xs uppercase opacity-50 mb-2">Provider Credentials</div>
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.steadfast.apiKey"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold text-xs">Steadfast API Key</FormLabel>
-                          <FormControl>
-                            <Input type="text" placeholder="Steadfast API Key" {...field} className="h-10 rounded-lg border px-3 text-xs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.steadfast.secretKey"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold text-xs">Steadfast Secret Key</FormLabel>
-                          <FormControl>
-                            <Input type="text" placeholder="Steadfast Secret Key" {...field} className="h-10 rounded-lg border px-3 text-xs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.pathao.storeId"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold text-xs">Pathao Store ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Pathao Store ID" {...field} className="h-10 rounded-lg border px-3 text-xs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.redx.apiKey"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold text-xs">RedX API Key</FormLabel>
-                          <FormControl>
-                            <Input type="text" placeholder="RedX API Key" {...field} className="h-10 rounded-lg border px-3 text-xs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="courierConfig.bdCourier.apiKey"
-                      render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold text-xs">BD Courier Fraud Check API Key</FormLabel>
-                          <FormControl>
-                            <Input type="text" placeholder="BD Courier API Key" {...field} className="h-10 rounded-lg border px-3 text-xs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+              {/* Courier Providers Credentials */}
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings2 className="h-5 w-5 text-primary" /> Multi-Courier API Integrations
+                      </CardTitle>
+                      <CardDescription>
+                        Configure API credentials for couriers you use. During order booking, you can choose any configured courier.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  {/* Steadfast Courier */}
+                  <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">🚚 Steadfast Courier</span>
+                        <span className="text-[10px] bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-400 font-semibold px-2 py-0.5 rounded-full">
+                          Steadfast API
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.steadfast.apiKey"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Steadfast API Key</FormLabel>
+                            <FormControl>
+                              <Input type="text" placeholder="e.g. Okblxdrgj9qqzyzajhvmc3is3nnaxcd8" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.steadfast.secretKey"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Steadfast Secret Key</FormLabel>
+                            <FormControl>
+                              <Input type="text" placeholder="e.g. yq25rvb2a1iajxoznxtvofem" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Pathao Courier */}
+                  <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-foreground">📦 Pathao Courier</span>
+                        <span className="text-[10px] bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 font-semibold px-2 py-0.5 rounded-full">
+                          Pathao Aladdin v1 API
+                        </span>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.pathao.isSandbox"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <input
+                                type="checkbox"
+                                checked={field.value ?? false}
+                                onChange={(e) => field.onChange(e.target.checked)}
+                                className="h-3.5 w-3.5 rounded"
+                              />
+                            </FormControl>
+                            <FormLabel className="text-xs cursor-pointer font-medium">Sandbox Mode</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.pathao.clientId"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Pathao Client ID <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Client ID from Developer Portal" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.pathao.clientSecret"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Pathao Client Secret <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Client Secret" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.pathao.username"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Merchant Email / Username <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="merchant@email.com" {...field} className="h-10 rounded-lg text-xs" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.pathao.password"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">Merchant Password <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="••••••••" {...field} className="h-10 rounded-lg text-xs" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="p-2.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg text-[11px] text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                      <span>💡 <strong>পিকআপ পয়েন্ট অটোমেশন:</strong> Store ID আলাদা করে দেওয়ার প্রয়োজন নেই। রিসেলারদের পণ্যের ডেলিভারি রিসেলারের নিজস্ব রেজিস্টার্ড পিকআপ পয়েন্ট থেকে এবং মাদার শপের পণ্য মাদার ওয়্যারহাউস থেকে সিস্টেম স্বয়ংক্রিয়ভাবে ডিটেক্ট করবে।</span>
+                    </div>
+                  </div>
+
+                  {/* RedX Courier & BD Courier Checker */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* RedX */}
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-foreground">📮 RedX Logistics</span>
+                        <FormField
+                          control={form.control}
+                          name="courierConfig.redx.isSandbox"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value ?? false}
+                                  onChange={(e) => field.onChange(e.target.checked)}
+                                  className="h-3.5 w-3.5 rounded"
+                                />
+                              </FormControl>
+                              <FormLabel className="text-xs cursor-pointer font-medium">Sandbox</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.redx.apiKey"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">RedX API Key</FormLabel>
+                            <FormControl>
+                              <Input placeholder="RedX API Key" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* BD Courier Fraud Checker */}
+                    <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-foreground">🛡️ BD Courier Fraud Checker</span>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="courierConfig.bdCourier.apiKey"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1">
+                            <FormLabel className="font-bold text-xs">BD Courier API Key</FormLabel>
+                            <FormControl>
+                              <Input placeholder="BD Courier Fraud API Key" {...field} className="h-10 rounded-lg text-xs font-mono" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

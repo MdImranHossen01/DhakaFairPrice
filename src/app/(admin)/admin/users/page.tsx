@@ -40,7 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
   DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu";
+} from"@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import Image from 'next/image';
 import Swal from 'sweetalert2';
@@ -49,7 +49,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from"@/components/ui/dialog";
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 
 interface UserData {
@@ -221,7 +221,7 @@ function UsersContent() {
   const handleDeleteUser = async (userId: string, userName: string) => {
     const result = await Swal.fire({
       title: 'Delete User?',
-      text: `Are you sure you want to permanently delete user "${userName}"? This action cannot be undone.`,
+      text: `Are you sure you want to permanently delete user"${userName}"? This action cannot be undone.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -244,7 +244,7 @@ function UsersContent() {
       });
 
       if (response.ok) {
-        toast.success(`User "${userName}" deleted successfully`);
+        toast.success(`User"${userName}" deleted successfully`);
         fetchUsers();
       } else {
         const error = await response.json();
@@ -256,7 +256,7 @@ function UsersContent() {
   };
 
   return (
-    <div className="flex flex-col gap-4 md:gap-6 px-0 py-2 md:p-8">
+    <div className="flex flex-col gap-4 md:gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h1 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 capitalize">

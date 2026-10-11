@@ -75,7 +75,7 @@ function BlogsContent() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text:"You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',

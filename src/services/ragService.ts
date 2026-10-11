@@ -1,4 +1,4 @@
-﻿import connectToDatabase from '@/lib/db';
+import connectToDatabase from '@/lib/db';
 import { getEmbedding } from '@/lib/embeddings';
 
 // Import Mongoose models
@@ -9,12 +9,18 @@ import Order from '@/models/Order';
 import Category from '@/models/Category';
 import Coupon from '@/models/Coupon';
 
+export interface RAGContextResult {
+  contextString: string;
+  matchedProducts: any[];
+}
+
 interface RetrievedDocument {
   source: string;
   title: string;
   text: string;
   url?: string;
   score?: number;
+  rawDoc?: any;
 }
 
 /**
@@ -24,10 +30,16 @@ export async function retrieveRelevantContext(
   query: string,
   userId?: string,
   apiKey?: string,
-  limitPerModel = 3
-): Promise<string> {
-  try {
-    await connectToDatabase();
+  limitPerModel = 10
+): Promise<RAGContextResult> {
+    // Fast path: Skip expensive embedding generation & database queries for simple greetings
+    const isGreeting = /^(hi|hello|hey|assalamu\s*alaikum|salam|হাই|হ্যালো|সালাম|hlw)[\s!.]*$/i.test(query.trim());
+    if (isGreeting) {
+      return { contextString: "", matchedProducts: [] };
+    }
+
+    try {
+      await connectToDatabase();
 
     let queryVector: number[] | null = null;
     if (apiKey) {
@@ -73,6 +85,33 @@ export async function retrieveRelevantContext(
         ]).exec();
 
         if (!results || results.length === 0) {
+          // Fallback keyword search for Product if vector search returns nothing
+          if (modelName === 'Product') {
+            const terms = query.split(/\s+/).filter(w => w.length > 2);
+            if (terms.length > 0) {
+              const regexTerms = terms.map(t => new RegExp(t, 'i'));
+              const fallbackDocs = await Product.find({
+                isPublished: true,
+                $or: [
+                  { name: { $in: regexTerms } },
+                  { tags: { $in: regexTerms } }
+                ]
+              })
+              .select('_id name slug price salePrice images isFeatured isNewArrival stock sku categories ratings numReviews variants')
+              .populate('categories', 'name slug')
+              .limit(limitPerModel)
+              .lean()
+              .exec();
+
+              return fallbackDocs.map((doc: any) => ({
+                source: modelName,
+                title: doc.name,
+                text: textFormatter(doc),
+                url: urlGenerator(doc),
+                rawDoc: doc,
+              }));
+            }
+          }
           return [];
         }
 
@@ -82,8 +121,40 @@ export async function retrieveRelevantContext(
           text: textFormatter(doc),
           url: urlGenerator(doc),
           score: doc.$vectorSearchScore,
+          rawDoc: modelName === 'Product' ? doc : undefined,
         }));
       } catch (vectorSearchError) {
+        // Fallback keyword search if Atlas Vector Search is not configured
+        if (modelName === 'Product') {
+          try {
+            const terms = query.split(/\s+/).filter(w => w.length > 2);
+            if (terms.length > 0) {
+              const regexTerms = terms.map(t => new RegExp(t, 'i'));
+              const fallbackDocs = await Product.find({
+                isPublished: true,
+                $or: [
+                  { name: { $in: regexTerms } },
+                  { tags: { $in: regexTerms } }
+                ]
+              })
+              .select('_id name slug price salePrice images isFeatured isNewArrival stock sku categories ratings numReviews variants')
+              .populate('categories', 'name slug')
+              .limit(limitPerModel)
+              .lean()
+              .exec();
+
+              return fallbackDocs.map((doc: any) => ({
+                source: modelName,
+                title: doc.name,
+                text: textFormatter(doc),
+                url: urlGenerator(doc),
+                rawDoc: doc,
+              }));
+            }
+          } catch (e) {
+            console.error("Product keyword fallback search error:", e);
+          }
+        }
         return [];
       }
     };
@@ -93,7 +164,7 @@ export async function retrieveRelevantContext(
       searchModel(
         Product,
         'Product',
-        (doc) => `Product: ${doc.name}. Price: ${doc.price} BDT. Sale Price: ${doc.salePrice || 'N/A'} BDT. SKU: ${doc.sku}. Stock: ${doc.stock}. Description: ${doc.description}`,
+        (doc) => `Product: ${doc.name}. Product ID: ${doc._id}. Price: ${doc.price} BDT. Sale Price: ${doc.salePrice || 'N/A'} BDT. SKU: ${doc.sku}. Stock: ${doc.stock}. ${doc.variants?.length ? `Available Variants: ` + doc.variants.map((v: any) => `${v.color || ''} ${v.size || ''} (stock: ${v.stock})`.trim()).join(', ') + '.' : ''} Description: ${doc.description}`,
         (doc) => `/product/${doc.slug || doc._id}`
       )
     );
@@ -121,7 +192,7 @@ export async function retrieveRelevantContext(
     const mergedResults = allResultsGroups.flat();
 
     // 2. Format outputs into a context string for the LLM
-    let contextString = "Here is the relevant real-time data from Dhaka Fair Price's database:\n\n";
+    let contextString = "Here is the relevant real-time data from Swapnobaz's database:\n\n";
 
     // Direct lookup for Order Tracking
     // Match phone numbers or 5+ digit numeric strings (order shortIds)
@@ -249,9 +320,14 @@ export async function retrieveRelevantContext(
       });
     }
 
-    return contextString;
+    // Extract matched products from merged results
+    const matchedProducts = mergedResults
+      .filter((r) => r.source === 'Product' && r.rawDoc)
+      .map((r) => r.rawDoc);
+
+    return { contextString, matchedProducts };
   } catch (error) {
     console.error("Error retrieving context from RAG:", error);
-    return "Error fetching database context.";
+    return { contextString: "Error fetching database context.", matchedProducts: [] };
   }
 }

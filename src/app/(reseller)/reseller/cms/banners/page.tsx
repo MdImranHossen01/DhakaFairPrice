@@ -31,7 +31,7 @@ export default function ResellerBannersPage() {
   const handleDelete = async (id: string, title: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: `Delete banner "${title}"? This cannot be undone.`,
+      text: `Delete banner"${title}"? This cannot be undone.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',

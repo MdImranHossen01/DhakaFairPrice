@@ -13,10 +13,10 @@ import {
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from"@/components/ui/dropdown-menu";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+} from"@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -56,8 +56,8 @@ function UsersContent() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Customer Management</h2>
           <p className="text-xs md:text-sm text-muted-foreground">All customers registered to your store ({total} total)</p>
@@ -67,7 +67,7 @@ function UsersContent() {
         </Button>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2 px-1 md:px-0 max-w-sm">
+      <form onSubmit={handleSearch} className="flex gap-2  max-w-sm">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8 h-9 text-xs md:text-sm" placeholder="Search by name, email, phone..." value={search} onChange={e => setSearch(e.target.value)} />

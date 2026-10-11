@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Banner from '@/models/Banner';
 import { auth } from '@/auth';
@@ -22,11 +23,30 @@ export async function PUT(
     const body = await req.json();
     await connectToDatabase();
     
-    const banner = await Banner.findOneAndUpdate({ _id: id }, body, { new: true });
+    // Whitelist update fields to prevent corrupting resellerId or other properties
+    const updateData: any = {};
+    const allowedFields = ['title', 'image', 'link', 'primaryBtnText', 'primaryBtnLink', 'secondaryBtnText', 'secondaryBtnLink', 'order', 'isActive'];
+    allowedFields.forEach((field) => {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field];
+      }
+    });
+
+    const banner = await Banner.findOneAndUpdate(
+      {
+        _id: id,
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+      },
+      { $set: updateData },
+      { new: true }
+    );
     
     if (!banner) {
       return NextResponse.json({ message: 'Banner not found' }, { status: 404 });
     }
+
+    revalidateTag('banners', 'max');
+    revalidatePath('/');
 
     return NextResponse.json(banner);
   } catch (error) {
@@ -52,11 +72,17 @@ export async function DELETE(
 
     await connectToDatabase();
     
-    const banner = await Banner.findOneAndDelete({ _id: id });
+    const banner = await Banner.findOneAndDelete({
+      _id: id,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
 
     if (!banner) {
       return NextResponse.json({ message: 'Banner not found' }, { status: 404 });
     }
+
+    revalidateTag('banners', 'max');
+    revalidatePath('/');
 
     return NextResponse.json({ message: 'Banner deleted successfully' });
   } catch (error) {

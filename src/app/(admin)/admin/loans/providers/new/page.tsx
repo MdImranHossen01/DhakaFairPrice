@@ -50,7 +50,7 @@ export default function AddLoanProviderPage() {
   };
 
   return (
-    <div className="flex-1 space-y-6 px-0 py-4 md:p-8 max-w-2xl">
+    <div className="flex-1 space-y-6  max-w-2xl">
       <div className="flex items-center gap-2 border-b pb-4">
         <Link href="/admin/loans/providers" className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-5 w-5" />

@@ -28,11 +28,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ImageUpload } from "@/components/ui/image-upload";
+} from"@/components/ui/dialog";
+import { Input } from"@/components/ui/input";
+import { Label } from"@/components/ui/label";
+import { Textarea } from"@/components/ui/textarea";
+import { ImageUpload } from"@/components/ui/image-upload";
 import Swal from 'sweetalert2';
 
 export default function TestimonialsPage() {
@@ -125,7 +125,7 @@ export default function TestimonialsPage() {
   const handleDelete = async (id: string, name: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: `Delete testimonial from "${name}"?`,
+      text: `Delete testimonial from"${name}"?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',

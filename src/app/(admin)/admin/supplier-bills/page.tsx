@@ -292,7 +292,7 @@ function SupplierBillsContent() {
   const accountsPayable = bills.reduce((sum, b) => sum + (b.dueAmount || 0), 0);
 
   return (
-    <div className="space-y-4 md:space-y-6 px-0 py-2 md:p-8">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
           <h1 className="text-xl md:text-3xl font-bold tracking-tight">Supplier Bills & Purchases</h1>

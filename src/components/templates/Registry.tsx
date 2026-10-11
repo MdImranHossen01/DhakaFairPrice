@@ -40,6 +40,7 @@ import ProductCardV3 from './product-cards/ProductCardV3';
 import ProductCardV4 from './product-cards/ProductCardV4';
 import ProductCardV5 from './product-cards/ProductCardV5';
 import ProductCardV6 from './product-cards/ProductCardV6';
+import ProductCardV7 from './product-cards/ProductCardV7';
 
 export const ProductCardSelector = ({ style, product, isFlashSale, priority, layout }: { style: string, product: any, isFlashSale?: boolean, priority?: boolean, layout?: string }) => {
   switch (style) {
@@ -49,6 +50,8 @@ export const ProductCardSelector = ({ style, product, isFlashSale, priority, lay
     case 'v4': return <ProductCardV4 product={product} isFlashSale={isFlashSale} />;
     case 'v5': return <ProductCardV5 product={product} isFlashSale={isFlashSale} />;
     case 'v6': return <ProductCardV6 product={product} isFlashSale={isFlashSale} priority={priority} layout={layout} />;
+    case 'v7':
+    case 'aarong': return <ProductCardV7 product={product} isFlashSale={isFlashSale} priority={priority} layout={layout} />;
     default: return <ProductCardV1 product={product} isFlashSale={isFlashSale} />;
   }
 };
@@ -59,7 +62,7 @@ import CategoryV2 from './categories/CategoryV2';
 import CategoryV3 from './categories/CategoryV3';
 import CategoryV4 from './categories/CategoryV4';
 import CategoryV5 from './categories/CategoryV5';
-import CategoryAarong from './categories/CategoryAarong';
+import CategoryV6 from './categories/CategoryV6';
 
 export const CategorySelector = ({ style, categories }: { style: string, categories: any[] }) => {
   // Only show main categories (where parentCategory is null, undefined or empty)
@@ -71,7 +74,8 @@ export const CategorySelector = ({ style, categories }: { style: string, categor
     case 'v3': return <CategoryV3 categories={mainCategories} />;
     case 'v4': return <CategoryV4 categories={mainCategories} />;
     case 'v5': return <CategoryV5 categories={mainCategories} />;
-    case 'aarong': return <CategoryAarong categories={mainCategories} />;
+    case 'v6':
+    case 'aarong': return <CategoryV6 categories={mainCategories} />;
     default: return <CategoryV1 categories={mainCategories} />;
   }
 };

@@ -43,7 +43,7 @@ export default function FAQsPage() {
   const handleDelete = async (id: string, question: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: `You are about to delete the FAQ: "${question}". This action cannot be undone!`,
+      text: `You are about to delete the FAQ:"${question}". This action cannot be undone!`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',

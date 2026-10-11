@@ -56,7 +56,7 @@ export default function SubscribersPage() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "This subscriber will be removed permanently.",
+      text:"This subscriber will be removed permanently.",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -94,8 +94,8 @@ export default function SubscribersPage() {
 
   const handleExportCSV = () => {
     if (subscribers.length === 0) return;
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Email,Subscribed Date\n"
+    const csvContent ="data:text/csv;charset=utf-8," 
+      +"Email,Subscribed Date\n"
       + subscribers.map(s => `"${s.email}","${new Date(s.createdAt).toISOString()}"`).join("\n");
     
     const encodedUri = encodeURI(csvContent);
@@ -108,8 +108,8 @@ export default function SubscribersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Newsletter Subscribers</h1>
           <p className="text-xs md:text-sm text-muted-foreground">Manage your store newsletter subscriber list.</p>

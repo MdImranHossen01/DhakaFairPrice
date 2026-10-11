@@ -129,8 +129,8 @@ export default function ResellerCouponsPage() {
   const filtered = coupons.filter(c => (c.code || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Coupons</h2>
           <p className="text-xs md:text-sm text-muted-foreground">Manage discount codes for your store.</p>
@@ -151,7 +151,7 @@ export default function ResellerCouponsPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-2 px-1 md:px-0 max-w-sm">
+      <div className="flex items-center space-x-2  max-w-sm">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search by coupon code..." className="pl-8 h-9 text-xs md:text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />

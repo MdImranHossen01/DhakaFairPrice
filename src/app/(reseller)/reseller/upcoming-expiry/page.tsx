@@ -88,8 +88,8 @@ export default function ResellerUpcomingExpiryPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6 w-full max-w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6 w-full max-w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
             <CalendarDays className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />

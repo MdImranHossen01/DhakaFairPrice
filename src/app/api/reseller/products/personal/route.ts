@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       slug,
       description,
       sku,
+      barcode,
       categories,
       tags,
       images,
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       color: v.color,
       size: v.size,
       sku: v.sku,
+      barcode: v.barcode?.trim() || undefined,
       image: v.image,
       images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
       price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
       purchasePrice: numPurchasePrice,
       discountRate: numDiscountRate,
       sku,
+      barcode: barcode?.trim() || undefined,
       stock: numStock,
       categories: categories || [],
       tags: tags || [],
@@ -146,6 +149,7 @@ export async function PATCH(request: NextRequest) {
       slug,
       description,
       sku,
+      barcode,
       categories,
       tags,
       images,
@@ -177,6 +181,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (description) product.description = description;
     if (sku !== undefined) product.sku = sku;
+    if (barcode !== undefined) product.barcode = barcode?.trim() || undefined;
     if (categories !== undefined) product.categories = categories;
     if (tags !== undefined) product.tags = tags;
     if (images !== undefined) product.images = images;
@@ -187,6 +192,7 @@ export async function PATCH(request: NextRequest) {
         color: v.color,
         size: v.size,
         sku: v.sku,
+        barcode: v.barcode?.trim() || undefined,
         image: v.image,
         images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
         price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,

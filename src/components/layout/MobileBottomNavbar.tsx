@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
 import Swal from 'sweetalert2';
 import { toast } from 'sonner';
+import { UserAvatar } from '@/components/ui/user-avatar';
 
 export function MobileBottomNavbar() {
   const pathname = usePathname();
@@ -414,12 +415,10 @@ export function MobileBottomNavbar() {
                   className="flex flex-col items-center justify-center gap-1 min-w-[64px] text-muted-foreground active:scale-95 transition-transform outline-none"
                 >
                   <div className="h-6 w-6 rounded-full border border-primary/50 overflow-hidden">
-                    <Image
-                      src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || '')}`}
-                      alt={session.user?.name || 'User'}
-                      width={24}
-                      height={24}
-                      className="h-full w-full object-cover"
+                    <UserAvatar
+                      src={profile?.image || session.user?.image}
+                      name={session.user?.name}
+                      size={24}
                     />
                   </div>
                 </button>
@@ -430,12 +429,10 @@ export function MobileBottomNavbar() {
                   {/* Profile Header */}
                   <div className="flex items-center gap-4 border-b border-muted/50 pb-4">
                     <div className="h-14 w-14 rounded-full border-2 border-primary/50 overflow-hidden">
-                      <Image
-                        src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || '')}`}
-                        alt={session.user?.name || 'User'}
-                        width={56}
-                        height={56}
-                        className="h-full w-full object-cover"
+                      <UserAvatar
+                        src={profile?.image || session.user?.image}
+                        name={session.user?.name}
+                        size={56}
                       />
                     </div>
                     <div className="flex flex-col min-w-0">

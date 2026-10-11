@@ -56,8 +56,8 @@ export default function ResellerExpensesPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Expenses & Incomes</h2>
           <p className="text-xs md:text-sm text-muted-foreground">Track your store's financial performance</p>
@@ -67,7 +67,7 @@ export default function ResellerExpensesPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4 px-1 md:px-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4">
         <Card className="border-green-500/20 bg-green-500/5 shadow-sm">
           <CardContent className="p-3.5 md:pt-6">
             <div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" /><p className="text-xs md:text-sm text-muted-foreground">Total Income</p></div>
@@ -88,7 +88,7 @@ export default function ResellerExpensesPage() {
         </Card>
       </div>
 
-      <div className="relative flex-1 max-w-sm px-1 md:px-0">
+      <div className="relative flex-1 max-w-sm">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search descriptions or type..." className="pl-8 h-9 text-xs md:text-sm" value={search} onChange={handleSearchChange} />
       </div>

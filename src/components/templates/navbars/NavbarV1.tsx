@@ -30,6 +30,7 @@ import { useAppSelector } from '@/store/hooks';
 import { CartDrawer } from '@/components/layout/CartDrawer';
 import { Logo } from '@/components/ui/logo';
 import { useSettings } from '@/components/SettingsProvider';
+import { UserAvatar } from '@/components/ui/user-avatar';
 import {
   Accordion,
   AccordionContent,
@@ -481,7 +482,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[44px] h-[44px] xl:w-[48px] xl:h-[48px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
+                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
                     fill
                     sizes="48px"
                     className="object-contain"
@@ -745,12 +746,10 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                             aria-label="Account menu"
                           >
                             <div className="h-8 w-8 rounded-full border-2 border-primary/20 overflow-hidden group-hover/avatar:border-primary transition-all">
-                              <Image
-                                src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || 'U')}`}
-                                alt={session.user?.name || 'User'}
-                                width={32}
-                                height={32}
-                                className="h-full w-full object-cover"
+                              <UserAvatar
+                                src={profile?.image || session.user?.image}
+                                name={session.user?.name}
+                                size={32}
                               />
                             </div>
                           </button>
@@ -846,7 +845,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[64px] h-[64px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
+                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
                     fill
                     sizes="64px"
                     className="object-contain"
@@ -862,7 +861,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <div className="flex items-center justify-between w-full border-b border-border/10 pb-1 gap-4">
                   {/* Logo Brand Name Text Only */}
                   <Link href="/" className="text-lg xl:text-xl uppercase text-foreground transition-colors hover:text-primary font-black tracking-tighter font-logo shrink-0">
-                    {settings.brandName || "DHAKAFAIRPRICE"}
+                    {settings.brandName || "SWAPNOBAZ"}
                   </Link>
 
                   {/* Right-side Utilities */}
@@ -970,12 +969,10 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                                 aria-label="Account menu"
                               >
                                 <div className="h-7 w-7 rounded-full border-2 border-primary/20 overflow-hidden group-hover/avatar:border-primary transition-all">
-                                  <Image
-                                    src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || 'U')}`}
-                                    alt={session.user?.name || 'User'}
-                                    width={28}
-                                    height={28}
-                                    className="h-full w-full object-cover"
+                                  <UserAvatar
+                                    src={profile?.image || session.user?.image}
+                                    name={session.user?.name}
+                                    size={28}
                                   />
                                 </div>
                               </button>

@@ -65,7 +65,7 @@ export async function PUT(
     // Whitelist allowed fields to prevent mass-assignment
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'resellerPrice', 'discountRate',
-      'sku', 'stock', 'categories', 'brand', 'tags', 'images', 'batches',
+      'sku', 'barcode', 'stock', 'categories', 'brand', 'tags', 'images', 'batches',
       'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'deliveryCharge'
     ];
     const safeUpdate: any = {};
@@ -91,6 +91,7 @@ export async function PUT(
             color: v.color,
             size: v.size,
             sku: v.sku,
+            barcode: v.barcode?.trim() || undefined,
             image: v.image,
             images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
             price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
@@ -129,6 +130,24 @@ export async function PUT(
     const query = mongoose.Types.ObjectId.isValid(slug)
       ? { _id: slug }
       : { slug: slug };
+
+    const existingProduct = await Product.findOne(query);
+    if (!existingProduct) {
+      return NextResponse.json({ message: 'Product not found' }, { status: 404 });
+    }
+
+    // Protect Reseller Products: Mother store admin cannot edit details, price, or stock of reseller products; only toggle visibility
+    if (existingProduct.uploadedBy) {
+      const allowedKeysForResellerProducts = ['isPublished', 'isShared'];
+      const incomingKeys = Object.keys(body);
+      const isOnlyVisibilityToggle = incomingKeys.every(k => allowedKeysForResellerProducts.includes(k));
+
+      if (!isOnlyVisibilityToggle) {
+        return NextResponse.json({
+          message: 'Reseller products cannot be edited or restocked by Mother Admin. You may only toggle visibility (Publish/Hide).'
+        }, { status: 403 });
+      }
+    }
 
     if (safeUpdate.slug) {
       const maxRetries = 3;
@@ -224,15 +243,23 @@ export async function DELETE(
       ? { _id: slug }
       : { slug: slug };
 
-    const deletedProduct = await Product.findOneAndDelete(query);
-
-    if (!deletedProduct) {
+    const existingProduct = await Product.findOne(query);
+    if (!existingProduct) {
       return NextResponse.json({ message: 'Product not found' }, { status: 404 });
     }
 
-    // Mark unavailable on reseller storefronts
-    const { unpublishProductFromResellers } = await import('@/lib/syncEngine');
-    await unpublishProductFromResellers(deletedProduct._id.toString());
+    if (existingProduct.uploadedBy) {
+      return NextResponse.json({
+        message: 'Reseller products cannot be deleted by Mother Admin. You can hide or unpublish it from the storefront instead.'
+      }, { status: 403 });
+    }
+
+    const deletedProduct = await Product.findOneAndDelete(query);
+    if (deletedProduct) {
+      // Mark unavailable on reseller storefronts
+      const { unpublishProductFromResellers } = await import('@/lib/syncEngine');
+      await unpublishProductFromResellers(deletedProduct._id.toString());
+    }
 
     try {
       await revalidateTag(CACHE_TAGS.products, 'max');

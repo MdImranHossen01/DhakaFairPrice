@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ShoppingCart, Heart, Search, MoreVertical, Edit, Trash2, Settings, ArrowUpRight } from 'lucide-react';
 import { RatingStars } from '@/components/ui/rating-stars';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToCart } from '@/store/slices/cartSlice';
@@ -186,42 +185,26 @@ export default function ProductCardV5({ product: initialProduct, isFlashSale }: 
         </Link>
 
         {/* Minimalist Floating Badges */}
-        <div className="absolute top-6 left-6 flex flex-col gap-3 z-10">
+        <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
           {discount > 0 && (
-            <div className="bg-white/80 dark:bg-black/80 backdrop-blur-xl text-primary text-[10px] font-black h-8 w-8 flex items-center justify-center rounded-full shadow-lg border border-primary/10">
-              {discount}
+            <div className="bg-background/90 backdrop-blur-md text-primary text-[10px] font-black px-2 py-0.5 min-w-8 h-7 flex items-center justify-center rounded-full shadow-md border border-primary/20">
+              -{discount}%
             </div>
           )}
         </div>
 
         {/* Action Float Menu */}
-        <div className={`absolute bottom-8 right-8 hidden md:flex flex-col gap-3 transition-all duration-500 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`absolute bottom-3 right-3 hidden md:flex flex-col items-center gap-2 transition-all duration-300 z-20 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6 pointer-events-none'}`}>
           <TooltipProvider>
+            {/* Favorites / Wishlist */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  className="h-12 w-12 rounded-full shadow-2xl bg-primary text-white hover:bg-primary-foreground hover:text-primary transition-all duration-500"
-                  onClick={handleAddToCartClick}
-                  disabled={product.stock === 0}
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>Add to cart</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="secondary"
-                  className="h-10 w-10 rounded-full shadow-2xl bg-white/90 dark:bg-neutral-900/90 hover:bg-primary hover:text-white transition-all duration-500"
+                  className="h-9 w-9 rounded-full shadow-lg bg-background text-foreground hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all duration-200"
                   onClick={handleFavorite}
                 >
-                  <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : ''}`} />
+                  <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : 'text-foreground'}`} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left">
@@ -229,26 +212,43 @@ export default function ProductCardV5({ product: initialProduct, isFlashSale }: 
               </TooltipContent>
             </Tooltip>
 
+            {/* Quick View */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  variant="secondary"
-                  className="h-10 w-10 rounded-full shadow-2xl bg-white/90 dark:bg-neutral-900/90 hover:bg-primary hover:text-white transition-all duration-500"
+                  className="h-9 w-9 rounded-full shadow-lg bg-background text-foreground hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all duration-200"
                   onClick={handleQuickView}
                 >
-                  <Search className="h-4 w-4" />
+                  <Search className="h-4 w-4 text-foreground hover:text-inherit" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left">
                 <p>Quick View</p>
               </TooltipContent>
             </Tooltip>
+
+            {/* Add to Cart - placed at the bottom */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  className="h-10 w-10 rounded-full shadow-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200"
+                  onClick={handleAddToCartClick}
+                  disabled={product.stock === 0}
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Add to cart</p>
+              </TooltipContent>
+            </Tooltip>
           </TooltipProvider>
         </div>
 
         {/* Admin & Reseller Action Menu */}
-        <ProductActionMenu product={product} className="top-6 right-6 bottom-auto" />
+        <ProductActionMenu product={product} className="top-4 right-4 bottom-auto" />
       </div>
 
       {/* Minimalist Content Section */}
@@ -256,7 +256,7 @@ export default function ProductCardV5({ product: initialProduct, isFlashSale }: 
         <div className="space-y-1 md:space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {product.isNewArrival && <span className="h-1 w-1 rounded-full bg-emerald-500" />}
+              {product.isNewArrival && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                 {product.isNewArrival ? 'New Season' : 'Essential'}
               </span>

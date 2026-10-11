@@ -75,7 +75,7 @@ export default function ReviewsModerationPage() {
   const deleteReview = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "This review will be permanently deleted!",
+      text:"This review will be permanently deleted!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#00D1B2',
@@ -142,8 +142,8 @@ export default function ReviewsModerationPage() {
   );
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Review Moderation</h1>
           <p className="text-xs md:text-sm text-muted-foreground">Manage and moderate customer product reviews.</p>

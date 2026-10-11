@@ -57,8 +57,8 @@ export default function ResellerWalletPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Wallet & Payouts</h2>
           <p className="text-xs md:text-sm text-muted-foreground">Track your earnings and request withdrawals</p>
@@ -67,7 +67,7 @@ export default function ResellerWalletPage() {
       </div>
 
       {/* Balance Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4 px-1 md:px-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4">
         <Card className="border-green-500/20 bg-green-500/5 shadow-sm">
           <CardContent className="p-3.5 md:pt-6">
             <div className="flex items-center gap-3">
@@ -104,7 +104,7 @@ export default function ResellerWalletPage() {
         </Card>
       </div>
 
-      <div className="px-1 md:px-0">
+      <div className="">
         <Tabs defaultValue="transactions">
           <TabsList className="h-9">
             <TabsTrigger value="transactions" className="text-xs">Transaction History</TabsTrigger>

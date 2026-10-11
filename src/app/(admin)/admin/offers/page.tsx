@@ -389,7 +389,7 @@ function ClientOffersContent() {
   const handleDeleteOffer = async (offerId: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text:"You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -425,7 +425,7 @@ function ClientOffersContent() {
   );
 
   return (
-    <div className="flex-1 space-y-6 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Client Quotations / Offers</h2>

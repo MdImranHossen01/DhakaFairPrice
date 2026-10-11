@@ -74,7 +74,7 @@ export default function BlogDetailsV2({ blog, readingTime }: BlogDetailsV2Props)
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Words by</span>
-              <span className="text-sm font-bold">Dhaka Fair Price Editorial</span>
+              <span className="text-sm font-bold">Swapnobaz Editorial</span>
             </div>
           </div>
         </header>

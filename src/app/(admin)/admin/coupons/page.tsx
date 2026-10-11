@@ -102,8 +102,8 @@ export default function CouponsPage() {
   );
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Coupons</h2>
           <p className="text-xs md:text-sm text-muted-foreground">Manage discount codes and promotional offers.</p>
@@ -129,7 +129,7 @@ export default function CouponsPage() {
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-2 px-1 md:px-0">
+      <div className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -197,7 +197,7 @@ export default function CouponsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={coupon.isActive ? "default" : "secondary"}>
+                      <Badge variant={coupon.isActive ?"default" :"secondary"}>
                         {coupon.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
@@ -249,7 +249,7 @@ export default function CouponsPage() {
                     <Tag className="h-4 w-4 text-primary shrink-0" />
                     <span className="font-bold text-sm tracking-wide text-foreground">{coupon.code}</span>
                   </div>
-                  <Badge variant={coupon.isActive ? "default" : "secondary"} className="text-[10px]">
+                  <Badge variant={coupon.isActive ?"default" :"secondary"} className="text-[10px]">
                     {coupon.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>

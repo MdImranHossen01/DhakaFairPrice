@@ -12,7 +12,7 @@ import {
   TabsContent, 
   TabsList, 
   TabsTrigger 
-} from "@/components/ui/tabs";
+} from"@/components/ui/tabs";
 import { ImageUpload } from '@/components/ui/image-upload';
 import {
   Select,
@@ -20,7 +20,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from"@/components/ui/select";
 import { 
   SectionType, 
   LandingPageSection, 
@@ -731,7 +731,7 @@ export default function SectionSettingsEditor({
                           if (typeof window !== 'undefined' && textVal.includes('<')) {
                             const tempDiv = document.createElement("div");
                             tempDiv.innerHTML = textVal;
-                            textVal = tempDiv.textContent || tempDiv.innerText || "";
+                            textVal = tempDiv.textContent || tempDiv.innerText ||"";
                           }
                           return {
                             type: 'doc',
@@ -763,9 +763,8 @@ export default function SectionSettingsEditor({
                       <button 
                         key={color}
                         onClick={() => handleStyleChange('backgroundColor', color)}
-                        className={cn(
-                          "h-8 rounded-lg border shadow-sm transition-all",
-                          section.styles?.backgroundColor === color ? "ring-2 ring-primary ring-offset-2" : ""
+                        className={cn("h-8 rounded-lg border shadow-sm transition-all",
+                          section.styles?.backgroundColor === color ?"ring-2 ring-primary ring-offset-2" :""
                         )}
                         style={{ backgroundColor: color }}
                       />

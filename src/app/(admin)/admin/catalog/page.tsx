@@ -205,7 +205,7 @@ export default function AdminCatalogPage() {
             { key: 'certifications', label: 'Certifications', placeholder: 'ISO, BSCI Certified' },
             { key: 'markets', label: 'Primary Markets', placeholder: 'EU, USA, Mid-East' },
             { key: 'phone', label: 'Phone / WhatsApp', placeholder: '+880 1724-338581' },
-            { key: 'email', label: 'Factory Email', placeholder: 'dhakafairprice@gmail.com' },
+            { key: 'email', label: 'Factory Email', placeholder: 'info@swapnobaz.com' },
           ].map(({ key, label, placeholder }) => (
             <div key={key} className="space-y-1.5">
               <label className="text-xs font-black uppercase tracking-wider text-muted-foreground">{label}</label>
@@ -422,7 +422,7 @@ export default function AdminCatalogPage() {
 
           {categories.length === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">
-              No categories yet. Click "Add Category" to get started.
+              No categories yet. Click"Add Category" to get started.
             </div>
           )}
         </div>

@@ -252,8 +252,8 @@ function SuppliersContent() {
   );
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Suppliers / Vendors</h1>
           <p className="text-xs md:text-sm text-muted-foreground">Manage product suppliers and outstanding payable balances.</p>
@@ -263,7 +263,7 @@ function SuppliersContent() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 max-w-sm px-1 md:px-0">
+      <div className="flex items-center gap-2 max-w-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by name, company or phone..."

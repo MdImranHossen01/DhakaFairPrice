@@ -133,7 +133,7 @@ export default function LoansPage() {
   const summary = data?.summary || { totalPrincipal: 0, totalPaid: 0, totalDue: 0, activeLoansCount: 0 };
 
   return (
-    <div className="flex-1 space-y-4 md:space-y-6 px-0 py-2 md:p-8">
+    <div className="flex-1 space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
@@ -413,7 +413,9 @@ export default function LoansPage() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map(a => (
+                  {accounts
+                    .filter(a => a.code !== 'AR' && a.code !== 'AP')
+                    .map(a => (
                     <SelectItem key={a._id} value={a._id} className="text-xs">
                       {a.name} ({a.category})
                     </SelectItem>

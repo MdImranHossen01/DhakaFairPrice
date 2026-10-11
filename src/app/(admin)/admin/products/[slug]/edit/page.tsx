@@ -59,8 +59,31 @@ export default function EditProductPage() {
     );
   }
 
+  if ((product as any).uploadedBy) {
+    return (
+      <div className="max-w-xl mx-auto my-12 p-6 bg-card border rounded-2xl shadow-sm text-center space-y-4">
+        <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center font-bold text-xl">
+          ⚠️
+        </div>
+        <h3 className="text-lg font-bold text-foreground">Reseller-Owned Product</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          This product is managed by reseller store <strong>{(product as any).uploadedBy?.storeName || 'Reseller'}</strong>.
+          Mother Store Admin cannot edit, restock, or delete reseller-uploaded products.
+        </p>
+        <div className="pt-2">
+          <a
+            href="/admin/products"
+            className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+          >
+            Back to Products List
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <ProductForm initialData={product} />
     </div>
   );

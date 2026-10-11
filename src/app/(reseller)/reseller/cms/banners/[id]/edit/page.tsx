@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { BannerForm } from '@/components/admin/BannerForm';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function ResellerEditBannerPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ResellerEditBannerPage() {
+  const params = useParams();
+  const id = ((params as any)?.id || (Array.isArray((params as any)?.slug) && (params as any).slug[0] === 'cms' && (params as any).slug[1] === 'banners' ? (params as any).slug[2] : undefined)) as string;
   const [banner, setBanner] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MobileMenu } from '@/components/layout/MobileMenu';
 import { MobileNavbar } from '@/components/layout/MobileNavbar';
+import { UserAvatar } from '@/components/ui/user-avatar';
 
 export default function NavbarV3() {
   const router = useRouter();
@@ -137,7 +138,7 @@ export default function NavbarV3() {
             {/* Center: Logo */}
             <div className="absolute left-1/2 -translate-x-1/2">
               <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">
-                Dhaka Fair Price
+                Swapnobaz
               </Link>
             </div>
 
@@ -242,12 +243,10 @@ export default function NavbarV3() {
                   <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 px-1 py-1 rounded-full border border-neutral-200 hover:bg-transparent transition-all cursor-pointer outline-none group hover:scale-110">
                       <div className="h-8 w-8 rounded-full overflow-hidden group-hover:scale-110 transition-transform">
-                        <Image
-                          src={session.user?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.user?.name || "User")}&background=random`}
-                          alt={session.user?.name || "User Profile"}
-                          width={32}
-                          height={32}
-                          className="h-full w-full object-cover"
+                        <UserAvatar
+                          src={profile?.image || session.user?.image}
+                          name={session.user?.name}
+                          size={32}
                         />
                       </div>
                       <span className="hidden sm:block text-xs font-bold text-neutral-700 pr-2">

@@ -79,13 +79,12 @@ export default function SortableSectionItem({
     <div 
       ref={setNodeRef} 
       style={style}
-      className={cn(
-        "group relative border-b last:border-b-0 transition-all cursor-default",
+      className={cn("group relative border-b last:border-b-0 transition-all cursor-default",
         section.type === 'order_form'
-          ? ""
+          ?""
           : isSelected 
-            ? "ring-2 ring-primary ring-inset z-10" 
-            : "hover:bg-gray-50/50"
+            ?"ring-2 ring-primary ring-inset z-10" 
+            :"hover:bg-gray-50/50"
       )}
       onClick={(e) => {
         e.stopPropagation();
@@ -96,9 +95,8 @@ export default function SortableSectionItem({
     >
       {/* Selection Indicator & Label */}
       {section.type !== 'order_form' && (
-        <div className={cn(
-          "absolute left-0 top-0 bottom-0 w-1 transition-all",
-          isSelected ? "bg-primary" : "bg-transparent group-hover:bg-gray-200"
+        <div className={cn("absolute left-0 top-0 bottom-0 w-1 transition-all",
+          isSelected ?"bg-primary" :"bg-transparent group-hover:bg-gray-200"
         )} />
       )}
       

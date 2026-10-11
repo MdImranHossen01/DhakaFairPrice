@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 export default function EditProductPage() {
   const params = useParams();
-  const id = params.id as string;
+  const id = ((params as any)?.id || (Array.isArray((params as any)?.slug) && (params as any).slug[0] === 'products' ? (params as any).slug[1] : undefined)) as string;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +61,7 @@ export default function EditProductPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <ProductForm initialData={product} isReseller={true} />
     </div>
   );

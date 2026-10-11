@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { resellerId, status, commissionRate, suspendReason } = body;
+    const { resellerId, status, commissionRate, suspendReason, subdomain, customDomain, storeName } = body;
 
     if (!resellerId) {
       return NextResponse.json({ error: 'resellerId is required' }, { status: 400 });
@@ -48,6 +48,30 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'Commission rate must be a valid number between 0 and 100.' }, { status: 400 });
       }
       updatePayload.commissionRate = rate;
+    }
+    if (storeName !== undefined) {
+      updatePayload.storeName = storeName.trim();
+    }
+    if (subdomain !== undefined) {
+      const cleanSub = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (!cleanSub) {
+        return NextResponse.json({ error: 'Subdomain cannot be empty' }, { status: 400 });
+      }
+      const existing = await Reseller.findOne({ subdomain: cleanSub, _id: { $ne: resellerId } });
+      if (existing) {
+        return NextResponse.json({ error: 'This subdomain is already taken by another reseller.' }, { status: 400 });
+      }
+      updatePayload.subdomain = cleanSub;
+    }
+    if (customDomain !== undefined) {
+      const cleanCustom = customDomain ? customDomain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/+$/, '') : '';
+      if (cleanCustom) {
+        const existingCustom = await Reseller.findOne({ customDomain: cleanCustom, _id: { $ne: resellerId } });
+        if (existingCustom) {
+          return NextResponse.json({ error: 'This custom domain is already linked to another reseller.' }, { status: 400 });
+        }
+      }
+      updatePayload.customDomain = cleanCustom;
     }
 
     const updated = await Reseller.findByIdAndUpdate(

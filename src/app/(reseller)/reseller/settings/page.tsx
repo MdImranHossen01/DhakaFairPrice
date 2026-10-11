@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Store, Globe, Save, ShieldCheck } from 'lucide-react';
+import { Loader2, Store, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { PasswordChangeForm } from '@/components/user/PasswordChangeForm';
@@ -107,11 +107,11 @@ export default function ResellerSettingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Store Settings</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Configure your store branding, contact details, domain, and account security</p>
+          <p className="text-xs md:text-sm text-muted-foreground">Configure your store branding, contact details, and account security</p>
         </div>
       </div>
 
@@ -121,7 +121,6 @@ export default function ResellerSettingsPage() {
           <TabsTrigger value="contact" className="flex-1 min-w-[90px]">Contact</TabsTrigger>
           <TabsTrigger value="pickup" className="flex-1 min-w-[90px]">Warehouse / Pickup</TabsTrigger>
           <TabsTrigger value="social" className="flex-1 min-w-[90px]">Social</TabsTrigger>
-          <TabsTrigger value="domain" className="flex-1 min-w-[90px]">Domain</TabsTrigger>
           <TabsTrigger value="security" className="flex-1 min-w-[90px]">Security</TabsTrigger>
         </TabsList>
 
@@ -349,11 +348,6 @@ export default function ResellerSettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* Domain Tab */}
-        <TabsContent value="domain" className="space-y-4 mt-4">
-          <DomainTab reseller={reseller} onSave={save} saving={saving} />
-        </TabsContent>
-
         {/* Security Tab (Password Change) */}
         <TabsContent value="security" className="space-y-4 mt-4">
           <Card>
@@ -370,132 +364,5 @@ export default function ResellerSettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function DomainTab({ reseller, onSave, saving }: { reseller: any; onSave: (p: any) => void; saving: boolean }) {
-  const [subdomain, setSubdomain] = useState(reseller?.subdomain || '');
-  const [customDomain, setCustomDomain] = useState(reseller?.customDomain || '');
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" /> Domain Configuration & Setup</CardTitle>
-        <CardDescription>
-          Connect your free subdomain or link your own custom branded domain (e.g. www.yourbrand.com)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Free Subdomain Section */}
-        <div className="space-y-2 p-4 rounded-xl border bg-muted/20">
-          <Label className="font-bold text-base flex items-center gap-1.5">
-            1. Free Store Subdomain (ফ্রি সাবডোমেন)
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            আপনার পছন্দের যেকোনো ইউনিক নাম লিখুন, এটি ইনস্ট্যান্ট কাজ করবে:
-          </p>
-          <div className="flex items-center gap-2 max-w-md">
-            <Input value={subdomain} onChange={e => setSubdomain(e.target.value)} placeholder="mystore" className="font-mono text-sm" />
-            <span className="text-sm font-bold text-primary whitespace-nowrap">.dhakafairprice.com</span>
-          </div>
-          {subdomain && (
-            <p className="text-xs text-muted-foreground pt-1">
-              🔗 আপনার লাইভ স্টোর লিংক: <a href={`https://${subdomain}.dhakafairprice.com`} target="_blank" rel="noreferrer" className="text-primary font-semibold underline underline-offset-2">https://{subdomain}.dhakafairprice.com</a>
-            </p>
-          )}
-        </div>
-
-        {/* Custom Domain Section */}
-        <div className="space-y-4 p-4 rounded-xl border bg-background">
-          <div>
-            <Label className="font-bold text-base flex items-center gap-1.5">
-              2. Custom Branded Domain (কাস্টম নিজস্ব ডোমেন)
-            </Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              যদি আপনার নিজস্ব কেনা ডোমেন থাকে (যেমন: Namecheap, GoDaddy, Cloudflare, DianaHost থেকে কেনা):
-            </p>
-          </div>
-
-          <div className="space-y-1.5 max-w-md">
-            <Label className="text-xs font-semibold">আপনার ডোমেন নাম লিখুন:</Label>
-            <Input value={customDomain} onChange={e => setCustomDomain(e.target.value)} placeholder="www.yourbrand.com" className="font-mono" />
-          </div>
-
-          {/* Step-by-step Setup Guideline Box */}
-          <div className="rounded-xl border bg-muted/40 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">📖</span>
-              <h4 className="font-bold text-sm text-foreground">ডোমেন কানেক্ট করার সহজ ৩টি ধাপ (Step-by-Step Guide):</h4>
-            </div>
-
-            <ol className="text-xs space-y-2.5 list-decimal list-inside text-muted-foreground leading-relaxed">
-              <li className="pl-1">
-                <strong className="text-foreground">ডোমেন ম্যানেজমেন্টে লগইন করুন:</strong> আপনি যে কোম্পানি থেকে ডোমেন কিনেছেন (যেমন: Namecheap, GoDaddy, Cloudflare) সেখানে লগইন করে <strong className="text-foreground">DNS Management / DNS Records</strong> পেজে যান।
-              </li>
-              <li className="pl-1">
-                <strong className="text-foreground">নিচের A Record দুটি যুক্ত করুন:</strong>
-              </li>
-            </ol>
-
-            {/* A Record Setup Card */}
-            <div className="p-3.5 rounded-lg border bg-background space-y-2 shadow-sm max-w-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">A Record Setup</span>
-              </div>
-
-              {/* Record 1: Root domain */}
-              <div className="grid grid-cols-3 gap-2 font-mono text-xs bg-muted/30 p-2.5 rounded border">
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">TYPE</p>
-                  <p className="font-bold text-foreground">A</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">NAME / HOST</p>
-                  <p className="font-bold text-foreground">@ <span className="text-[10px] text-muted-foreground font-sans">(root domain)</span></p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">VALUE / IP</p>
-                  <p className="font-bold text-primary">68.183.191.215</p>
-                </div>
-              </div>
-
-              {/* Record 2: www */}
-              <div className="grid grid-cols-3 gap-2 font-mono text-xs bg-muted/30 p-2.5 rounded border">
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">TYPE</p>
-                  <p className="font-bold text-foreground">A</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">NAME / HOST</p>
-                  <p className="font-bold text-foreground">www</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-sans font-bold">VALUE / IP</p>
-                  <p className="font-bold text-primary">68.183.191.215</p>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground italic">
-                💡 Cloudflare ব্যবহার করলে Proxy status <strong>Proxied (🟠 Orange Cloud)</strong> রাখুন।
-              </p>
-            </div>
-
-            <div className="text-[11px] text-muted-foreground space-y-1 bg-background/60 p-2.5 rounded-lg border">
-              <p>
-                <strong>ধাপ ৩:</strong> DNS রেকর্ড যোগ করার পর উপরের বক্সে আপনার ডোমেন নামটি লিখে নিচের <strong>"Save Domain Settings"</strong> বাটনে ক্লিক করুন।
-              </p>
-              <p className="text-[10px] text-muted-foreground italic">
-                ℹ️ DNS আপডেট গ্লোবালি অ্যাক্টিভ হতে সাধারণত ৫ থেকে ১৫ মিনিট সময় লাগে।
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <Button onClick={() => onSave({ subdomain, customDomain })} disabled={saving} className="font-bold">
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          <Save className="mr-2 h-4 w-4" /> Save Domain Settings
-        </Button>
-      </CardContent>
-    </Card>
   );
 }

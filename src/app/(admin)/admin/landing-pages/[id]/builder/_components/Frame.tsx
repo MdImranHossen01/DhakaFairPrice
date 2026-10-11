@@ -77,7 +77,7 @@ export default function Frame({ children, className, style }: FrameProps) {
 
     // Sync theme class names (e.g. for tailwind themes)
     doc.documentElement.className = document.documentElement.className;
-    doc.body.className = document.body.className + " bg-transparent m-0 p-0 overflow-x-hidden";
+    doc.body.className = document.body.className +" bg-transparent m-0 p-0 overflow-x-hidden";
 
     return () => {
       observer.disconnect();

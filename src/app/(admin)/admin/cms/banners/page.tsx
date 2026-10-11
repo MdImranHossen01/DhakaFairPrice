@@ -44,10 +44,10 @@ export default function BannersPage() {
   const handleDelete = async (id: string, title: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: `You are about to delete the banner "${title}". This action cannot be undone!`,
+      text: `You are about to delete the banner"${title}". This action cannot be undone!`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#00D1B2', // Dhaka Fair Price primary color roughly
+      confirmButtonColor: '#00D1B2', // Swapnobaz primary color roughly
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, delete it!',
       background: '#fff',
@@ -96,8 +96,8 @@ export default function BannersPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-2 md:p-8 md:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 md:px-0">
+    <div className="flex-1 space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Promotional Banners</h1>
           <p className="text-xs md:text-sm text-muted-foreground">Manage banners appearing in the homepage hero slider</p>

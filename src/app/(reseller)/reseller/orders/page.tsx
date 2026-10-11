@@ -14,7 +14,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu";
+} from"@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -130,8 +130,8 @@ function OrdersContent() {
 
   const getResellerBranding = () => {
     return {
-      brandName: reseller?.storeName || settings?.brandName || 'Dhaka Fair Price',
-      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || 'Dhaka Fair Price',
+      brandName: reseller?.storeName || settings?.brandName || 'Swapnobaz',
+      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || 'Swapnobaz',
       contact: {
         phone: reseller?.phone || settings?.contact?.phone || '',
         email: reseller?.email || settings?.contact?.email || '',
@@ -331,7 +331,7 @@ function OrdersContent() {
   const handleCancelOrder = async (orderId: string) => {
     const result = await Swal.fire({
       title: 'Cancel Order?',
-      text: "Are you sure you want to cancel this order?",
+      text:"Are you sure you want to cancel this order?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -347,7 +347,7 @@ function OrdersContent() {
   const handleDeleteOrder = async (orderId: string) => {
     const result = await Swal.fire({
       title: 'Delete Order?',
-      text: "Are you sure you want to remove this order from your dashboard?",
+      text:"Are you sure you want to remove this order from your dashboard?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -376,7 +376,7 @@ function OrdersContent() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="flex-1 space-y-4 px-0 py-4 md:p-8">
+    <div className="flex-1 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-shrink-0">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight whitespace-nowrap">Order Management</h2>
@@ -428,7 +428,7 @@ function OrdersContent() {
                       setStatusFilter(status.value);
                       setPage(1);
                     }}
-                    className={statusFilter === status.value ? "bg-accent font-bold" : ""}
+                    className={statusFilter === status.value ?"bg-accent font-bold" :""}
                   >
                     <div className="flex items-center justify-between w-full text-xs">
                       <span>{status.label}</span>

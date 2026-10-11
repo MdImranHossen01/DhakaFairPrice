@@ -10,11 +10,11 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ImageUpload } from "@/components/ui/image-upload";
+} from"@/components/ui/dialog";
+import { Input } from"@/components/ui/input";
+import { Label } from"@/components/ui/label";
+import { Textarea } from"@/components/ui/textarea";
+import { ImageUpload } from"@/components/ui/image-upload";
 import Swal from 'sweetalert2';
 
 export default function ResellerTestimonialsPage() {
@@ -69,7 +69,7 @@ export default function ResellerTestimonialsPage() {
   const handleDelete = async (id: string, name: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: `Delete testimonial from "${name}"?`,
+      text: `Delete testimonial from"${name}"?`,
       icon: 'warning', showCancelButton: true,
       confirmButtonColor: '#ef4444', confirmButtonText: 'Yes, delete it!',
       customClass: { popup: 'rounded-xl' },

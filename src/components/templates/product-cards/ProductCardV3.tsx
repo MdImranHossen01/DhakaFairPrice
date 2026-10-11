@@ -182,16 +182,16 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
           />
         </Link>
 
-        {/* Technical Badges */}
-        <div className="absolute top-0 left-0 flex flex-col z-10">
+        {/* Badges */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
           {discount > 0 && (
-            <div className="bg-primary text-primary-foreground font-mono text-[10px] px-2 py-1 uppercase tracking-tighter">
-              DISC_{discount}%
+            <div className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-tight">
+              -{discount}%
             </div>
           )}
           {isFlashSale && (
-            <div className="bg-orange-500 text-white font-mono text-[10px] px-2 py-1 uppercase tracking-tighter animate-pulse">
-              LIVE_FLASH
+            <div className="bg-destructive text-destructive-foreground text-[10px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-tight animate-pulse">
+              Flash Sale
             </div>
           )}
         </div>
@@ -250,13 +250,15 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
         <ProductActionMenu product={product} />
       </div>
 
-      {/* Technical Content Section */}
+      {/* Content Section */}
       <div className="px-[2px] py-2 md:p-4 flex flex-col gap-2 md:gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
-            {product.isNewArrival && <span className="text-emerald-500">[ NEW_ARRV ]</span>}
-            {product.isFeatured && <span className="text-primary">[ FT_ITEM ]</span>}
-          </div>
+          {(product.isNewArrival || product.isFeatured) && (
+            <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wide uppercase">
+              {product.isNewArrival && <span className="text-primary">New Arrival</span>}
+              {product.isFeatured && <span className="text-primary">Featured</span>}
+            </div>
+          )}
           <Link prefetch={true} href={`/product/${product.slug}`} className="block">
             <h3 className="text-xs font-medium md:text-base md:font-bold uppercase tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
               {product.name}
@@ -268,21 +270,20 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
               aria-label={`${product.ratings || 0} out of 5 stars, ${product.numReviews || 0} reviews`}
             >
               <RatingStars rating={product.ratings || 0} starClassName="h-2.5 w-2.5" />
-              <span className="text-[9px] font-mono text-muted-foreground font-bold">({product.numReviews})</span>
+              <span className="text-[10px] text-muted-foreground font-semibold">({product.numReviews})</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-end justify-between">
+        <div className="flex items-center justify-between mt-auto">
           <div className="flex flex-col">
-            <span className="text-xs font-mono text-muted-foreground uppercase mb-1">Price_</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-black font-mono text-primary">
-                ৳{Math.round(product.salePrice ?? product.price ?? 0)}
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg md:text-xl font-black text-primary">
+                ৳{Math.round(product.salePrice ?? product.price ?? 0).toLocaleString()}
               </span>
               {product.salePrice != null && product.salePrice < product.price && (
-                <span className="text-xs font-mono text-muted-foreground line-through opacity-50">
-                  ৳{Math.round(product.price ?? 0)}
+                <span className="text-xs text-muted-foreground line-through opacity-60">
+                  ৳{Math.round(product.price ?? 0).toLocaleString()}
                 </span>
               )}
             </div>
@@ -292,7 +293,7 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  className="rounded-none h-10 w-10 bg-primary hover:bg-primary-foreground hover:text-primary border border-primary transition-all"
+                  className="rounded-lg h-10 w-10 bg-primary hover:bg-primary/90 text-primary-foreground transition-all shadow-sm"
                   onClick={handleAddToCartClick}
                   disabled={product.stock === 0}
                 >

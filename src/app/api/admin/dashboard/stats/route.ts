@@ -9,6 +9,8 @@ import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import Bill from '@/models/Bill';
 import Subscriber from '@/models/Subscriber';
+import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
+import BusinessLoan from '@/models/BusinessLoan';
 
 export async function GET(req: NextRequest) {
   try {
@@ -48,6 +50,11 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Previous Period Calculation for Dynamic Growth Comparison
+    const periodDuration = endDate.getTime() - startDate.getTime();
+    const prevStartDate = new Date(startDate.getTime() - periodDuration);
+    const prevEndDate = new Date(startDate.getTime() - 1);
+
     // 7 Days Range Calculation for 7-day Matrix
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -56,7 +63,9 @@ export async function GET(req: NextRequest) {
     // Concurrently fetch all metrics using Promise.all
     const [
       revenueStats,
+      prevRevenueStats,
       expenseStats,
+      prevExpenseStats,
       orderStatusStats,
       totalUsersCount,
       activeResellersCount,
@@ -66,12 +75,14 @@ export async function GET(req: NextRequest) {
       lowStockProducts,
       ledgerAccounts,
       resellerWallets,
+      pendingPayoutsStats,
       dueBillsStats,
       chartData,
       sevenDaysOrders,
-      sevenDaysExpenses
+      sevenDaysExpenses,
+      activeLoansStats
     ] = await Promise.all([
-      // 1. Revenue, COGS, Delivery charge stats
+      // 1. Revenue, COGS, Delivery charge stats (Current Period)
       Order.aggregate([
         { 
           $match: { 
@@ -106,7 +117,37 @@ export async function GET(req: NextRequest) {
         }
       ]),
 
-      // 2. Expenses breakdown by category
+      // 1b. Previous Period Revenue Stats for Dynamic %
+      Order.aggregate([
+        { 
+          $match: { 
+            status: { $in: ['Paid', 'Confirmed', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+            createdAt: { $gte: prevStartDate, $lte: prevEndDate },
+            deletedAt: null
+          } 
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$totalAmount' },
+            totalDeliveryCharge: { $sum: '$deliveryCharge' },
+            salesCount: { $sum: 1 },
+            totalCOGS: { 
+              $sum: { 
+                $sum: {
+                  $map: {
+                    input: '$items',
+                    as: 'item',
+                    in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]),
+
+      // 2. Expenses breakdown by category (Current Period)
       Expense.aggregate([
         { 
           $match: { 
@@ -117,6 +158,22 @@ export async function GET(req: NextRequest) {
         {
           $group: {
             _id: '$category',
+            total: { $sum: '$amount' }
+          }
+        }
+      ]),
+
+      // 2b. Expenses for Previous Period
+      Expense.aggregate([
+        { 
+          $match: { 
+            date: { $gte: prevStartDate, $lte: prevEndDate },
+            type: { $ne: 'income' }
+          } 
+        },
+        {
+          $group: {
+            _id: null,
             total: { $sum: '$amount' }
           }
         }
@@ -180,6 +237,23 @@ export async function GET(req: NextRequest) {
           }
         }
       ]),
+
+      // 10b. Pending Payouts Requests
+      ResellerWalletTransaction.aggregate([
+        {
+          $match: {
+            type: 'payout_released',
+            status: 'pending'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalPendingPayouts: { $sum: { $abs: '$amount' } },
+            count: { $sum: 1 }
+          }
+        }
+      ]).catch(() => []),
 
       // 11. Due Bills (Receivables from B2B / Wholesale bills)
       Bill.aggregate([
@@ -276,10 +350,21 @@ export async function GET(req: NextRequest) {
             expense: { $sum: '$amount' }
           }
         }
-      ])
+      ]),
+
+      // 15. Active Business Loans Liability
+      BusinessLoan.aggregate([
+        { $match: { status: 'Active' } },
+        {
+          $group: {
+            _id: null,
+            totalActiveLoansDue: { $sum: '$dueAmount' }
+          }
+        }
+      ]).catch(() => [])
     ]);
 
-    // Process Revenue Stats
+    // Process Current Revenue Stats
     const {
       totalRevenue = 0,
       totalDeliveryCharge = 0,
@@ -288,7 +373,15 @@ export async function GET(req: NextRequest) {
       totalCOGS = 0
     } = revenueStats[0] || {};
 
-    // Process Expense Stats
+    // Process Previous Revenue Stats
+    const {
+      totalRevenue: prevTotalRevenue = 0,
+      totalDeliveryCharge: prevDeliveryCharge = 0,
+      salesCount: prevSalesCount = 0,
+      totalCOGS: prevTotalCOGS = 0
+    } = prevRevenueStats[0] || {};
+
+    // Process Current Expense Stats
     let totalExpenses = 0;
     const expenseCategories: Record<string, number> = {};
     expenseStats.forEach((e: any) => {
@@ -296,8 +389,27 @@ export async function GET(req: NextRequest) {
       expenseCategories[e._id || 'Others'] = e.total || 0;
     });
 
+    // Process Previous Expense Stats
+    const prevTotalExpenses = prevExpenseStats[0]?.total || 0;
+
     const grossProfit = totalRevenue - totalCOGS - totalDeliveryCharge;
+    const prevGrossProfit = prevTotalRevenue - prevTotalCOGS - prevDeliveryCharge;
     const netProfit = grossProfit - totalExpenses;
+
+    // Dynamic Growth Rate Calculation
+    const calcGrowth = (curr: number, prev: number) => {
+      if (prev === 0) {
+        return curr > 0 ? 100 : (curr < 0 ? -100 : 0);
+      }
+      return parseFloat((((curr - prev) / Math.abs(prev)) * 100).toFixed(1));
+    };
+
+    const growth = {
+      revenue: calcGrowth(totalRevenue, prevTotalRevenue),
+      expense: calcGrowth(totalExpenses, prevTotalExpenses),
+      profit: calcGrowth(grossProfit, prevGrossProfit),
+      orders: calcGrowth(salesCount, prevSalesCount),
+    };
 
     // Process Order Workflow Status
     const statusMap: Record<string, { count: number; total: number }> = {};
@@ -332,11 +444,16 @@ export async function GET(req: NextRequest) {
     // Process Reseller Balances
     const resellerWalletTotal = resellerWallets[0]?.totalWalletBalance || 0;
     const resellerPendingTotal = resellerWallets[0]?.totalPendingBalance || 0;
+    const pendingPayoutsTotal = (pendingPayoutsStats as any[])?.[0]?.totalPendingPayouts || 0;
+    const pendingPayoutsCount = (pendingPayoutsStats as any[])?.[0]?.count || 0;
 
     // Process Receivables (Bills due + Uncollected order values)
     const billDueTotal = dueBillsStats[0]?.totalDueBills || 0;
     const pendingOrderReceivable = Math.max(0, totalRevenue - paidRevenue);
     const totalReceivable = billDueTotal + pendingOrderReceivable;
+
+    // Process Liabilities (Loans)
+    const totalActiveLoansDue = (activeLoansStats as any[])?.[0]?.totalActiveLoansDue || 0;
 
     // Total Assets Calculation
     const totalLiquidBalance = cashBalance + bankBalance;
@@ -420,6 +537,7 @@ export async function GET(req: NextRequest) {
         expenseCategories,
         grossProfit,
         netProfit,
+        growth,
         totalCustomers: totalUsersCount,
         activeResellers: activeResellersCount,
         pendingResellers: pendingResellersCount,
@@ -438,9 +556,12 @@ export async function GET(req: NextRequest) {
         bankAccountsList,
         resellerWalletTotal,
         resellerPendingTotal,
+        pendingPayoutsTotal,
+        pendingPayoutsCount,
         billDueTotal,
         totalReceivable,
-        totalAssetValue
+        totalAssetValue,
+        totalActiveLoansDue
       },
       lowStockProducts,
       chartData: completeChartData,

@@ -69,10 +69,180 @@ export default function OrderDetailsDialog({
   };
 
   // Additional Shipping Fields
-  const [cityId, setCityId] = useState('');
-  const [zoneId, setZoneId] = useState('');
+  const [selectedCourier, setSelectedCourier] = useState<'steadfast' | 'pathao' | 'redx'>('steadfast');
+  const [cityId, setCityId] = useState('1');
+  const [zoneId, setZoneId] = useState('1');
   const [areaId, setAreaId] = useState('');
+  const [itemWeight, setItemWeight] = useState('0.5');
   const [shippingNote, setShippingNote] = useState('');
+
+  // Pathao Locations & Stores
+  const [pathaoStores, setPathaoStores] = useState<any[]>([]);
+  const [storeId, setStoreId] = useState('');
+  const [pathaoCities, setPathaoCities] = useState<any[]>([]);
+  const [pathaoZones, setPathaoZones] = useState<any[]>([]);
+  const [pathaoAreas, setPathaoAreas] = useState<any[]>([]);
+  const [loadingPathaoLocations, setLoadingPathaoLocations] = useState(false);
+
+  // RedX Areas
+  const [redxAreas, setRedxAreas] = useState<any[]>([]);
+  const [loadingRedxAreas, setLoadingRedxAreas] = useState(false);
+  const [redxSearch, setRedxSearch] = useState('');
+
+  const isSteadfastConfigured = Boolean(settings?.courierConfig?.steadfast?.apiKey && settings?.courierConfig?.steadfast?.secretKey);
+  const isPathaoConfigured = Boolean(settings?.courierConfig?.pathao?.clientId && settings?.courierConfig?.pathao?.clientSecret);
+  const isRedxConfigured = Boolean(settings?.courierConfig?.redx?.apiKey);
+  const hasAnyCourier = isSteadfastConfigured || isPathaoConfigured || isRedxConfigured;
+
+  // Auto-select first configured courier
+  useEffect(() => {
+    if (settings?.courierConfig) {
+      if (isSteadfastConfigured && selectedCourier === 'steadfast') return;
+      if (isPathaoConfigured && selectedCourier === 'pathao') return;
+      if (isRedxConfigured && selectedCourier === 'redx') return;
+
+      if (isSteadfastConfigured) setSelectedCourier('steadfast');
+      else if (isPathaoConfigured) setSelectedCourier('pathao');
+      else if (isRedxConfigured) setSelectedCourier('redx');
+    }
+  }, [settings, isSteadfastConfigured, isPathaoConfigured, isRedxConfigured]);
+
+  // Load RedX areas when RedX is selected
+  useEffect(() => {
+    if (open && selectedCourier === 'redx' && isRedxConfigured) {
+      if (redxAreas.length === 0) {
+        setLoadingRedxAreas(true);
+        const postCode = order?.shippingAddress?.zipCode?.trim() || '';
+        const url = postCode ? `/api/admin/courier/redx?post_code=${encodeURIComponent(postCode)}` : '/api/admin/courier/redx';
+        fetch(url)
+          .then(res => res.json())
+          .then(data => {
+            if (data.areas && Array.isArray(data.areas) && data.areas.length > 0) {
+              setRedxAreas(data.areas);
+              const rawCity = (order?.shippingAddress?.city || '').toLowerCase();
+              const matched = data.areas.find((a: any) => 
+                (postCode && String(a.post_code) === postCode) ||
+                (a.name && a.name.toLowerCase().includes(rawCity)) ||
+                (a.district_name && a.district_name.toLowerCase().includes(rawCity))
+              );
+              if (matched) {
+                setAreaId(String(matched.id));
+              } else {
+                setAreaId(String(data.areas[0].id));
+              }
+            } else {
+              // Fallback to fetch all areas without post code filter
+              fetch('/api/admin/courier/redx')
+                .then(r => r.json())
+                .then(d => {
+                  if (d.areas && Array.isArray(d.areas)) {
+                    setRedxAreas(d.areas);
+                    if (d.areas.length > 0) setAreaId(String(d.areas[0].id));
+                  }
+                })
+                .catch(console.error);
+            }
+          })
+          .catch(err => console.error('Failed to load RedX areas:', err))
+          .finally(() => setLoadingRedxAreas(false));
+      }
+    }
+  }, [open, selectedCourier, isRedxConfigured, redxAreas.length, order?.shippingAddress?.zipCode, order?.shippingAddress?.city]);
+
+  // Load Pathao stores and cities when Pathao is selected
+  useEffect(() => {
+    if (open && selectedCourier === 'pathao' && isPathaoConfigured) {
+      if (pathaoStores.length === 0) {
+        fetch('/api/admin/courier/pathao?action=stores')
+          .then(res => res.json())
+          .then(data => {
+            if (data.stores && Array.isArray(data.stores) && data.stores.length > 0) {
+              setPathaoStores(data.stores);
+              if (!storeId) {
+                setStoreId(String(data.stores[0].store_id || data.stores[0].id));
+              }
+            }
+          })
+          .catch(err => console.error('Failed to load Pathao stores:', err));
+      }
+
+      if (pathaoCities.length === 0) {
+        setLoadingPathaoLocations(true);
+        fetch('/api/admin/courier/pathao?action=cities')
+          .then(res => res.json())
+          .then(data => {
+            if (data.cities && Array.isArray(data.cities)) {
+              setPathaoCities(data.cities);
+              // Auto-match destination city from customer address
+              const rawCity = (order?.shippingAddress?.city || order?.shippingAddress?.division || '').toLowerCase().trim();
+              const matched = data.cities.find((c: any) => 
+                c.city_name.toLowerCase() === rawCity ||
+                c.city_name.toLowerCase().includes(rawCity) ||
+                (rawCity && rawCity.includes(c.city_name.toLowerCase()))
+              );
+              if (matched) {
+                setCityId(String(matched.city_id));
+              } else if (data.cities.length > 0 && !cityId) {
+                setCityId(String(data.cities[0].city_id));
+              }
+            }
+          })
+          .catch(err => console.error('Failed to load Pathao cities:', err))
+          .finally(() => setLoadingPathaoLocations(false));
+      }
+    }
+  }, [open, selectedCourier, isPathaoConfigured, pathaoStores.length, pathaoCities.length, order?.shippingAddress?.city, order?.shippingAddress?.division]);
+
+  // Load Pathao zones when cityId changes
+  useEffect(() => {
+    if (selectedCourier === 'pathao' && isPathaoConfigured && cityId) {
+      fetch(`/api/admin/courier/pathao?action=zones&city_id=${cityId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.zones && Array.isArray(data.zones)) {
+            setPathaoZones(data.zones);
+            // Auto-match zone from customer state/street
+            const rawZone = (order?.shippingAddress?.state || order?.shippingAddress?.street || '').toLowerCase();
+            const matchedZone = data.zones.find((z: any) =>
+              rawZone.includes(z.zone_name.toLowerCase()) || z.zone_name.toLowerCase().includes(rawZone)
+            );
+            if (matchedZone) {
+              setZoneId(String(matchedZone.zone_id));
+            } else if (data.zones.length > 0) {
+              setZoneId(String(data.zones[0].zone_id));
+            } else {
+              setZoneId('');
+            }
+          } else {
+            setPathaoZones([]);
+            setZoneId('');
+          }
+        })
+        .catch(err => console.error('Failed to load Pathao zones:', err));
+    }
+  }, [selectedCourier, isPathaoConfigured, cityId, order?.shippingAddress?.state, order?.shippingAddress?.street]);
+
+  // Load Pathao areas when zoneId changes
+  useEffect(() => {
+    if (selectedCourier === 'pathao' && isPathaoConfigured && zoneId) {
+      fetch(`/api/admin/courier/pathao?action=areas&zone_id=${zoneId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.areas && Array.isArray(data.areas)) {
+            setPathaoAreas(data.areas);
+            if (data.areas.length > 0) {
+              setAreaId(String(data.areas[0].area_id));
+            } else {
+              setAreaId('');
+            }
+          } else {
+            setPathaoAreas([]);
+            setAreaId('');
+          }
+        })
+        .catch(err => console.error('Failed to load Pathao areas:', err));
+    }
+  }, [selectedCourier, isPathaoConfigured, zoneId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -160,10 +330,6 @@ export default function OrderDetailsDialog({
       setEditForm(null);
       setFraudData(null);
       setFraudLoading(false);
-      // Reset shipping fields when closing or switching orders
-      setCityId('');
-      setZoneId('');
-      setAreaId('');
       setShippingNote('');
     }
 
@@ -950,101 +1116,451 @@ export default function OrderDetailsDialog({
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {settings?.courierConfig?.activeProvider === 'none' ? (
-                    <div className="text-xs bg-yellow-50 text-yellow-700 p-3 rounded-lg border border-yellow-200">
-                      <strong>Note:</strong> Courier integration is not configured. Please go to Settings &gt; Courier to enable automated booking.
+                  {!hasAnyCourier ? (
+                    <div className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 p-3 rounded-lg border border-amber-200 dark:border-amber-900">
+                      <strong>Note:</strong> No courier credentials configured yet. Please configure Steadfast, Pathao, or RedX credentials in <span className="font-bold">Settings &gt; Marketing &amp; Integration &gt; Courier</span> to enable automated booking.
                     </div>
                   ) : (
                     <>
-                      <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                      {/* Courier Selection Tabs */}
+                      <div className="flex items-center gap-2 p-1 bg-muted/40 rounded-xl border border-border">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourier('steadfast')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            selectedCourier === 'steadfast'
+                              ? 'bg-primary text-primary-foreground shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                          }`}
+                        >
+                          <Truck className="h-3.5 w-3.5" />
+                          Steadfast
+                          {!isSteadfastConfigured && (
+                            <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-normal">Unconfigured</span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourier('pathao')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            selectedCourier === 'pathao'
+                              ? 'bg-primary text-primary-foreground shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                          }`}
+                        >
+                          <Truck className="h-3.5 w-3.5 text-rose-500" />
+                          Pathao
+                          {!isPathaoConfigured && (
+                            <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-normal">Unconfigured</span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourier('redx')}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            selectedCourier === 'redx'
+                              ? 'bg-primary text-primary-foreground shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                          }`}
+                        >
+                          <Truck className="h-3.5 w-3.5 text-red-500" />
+                          RedX
+                          {!isRedxConfigured && (
+                            <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded-full font-normal">Unconfigured</span>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 border rounded-xl p-3.5 bg-muted/20">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase">Booking Details ({settings?.courierConfig?.activeProvider})</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            {selectedCourier === 'pathao' ? 'Pathao Courier Details' : selectedCourier === 'redx' ? 'RedX Courier Details' : 'Steadfast Courier Details'}
+                          </span>
+                          {selectedCourier === 'pathao' && loadingPathaoLocations && (
+                            <span className="text-[10px] text-primary flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" /> Loading locations...
+                            </span>
+                          )}
                         </div>
-                        
-                        {(settings?.courierConfig?.activeProvider === 'pathao' || settings?.courierConfig?.activeProvider === 'redx') && (
-                            <div className="grid grid-cols-2 gap-2">
-                                {settings?.courierConfig?.activeProvider === 'pathao' && (
-                                    <>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold">City ID</label>
-                                            <input type="text" value={cityId} onChange={(e) => setCityId(e.target.value)} placeholder="e.g. 1" className="w-full text-xs p-2 border rounded" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold">Zone ID</label>
-                                            <input type="text" value={zoneId} onChange={(e) => setZoneId(e.target.value)} placeholder="e.g. 1" className="w-full text-xs p-2 border rounded" />
-                                        </div>
-                                    </>
-                                )}
-                                <div className="space-y-1 col-span-2">
-                                    <label className="text-[10px] font-bold">Area ID</label>
-                                    <input type="text" value={areaId} onChange={(e) => setAreaId(e.target.value)} placeholder="e.g. 123" className="w-full text-xs p-2 border rounded" />
+
+                        {/* Pathao Form Fields */}
+                        {selectedCourier === 'pathao' && (
+                          <div className="space-y-2.5">
+                            {/* Pickup Point Display */}
+                            {(() => {
+                              const isResellerOrder = Boolean(
+                                order.resellerId ||
+                                order.items?.some((i: any) => i.product?.uploadedBy)
+                              );
+
+                              const resellerName = typeof order.resellerId === 'object' && order.resellerId?.storeName
+                                ? order.resellerId.storeName
+                                : 'Reseller Shop';
+
+                              const pickupAddressText = typeof order.resellerId === 'object' && order.resellerId?.pickupAddress?.address
+                                ? `${order.resellerId.pickupAddress.address} (${order.resellerId.pickupAddress.phone || order.resellerId.contact?.phone || ''})`
+                                : 'Reseller Registered Pickup Address';
+
+                              return isResellerOrder ? (
+                                <div className="p-3 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-indigo-900 dark:text-indigo-200 font-bold flex items-center gap-1.5 text-xs">
+                                      🏬 Pickup Point: {resellerName}
+                                    </span>
+                                    <span className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                                      📍 {pickupAddressText}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 font-black px-2.5 py-1 rounded-full shrink-0 uppercase tracking-wider">
+                                    Auto-Selected
+                                  </span>
                                 </div>
+                              ) : (
+                                <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-emerald-900 dark:text-emerald-200 font-bold flex items-center gap-1.5 text-xs">
+                                      🏢 Pickup Point: Mother Shop Warehouse (Dhaka)
+                                    </span>
+                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                                      📍 Primary Warehouse Pickup
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-black px-2.5 py-1 rounded-full shrink-0 uppercase tracking-wider">
+                                    Auto-Selected
+                                  </span>
+                                </div>
+                              );
+                            })()}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {/* City Selection */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-muted-foreground">Pathao City (Delivery Destination)</label>
+                                {pathaoCities.length > 0 ? (
+                                  <select
+                                    value={cityId}
+                                    onChange={(e) => setCityId(e.target.value)}
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  >
+                                    <option value="">-- Select City --</option>
+                                    {pathaoCities.map((c: any) => (
+                                      <option key={c.city_id} value={c.city_id}>
+                                        {c.city_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={cityId}
+                                    onChange={(e) => setCityId(e.target.value)}
+                                    placeholder="City ID (e.g. 1 for Dhaka)"
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  />
+                                )}
+                              </div>
+
+                              {/* Zone Selection */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-muted-foreground">Pathao Zone</label>
+                                {pathaoZones.length > 0 ? (
+                                  <select
+                                    value={zoneId}
+                                    onChange={(e) => setZoneId(e.target.value)}
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  >
+                                    <option value="">-- Select Zone --</option>
+                                    {pathaoZones.map((z: any) => (
+                                      <option key={z.zone_id} value={z.zone_id}>
+                                        {z.zone_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={zoneId}
+                                    onChange={(e) => setZoneId(e.target.value)}
+                                    placeholder="Zone ID (e.g. 1)"
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  />
+                                )}
+                              </div>
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {/* Area Selection */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-muted-foreground">Pathao Area (Optional)</label>
+                                {pathaoAreas.length > 0 ? (
+                                  <select
+                                    value={areaId}
+                                    onChange={(e) => setAreaId(e.target.value)}
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  >
+                                    <option value="">-- Select Area (Optional) --</option>
+                                    {pathaoAreas.map((a: any) => (
+                                      <option key={a.area_id} value={a.area_id}>
+                                        {a.area_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={areaId}
+                                    onChange={(e) => setAreaId(e.target.value)}
+                                    placeholder="Area ID (e.g. 123)"
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  />
+                                )}
+                              </div>
+
+                              {/* Weight Selection */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-muted-foreground">Item Weight (kg)</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  value={itemWeight}
+                                  onChange={(e) => setItemWeight(e.target.value)}
+                                  placeholder="0.5"
+                                  className="w-full text-xs p-2 border rounded-lg bg-background"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         )}
 
+                        {/* RedX Form Fields */}
+                        {selectedCourier === 'redx' && (
+                          <div className="space-y-2.5">
+                            {/* Pickup Point Display */}
+                            {(() => {
+                              const isResellerOrder = Boolean(
+                                order.resellerId ||
+                                order.items?.some((i: any) => i.product?.uploadedBy)
+                              );
+
+                              const resellerName = typeof order.resellerId === 'object' && order.resellerId?.storeName
+                                ? order.resellerId.storeName
+                                : 'Reseller Shop';
+
+                              const pickupAddressText = typeof order.resellerId === 'object' && order.resellerId?.pickupAddress?.address
+                                ? `${order.resellerId.pickupAddress.address} (${order.resellerId.pickupAddress.phone || order.resellerId.contact?.phone || ''})`
+                                : 'Reseller Registered Pickup Address';
+
+                              return isResellerOrder ? (
+                                <div className="p-3 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-indigo-900 dark:text-indigo-200 font-bold flex items-center gap-1.5 text-xs">
+                                      🏬 Pickup Point: {resellerName}
+                                    </span>
+                                    <span className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                                      📍 {pickupAddressText}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-100 font-black px-2.5 py-1 rounded-full shrink-0 uppercase tracking-wider">
+                                    Auto-Selected
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-emerald-900 dark:text-emerald-200 font-bold flex items-center gap-1.5 text-xs">
+                                      🏢 Pickup Point: Mother Shop Warehouse (Dhaka)
+                                    </span>
+                                    <span className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                                      📍 Primary Warehouse Pickup
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-black px-2.5 py-1 rounded-full shrink-0 uppercase tracking-wider">
+                                    Auto-Selected
+                                  </span>
+                                </div>
+                              );
+                            })()}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {/* RedX Area Selector */}
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[10px] font-bold text-muted-foreground">RedX Area (Delivery Destination)</label>
+                                  {loadingRedxAreas && (
+                                    <span className="text-[9px] text-primary flex items-center gap-1">
+                                      <Loader2 className="h-2.5 w-2.5 animate-spin" /> Loading...
+                                    </span>
+                                  )}
+                                </div>
+                                {redxAreas.length > 0 ? (
+                                  <div className="space-y-1.5">
+                                    <input
+                                      type="text"
+                                      value={redxSearch}
+                                      onChange={(e) => setRedxSearch(e.target.value)}
+                                      placeholder="🔍 Filter areas (e.g. Mirpur / 1216)..."
+                                      className="w-full text-[11px] p-1.5 border rounded-lg bg-background"
+                                    />
+                                    <select
+                                      value={areaId}
+                                      onChange={(e) => setAreaId(e.target.value)}
+                                      className="w-full text-xs p-2 border rounded-lg bg-background"
+                                    >
+                                      <option value="">-- Select RedX Area --</option>
+                                      {redxAreas
+                                        .filter((a: any) => {
+                                          if (!redxSearch) return true;
+                                          const s = redxSearch.toLowerCase();
+                                          return (
+                                            (a.name && a.name.toLowerCase().includes(s)) ||
+                                            (a.post_code && String(a.post_code).includes(s)) ||
+                                            (a.district_name && a.district_name.toLowerCase().includes(s))
+                                          );
+                                        })
+                                        .slice(0, 100)
+                                        .map((a: any) => (
+                                          <option key={a.id || a.area_id} value={a.id || a.area_id}>
+                                            {a.name} ({a.district_name || 'Area'}{a.post_code ? ` - ${a.post_code}` : ''})
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={areaId}
+                                    onChange={(e) => setAreaId(e.target.value)}
+                                    placeholder="RedX Area ID (e.g. 1)"
+                                    className="w-full text-xs p-2 border rounded-lg bg-background"
+                                  />
+                                )}
+                              </div>
+
+                              {/* Weight Selection */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-muted-foreground">Item Weight (kg)</label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  value={itemWeight}
+                                  onChange={(e) => setItemWeight(e.target.value)}
+                                  placeholder="0.5"
+                                  className="w-full text-xs p-2 border rounded-lg bg-background"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Common Shipping Note */}
                         <div className="space-y-1">
-                            <label className="text-[10px] font-bold">Shipping Note</label>
-                            <input type="text" value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} placeholder="Package handle with care..." className="w-full text-xs p-2 border rounded" />
+                          <label className="text-[10px] font-bold text-muted-foreground">Shipping Note / Instruction</label>
+                          <input
+                            type="text"
+                            value={shippingNote}
+                            onChange={(e) => setShippingNote(e.target.value)}
+                            placeholder="Package handle with care..."
+                            className="w-full text-xs p-2 border rounded-lg bg-background"
+                          />
                         </div>
                       </div>
 
                       <button
-                        disabled={bookingLoading}
+                        disabled={
+                          bookingLoading ||
+                          (selectedCourier === 'steadfast' && !isSteadfastConfigured) ||
+                          (selectedCourier === 'pathao' && !isPathaoConfigured) ||
+                          (selectedCourier === 'redx' && !isRedxConfigured)
+                        }
                         onClick={async () => {
-                          const isActiveSteadfast = settings?.courierConfig?.activeProvider === 'steadfast';
-                          const endpoint = isActiveSteadfast 
-                            ? '/api/admin/courier/steadfast' 
-                            : `/api/admin/orders/${order._id}/book-courier`;
-                          const payload = isActiveSteadfast 
-                            ? { orderIds: [order._id] } 
-                            : { city_id: cityId, zone_id: zoneId, area_id: areaId, note: shippingNote };
+                          const courierNameUpper = selectedCourier.toUpperCase();
+
+                          if (selectedCourier === 'pathao') {
+                            if (!cityId || !zoneId) {
+                              toast.error('Pathao requires both City ID and Zone ID to book a shipment.');
+                              return;
+                            }
+                          }
 
                           const result = await Swal.fire({
-                            title: isActiveSteadfast ? 'Send to Steadfast?' : 'Book Courier?',
-                            text: isActiveSteadfast 
-                              ? `Are you sure you want to send 1 order(s) to Steadfast Courier?`
-                              : `Hand over order #${order._id} to ${settings?.courierConfig?.activeProvider}?`,
+                            title: `Hand over to ${courierNameUpper}?`,
+                            text: `Are you sure you want to book Order #${order.shortId || String(order._id).slice(-8).toUpperCase()} with ${courierNameUpper}?`,
                             icon: 'question',
                             showCancelButton: true,
                             confirmButtonColor: '#2563eb',
-                            confirmButtonText: 'Yes, send now!'
+                            confirmButtonText: `Yes, send to ${courierNameUpper}!`
                           });
-                          
+
                           if (!result.isConfirmed) return;
-                          
+
                           setBookingLoading(true);
                           try {
-                            const res = await fetch(endpoint, { 
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
+                            let endpoint = '';
+                            let payload: any = {};
+
+                            if (selectedCourier === 'steadfast') {
+                              endpoint = '/api/admin/courier/steadfast';
+                              payload = { orderIds: [order._id], note: shippingNote };
+                            } else if (selectedCourier === 'pathao') {
+                              endpoint = '/api/admin/courier/pathao';
+                              payload = {
+                                orderIds: [order._id],
+                                store_id: storeId ? Number(storeId) : undefined,
+                                city_id: Number(cityId) || 1,
+                                zone_id: Number(zoneId) || 1,
+                                area_id: areaId ? Number(areaId) : undefined,
+                                item_weight: Number(itemWeight) || 0.5,
+                                note: shippingNote
+                              };
+                            } else {
+                              endpoint = '/api/admin/courier/redx';
+                              payload = {
+                                orderIds: [order._id],
+                                area_id: areaId ? Number(areaId) : 1,
+                                weight: Number(itemWeight) || 0.5,
+                                note: shippingNote
+                              };
+                            }
+
+                            const res = await fetch(endpoint, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(payload)
                             });
-                            
-                                                         const data = await res.json();
-                             if (res.ok) {
-                               const hasFailures = data.results && data.results.some((r: any) => !r.success);
-                               if (hasFailures) {
-                                 const firstFail = data.results.find((r: any) => !r.success);
-                                 toast.error(`${data.message}. Reason: ${firstFail?.message || 'Unknown error'}`);
-                               } else {
-                                 toast.success(data.message || `${settings?.courierConfig?.activeProvider} booked successfully!`);
-                               }
-                               onUpdate();
-                               const updateRes = await fetch(`/api/orders/${orderId}`);
-                               if (updateRes.ok) setOrder(await updateRes.json());
-                             } else {
-                              toast.error(data.message || 'Courier booking failed');
+
+                            const data = await res.json();
+                            if (res.ok) {
+                              const hasFailures = data.results && data.results.some((r: any) => !r.success);
+                              if (hasFailures) {
+                                const firstFail = data.results.find((r: any) => !r.success);
+                                toast.error(`${data.message || 'Partial booking failure'}. Reason: ${firstFail?.message || 'Unknown error'}`);
+                              } else {
+                                toast.success(data.message || `${courierNameUpper} booked successfully!`);
+                              }
+                              onUpdate();
+                              const updateRes = await fetch(`/api/orders/${orderId}`);
+                              if (updateRes.ok) setOrder(await updateRes.json());
+                            } else {
+                              toast.error(data.message || `${courierNameUpper} booking failed`);
                             }
                           } catch (e) {
-                            toast.error('Network error');
+                            toast.error('Network error during courier booking');
                           } finally {
                             setBookingLoading(false);
                           }
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                       >
-                        {bookingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />} 
-                        Hand over to {settings?.courierConfig?.activeProvider ? settings.courierConfig.activeProvider.toUpperCase() : 'Courier'}
+                        {bookingLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Truck className="h-4 w-4" />
+                        )}
+                        Hand over to {selectedCourier.toUpperCase()}
                       </button>
                     </>
                   )}

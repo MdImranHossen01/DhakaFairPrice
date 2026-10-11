@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const resellerId = await getResellerId(session.user.id);
     const body = await request.json();
 
-    const { name, slug, description, sku, categories, tags, images, attributes, variants, isFeatured, isNewArrival, isPublished, isShared, discountRate } = body;
+    const { name, slug, description, sku, barcode, categories, tags, images, attributes, variants, isFeatured, isNewArrival, isPublished, isShared, discountRate } = body;
     let { price, salePrice, purchasePrice, resellerPrice, stock } = body;
 
     const parsedPrice = Number(price) || 0;
@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
       resellerPrice: computedResellerPrice,
       discountRate: parsedDiscountRate,
       sku,
+      barcode: barcode?.trim() || undefined,
       stock: parsedStock,
       categories: categories || [],
       tags: tags || [],
@@ -145,7 +146,7 @@ export async function PATCH(request: NextRequest) {
 
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'discountRate',
-      'sku', 'stock', 'categories', 'tags', 'images', 'batches',
+      'sku', 'barcode', 'stock', 'categories', 'tags', 'images', 'batches',
       'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isPublished', 'isShared', 'deliveryCharge'
     ];
     const updateData: any = {};

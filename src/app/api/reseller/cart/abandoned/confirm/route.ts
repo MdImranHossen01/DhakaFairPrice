@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
           ...(customerPhone ? [{ phone: customerPhone }] : []),
           ...(cart.email ? [{ email: cart.email.toLowerCase().trim() }] : []),
           ...(customerPhone ? [{ email: `${customerPhone}@store.com` }] : []),
-          ...(customerPhone ? [{ email: `${customerPhone}@dhakafairprice.com` }] : [])
+          ...(customerPhone ? [{ email: `${customerPhone}@swapnobaz.com` }] : [])
         ]
       }).session(sessionConn);
 
