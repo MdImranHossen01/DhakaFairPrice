@@ -3,92 +3,275 @@ import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
 import GlobalSettings from '@/models/GlobalSettings';
 import { getSteadfastStatus } from '@/lib/steadfast';
+import { getPathaoStatus, PathaoProvider } from '@/lib/pathao';
+import { getRedXStatus, RedXProvider } from '@/lib/redx';
+import { auth } from '@/auth';
 
 /**
- * Cron Job: Sync Courier Delivery Status
+ * Cron Job & Manual API: Sync Courier Delivery Status (Steadfast, Pathao & RedX)
  * 
- * Checks Steadfast for delivery updates on all active courier shipments.
- * If courier shows "delivered", order status is updated to "Delivered".
- * Also handles "cancelled" courier status.
+ * Checks Steadfast, Pathao and RedX for delivery updates on all active courier shipments.
+ * If courier shows "Delivered" or "Partial Delivered":
+ *   1. Order status is updated to "Delivered"
+ *   2. If unpaid (COD), paymentStatus is updated to "Paid"
+ *   3. ResellerOrder status and commission are automatically synchronized/cleared
+ *   4. Reseller wallet balance is credited with their earned commission
  * 
- * Scheduled to run every 2 hours via vercel.json
- * Protected by CRON_SECRET env variable.
+ * Can be triggered via:
+ *   - Vercel Cron or External Cron with Bearer CRON_SECRET or ?key=CRON_SECRET
+ *   - Admin Panel with authenticated session
  */
-export async function GET(req: NextRequest) {
+async function handleSyncCourierStatus(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronKey = req.nextUrl.searchParams.get('key');
+  const cronSecret = process.env.CRON_SECRET;
+
+  const isCronAuthorized =
+    Boolean(cronSecret) &&
+    (authHeader === `Bearer ${cronSecret}` || cronKey === cronSecret);
+
+  let isAdminAuthorized = false;
+  if (!isCronAuthorized) {
+    try {
+      const session = await auth();
+      const role = (session?.user as any)?.role;
+      const email = session?.user?.email?.toLowerCase();
+      isAdminAuthorized =
+        role === 'admin' ||
+        role === 'super_admin' ||
+        role === 'manager' ||
+        role === 'moderator' ||
+        email === 'imranshuvo101@gmail.com';
+    } catch {
+      isAdminAuthorized = false;
+    }
+  }
+
+  if (!isCronAuthorized && !isAdminAuthorized) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     await connectToDatabase();
 
-    // Get Steadfast credentials from settings
     const settingsDoc = await GlobalSettings.findOne();
     if (!settingsDoc) {
       return NextResponse.json({ message: 'Global settings not found' }, { status: 404 });
     }
 
-    const apiKey = settingsDoc.courierConfig?.steadfast?.apiKey;
-    const secretKey = settingsDoc.courierConfig?.steadfast?.secretKey;
+    // Steadfast credentials
+    const steadfastApiKey = settingsDoc.courierConfig?.steadfast?.apiKey;
+    const steadfastSecretKey = settingsDoc.courierConfig?.steadfast?.secretKey;
+    const isSteadfastConfigured = Boolean(steadfastApiKey && steadfastSecretKey);
+    const steadfastConfig = isSteadfastConfigured
+      ? { apiKey: steadfastApiKey!, secretKey: steadfastSecretKey! }
+      : null;
 
-    if (!apiKey || !secretKey) {
-      return NextResponse.json({ message: 'Steadfast credentials not configured' }, { status: 400 });
+    // Pathao credentials
+    const pathaoConfigData = settingsDoc.courierConfig?.pathao;
+    const isPathaoConfigured = Boolean(pathaoConfigData?.clientId && pathaoConfigData?.clientSecret);
+    const pathaoProvider = isPathaoConfigured
+      ? new PathaoProvider({
+          clientId: pathaoConfigData!.clientId!,
+          clientSecret: pathaoConfigData!.clientSecret!,
+          storeId: pathaoConfigData?.storeId,
+          username: pathaoConfigData?.username,
+          password: pathaoConfigData?.password,
+          isSandbox: pathaoConfigData?.isSandbox,
+        })
+      : null;
+
+    // RedX credentials
+    const redxApiKey = settingsDoc.courierConfig?.redx?.apiKey;
+    const isRedxConfigured = Boolean(redxApiKey);
+    const redxConfig = isRedxConfigured
+      ? { apiKey: redxApiKey!, isSandbox: settingsDoc.courierConfig?.redx?.isSandbox }
+      : null;
+
+    if (!isSteadfastConfigured && !isPathaoConfigured && !isRedxConfigured) {
+      return NextResponse.json(
+        { message: 'No courier credentials (Steadfast, Pathao or RedX) are configured in Settings.' },
+        { status: 400 }
+      );
     }
 
-    const courierConfig = { apiKey, secretKey };
-
-    // Find all orders that have been sent to Steadfast but not yet Delivered or Cancelled
+    // Find all active orders shipped with a courier that are not yet Delivered or Cancelled
     const pendingOrders = await Order.find({
       'shippingDetails.consignmentId': { $exists: true, $ne: null },
-      'shippingDetails.courierName': 'Steadfast',
       status: { $nin: ['Delivered', 'Cancelled'] },
-      deletedAt: null
+      deletedAt: null,
     }).select('_id shortId status shippingDetails paymentStatus');
 
     if (pendingOrders.length === 0) {
-      return NextResponse.json({ message: 'No active courier shipments to sync', updated: 0 });
+      return NextResponse.json({
+        message: 'No active courier shipments to sync',
+        updated: 0,
+        pendingCount: 0,
+      });
     }
 
     let deliveredCount = 0;
     let cancelledCount = 0;
     let errorCount = 0;
+    let steadfastCount = 0;
+    let pathaoCount = 0;
+    let redxCount = 0;
     const results: any[] = [];
 
     for (const order of pendingOrders) {
       try {
         const consignmentId = order.shippingDetails?.consignmentId;
+        const courierName = (order.shippingDetails?.courierName || '').toLowerCase();
+
         if (!consignmentId) continue;
 
-        const statusData = await getSteadfastStatus(consignmentId, courierConfig);
+        let courierStatus = '';
+        let isDelivered = false;
+        let isCancelled = false;
 
-        // Steadfast returns delivery_status: "delivered" | "partial_delivered" | "cancelled" | "hold" | "in_review" | "unknown" etc.
-        const courierStatus = statusData?.delivery_status || statusData?.status || '';
-        const normalizedStatus = courierStatus.toLowerCase();
+        // ── 1. STEADFAST SYNC ──
+        if (courierName.includes('steadfast')) {
+          if (!steadfastConfig) {
+            results.push({
+              orderId: order._id,
+              shortId: order.shortId,
+              courier: 'Steadfast',
+              action: 'skipped',
+              reason: 'Steadfast not configured',
+            });
+            continue;
+          }
 
-        // Update the shippingDetails.courierStatus regardless
+          steadfastCount++;
+          const statusData = await getSteadfastStatus(consignmentId, steadfastConfig);
+          courierStatus = statusData?.delivery_status || statusData?.status || '';
+          const normalized = courierStatus.toLowerCase().trim();
+
+          if (normalized === 'delivered' || normalized === 'partial_delivered' || normalized === 'partial delivered') {
+            isDelivered = true;
+          } else if (normalized === 'cancelled' || normalized === 'canceled') {
+            isCancelled = true;
+          }
+
+        // ── 2. PATHAO SYNC ──
+        } else if (courierName.includes('pathao')) {
+          if (!pathaoProvider) {
+            results.push({
+              orderId: order._id,
+              shortId: order.shortId,
+              courier: 'Pathao',
+              action: 'skipped',
+              reason: 'Pathao not configured',
+            });
+            continue;
+          }
+
+          pathaoCount++;
+          const statusData = await pathaoProvider.getOrderStatus(consignmentId);
+          // Pathao returns order_status (e.g. 'Delivered', 'Partial Delivered', 'Return', 'Cancelled', 'In Transit')
+          courierStatus =
+            statusData?.order_status ||
+            statusData?.order_status_slug ||
+            statusData?.status ||
+            '';
+          const normalized = courierStatus.toLowerCase().replace(/_/g, ' ').trim();
+
+          if (normalized === 'delivered' || normalized === 'partial delivered') {
+            isDelivered = true;
+          } else if (
+            normalized === 'cancelled' ||
+            normalized === 'canceled' ||
+            normalized === 'return' ||
+            normalized === 'returned'
+          ) {
+            isCancelled = true;
+          }
+
+        // ── 3. REDX SYNC ──
+        } else if (courierName.includes('redx')) {
+          if (!redxConfig) {
+            results.push({
+              orderId: order._id,
+              shortId: order.shortId,
+              courier: 'RedX',
+              action: 'skipped',
+              reason: 'RedX not configured',
+            });
+            continue;
+          }
+
+          redxCount++;
+          const statusData = await getRedXStatus(consignmentId, redxConfig);
+          const trackingList = statusData?.tracking || [];
+          const latestMsg = trackingList.length > 0 ? trackingList[trackingList.length - 1]?.message_en : '';
+          courierStatus = statusData?.status || latestMsg || '';
+          const normalized = (courierStatus || '').toLowerCase();
+
+          if (normalized.includes('delivered')) {
+            isDelivered = true;
+          } else if (normalized.includes('cancel') || normalized.includes('return')) {
+            isCancelled = true;
+          }
+
+        } else {
+          // Unknown or unsupported courier
+          continue;
+        }
+
         const updateFields: any = {
-          'shippingDetails.courierStatus': courierStatus
+          'shippingDetails.courierStatus': courierStatus,
         };
 
-        if (normalizedStatus === 'delivered' || normalizedStatus === 'partial_delivered') {
+        if (isDelivered) {
           updateFields.status = 'Delivered';
-          // If COD order and delivered, mark payment as Paid
           if (order.paymentStatus !== 'Paid') {
             updateFields.paymentStatus = 'Paid';
           }
           deliveredCount++;
-          results.push({ orderId: order._id, shortId: order.shortId, action: 'marked_delivered', courierStatus });
-        } else if (normalizedStatus === 'cancelled') {
-          // Don't auto-cancel orders; just update courier status tag
+          results.push({
+            orderId: order._id,
+            shortId: order.shortId,
+            courier: order.shippingDetails?.courierName,
+            action: 'marked_delivered',
+            courierStatus,
+          });
+        } else if (isCancelled) {
           cancelledCount++;
-          results.push({ orderId: order._id, shortId: order.shortId, action: 'courier_cancelled', courierStatus });
+          results.push({
+            orderId: order._id,
+            shortId: order.shortId,
+            courier: order.shippingDetails?.courierName,
+            action: 'courier_cancelled',
+            courierStatus,
+          });
         } else {
-          results.push({ orderId: order._id, shortId: order.shortId, action: 'no_change', courierStatus });
+          results.push({
+            orderId: order._id,
+            shortId: order.shortId,
+            courier: order.shippingDetails?.courierName,
+            action: 'no_change',
+            courierStatus,
+          });
         }
 
+        // Update Mother Order
         await Order.updateOne({ _id: order._id }, { $set: updateFields });
 
+        // Update Child Reseller Orders
+        const mongoose = await import('mongoose');
+        const ResellerOrder = mongoose.models.ResellerOrder || mongoose.model('ResellerOrder');
+        await ResellerOrder.updateMany(
+          { motherOrderId: order._id },
+          {
+            $set: {
+              'shippingDetails.courierStatus': courierStatus,
+              ...(updateFields.status ? { status: updateFields.status } : {}),
+              ...(updateFields.paymentStatus ? { paymentStatus: updateFields.paymentStatus } : {}),
+            },
+          }
+        );
+
+        // Synchronize Reseller Commission and Wallet Balance atomically
         if (updateFields.status || updateFields.paymentStatus) {
           const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
           await syncResellerCommissionForMotherOrder({
@@ -97,24 +280,41 @@ export async function GET(req: NextRequest) {
             newPaymentStatus: updateFields.paymentStatus,
           });
         }
-
       } catch (err: any) {
         errorCount++;
-        results.push({ orderId: order._id, shortId: order.shortId, action: 'error', error: err.message });
+        results.push({
+          orderId: order._id,
+          shortId: order.shortId,
+          courier: order.shippingDetails?.courierName,
+          action: 'error',
+          error: err.message,
+        });
         console.error(`Courier sync error for order ${order._id}:`, err.message);
       }
     }
 
     return NextResponse.json({
-      message: `Synced ${pendingOrders.length} shipments. Delivered: ${deliveredCount}, Cancelled by courier: ${cancelledCount}, Errors: ${errorCount}`,
+      success: true,
+      message: `Synced ${pendingOrders.length} shipments (Steadfast: ${steadfastCount}, Pathao: ${pathaoCount}, RedX: ${redxCount}). Delivered: ${deliveredCount}, Cancelled/Returned: ${cancelledCount}, Errors: ${errorCount}`,
+      totalChecked: pendingOrders.length,
+      steadfastCount,
+      pathaoCount,
+      redxCount,
       deliveredCount,
       cancelledCount,
       errorCount,
-      results
+      results,
     });
-
   } catch (error: any) {
     console.error('CRITICAL: Courier sync cron error:', error);
     return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handleSyncCourierStatus(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleSyncCourierStatus(req);
 }

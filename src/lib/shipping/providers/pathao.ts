@@ -259,13 +259,59 @@ export class PathaoProvider implements ShippingProvider {
     }
   }
 
+  /**
+   * Fetches the real-time order status and details of a Pathao consignment.
+   */
+  async getOrderStatus(consignmentId: string): Promise<any> {
+    try {
+      const token = await this.getAccessToken();
+      const response = await fetch(`${this.baseUrl}/aladdin/api/v1/orders/${encodeURIComponent(consignmentId)}/info`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMsg = `Pathao status request failed (${response.status})`;
+        try {
+          const parsed = JSON.parse(errorText);
+          errorMsg = parsed.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error(`Pathao getOrderStatus failed for consignment ${consignmentId}:`, error.message);
+      throw error;
+    }
+  }
+
   async trackOrder(trackingId: string): Promise<any> {
     const trackingUrl = `https://merchant.pathao.com/tracking?consignment_id=${trackingId}`;
-    return {
-      status: 'check_portal',
-      tracking_url: trackingUrl,
-      url: trackingUrl,
-    };
+    try {
+      const info = await this.getOrderStatus(trackingId);
+      const courierStatus = info?.order_status || info?.order_status_slug || info?.status || 'In Transit';
+      return {
+        success: true,
+        status: courierStatus,
+        consignment_id: trackingId,
+        tracking_code: trackingId,
+        tracking_url: trackingUrl,
+        url: trackingUrl,
+        raw: info,
+      };
+    } catch {
+      return {
+        status: 'check_portal',
+        tracking_url: trackingUrl,
+        url: trackingUrl,
+      };
+    }
   }
 }
 

@@ -31,7 +31,8 @@ import {
   FileText,
   Filter as FilterIcon,
   Copy,
-  Search
+  Search,
+  RefreshCw,
 } from 'lucide-react';
 
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -166,6 +167,7 @@ function OrdersContent() {
   const isSteadfastConfigured = Boolean(settings?.courierConfig?.steadfast?.apiKey && settings?.courierConfig?.steadfast?.secretKey);
   const isPathaoConfigured = Boolean(settings?.courierConfig?.pathao?.clientId && settings?.courierConfig?.pathao?.clientSecret);
   const isRedxConfigured = Boolean(settings?.courierConfig?.redx?.apiKey);
+  const [isSyncingCouriers, setIsSyncingCouriers] = useState(false);
  
   // Debounce search term
   useEffect(() => {
@@ -654,6 +656,29 @@ function OrdersContent() {
     }
   };
 
+  const handleSyncCouriers = async () => {
+    setIsSyncingCouriers(true);
+    toast.info('Checking Steadfast, Pathao & RedX for courier delivery updates...');
+    try {
+      const res = await fetch('/api/cron/sync-courier-status', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.deliveredCount > 0) {
+          toast.success(`Synced! ${data.deliveredCount} orders updated to Delivered.`);
+        } else {
+          toast.success(data.message || 'Courier sync complete. All orders up to date.');
+        }
+        fetchOrders();
+      } else {
+        toast.error(data.message || 'Courier sync failed');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Error syncing courier statuses');
+    } finally {
+      setIsSyncingCouriers(false);
+    }
+  };
+
   const handleHoldOrder = async (orderId: string) => {
     const result = await Swal.fire({
       title: 'Hold Order',
@@ -731,9 +756,22 @@ function OrdersContent() {
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight whitespace-nowrap">Order Management</h2>
           <p className="text-muted-foreground text-xs md:text-sm hidden sm:block">Review, fulfillment and track shop orders.</p>
         </div>
-        <Button onClick={exportToCSV} className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold shrink-0">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSyncingCouriers}
+            onClick={handleSyncCouriers}
+            className="font-semibold shrink-0 border-primary/30 hover:bg-primary/10 text-primary"
+            title="Check Steadfast & Pathao for delivery status updates"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isSyncingCouriers ? 'animate-spin' : ''}`} />
+            {isSyncingCouriers ? 'Syncing...' : 'Sync Couriers'}
+          </Button>
+          <Button onClick={exportToCSV} className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold shrink-0">
           <Download className="mr-2 h-4 w-4" /> Export
-        </Button>
+          </Button>
+        </div>
       </div>
 
       {/* Search and Date Range Row (1 Row) */}

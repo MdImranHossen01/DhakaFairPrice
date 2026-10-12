@@ -129,33 +129,71 @@ export class RedXProvider implements ShippingProvider {
     }
   }
 
-  async trackOrder(trackingId: string): Promise<any> {
-    const trackingUrl = `https://redx.com.bd/track-parcel/?trackingId=${trackingId}`;
+  /**
+   * Fetches the real-time tracking status of a RedX parcel.
+   */
+  async getOrderStatus(trackingId: string): Promise<any> {
     try {
-      const response = await fetch(`${this.baseUrl}/parcels/${trackingId}`, {
+      const cleanId = encodeURIComponent(trackingId.trim());
+      // Try primary tracking endpoint: /parcel/track/:parcel_id
+      let response = await fetch(`${this.baseUrl}/parcel/track/${cleanId}`, {
+        method: 'GET',
         headers: {
+          'API-ACCESS-TOKEN': `Bearer ${this.apiKey}`,
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          status: data.status || 'in_transit',
-          tracking_url: trackingUrl,
-          url: trackingUrl,
-          details: data,
-        };
-      }
-    } catch {
-      // Fallback
-    }
 
-    return { 
-      status: 'check_portal', 
-      tracking_url: trackingUrl,
-      url: trackingUrl,
-    };
+      // Fallback endpoint: /parcels/:parcel_id
+      if (!response.ok) {
+        response = await fetch(`${this.baseUrl}/parcels/${cleanId}`, {
+          method: 'GET',
+          headers: {
+            'API-ACCESS-TOKEN': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`RedX status fetch failed (${response.status}): ${errorText.slice(0, 100)}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error(`[RedX getOrderStatus error for ${trackingId}]:`, error.message);
+      throw error;
+    }
+  }
+
+  async trackOrder(trackingId: string): Promise<any> {
+    const trackingUrl = `https://redx.com.bd/track-parcel/?trackingId=${trackingId}`;
+    try {
+      const data = await this.getOrderStatus(trackingId);
+      const trackingList = data?.tracking || [];
+      const latestMsg = trackingList.length > 0 ? trackingList[trackingList.length - 1]?.message_en : '';
+      const status = data?.status || latestMsg || 'in_transit';
+
+      return {
+        success: true,
+        status,
+        tracking_code: trackingId,
+        consignment_id: trackingId,
+        tracking_url: trackingUrl,
+        url: trackingUrl,
+        details: data,
+      };
+    } catch {
+      return { 
+        status: 'check_portal', 
+        tracking_url: trackingUrl,
+        url: trackingUrl,
+      };
+    }
   }
 }
 
