@@ -92,7 +92,7 @@ export async function printStickerInvoice(orderOrOrders: any | any[], settings: 
 
     const totalAmount = order.totalAmount !== undefined ? Number(order.totalAmount) : Number(order.total) || 0;
     const codAmount = order.paymentStatus === 'Paid' ? 0 : Math.round(totalAmount);
-    const qrData = consignmentId ? (order.shippingDetails?.trackingUrl || `https://steadfast.com.bd/t/${consignmentId}`) : orderId;
+    const qrData = consignmentId ? consignmentId : orderId;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrData)}`;
 
     const recipientName = order.shippingAddress?.fullName || order.customerName || order.customer?.name || 'Customer';
