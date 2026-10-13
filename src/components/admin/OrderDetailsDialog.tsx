@@ -1022,20 +1022,26 @@ export default function OrderDetailsDialog({
                   {fraudLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
                 </div>
 
-                {fraudData?.status === 'success' && fraudData?.data?.summary ? (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-[10px]">Success Rate:</span>
-                        <span className={`font-black ${fraudData.data.summary.success_ratio >= 80 ? 'text-green-600' : fraudData.data.summary.success_ratio >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {fraudData.data.summary.success_ratio}%
-                        </span>
-                      </div>
-                      <span className="text-muted-foreground/35">|</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-[10px]">Total Parcels:</span>
-                        <span className="font-bold text-slate-800 dark:text-zinc-200">{fraudData.data.summary.total_parcel}</span>
-                      </div>
+                {fraudData?.status === 'success' && fraudData?.data?.summary ? (() => {
+                  const s = fraudData.data.summary;
+                  const total = Number(s.total_parcel) || 0;
+                  const delivered = Number(s.success_parcel) || 0;
+                  const successRate = total > 0 ? Math.round((delivered / total) * 1000) / 10 : (s.success_ratio || 0);
+                  const colorClass = successRate >= 70 ? 'text-green-600' : successRate >= 50 ? 'text-yellow-600' : 'text-red-600';
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-[10px]">Success Rate:</span>
+                          <span className={`font-black ${colorClass}`}>
+                            {successRate}%
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground/35">|</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-[10px]">Total Parcels:</span>
+                          <span className="font-bold text-slate-800 dark:text-zinc-200">{s.total_parcel}</span>
+                        </div>
                       <span className="text-muted-foreground/35">|</span>
                       <div className="flex items-center gap-1">
                         <span className="text-muted-foreground text-[10px]">Delivered:</span>
@@ -1062,7 +1068,7 @@ export default function OrderDetailsDialog({
                       </div>
                     )}
                   </div>
-                ) : !fraudLoading && (
+                ); })() : !fraudLoading && (
                   <div className="flex justify-between items-center text-[10px]">
                     <span className="text-muted-foreground">Click to fetch courier history</span>
                     <Button 

@@ -60,17 +60,20 @@ function FraudCheckBadge({ phone }: { phone: string }) {
 
   if (!data || !data.data?.summary) return null;
 
-  const successRatio = data.data.summary.success_ratio;
+  const summary = data.data.summary;
+  const total = Number(summary.total_parcel) || 0;
+  const delivered = Number(summary.success_parcel) || 0;
+  const successRatio = total > 0 ? Math.round((delivered / total) * 1000) / 10 : (summary.success_ratio || 0);
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ml-2 border ${successRatio >= 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-          successRatio >= 60 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ml-2 border ${successRatio >= 70 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+          successRatio >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
             'bg-red-50 text-red-700 border-red-200'
         }`}
-      title={`Total: ${data.data.summary.total_parcel} | Delivered: ${data.data.summary.success_parcel} | Cancelled: ${data.data.summary.cancelled_parcel}`}
+      title={`Total: ${total} | Delivered: ${delivered} | Cancelled: ${summary.cancelled_parcel}`}
     >
-      {successRatio >= 80 ? <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
+      {successRatio >= 70 ? <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
       {successRatio}% Success
     </span>
   );

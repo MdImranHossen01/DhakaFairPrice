@@ -94,9 +94,12 @@ function FraudCheckBadge({ phone }: { phone?: string }) {
         const json = await promise;
         if (json?.status === 'success' && json?.data?.summary) {
           const summary = json.data.summary;
+          const total = Number(summary.total_parcel) || 0;
+          const delivered = Number(summary.success_parcel) || 0;
+          const calculatedRatio = total > 0 ? Math.round((delivered / total) * 1000) / 10 : (summary.success_ratio || 0);
           fraudCache[phone] = {
-            success_ratio: summary.success_ratio,
-            total_parcel: summary.total_parcel
+            success_ratio: calculatedRatio,
+            total_parcel: total
           };
         } else {
           fraudCache[phone] = null;
@@ -120,7 +123,7 @@ function FraudCheckBadge({ phone }: { phone?: string }) {
   if (!data) return null;
 
   const ratio = data.success_ratio;
-  const colorClass = ratio >= 80 ? 'text-green-600 font-extrabold' : ratio >= 60 ? 'text-yellow-600 font-extrabold' : 'text-red-600 font-extrabold';
+  const colorClass = ratio >= 70 ? 'text-green-600 font-extrabold' : ratio >= 50 ? 'text-yellow-600 font-extrabold' : 'text-red-600 font-extrabold';
 
   return (
     <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 font-bold inline-block ${colorClass}`} title={`${data.total_parcel} total parcels`}>
