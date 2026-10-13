@@ -249,7 +249,7 @@ export default function TrackOrderPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-bold text-foreground truncate">{item.name}</p>
+                                                    <p className="text-xs font-bold text-foreground whitespace-normal break-words leading-tight">{item.name}</p>
                                                     <p className="text-[11px] text-muted-foreground mt-0.5">
                                                         ৳{item.price?.toLocaleString()} × {item.quantity}
                                                     </p>

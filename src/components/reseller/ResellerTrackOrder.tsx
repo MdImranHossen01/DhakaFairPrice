@@ -254,7 +254,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate">{item.name}</p>
+                        <p className="text-xs font-bold whitespace-normal break-words leading-tight">{item.name}</p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           ৳{item.retailPrice} × {item.quantity}
                           {item.color || item.size ? ` | ${[item.color, item.size].filter(Boolean).join(' - ')}` : ''}

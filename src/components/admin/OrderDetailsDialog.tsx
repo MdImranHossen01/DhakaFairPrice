@@ -1628,7 +1628,7 @@ export default function OrderDetailsDialog({
                          )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-medium line-clamp-1">{item.name}</span>
+                        <span className="font-medium whitespace-normal break-words leading-snug">{item.name}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                           {item.color && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">{item.color}</Badge>}
                           {item.size && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">Size: {item.size}</Badge>}

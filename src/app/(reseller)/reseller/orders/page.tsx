@@ -665,34 +665,34 @@ function OrdersContent() {
                           </div>
                         </TableCell>
 
-                        <TableCell>
-                          <div className="flex flex-col gap-1 w-full max-w-[280px]">
+                        <TableCell className="min-w-[260px] max-w-[380px] whitespace-normal">
+                          <div className="flex flex-col gap-1 w-full">
                             {order.items?.map((item: any, i: number) => {
                               const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
                               return (
-                                <div key={item._id || item.id || i} className="text-xs bg-muted/40 p-1.5 rounded-md border truncate font-medium" title={item.name}>
-                                  <span className="font-semibold text-muted-foreground">{item.quantity}x</span>{' '}
-                                  <span className="font-bold text-slate-800 dark:text-zinc-200">{item.name}</span>
+                                <div key={item._id || item.id || i} className="text-xs bg-muted/40 p-1.5 rounded-md border font-medium whitespace-normal break-words leading-snug" title={item.name}>
+                                  <span className="font-semibold text-primary mr-1">{item.quantity}x</span>{' '}
+                                  <span className="font-bold text-foreground">{item.name}</span>
                                   {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
                                 </div>
                               );
                             })}
                             {/* Customer Note */}
                             {order.customerNote && (
-                              <div className="text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded-md border border-sky-200 dark:border-sky-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1 font-medium">
-                                <span className="font-bold">💬 Customer:</span> {order.customerNote}
+                              <div className="text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded-md border border-sky-200 dark:border-sky-900/50 mt-1 whitespace-normal break-words flex items-start gap-1 font-medium">
+                                <span className="font-bold shrink-0">💬 Customer:</span> <span>{order.customerNote}</span>
                               </div>
                             )}
                             {/* Reseller Internal Note */}
                             {order.internalNote && (
-                              <div className="text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 p-1.5 rounded-md border border-amber-200 dark:border-amber-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1 font-medium">
-                                <span className="font-bold">🔒 Private:</span> {order.internalNote}
+                              <div className="text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 p-1.5 rounded-md border border-amber-200 dark:border-amber-900/50 mt-1 whitespace-normal break-words flex items-start gap-1 font-medium">
+                                <span className="font-bold shrink-0">🔒 Private:</span> <span>{order.internalNote}</span>
                               </div>
                             )}
                             {/* System Note / Fulfillment */}
                             {order.systemNote && (
-                              <div className="text-xs bg-muted/60 text-muted-foreground p-1 rounded-md border border-border mt-1 font-mono flex items-center gap-1">
-                                <span>⚙️</span> {order.systemNote}
+                              <div className="text-xs bg-muted/60 text-muted-foreground p-1 rounded-md border border-border mt-1 font-mono flex items-center gap-1 whitespace-normal break-words">
+                                <span className="shrink-0">⚙️</span> <span>{order.systemNote}</span>
                               </div>
                             )}
                           </div>
@@ -843,6 +843,22 @@ function OrdersContent() {
                         <span className="font-medium">{format(new Date(order.createdAt), 'dd MMM yyyy, h:mm a')}</span>
                       </div>
                     </div>
+
+                    {/* Items List */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="flex flex-col gap-1 pt-2 border-t border-dashed">
+                        {order.items.map((item: any, i: number) => {
+                          const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
+                          return (
+                            <div key={item._id || item.id || i} className="text-[11px] bg-muted/40 p-1.5 rounded border font-medium whitespace-normal break-words leading-tight">
+                              <span className="font-semibold text-primary mr-1">{item.quantity}x</span>
+                              <span className="font-bold text-foreground">{item.name}</span>
+                              {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 mt-2">
                       <div>

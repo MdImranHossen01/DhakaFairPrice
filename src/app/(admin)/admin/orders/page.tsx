@@ -1174,14 +1174,15 @@ function OrdersContent() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                    <TableCell className="min-w-[260px] max-w-[380px] whitespace-normal">
+                      <div className="flex flex-col gap-1.5 w-full">
+                        <div className="flex flex-col gap-1 w-full">
                           {order.items?.map((item: any, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5 font-medium truncate max-w-[200px]">
-                              {item.quantity}× {item.name}
+                            <Badge key={idx} variant="outline" className="text-xs px-2 py-1 font-medium whitespace-normal break-words inline-block text-left h-auto leading-snug">
+                              <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                              <span>{item.name}</span>
                               {(item.color || item.size) && (
-                                <span className="text-muted-foreground ml-1">
+                                <span className="text-muted-foreground ml-1 font-normal">
                                   ({[item.color, item.size].filter(Boolean).join('/')})
                                 </span>
                               )}
@@ -1190,24 +1191,24 @@ function OrdersContent() {
                         </div>
                         {/* Customer Note */}
                         {order.customerNote && (
-                          <div className="mt-1 text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded border border-sky-200/50 font-medium whitespace-pre-line max-w-[220px]" title={`Customer Note: ${order.customerNote}`}>
+                          <div className="mt-1 text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded border border-sky-200/50 font-medium whitespace-normal break-words" title={`Customer Note: ${order.customerNote}`}>
                             💬 Customer: {order.customerNote}
                           </div>
                         )}
                         {/* Internal Note */}
                         {order.internalNote && (
-                          <div className="mt-1 text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-1.5 rounded border border-amber-200/50 font-medium whitespace-pre-line max-w-[220px]" title={`Internal Note: ${order.internalNote}`}>
+                          <div className="mt-1 text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-1.5 rounded border border-amber-200/50 font-medium whitespace-normal break-words" title={`Internal Note: ${order.internalNote}`}>
                             🔒 Staff: {order.internalNote}
                           </div>
                         )}
                         {/* System Note */}
                         {order.systemNote && (
-                          <div className="mt-1 text-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono max-w-[220px] truncate" title={`System Info: ${order.systemNote}`}>
+                          <div className="mt-1 text-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono whitespace-normal break-words" title={`System Info: ${order.systemNote}`}>
                             ⚙️ {order.systemNote}
                           </div>
                         )}
                         {order.resellerId && typeof order.resellerId === 'object' && order.resellerId.storeName && (
-                          <div className="mt-1 text-xs bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/50 font-bold whitespace-nowrap max-w-[220px] truncate" title={order.resellerId.storeName}>
+                          <div className="mt-1 text-xs bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/50 font-bold whitespace-normal break-words" title={order.resellerId.storeName}>
                             Store: {order.resellerId.storeName}
                           </div>
                         )}
@@ -1431,10 +1432,11 @@ function OrdersContent() {
                   </div>
 
                   {/* Items List */}
-                  <div className="flex flex-wrap gap-1 pt-1 border-t border-dashed">
+                  <div className="flex flex-col gap-1 pt-1 border-t border-dashed">
                     {order.items?.map((item: any, idx: number) => (
-                      <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0.5 font-normal">
-                        {item.quantity}× {item.name}
+                      <Badge key={idx} variant="outline" className="text-[11px] px-2 py-0.5 font-normal whitespace-normal break-words inline-block text-left h-auto leading-tight">
+                        <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                        <span>{item.name}</span>
                         {(item.color || item.size) && (
                           <span className="text-muted-foreground ml-1">
                             ({[item.color, item.size].filter(Boolean).join('/')})
