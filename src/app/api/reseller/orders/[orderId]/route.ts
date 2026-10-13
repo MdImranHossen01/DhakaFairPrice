@@ -153,6 +153,26 @@ export async function PATCH(
           console.error('[Reseller Order Sales Count Error]', salesErr);
         }
       }
+      // Sync reseller commission and ledger if status is Cancelled
+      if (status === 'Cancelled' || paymentStatus === 'Failed') {
+        try {
+          const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
+          await syncResellerCommissionForMotherOrder({
+            motherOrderId: order.motherOrderId,
+            newStatus: status,
+            newPaymentStatus: paymentStatus,
+          });
+
+          const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+          const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+          const shortId = order.motherOrderId.toString().slice(-8).toUpperCase();
+          await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
+          await recalculateLedgerBalance('CASH');
+          await recalculateLedgerBalance('BANK');
+        } catch (syncErr) {
+          console.error('[Reseller Order Cancel Sync Error]', syncErr);
+        }
+      }
     }
 
     return NextResponse.json({
@@ -188,15 +208,35 @@ export async function DELETE(
     }
 
     // Soft delete ResellerOrder only for this reseller.
-    // NOTE: The Mother Order in Admin Dashboard remains untouched and active.
     const order = await ResellerOrder.findOneAndUpdate(
       { _id: orderId, resellerId: reseller._id },
-      { $set: { deletedAt: new Date() } },
+      { $set: { deletedAt: new Date(), commissionStatus: 'cancelled' } },
       { new: true }
     );
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+    }
+
+    // Cancel linked wallet transactions & reverse commission
+    try {
+      const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+      await ResellerWalletTransaction.updateMany(
+        { orderId: order._id, status: { $ne: 'cancelled' } },
+        { $set: { status: 'cancelled' } }
+      );
+      const commission = Number(order.resellerCommission) || 0;
+      if (commission > 0) {
+        const decField = order.commissionStatus === 'cleared' ? 'walletBalance' : 'pendingBalance';
+        await Reseller.findByIdAndUpdate(reseller._id, {
+          $inc: {
+            [decField]: -commission,
+            totalEarnings: -commission
+          }
+        });
+      }
+    } catch (cancelErr) {
+      console.error('[Reseller Order Delete Wallet Reversal Error]', cancelErr);
     }
 
     return NextResponse.json({ message: 'Order deleted successfully from your dashboard' });

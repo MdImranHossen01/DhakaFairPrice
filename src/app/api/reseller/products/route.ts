@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       variants: processedVariants.length > 0 ? processedVariants : (variants || []),
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
-      isPublished: isPublished !== undefined ? !!isPublished : true,
+      isPublished: false, // Default hidden/unpublished in Mother Shop. Mother Shop Admin decides when to publish.
       isShared: isShared !== undefined ? !!isShared : false,
       isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner

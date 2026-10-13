@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       user = await User.findOne({
         $or: [
           { phone: normalizedPhone },
-          { email: `${normalizedPhone}@dhakafairprice.com` }
+          { email: `${normalizedPhone}@swapnobaz.com` }
         ]
       }).select('+password');
 
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       } else {
         user = await User.create({
           name: name || `Admin ${normalizedPhone.slice(-4)}`,
-          email: `${normalizedPhone}@dhakafairprice.com`,
+          email: `${normalizedPhone}@swapnobaz.com`,
           phone: normalizedPhone,
           role: 'admin',
           image: image || undefined,
@@ -247,6 +247,28 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ 
         message: `Cannot delete user: This user has ${orderCount} existing orders. Delete orders first or suspend the user instead.` 
       }, { status: 400 });
+    }
+
+    // If deleting a user who is a reseller, cascade delete their reseller profile, products, and links
+    try {
+      const Reseller = (await import('@/models/Reseller')).default;
+      const reseller = await Reseller.findOne({ userId });
+      if (reseller) {
+        const Product = (await import('@/models/Product')).default;
+        const ResellerProduct = (await import('@/models/ResellerProduct')).default;
+        const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+        const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+
+        // Cascade delete products uploaded by this reseller
+        await Product.deleteMany({ uploadedBy: reseller._id });
+        // Cascade delete catalog links, wallet transactions & reseller orders
+        await ResellerProduct.deleteMany({ resellerId: reseller._id });
+        await ResellerWalletTransaction.deleteMany({ resellerId: reseller._id });
+        await ResellerOrder.deleteMany({ resellerId: reseller._id });
+        await Reseller.deleteOne({ _id: reseller._id });
+      }
+    } catch (cascadeErr) {
+      console.error('[Delete User Cascade Error]', cascadeErr);
     }
 
     await User.deleteOne({ _id: userId });

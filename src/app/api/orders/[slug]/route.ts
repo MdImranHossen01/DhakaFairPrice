@@ -260,6 +260,17 @@ export async function PATCH(
         } catch (ledgerErr) {
           console.error('[Ledger] Error logging payment in single update:', ledgerErr);
         }
+      } else if (order.paymentStatus === 'Paid' && (updatedOrder?.paymentStatus !== 'Paid' || ['Cancelled', 'Returned'].includes(updatedOrder?.status))) {
+        try {
+          const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+          const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+          const shortId = slug.slice(-8).toUpperCase();
+          await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
+          await recalculateLedgerBalance('CASH');
+          await recalculateLedgerBalance('BANK');
+        } catch (ledgerErr) {
+          console.error('[Ledger] Error reverting order ledger payment:', ledgerErr);
+        }
       }
 
       return NextResponse.json(updatedOrder);
@@ -297,6 +308,17 @@ export async function DELETE(
 
     if (!deletedOrder) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+    }
+
+    try {
+      const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+      const shortId = slug.slice(-8).toUpperCase();
+      await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
+      await recalculateLedgerBalance('CASH');
+      await recalculateLedgerBalance('BANK');
+    } catch (ledgerErr) {
+      console.error('[Ledger] Error cleaning order ledger transaction on delete:', ledgerErr);
     }
 
     return NextResponse.json({ message: 'Order deleted successfully' });

@@ -46,6 +46,20 @@ export async function GET(req: NextRequest) {
     const isAdmin = session?.user && ['admin', 'super_admin', 'manager', 'moderator'].includes((session.user as any).role);
     
     if (isAdmin) {
+      // Self-heal orphan products from deleted resellers
+      const Reseller = (await import('@/models/Reseller')).default;
+      const activeResellers = await Reseller.find({}, { _id: 1 }).lean();
+      const validResellerIds = new Set(activeResellers.map(r => r._id.toString()));
+
+      const allResellerProducts = await Product.find({ uploadedBy: { $ne: null, $exists: true } }, { _id: 1, uploadedBy: 1 }).lean();
+      const orphanIds = allResellerProducts
+        .filter(p => p.uploadedBy && !validResellerIds.has(p.uploadedBy.toString()))
+        .map(p => p._id);
+
+      if (orphanIds.length > 0) {
+        await Product.deleteMany({ _id: { $in: orphanIds } });
+      }
+
       if (tab === 'mother') {
         andConditions.push({
           $or: [

@@ -99,21 +99,53 @@ export async function DELETE(
 
     await connectToDatabase();
     
-    const expense = await Expense.findOneAndDelete({ _id: id });
+    const expense = await Expense.findById(id);
     if (!expense) {
       return NextResponse.json({ message: 'Record not found' }, { status: 404 });
     }
 
-    // Delete related ledger entries and recalculate CASH balance
-    try {
-      const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
-      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
-      
-      await LedgerTransaction.deleteMany({ reference: id });
-      await recalculateLedgerBalance('CASH');
-    } catch (err) {
-      console.error('Error updating ledger on transaction delete:', err);
+    // If this was a client bill collection, revert the bill's paid amount & due
+    const expAny = expense as any;
+    if (expAny.category === 'Receive Client Bill' || expAny.bill || expAny.invoiceNo) {
+      try {
+        const Bill = (await import('@/models/Bill')).default;
+        let bill = null;
+        if (expAny.bill) bill = await Bill.findById(expAny.bill);
+        else if (expAny.invoiceNo) bill = await Bill.findOne({ invoiceNo: expAny.invoiceNo });
+
+        if (bill) {
+          const grandTotal = Math.round(bill.gTotal || bill.total || 0);
+          bill.cashIn = Math.max(0, (bill.cashIn || 0) - expense.amount);
+          bill.currentBillDue = Math.max(0, grandTotal - bill.cashIn);
+          bill.status = bill.currentBillDue <= 0 ? 'Paid' : 'Due';
+          await bill.save();
+        }
+
+        // Delete associated ledger entries
+        const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+        const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+        const ref = expAny.invoiceNo || expAny.reference || id;
+        await LedgerTransaction.deleteMany({ reference: ref });
+        await recalculateLedgerBalance('AR');
+        await recalculateLedgerBalance('CASH');
+        await recalculateLedgerBalance('BANK');
+      } catch (err) {
+        console.error('Error reverting bill on income delete:', err);
+      }
+    } else {
+      // General expense/income delete
+      try {
+        const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+        const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+        await LedgerTransaction.deleteMany({ reference: id });
+        const acc = expAny.accountCode || 'CASH';
+        await recalculateLedgerBalance(acc);
+      } catch (err) {
+        console.error('Error removing ledger entries on expense delete:', err);
+      }
     }
+
+    await Expense.findByIdAndDelete(id);
     
     return NextResponse.json({ message: 'Transaction deleted successfully' });
   } catch (error) {

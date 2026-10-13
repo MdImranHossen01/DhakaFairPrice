@@ -141,6 +141,26 @@ export async function DELETE(
       });
     }
 
+    // Clean associated ledger transactions
+    try {
+      const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+
+      const refConditions: any[] = [{ reference: id }];
+      const billRef = (bill as any).billNo || (bill as any).invoiceNo;
+      if (billRef) {
+        refConditions.push({ reference: billRef });
+        refConditions.push({ description: { $regex: billRef, $options: 'i' } });
+      }
+
+      await LedgerTransaction.deleteMany({ $or: refConditions });
+      await recalculateLedgerBalance('AP');
+      await recalculateLedgerBalance('CASH');
+      await recalculateLedgerBalance('BANK');
+    } catch (err) {
+      console.error('Error removing ledger entries for supplier bill:', err);
+    }
+
     await SupplierBill.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Supplier bill deleted successfully' });

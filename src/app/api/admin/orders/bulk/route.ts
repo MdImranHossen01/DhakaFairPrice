@@ -194,6 +194,18 @@ export async function DELETE(req: NextRequest) {
       { $set: { deletedAt: new Date() } }
     );
 
+    try {
+      const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+      const shortIds = ids.map((id: string) => id.toString().slice(-8).toUpperCase());
+      const refs = shortIds.map((s: string) => `ORDER-${s}`);
+      await LedgerTransaction.deleteMany({ reference: { $in: refs } });
+      await recalculateLedgerBalance('CASH');
+      await recalculateLedgerBalance('BANK');
+    } catch (ledgerErr) {
+      console.error('[Ledger] Error cleaning bulk order ledger transactions:', ledgerErr);
+    }
+
     return NextResponse.json({
       message: `${result.modifiedCount} orders soft-deleted successfully`,
       count: result.modifiedCount

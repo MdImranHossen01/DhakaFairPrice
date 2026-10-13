@@ -22,11 +22,11 @@ export async function GET(request: NextRequest) {
     }
 
     const income = await ResellerWalletTransaction.aggregate([
-      { $match: { resellerId, amount: { $gt: 0 } } },
+      { $match: { resellerId, amount: { $gt: 0 }, status: { $ne: 'cancelled' } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const expenses = await ResellerWalletTransaction.aggregate([
-      { $match: { resellerId, amount: { $lt: 0 } } },
+      { $match: { resellerId, amount: { $lt: 0 }, status: { $ne: 'cancelled' } } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
 

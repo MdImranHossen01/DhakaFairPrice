@@ -14,9 +14,11 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     await seedLedgerAccounts();
 
-    // Auto-sync any approved reseller payouts to the ledger
-    const { backfillPayoutsToLedger } = await import('@/lib/ledgerHelper');
+    // Auto-clean any orphan ledger transactions & sync payouts and bills to ledger
+    const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger } = await import('@/lib/ledgerHelper');
+    await cleanOrphanLedgerTransactions();
     await backfillPayoutsToLedger();
+    await syncBillsToLedger();
 
     const transactions = await LedgerTransaction.find()
       .populate('account')
