@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
@@ -63,11 +63,28 @@ export default function StoreLoginPage() {
     setIsLoading(true);
     try {
       const response = await signIn('credentials', { email: values.email, password: values.password || '', redirect: false });
-      if (response?.error) { toast.error(response.error); }
-      else {
+      if (response?.error) {
+        if (response.error === 'CredentialsSignin' || response.error === 'Configuration') {
+          toast.error('Invalid credentials or incorrect password.');
+        } else {
+          toast.error(response.error);
+        }
+      } else {
         toast.success('Login successful!');
         const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect');
-        router.push(callbackUrl || '/');
+        if (callbackUrl) {
+          router.push(callbackUrl);
+        } else {
+          const sessionRes = await getSession();
+          const role = (sessionRes?.user as any)?.role;
+          if (role === 'reseller') {
+            router.push('/dashboard');
+          } else if (role === 'admin' || role === 'super_admin') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/');
+          }
+        }
         router.refresh();
       }
     } catch { toast.error('Something went wrong. Please try again.'); }

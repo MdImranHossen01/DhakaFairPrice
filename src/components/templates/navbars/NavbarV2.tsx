@@ -8,9 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   Search,
   ShoppingCart,
-  User,
-  Menu,
-  X,
+
   Heart,
   LogOut,
   LayoutDashboard,
@@ -18,15 +16,14 @@ import {
   Truck,
   Mic,
   MicOff,
-  Package
+  Package,
+  Store
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/store/hooks';
 import { useSession, signOut } from 'next-auth/react';
-import { toast } from 'sonner';
 import { CartDrawer } from '@/components/layout/CartDrawer';
 import { ModeToggle } from '@/components/mode-toggle';
-import { AIChatbot } from '@/components/layout/AIChatbot';
 import { useSettings } from '@/components/SettingsProvider';
 import { MobileNavbar } from '@/components/layout/MobileNavbar';
 import {
@@ -42,12 +39,7 @@ import { UserAvatar } from '@/components/ui/user-avatar';
 import Swal from 'sweetalert2';
 
 import { CategoryNav } from '@/components/layout/CategoryNav';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+
 import { MobileMenu } from '@/components/layout/MobileMenu';
 
 const navItems = [
@@ -63,6 +55,21 @@ export default function NavbarV2() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const settings = useSettings();
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
+  const filteredNavItems = isResellerStore
+    ? navItems.filter((i) => i.href !== '/reseller-program')
+    : navItems;
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,7 +180,7 @@ export default function NavbarV2() {
   return (
     <>
       {/* ── Mobile Top Bar (V1 Standard) — lg:hidden ──────────────── */}
-      <MobileNavbar navItems={navItems} categories={categories} />
+      <MobileNavbar navItems={filteredNavItems} categories={categories} />
 
       {/* ── Desktop Navbar ─────────────────────────────────────────── */}
       <nav className={`
@@ -189,15 +196,15 @@ export default function NavbarV2() {
           {/* Left: Logo & Mobile Menu */}
           <div className="flex items-center gap-2">
             <MobileMenu
-              navItems={navItems}
+              navItems={filteredNavItems}
               categories={categories}
               session={session}
               triggerClassName={!isHomePage || isScrolled ? 'text-foreground hover:text-primary' : 'text-white hover:text-white/70'}
             />
 
             <Link href="/" className={`text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-all flex items-center gap-2 group ${!isHomePage || isScrolled ? 'text-foreground' : 'text-white'}`}>
-              <Image src="/logo.webp" width={40} height={40} alt="Dhaka Fair Price Logo" className="object-contain" />
-              {settings?.brandName || 'Dhaka Fair Price'}
+              <Image src="/logo.webp" width={40} height={40} alt="Swapnobaz Logo" className="object-contain" />
+              {settings?.brandName || 'Swapnobaz'}
             </Link>
           </div>
 
@@ -275,7 +282,7 @@ export default function NavbarV2() {
           {/* Right: Actions */}
           <div className="flex items-center gap-2 md:gap-4">
             <ul className="hidden lg:flex items-center gap-6 mr-4">
-              {navItems.map((item, index) => (
+              {filteredNavItems.map((item, index) => (
                 <React.Fragment key={item.label}>
                   <li>
                     <Link
@@ -391,6 +398,26 @@ export default function NavbarV2() {
                             <DropdownMenuItem asChild>
                               <Link href="/admin/orders" className="cursor-pointer">
                                 <Truck className="mr-2 h-4 w-4" /> Manage Orders
+                              </Link>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
+                        {(session.user as any)?.role === 'reseller' && (
+                          <>
+                            <DropdownMenuItem asChild>
+                              <Link href="/dashboard" className="cursor-pointer">
+                                <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/reseller/products" className="cursor-pointer">
+                                <Store className="mr-2 h-4 w-4" /> My Products
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/reseller/orders" className="cursor-pointer">
+                                <Truck className="mr-2 h-4 w-4" /> Store Orders
                               </Link>
                             </DropdownMenuItem>
                           </>

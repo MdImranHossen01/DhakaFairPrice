@@ -3,6 +3,7 @@
 import React, { createContext, useContext } from 'react';
 
 interface SettingsContextType {
+  isReseller?: boolean;
   brandName?: string;
   siteDescription?: string;
   logoUrl?: string;

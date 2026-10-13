@@ -19,7 +19,8 @@ import {
   Truck,
   ChevronDown,
   X,
-  Sparkles
+  Sparkles,
+  Store
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { toast } from 'sonner';
@@ -76,6 +77,18 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
   const { items: wishlistItems } = useAppSelector((state) => state.wishlist);
   const wishlistCount = wishlistItems.length;
   const settings = useSettings();
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
 
   const [categories, setCategories] = useState<any[]>(initialCategories);
   const [brands, setBrands] = useState<any[]>(initialBrands);
@@ -442,10 +455,12 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                       </div>
                     </nav>
                     <div style={{ flexShrink: 0 }} className="px-4 py-3 border-t border-border bg-background flex gap-2">
-                    <Link href="/reseller-program" onClick={() => setMobileOpen(false)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-primary text-primary text-xs font-bold py-2 hover:bg-primary hover:text-white transition-colors">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Be a Reseller
-                      </Link>
+                      {!isResellerStore && (
+                        <Link href="/reseller-program" onClick={() => setMobileOpen(false)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-primary text-primary text-xs font-bold py-2 hover:bg-primary hover:text-white transition-colors">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Be a Reseller
+                        </Link>
+                      )}
                       {!session && (
                         <Link href="/login" onClick={() => setMobileOpen(false)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-primary text-white text-xs font-bold py-2 hover:bg-primary/90 transition-colors">
                           <User className="h-3.5 w-3.5" />
@@ -482,7 +497,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[44px] h-[44px] xl:w-[48px] xl:h-[48px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
+                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
                     fill
                     sizes="48px"
                     className="object-contain"
@@ -803,6 +818,24 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                                 </Link>
                               </DropdownMenuItem>
                             </>
+                          ) : (session.user as any)?.role === 'reseller' ? (
+                            <>
+                              <DropdownMenuItem asChild>
+                                <Link href="/dashboard" className="cursor-pointer">
+                                  <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href="/reseller/products" className="cursor-pointer">
+                                  <Store className="mr-2 h-4 w-4" /> My Products
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href="/reseller/orders" className="cursor-pointer">
+                                  <Truck className="mr-2 h-4 w-4" /> Store Orders
+                                </Link>
+                              </DropdownMenuItem>
+                            </>
                           ) : (
                             <>
                               <DropdownMenuItem asChild>
@@ -845,7 +878,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[64px] h-[64px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Dhaka Fair Price"} Logo`}
+                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
                     fill
                     sizes="64px"
                     className="object-contain"
@@ -861,7 +894,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <div className="flex items-center justify-between w-full border-b border-border/10 pb-1 gap-4">
                   {/* Logo Brand Name Text Only */}
                   <Link href="/" className="text-lg xl:text-xl uppercase text-foreground transition-colors hover:text-primary font-black tracking-tighter font-logo shrink-0">
-                    {settings.brandName || "DHAKA FAIR PRICE"}
+                    {settings.brandName || "SWAPNOBAZ"}
                   </Link>
 
                   {/* Right-side Utilities */}
@@ -1023,6 +1056,24 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                                   <DropdownMenuItem asChild>
                                     <Link href="/admin/orders" className="cursor-pointer">
                                       <Truck className="mr-2 h-4 w-4" /> Manage Orders
+                                    </Link>
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (session.user as any)?.role === 'reseller' ? (
+                                <>
+                                  <DropdownMenuItem asChild>
+                                    <Link href="/dashboard" className="cursor-pointer">
+                                      <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link href="/reseller/products" className="cursor-pointer">
+                                      <Store className="mr-2 h-4 w-4" /> My Products
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link href="/reseller/orders" className="cursor-pointer">
+                                      <Truck className="mr-2 h-4 w-4" /> Store Orders
                                     </Link>
                                   </DropdownMenuItem>
                                 </>

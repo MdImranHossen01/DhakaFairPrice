@@ -22,6 +22,7 @@ export default async function ResellerTrackOrderPage({ params }: Props) {
   const logo = reseller.logoUrl || '';
 
   const settingsData = {
+    isReseller: true,
     brandName: storeName,
     logoUrl: logo,
     contact: {

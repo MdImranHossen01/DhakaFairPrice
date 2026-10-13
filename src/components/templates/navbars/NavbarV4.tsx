@@ -18,7 +18,8 @@ import {
   Package,
   Truck,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  Store
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { toast } from 'sonner';
@@ -75,6 +76,21 @@ export default function NavbarV4() {
   const { totalQuantity: cartCount, totalAmount } = useAppSelector((state) => state.cart);
   const { items: wishlistItems } = useAppSelector((state) => state.wishlist);
   const settings = useSettings();
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
+  const filteredNavItems = isResellerStore
+    ? navItems.filter((i) => i.href !== '/reseller-program')
+    : navItems;
 
   const [categories, setCategories] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
@@ -275,7 +291,7 @@ export default function NavbarV4() {
                   <nav className="flex flex-col gap-6 mt-12 px-2">
                     <Logo onClick={() => setOpen(false)} className="items-center" />
                     <div className="space-y-4 pt-6 border-t font-medium tracking-tight">
-                      {navItems.map((item, index) => {
+                      {filteredNavItems.map((item, index) => {
                         const isActive = pathname === item.href;
                         return (
                           <React.Fragment key={item.href}>
@@ -537,6 +553,26 @@ export default function NavbarV4() {
                           </>
                         )}
 
+                        {(session.user as any)?.role === 'reseller' && (
+                          <>
+                            <DropdownMenuItem asChild>
+                              <Link href="/dashboard" className="cursor-pointer">
+                                <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/reseller/products" className="cursor-pointer">
+                                <Store className="mr-2 h-4 w-4" /> My Products
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/reseller/orders" className="cursor-pointer">
+                                <Truck className="mr-2 h-4 w-4" /> Store Orders
+                              </Link>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+
                         {(session.user as any)?.role === 'user' && (
                           <>
                             <DropdownMenuItem asChild>
@@ -580,7 +616,7 @@ export default function NavbarV4() {
       <nav className="hidden md:flex sticky top-0 z-40 w-full h-12 items-center justify-center border-b bg-background/95 backdrop-blur-sm shadow-sm">
         <div className="container mx-auto px-4 flex justify-center">
           <ul className="flex items-center gap-10">
-            {navItems.map((item, index) => {
+            {filteredNavItems.map((item, index) => {
               const isActive = pathname === item.href;
 
               return (

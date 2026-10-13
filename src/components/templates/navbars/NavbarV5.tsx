@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, ShoppingBag, Heart, X, LogOut, LayoutDashboard, Settings, Truck, Package } from 'lucide-react';
+import { Search, ShoppingBag, Heart, X, LogOut, LayoutDashboard, Settings, Truck, Package, Store } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { useSession, signOut } from 'next-auth/react';
 import { toast } from 'sonner';
@@ -95,12 +95,26 @@ export default function NavbarV5() {
   const handleResultClick = () => { setShowDropdown(false); setSearchTerm(''); setLiveResults([]); setSearchOpen(false); };
 
 
-  const NAV_LINKS = [
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
+
+  const rawNavLinks = [
     { label: 'Discovery', href: '/shop' },
     { label: 'Atelier', href: '/categories' },
-    { label: 'Become Reseller', href: '/reseller-program' },
+    ...(isResellerStore ? [] : [{ label: 'Become Reseller', href: '/reseller-program' }]),
     { label: 'Journal', href: '/blog' }
   ];
+  const NAV_LINKS = rawNavLinks.filter((i) => !(isResellerStore && i.href === '/reseller-program'));
 
   return (
     <>
@@ -307,6 +321,26 @@ export default function NavbarV5() {
                           <DropdownMenuItem asChild>
                             <Link href="/admin/orders" className="cursor-pointer">
                               <Truck className="mr-2 h-4 w-4" /> Manage Orders
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+
+                      {(session.user as any)?.role === 'reseller' && (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link href="/dashboard" className="cursor-pointer">
+                              <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/reseller/products" className="cursor-pointer">
+                              <Store className="mr-2 h-4 w-4" /> My Products
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/reseller/orders" className="cursor-pointer">
+                              <Truck className="mr-2 h-4 w-4" /> Store Orders
                             </Link>
                           </DropdownMenuItem>
                         </>

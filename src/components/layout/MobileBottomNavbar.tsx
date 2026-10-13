@@ -18,7 +18,8 @@ import {
   Truck,
   LogOut,
   Package,
-  ArrowRight
+  ArrowRight,
+  Store
 } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { CartDrawer } from '@/components/layout/CartDrawer';
@@ -484,6 +485,32 @@ export function MobileBottomNavbar() {
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
                         >
                           <Truck className="h-5 w-5 text-primary" /> Manage Orders
+                        </Link>
+                      </>
+                    )}
+
+                    {(session.user as any)?.role === 'reseller' && (
+                      <>
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setIsAccountOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
+                        >
+                          <LayoutDashboard className="h-5 w-5 text-primary" /> Reseller Dashboard
+                        </Link>
+                        <Link
+                          href="/reseller/products"
+                          onClick={() => setIsAccountOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
+                        >
+                          <Store className="h-5 w-5 text-primary" /> My Products
+                        </Link>
+                        <Link
+                          href="/reseller/orders"
+                          onClick={() => setIsAccountOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
+                        >
+                          <Truck className="h-5 w-5 text-primary" /> Store Orders
                         </Link>
                       </>
                     )}

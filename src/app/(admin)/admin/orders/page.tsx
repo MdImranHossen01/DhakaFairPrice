@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import OrderDetailsDialog from '@/components/admin/OrderDetailsDialog';
+import ManualOrderDialog from '@/components/admin/ManualOrderDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,6 +26,7 @@ import {
   Trash2,
   XCircle,
   Download,
+  Plus,
   MoreHorizontal,
   ChevronDown,
   Printer,
@@ -159,6 +161,7 @@ function OrdersContent() {
   });
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isManualOrderOpen, setIsManualOrderOpen] = useState(false);
  
   // Selection state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -768,7 +771,13 @@ function OrdersContent() {
             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncingCouriers ? 'animate-spin' : ''}`} />
             {isSyncingCouriers ? 'Syncing...' : 'Sync Couriers'}
           </Button>
-          <Button onClick={exportToCSV} className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold shrink-0">
+          <Button
+            onClick={() => setIsManualOrderOpen(true)}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 font-bold shrink-0"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Manual Order
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" className="font-bold shrink-0">
           <Download className="mr-2 h-4 w-4" /> Export
           </Button>
         </div>
@@ -1564,6 +1573,11 @@ function OrdersContent() {
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
         onUpdate={fetchOrders}
+      />
+      <ManualOrderDialog
+        open={isManualOrderOpen}
+        onOpenChange={setIsManualOrderOpen}
+        onCreated={() => fetchOrders()}
       />
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -91,11 +91,18 @@ export default function LoginPage() {
         const callbackUrl = searchParams.get('callbackUrl') || searchParams.get('redirect');
         if (callbackUrl) {
           router.push(callbackUrl);
-          router.refresh();
         } else {
-          router.replace('/admin/dashboard');
-          router.refresh();
+          const sessionRes = await getSession();
+          const role = (sessionRes?.user as any)?.role;
+          if (role === 'admin' || role === 'super_admin' || role === 'manager' || role === 'moderator') {
+            router.replace('/admin/dashboard');
+          } else if (role === 'reseller') {
+            router.replace('/reseller/dashboard');
+          } else {
+            router.replace('/dashboard');
+          }
         }
+        router.refresh();
       }
     } catch (error) {
       toast.error('Something went wrong. Please try again.');

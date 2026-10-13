@@ -93,15 +93,31 @@ export default function FooterV2() {
     setDeferredPrompt(null);
   };
 
-  const footerNav = settings?.footerNavigation && settings.footerNavigation.length > 0
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
+
+  const rawFooterNav = settings?.footerNavigation && settings.footerNavigation.length > 0
     ? settings.footerNavigation
     : [
       { label: 'Shop All', href: '/shop' },
-      { label: 'Become Reseller', href: '/reseller-program' },
+      ...(isResellerStore ? [] : [{ label: 'Become Reseller', href: '/reseller-program' }]),
       { label: 'New Arrivals', href: '/shop?filter=new' },
       { label: 'Order Tracking', href: '/track-order' },
       { label: 'Contact Support', href: '/contact' }
     ];
+  const footerNav = rawFooterNav
+    .filter((link: any) => link.label !== 'Contact Support')
+    .filter((link: any) => !(isResellerStore && (link.href === '/reseller-program' || link.label?.toLowerCase().includes('reseller'))));
 
   return (
     <footer className="bg-background border-t border-muted text-foreground pt-16 pb-8 px-6 font-jost">
@@ -111,15 +127,15 @@ export default function FooterV2() {
           {/* Brand Essence */}
           <div className="lg:col-span-4 space-y-6 flex flex-col items-center lg:items-start">
             <Link href="/" className="text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-all flex items-center gap-2 group text-foreground">
-              <Image src="/logo.webp" width={40} height={40} alt="Dhaka Fair Price Logo" className="object-contain" />
-              {settings?.brandName || 'Dhaka Fair Price'}
+              <Image src="/logo.webp" width={40} height={40} alt="Swapnobaz Logo" className="object-contain" />
+              {settings?.brandName || 'Swapnobaz'}
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm leading-relaxed font-medium">
               {settings?.siteDescription || 'Your premier destination for premium fashion, quality lifestyle products, and authentic shopping delivered right to your doorstep.'}
             </p>
 
             {/* PWA Download App Button */}
-            {!isStandalone && (
+            {!isStandalone && !isResellerStore && (
               <Button
                 onClick={handleInstallClick}
                 variant="outline"
@@ -187,7 +203,7 @@ export default function FooterV2() {
 
         {/* Bottom Bar - Reduced Padding & Smart Layout */}
         <div className="pt-6 border-t border-muted flex flex-col md:flex-row items-center justify-between gap-6 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-          <p className="text-center md:text-left">© {currentYear} Dhaka Fair Price CO. ALL RIGHTS RESERVED.</p>
+          <p className="text-center md:text-left">© {currentYear} Swapnobaz CO. ALL RIGHTS RESERVED.</p>
           <div className="flex items-center gap-4">
             <DeveloperLogo className="opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all scale-90 md:scale-100" />
           </div>

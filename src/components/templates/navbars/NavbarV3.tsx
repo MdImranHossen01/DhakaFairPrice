@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Search, User, Heart, Menu, X, LogOut, LayoutDashboard, Settings, Truck, Package } from 'lucide-react';
+import { ShoppingBag, Search, User, Heart, Menu, X, LogOut, LayoutDashboard, Settings, Truck, Package, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/store/hooks';
 import { useSession, signOut } from 'next-auth/react';
@@ -23,6 +23,7 @@ import {
 import { MobileMenu } from '@/components/layout/MobileMenu';
 import { MobileNavbar } from '@/components/layout/MobileNavbar';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { useSettings } from '@/components/SettingsProvider';
 
 export default function NavbarV3() {
   const router = useRouter();
@@ -94,12 +95,27 @@ export default function NavbarV3() {
   const handleResultClick = () => { setShowDropdown(false); setSearchTerm(''); setLiveResults([]); setSearchOpen(false); };
 
 
-  const NAV_LINKS = [
+  const settings = useSettings();
+  const isResellerStore = Boolean(
+    settings?.isReseller ||
+    (typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/store/') ||
+      (window.location.hostname !== 'localhost' &&
+       window.location.hostname !== '127.0.0.1' &&
+       window.location.hostname !== 'swapnobaz.com' &&
+       window.location.hostname !== 'www.swapnobaz.com' &&
+       window.location.hostname !== 'dhakafairprice.com' &&
+       window.location.hostname !== 'www.dhakafairprice.com')
+    ))
+  );
+
+  const rawNavLinks = [
     { label: 'Shop', href: '/shop' },
     { label: 'Curated', href: '/categories' },
-    { label: 'Become Reseller', href: '/reseller-program' },
+    ...(isResellerStore ? [] : [{ label: 'Become Reseller', href: '/reseller-program' }]),
     { label: 'Journal', href: '/blog' }
   ];
+  const NAV_LINKS = rawNavLinks.filter((i) => !(isResellerStore && i.href === '/reseller-program'));
 
   return (
     <>
@@ -138,7 +154,7 @@ export default function NavbarV3() {
             {/* Center: Logo */}
             <div className="absolute left-1/2 -translate-x-1/2">
               <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">
-                Dhaka Fair Price
+                Swapnobaz
               </Link>
             </div>
 
@@ -296,6 +312,26 @@ export default function NavbarV3() {
                           <DropdownMenuItem asChild>
                             <Link href="/admin/orders" className="cursor-pointer">
                               <Truck className="mr-2 h-4 w-4" /> Manage Orders
+                            </Link>
+                          </DropdownMenuItem>
+                        </>
+                      )}
+
+                      {(session.user as any)?.role === 'reseller' && (
+                        <>
+                          <DropdownMenuItem asChild>
+                            <Link href="/dashboard" className="cursor-pointer">
+                              <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/reseller/products" className="cursor-pointer">
+                              <Store className="mr-2 h-4 w-4" /> My Products
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/reseller/orders" className="cursor-pointer">
+                              <Truck className="mr-2 h-4 w-4" /> Store Orders
                             </Link>
                           </DropdownMenuItem>
                         </>

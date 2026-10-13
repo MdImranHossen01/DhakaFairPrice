@@ -110,19 +110,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.image = user.image || token.picture;
       }
 
-      // 2. Add DB-specific logic
-      if (user && user.id) {
+      // 2. Add DB-specific logic & refresh role if user was promoted/approved
+      const currentUserId = user?.id || (token?.id as string | undefined);
+      const shouldSyncWithDb =
+        !!user ||
+        token?.role === 'user' ||
+        (token?.role === 'reseller' && !token?.resellerId) ||
+        trigger === 'update';
+
+      if (shouldSyncWithDb && currentUserId) {
         try {
           await connectToDatabase();
           const mongoose = (await import('mongoose')).default;
           
-          if (user.id && mongoose.Types.ObjectId.isValid(user.id)) {
-            const dbUser = await User.findById(user.id);
+          if (mongoose.Types.ObjectId.isValid(currentUserId)) {
+            const dbUser = await User.findById(currentUserId);
             if (dbUser) {
               token.id = dbUser._id.toString();
               token.role = dbUser.role ?? 'user';
-              token.phone = dbUser.phone;
-              token.image = dbUser.image || user.image || token.picture;
+              if (dbUser.phone) token.phone = dbUser.phone;
+              if (dbUser.image) token.image = dbUser.image || user?.image || token.picture;
 
               if (dbUser.role === 'reseller') {
                 const Reseller = (await import('./models/Reseller')).default;

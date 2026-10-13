@@ -100,6 +100,7 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
   const storeName = reseller.storeName;
   const logo = reseller.logoUrl;
   const settingsData = {
+    isReseller: true,
     brandName: storeName,
     logoUrl: logo,
     contact: {

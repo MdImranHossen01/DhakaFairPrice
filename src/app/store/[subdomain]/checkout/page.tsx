@@ -57,6 +57,7 @@ export default async function ResellerCheckoutPage({ params }: Props) {
   const footerStyle = themeOverrides.footer || 'v1';
 
   const settingsData = {
+    isReseller: true,
     brandName: reseller.storeName,
     logoUrl: reseller.logoUrl,
     freeDeliveryThreshold,
