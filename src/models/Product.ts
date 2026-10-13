@@ -57,6 +57,7 @@ export interface IProduct extends Document {
   embedding?: number[];
   uploadedBy?: mongoose.Types.ObjectId | null;
   isShared?: boolean;
+  isMotherProduct?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,14 +146,22 @@ const ProductSchema: Schema<IProduct> = new Schema(
     embedding: { type: [Number] },
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'Reseller', default: null },
     isShared: { type: Boolean, default: false },
+    isMotherProduct: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
+ProductSchema.index({ isMotherProduct: 1 });
+ProductSchema.index({ uploadedBy: 1 });
 ProductSchema.index({ name: 1 }); // Optimized for search
 ProductSchema.index({ categories: 1 }); // Optimized for category filtering
 
 ProductSchema.pre('validate', function(this: any) {
+  // If no uploadedBy reseller is specified, this product is owned by Mother Shop Admin
+  if (!this.uploadedBy && this.isMotherProduct === undefined) {
+    this.isMotherProduct = true;
+  }
+
   // Main product validation
   if (this.salePrice !== undefined && this.salePrice !== null && this.salePrice > this.price) {
     throw new Error(
@@ -183,5 +192,13 @@ if (mongoose.models && mongoose.models.Product) {
 }
 
 const Product: Model<IProduct> = mongoose.model<IProduct>('Product', ProductSchema);
+
+export const MOTHER_SHOP_PRODUCT_FILTER = {
+  $or: [
+    { isMotherProduct: true },
+    { uploadedBy: null, isMotherProduct: { $ne: false } },
+    { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+  ],
+};
 
 export default Product;

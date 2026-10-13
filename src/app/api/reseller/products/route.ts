@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       isNewArrival: !!isNewArrival,
       isPublished: isPublished !== undefined ? !!isPublished : true,
       isShared: isShared !== undefined ? !!isShared : false,
+      isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner
     });
 

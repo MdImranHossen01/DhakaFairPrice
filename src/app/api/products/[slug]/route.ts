@@ -30,9 +30,21 @@ export async function GET(
     const { slug } = await params;
     await connectToDatabase();
 
-    const query = mongoose.Types.ObjectId.isValid(slug)
+    const session = await auth();
+    const isAdmin = session?.user && ['admin', 'super_admin', 'manager', 'moderator'].includes((session.user as any).role);
+
+    const query: any = mongoose.Types.ObjectId.isValid(slug)
       ? { _id: slug }
       : { slug: slug };
+
+    if (!isAdmin) {
+      query.isPublished = true;
+      query.$or = [
+        { isMotherProduct: true },
+        { uploadedBy: null, isMotherProduct: { $ne: false } },
+        { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+      ];
+    }
 
     const product = await Product.findOne(query).populate('categories').populate('brand');
 
@@ -66,13 +78,18 @@ export async function PUT(
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'resellerPrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'brand', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'deliveryCharge'
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'deliveryCharge'
     ];
     const safeUpdate: any = {};
 
     Object.keys(body).forEach((key) => {
       if (allowedFields.includes(key)) {
         let value = body[key];
+
+        // Boolean coercion
+        if (['isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct'].includes(key)) {
+          value = Boolean(value);
+        }
 
         // Numeric coercion for main fields
         if (['price', 'salePrice', 'purchasePrice', 'resellerPrice', 'stock', 'discountRate'].includes(key)) {

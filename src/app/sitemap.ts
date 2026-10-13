@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import connectToDatabase from "@/lib/db";
-import Product from "@/models/Product";
+import Product, { MOTHER_SHOP_PRODUCT_FILTER } from "@/models/Product";
 import Category from "@/models/Category";
 import Blog from "@/models/Blog";
 
@@ -12,7 +12,7 @@ const getDynamicRoutes = async (baseUrl: string): Promise<MetadataRoute.Sitemap>
     await connectToDatabase();
 
     const [products, categories, blogs] = await Promise.all([
-      Product.find({ isPublished: true }, "slug updatedAt")
+      Product.find({ isPublished: true, ...MOTHER_SHOP_PRODUCT_FILTER }, "slug updatedAt")
         .sort({ updatedAt: -1 })
         .limit(40000)
         .lean()

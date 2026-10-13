@@ -28,7 +28,9 @@ import {
   Store,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  Users,
+  CheckCircle2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -71,6 +74,7 @@ interface AdminProduct {
   categories?: any[];
   variants?: any[];
   uploadedBy?: { _id: string; storeName: string; subdomain: string } | null;
+  isMotherProduct?: boolean;
 }
 
 function ProductsContent() {
@@ -94,12 +98,21 @@ function ProductsContent() {
   const [expiryDate, setExpiryDate] = useState('');
   const [submittingStock, setSubmittingStock] = useState(false);
 
+  const [activeTab, setActiveTab] = useState<'all' | 'mother' | 'reseller'>('all');
+  const [counts, setCounts] = useState({ all: 0, mother: 0, reseller: 0 });
+
+  // Add to Mother Shop Modal State
+  const [addToMotherModalOpen, setAddToMotherModalOpen] = useState(false);
+  const [selectedResellerProduct, setSelectedResellerProduct] = useState<AdminProduct | null>(null);
+  const [motherSellingPrice, setMotherSellingPrice] = useState<string>('');
+  const [submittingToMother, setSubmittingToMother] = useState(false);
+
   const limit = 10;
 
-  const fetchProducts = async (signal?: AbortSignal, page = currentPage) => {
+  const fetchProducts = async (signal?: AbortSignal, page = currentPage, tab = activeTab) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products?page=${page}&limit=${limit}`, { signal });
+      const response = await fetch(`/api/products?page=${page}&limit=${limit}&tab=${tab}`, { signal });
       if (!response.ok) {
         toast.error(`Failed to fetch products: ${response.status} ${response.statusText}`);
         return;
@@ -107,11 +120,100 @@ function ProductsContent() {
       const data = await response.json();
       setProducts(Array.isArray(data.products) ? data.products : []);
       setPagination(data.pagination || { total: 0, totalPages: 1 });
+      if (data.counts) {
+        setCounts(data.counts);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       toast.error('Failed to fetch products');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTabChange = (tab: 'all' | 'mother' | 'reseller') => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    fetchProducts(undefined, 1, tab);
+  };
+
+  const openAddToMotherModal = (product: AdminProduct) => {
+    setSelectedResellerProduct(product);
+    setMotherSellingPrice(String(product.salePrice || product.price || 0));
+    setAddToMotherModalOpen(true);
+  };
+
+  const handleConfirmAddToMother = async () => {
+    if (!selectedResellerProduct) return;
+    const priceNum = Number(motherSellingPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error('Please enter a valid selling price');
+      return;
+    }
+
+    setSubmittingToMother(true);
+    try {
+      const res = await fetch(`/api/products/${selectedResellerProduct._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isMotherProduct: true,
+          price: priceNum,
+        }),
+      });
+
+      if (res.ok) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Added to Mother Shop!',
+          text: `"${selectedResellerProduct.name}" is now live on the Mother Shop storefront.`,
+          confirmButtonColor: '#00D1B2',
+          customClass: { popup: 'rounded-xl', confirmButton: 'rounded-lg px-4 py-2 font-bold' },
+        });
+        setAddToMotherModalOpen(false);
+        fetchProducts(undefined, currentPage, activeTab);
+      } else {
+        const err = await res.json();
+        toast.error(err.message || 'Failed to add to Mother Shop');
+      }
+    } catch {
+      toast.error('Network error occurred');
+    } finally {
+      setSubmittingToMother(false);
+    }
+  };
+
+  const handleRemoveFromMother = async (product: AdminProduct) => {
+    const confirm = await Swal.fire({
+      title: 'Remove from Mother Shop?',
+      text: `Do you want to remove "${product.name}" from the Mother Shop? It will remain active in the reseller's store.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Remove It',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      customClass: { popup: 'rounded-xl', confirmButton: 'rounded-lg px-4 py-2 font-bold', cancelButton: 'rounded-lg px-4 py-2' },
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/products/${product._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isMotherProduct: false }),
+      });
+
+      if (res.ok) {
+        toast.success(`"${product.name}" removed from Mother Shop`);
+        fetchProducts(undefined, currentPage, activeTab);
+      } else {
+        const err = await res.json();
+        toast.error(err.message || 'Failed to remove from Mother Shop');
+      }
+    } catch {
+      toast.error('Network error occurred');
     }
   };
 
@@ -471,6 +573,52 @@ function ProductsContent() {
         </div>
       </div>
 
+      {/* Scope / Source Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b pb-2">
+        <Button
+          variant={activeTab === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('all')}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>All Products</span>
+          {counts.all > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.all}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'mother' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('mother')}
+        >
+          <Store className="h-3.5 w-3.5" />
+          <span>Mother Shop</span>
+          {counts.mother > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.mother}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'reseller' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('reseller')}
+        >
+          <Users className="h-3.5 w-3.5" />
+          <span>Reseller Products</span>
+          {counts.reseller > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.reseller}
+            </Badge>
+          )}
+        </Button>
+      </div>
+
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -579,16 +727,27 @@ function ProductsContent() {
                                 </span>
                               )}
                               {product.uploadedBy ? (
-                                <Link
-                                  href={`/admin/users?search=${encodeURIComponent(product.uploadedBy.storeName)}`}
-                                  className="inline-flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 hover:opacity-80 transition-opacity max-w-[120px] truncate"
-                                  title={`Reseller: ${product.uploadedBy.storeName}`}
-                                >
-                                  <Store className="h-2.5 w-2.5 shrink-0" />
-                                  <span className="truncate">{product.uploadedBy.storeName}</span>
-                                </Link>
+                                <>
+                                  <Link
+                                    href={`/admin/users?search=${encodeURIComponent(product.uploadedBy.storeName)}`}
+                                    className="inline-flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 hover:opacity-80 transition-opacity max-w-[120px] truncate"
+                                    title={`Reseller: ${product.uploadedBy.storeName}`}
+                                  >
+                                    <Store className="h-2.5 w-2.5 shrink-0" />
+                                    <span className="truncate">{product.uploadedBy.storeName}</span>
+                                  </Link>
+                                  {product.isMotherProduct ? (
+                                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0 font-semibold">
+                                      In Mother Shop
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground border-dashed">
+                                      Not in Mother Shop
+                                    </Badge>
+                                  )}
+                                </>
                               ) : (
-                                <span className="text-[10px] text-muted-foreground">Admin</span>
+                                <span className="text-[10px] text-muted-foreground">Admin (Mother Store)</span>
                               )}
                             </div>
                           </div>
@@ -656,16 +815,27 @@ function ProductsContent() {
                             <DropdownMenuContent align="end" className="w-48">
                               {product.uploadedBy ? (
                                 <>
+                                  {!product.isMotherProduct ? (
+                                    <DropdownMenuItem onClick={() => openAddToMotherModal(product)} className="gap-2 font-semibold text-emerald-600 dark:text-emerald-400">
+                                      <PackagePlus className="h-4 w-4" />
+                                      <span>Add to Mother Shop</span>
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onClick={() => handleRemoveFromMother(product)} className="gap-2 font-semibold text-amber-600 dark:text-amber-400">
+                                      <EyeOff className="h-4 w-4" />
+                                      <span>Remove from Mother Shop</span>
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuItem onClick={() => handleTogglePublish(product)} className="gap-2 font-medium">
                                     {product.isPublished ? (
                                       <>
-                                        <EyeOff className="h-4 w-4 text-amber-600" />
-                                        <span className="text-amber-700 dark:text-amber-400">Hide from Store</span>
+                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                        <span>Unpublish Globally</span>
                                       </>
                                     ) : (
                                       <>
                                         <Eye className="h-4 w-4 text-green-600" />
-                                        <span className="text-green-700 dark:text-green-400">Publish Product</span>
+                                        <span className="text-green-700 dark:text-green-400">Publish Globally</span>
                                       </>
                                     )}
                                   </DropdownMenuItem>
@@ -889,22 +1059,25 @@ function ProductsContent() {
                     <div className="flex items-center gap-1.5">
                       {product.uploadedBy ? (
                         <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2.5 text-xs font-semibold gap-1"
-                            onClick={() => handleTogglePublish(product)}
-                          >
-                            {product.isPublished ? (
-                              <>
-                                <EyeOff className="h-3.5 w-3.5 text-amber-600" /> Hide
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="h-3.5 w-3.5 text-green-600" /> Publish
-                              </>
-                            )}
-                          </Button>
+                          {!product.isMotherProduct ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1"
+                              onClick={() => openAddToMotherModal(product)}
+                            >
+                              <PackagePlus className="h-3.5 w-3.5" /> +Mother
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1"
+                              onClick={() => handleRemoveFromMother(product)}
+                            >
+                              <EyeOff className="h-3.5 w-3.5" /> -Mother
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1058,6 +1231,96 @@ function ProductsContent() {
             <Button size="sm" onClick={handleSaveStock} disabled={submittingStock} className="font-bold">
               {submittingStock ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Confirm & Add Stock
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Reseller Product to Mother Shop Dialog */}
+      <Dialog open={addToMotherModalOpen} onOpenChange={setAddToMotherModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-primary" />
+              <span>Add Product to Mother Shop</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              This reseller's product will be approved and displayed on the main Mother Shop storefront.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedResellerProduct && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/40">
+                <div className="h-14 w-14 rounded-md overflow-hidden bg-background border shrink-0">
+                  {selectedResellerProduct.images?.[0] ? (
+                    <Image
+                      src={selectedResellerProduct.images[0]}
+                      alt={selectedResellerProduct.name}
+                      width={56}
+                      height={56}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Store className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 text-xs">
+                  <p className="font-bold text-foreground text-sm truncate">{selectedResellerProduct.name}</p>
+                  <p className="text-muted-foreground font-mono">SKU: {selectedResellerProduct.sku || 'N/A'}</p>
+                  <p className="text-primary font-semibold flex items-center gap-1 mt-0.5">
+                    <Store className="h-3 w-3" /> Reseller: {selectedResellerProduct.uploadedBy?.storeName || 'Reseller'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mother-price" className="text-xs font-semibold">
+                  Mother Shop Selling Price (৳) *
+                </Label>
+                <Input
+                  id="mother-price"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Enter selling price"
+                  value={motherSellingPrice}
+                  onChange={(e) => setMotherSellingPrice(e.target.value)}
+                  className="h-9 text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Reseller Asking Price: ৳{selectedResellerProduct.price}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddToMotherModalOpen(false)}
+              disabled={submittingToMother}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmAddToMother}
+              disabled={submittingToMother || !motherSellingPrice}
+              className="gap-1.5 font-bold"
+            >
+              {submittingToMother ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding...
+                </>
+              ) : (
+                <>
+                  <PackagePlus className="h-3.5 w-3.5" /> Confirm & Add to Mother Shop
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

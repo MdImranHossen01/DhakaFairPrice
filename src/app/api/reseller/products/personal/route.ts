@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
       variants: coercedVariants,
       uploadedBy: reseller._id,
       isShared: Boolean(isShared),
+      isMotherProduct: false,
       isPublished: isPublished !== undefined ? Boolean(isPublished) : true,
       isFeatured: Boolean(isFeatured),
       isNewArrival: Boolean(isNewArrival),

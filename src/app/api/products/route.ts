@@ -41,24 +41,34 @@ export async function GET(req: NextRequest) {
       andConditions.push({ categories: { $in: category.split(',') } });
     }
 
+    const tab = searchParams.get('tab') || 'all';
     const session = await auth();
     const isAdmin = session?.user && ['admin', 'super_admin', 'manager', 'moderator'].includes((session.user as any).role);
-    if (!isAdmin) {
-      let resellerId = null;
-      if (session?.user) {
-        const Reseller = (await import('@/models/Reseller')).default;
-        const resellerDoc = await Reseller.findOne({ userId: (session.user as any).id }).lean();
-        if (resellerDoc) resellerId = resellerDoc._id;
+    
+    if (isAdmin) {
+      if (tab === 'mother') {
+        andConditions.push({
+          $or: [
+            { isMotherProduct: true },
+            { uploadedBy: null, isMotherProduct: { $ne: false } },
+            { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+          ]
+        });
+      } else if (tab === 'reseller') {
+        andConditions.push({
+          uploadedBy: { $ne: null, $exists: true }
+        });
       }
-      const visibility: any[] = [
-        { uploadedBy: null },
-        { uploadedBy: { $exists: false } },
-        { uploadedBy: { $ne: null }, isShared: true }
-      ];
-      if (resellerId) {
-        visibility.push({ uploadedBy: resellerId });
-      }
-      andConditions.push({ $or: visibility });
+    } else {
+      // Non-admin storefront customers: strictly show active Mother Shop products
+      andConditions.push({
+        isPublished: true,
+        $or: [
+          { isMotherProduct: true },
+          { uploadedBy: null, isMotherProduct: { $ne: false } },
+          { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+        ]
+      });
     }
 
     const query = andConditions.length > 0 ? { $and: andConditions } : {};
@@ -74,8 +84,25 @@ export async function GET(req: NextRequest) {
       Product.countDocuments(query)
     ]);
 
+    let counts = undefined;
+    if (isAdmin) {
+      const [allCount, motherCount, resellerCount] = await Promise.all([
+        Product.countDocuments(),
+        Product.countDocuments({
+          $or: [
+            { isMotherProduct: true },
+            { uploadedBy: null, isMotherProduct: { $ne: false } },
+            { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+          ]
+        }),
+        Product.countDocuments({ uploadedBy: { $ne: null, $exists: true } }),
+      ]);
+      counts = { all: allCount, mother: motherCount, reseller: resellerCount };
+    }
+
     return NextResponse.json({
       products,
+      counts,
       pagination: {
         total,
         page,
@@ -208,6 +235,7 @@ export async function POST(req: NextRequest) {
           isNewArrival: isNewArrival !== undefined ? isNewArrival : false,
           isPublished: isPublished !== undefined ? isPublished : true,
           isShared: isShared !== undefined ? isShared : false,
+          isMotherProduct: true,
         });
 
         revalidateTag('products', 'max');

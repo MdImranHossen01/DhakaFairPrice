@@ -2,7 +2,7 @@
 import { unstable_cache } from 'next/cache';
 import mongoose from 'mongoose';
 import connectToDatabase from './db';
-import Product from '@/models/Product';
+import Product, { MOTHER_SHOP_PRODUCT_FILTER } from '@/models/Product';
 import Category from '@/models/Category';
 import Banner from '@/models/Banner';
 import Blog from '@/models/Blog';
@@ -39,7 +39,12 @@ export const getCachedProducts = (query = {}, limit = 10, sort: any = { createdA
       await connectToDatabase();
       // Ensure Reseller model is registered
       if (!Reseller) {}
-      const products = await Product.find({ isPublished: true, ...query })
+      const motherCondition = {
+        isPublished: true,
+        ...MOTHER_SHOP_PRODUCT_FILTER,
+      };
+      const finalQuery = Object.keys(query).length > 0 ? { $and: [motherCondition, query] } : motherCondition;
+      const products = await Product.find(finalQuery)
         .populate('categories')
         .populate('brand')
         .populate('uploadedBy', 'storeName subdomain')
@@ -57,7 +62,11 @@ export const getCachedProductBySlug = (slug: string) => {
   return unstable_cache(
     async () => {
       await connectToDatabase();
-      const product = await Product.findOne({ slug, isPublished: true })
+      const product = await Product.findOne({
+        slug,
+        isPublished: true,
+        ...MOTHER_SHOP_PRODUCT_FILTER,
+      })
         .populate('categories')
         .populate('brand')
         .populate('uploadedBy', 'storeName subdomain')
@@ -91,6 +100,7 @@ export const getTrendingProducts = (limit = 10) => {
       let trendingProducts = await Product.find({
         _id: { $in: topSellingIds },
         isPublished: true,
+        ...MOTHER_SHOP_PRODUCT_FILTER,
       }).populate('categories').lean();
 
       // Ensure they are in the order of totalSales
@@ -106,7 +116,8 @@ export const getTrendingProducts = (limit = 10) => {
         const topRated = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
           isPublished: true,
-          ratings: { $gt: 0 }
+          ratings: { $gt: 0 },
+          ...MOTHER_SHOP_PRODUCT_FILTER,
         })
           .populate('categories')
           .sort({ ratings: -1, numReviews: -1 } as any)
@@ -121,7 +132,8 @@ export const getTrendingProducts = (limit = 10) => {
         const topViewed = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
           isPublished: true,
-          views: { $gt: 0 }
+          views: { $gt: 0 },
+          ...MOTHER_SHOP_PRODUCT_FILTER,
         })
           .populate('categories')
           .sort({ views: -1 } as any)
@@ -136,6 +148,7 @@ export const getTrendingProducts = (limit = 10) => {
         const latest = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
           isPublished: true,
+          ...MOTHER_SHOP_PRODUCT_FILTER,
         })
           .populate('categories')
           .sort({ createdAt: -1 } as any)
@@ -204,7 +217,8 @@ export const getCachedRootCategoriesWithProducts = (productsPerCategory = 10) =>
         const allObjectIds = allStringIds.map(id => new mongoose.Types.ObjectId(id));
         const products = await Product.find({
           isPublished: true,
-          categories: { $in: allObjectIds }
+          categories: { $in: allObjectIds },
+          ...MOTHER_SHOP_PRODUCT_FILTER,
         })
           .populate('categories')
           .populate('brand')
