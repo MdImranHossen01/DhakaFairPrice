@@ -25,13 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2, CreditCard, Truck, ShoppingBag, CheckCircle2, Plus, Minus, X, Globe, ArrowRight, PartyPopper, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
 import { normalizePhoneNumber } from '@/lib/utils';
@@ -49,7 +43,7 @@ import {
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'নাম আবশ্যক'),
-  phone: z.string().min(11, 'সঠিক মোবাইল নম্বর দিন'),
+  phone: z.string().regex(/^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/, 'সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)'),
   street: z.string().min(5, 'ঠিকানা আবশ্যক'),
   deliveryArea: z.enum(['inside', 'outside'], {
     message: 'ডেলিভারি এলাকা নির্বাচন করুন',
@@ -562,7 +556,7 @@ function CheckoutContent() {
 
   // Validation check for mandatory fields to show/hide the order button
   const watchedFields = form.watch();
-  const isPhoneValid = /^(?:01)[3-9]\d{8}$/.test(watchedFields.phone || '');
+  const isPhoneValid = /^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/.test(watchedFields.phone || '');
   const isAddressValid = (watchedFields.street || '').trim().length >= 5;
   const isNameValid = (watchedFields.fullName || '').trim().length >= 2;
   const isFormValid = !!(
@@ -633,14 +627,14 @@ function CheckoutContent() {
                   <div key={`${item.productId}-${item.color || 'no-color'}-${item.size || 'no-size'}-${index}`} className="flex gap-4 items-start relative group">
                     <div className="h-16 w-16 rounded-md border bg-muted flex-shrink-0 relative overflow-hidden">
                       {item.image && (
-                        <Image 
-                          src={item.image} 
-                          alt={item.name || 'Product'} 
-                          width={64} 
-                          height={64} 
+                        <Image
+                          src={item.image}
+                          alt={item.name || 'Product'}
+                          width={64}
+                          height={64}
                           priority={index === 0}
                           loading={index === 0 ? "eager" : "lazy"}
-                          className="h-full w-full object-cover" 
+                          className="h-full w-full object-cover"
                         />
                       )}
                     </div>
@@ -755,7 +749,22 @@ function CheckoutContent() {
                       <FormItem>
                         <FormLabel>মোবাইল নম্বর</FormLabel>
                         <FormControl>
-                          <Input placeholder="যেমন: 017XXXXXXXX" {...field} className="h-11 focus-visible:ring-primary/20" />
+                          <Input
+                            placeholder="যেমন: 017XXXXXXXX"
+                            {...field}
+                            onChange={(e) => {
+                              const sanitized = e.target.value.replace(/[^\d০-৯+]/g, '');
+                              field.onChange(sanitized);
+                            }}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              const norm = normalizePhoneNumber(e.target.value);
+                              if (norm) {
+                                form.setValue('phone', norm, { shouldValidate: true });
+                              }
+                            }}
+                            className="h-11 focus-visible:ring-primary/20"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1048,8 +1057,8 @@ function CheckoutContent() {
                   <Button
                     type="submit"
                     className={`w-full h-14 rounded-full font-black uppercase tracking-widest text-sm transition-all ${isFormValid && !syncData?.hasInsufficientStock && !isPendingOrderBlocked
-                        ? 'bg-primary shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95'
-                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
+                      ? 'bg-primary shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
                       }`}
                     disabled={loading || !isFormValid || syncData?.hasInsufficientStock || isPendingOrderBlocked}
                   >
@@ -1148,8 +1157,8 @@ function CheckoutContent() {
                 type="button"
                 onClick={() => setPaymentDetailTab('phone')}
                 className={`flex-1 pb-1.5 text-[11px] font-bold text-center border-b-2 transition-all ${paymentDetailTab === 'phone'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
                   }`}
               >
                 {selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'} নম্বর দিয়ে
@@ -1158,8 +1167,8 @@ function CheckoutContent() {
                 type="button"
                 onClick={() => setPaymentDetailTab('trx')}
                 className={`flex-1 pb-1.5 text-[11px] font-bold text-center border-b-2 transition-all ${paymentDetailTab === 'trx'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
                   }`}
               >
                 ট্রানজেকশন আইডি (TrxID) দিয়ে

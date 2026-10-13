@@ -64,13 +64,13 @@ function FraudCheckBadge({ phone }: { phone: string }) {
 
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ml-2 border ${successRatio >= 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ml-2 border ${successRatio >= 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
           successRatio >= 60 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
             'bg-red-50 text-red-700 border-red-200'
         }`}
       title={`Total: ${data.data.summary.total_parcel} | Delivered: ${data.data.summary.success_parcel} | Cancelled: ${data.data.summary.cancelled_parcel}`}
     >
-      {successRatio >= 80 ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+      {successRatio >= 80 ? <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
       {successRatio}% Success
     </span>
   );
@@ -142,16 +142,16 @@ function OrdersContent() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Order Placed': return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-none">Placed</Badge>;
-      case 'Confirmed': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-none">Confirmed</Badge>;
-      case 'Paid': return <Badge variant="secondary" className="bg-green-100 text-green-800 border-none text-[10px]">Paid</Badge>;
-      case 'Hold': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none text-[10px]">Hold</Badge>;
-      case 'Processing': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-[10px]">Processing</Badge>;
-      case 'Ready for Delivery': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-[10px]">Ready</Badge>;
-      case 'Released for Delivery': return <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none text-[10px]">Released</Badge>;
-      case 'Delivered': return <Badge variant="default" className="bg-green-600 text-white border-none">Delivered</Badge>;
-      case 'Cancelled': return <Badge variant="destructive">Cancelled</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      case 'Order Placed': return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-none text-xs px-2.5 py-0.5 font-bold">Placed</Badge>;
+      case 'Confirmed': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-none text-xs px-2.5 py-0.5 font-bold">Confirmed</Badge>;
+      case 'Paid': return <Badge variant="secondary" className="bg-green-100 text-green-800 border-none text-xs px-2.5 py-0.5 font-bold">Paid</Badge>;
+      case 'Hold': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none text-xs px-2.5 py-0.5 font-bold">Hold</Badge>;
+      case 'Processing': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-xs px-2.5 py-0.5 font-bold">Processing</Badge>;
+      case 'Ready for Delivery': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-xs px-2.5 py-0.5 font-bold">Ready</Badge>;
+      case 'Released for Delivery': return <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none text-xs px-2.5 py-0.5 font-bold">Released</Badge>;
+      case 'Delivered': return <Badge variant="default" className="bg-green-600 text-white border-none text-xs px-2.5 py-0.5 font-bold">Delivered</Badge>;
+      case 'Cancelled': return <Badge variant="destructive" className="text-xs px-2.5 py-0.5 font-bold">Cancelled</Badge>;
+      default: return <Badge variant="secondary" className="text-xs px-2.5 py-0.5 font-bold">{status}</Badge>;
     }
   };
 
@@ -569,13 +569,13 @@ function OrdersContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order Info</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Commission</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Order Info</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Items</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Total</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Commission</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Payment</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Status</TableHead>
+                  <TableHead className="text-right font-bold text-sm text-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -596,8 +596,8 @@ function OrdersContent() {
                     const displayId = order.shortId || String(order._id).slice(-8).toUpperCase();
                     return (
                       <TableRow key={order._id}>
-                        <TableCell className="max-w-[200px] whitespace-normal">
-                          <div className="flex flex-col gap-1.5 text-xs">
+                        <TableCell className="max-w-[220px] whitespace-normal">
+                          <div className="flex flex-col gap-1.5 text-sm">
                             <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
@@ -607,20 +607,20 @@ function OrdersContent() {
                                   setIsDetailsOpen(true);
                                 }}
                               >
-                                <span className="font-bold hover:underline text-primary">
+                                <span className="font-bold hover:underline text-sm text-primary">
                                   #{displayId}
                                 </span>
                               </button>
                             </div>
 
-                            <div className="flex flex-col text-[11px] text-slate-700 dark:text-zinc-300 mt-1 space-y-0.5">
-                              <span className="font-semibold text-slate-900 dark:text-white break-words block">
+                            <div className="flex flex-col text-xs text-slate-700 dark:text-zinc-300 mt-1 space-y-1">
+                              <span className="font-bold text-sm text-slate-900 dark:text-white break-words block leading-snug">
                                 {order.customer?.name || 'Customer'}
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <span
                                   onClick={() => order.customer?.phone && setSearch(order.customer.phone)}
-                                  className="text-muted-foreground hover:text-primary cursor-pointer hover:underline font-medium"
+                                  className="text-foreground hover:text-primary cursor-pointer hover:underline font-semibold text-xs"
                                 >
                                   {order.customer?.phone || 'No Phone'}
                                 </span>
@@ -633,7 +633,7 @@ function OrdersContent() {
                                       className="text-green-600 hover:text-green-700 transition-colors p-0.5 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded"
                                       title="Chat on WhatsApp"
                                     >
-                                      <WhatsAppIcon className="h-3.5 w-3.5" />
+                                      <WhatsAppIcon className="h-4 w-4" />
                                     </a>
                                     <button
                                       type="button"
@@ -644,7 +644,7 @@ function OrdersContent() {
                                       className="text-muted-foreground hover:text-primary transition-colors p-0.5 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded"
                                       title="Copy Phone Number"
                                     >
-                                      <Copy className="h-3 w-3" />
+                                      <Copy className="h-3.5 w-3.5" />
                                     </button>
                                   </>
                                 )}
@@ -654,8 +654,8 @@ function OrdersContent() {
                                   <FraudCheckBadge phone={order.customer.phone} />
                                 </div>
                               )}
-                              <span className="text-muted-foreground truncate max-w-[150px]">{order.customer?.email || 'No Email'}</span>
-                              <span className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                              <span className="text-muted-foreground text-xs truncate max-w-[170px]">{order.customer?.email || 'No Email'}</span>
+                              <span className="text-xs text-muted-foreground font-medium uppercase mt-0.5">
                                 {format(new Date(order.createdAt), 'MMM dd, h:mm a')}
                               </span>
                             </div>
@@ -667,28 +667,28 @@ function OrdersContent() {
                             {order.items?.map((item: any, i: number) => {
                               const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
                               return (
-                                <div key={item._id || item.id || i} className="text-[11px] bg-muted/40 p-1.5 rounded-sm border truncate" title={item.name}>
-                                  <span className="font-medium text-muted-foreground">{item.quantity}x</span>{' '}
-                                  <span className="font-semibold text-slate-800 dark:text-zinc-200">{item.name}</span>
-                                  {variantDesc && <span className="text-muted-foreground ml-1">({variantDesc})</span>}
+                                <div key={item._id || item.id || i} className="text-xs bg-muted/40 p-1.5 rounded-md border truncate font-medium" title={item.name}>
+                                  <span className="font-semibold text-muted-foreground">{item.quantity}x</span>{' '}
+                                  <span className="font-bold text-slate-800 dark:text-zinc-200">{item.name}</span>
+                                  {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
                                 </div>
                               );
                             })}
                             {/* Customer Note */}
                             {order.customerNote && (
-                              <div className="text-[10px] bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded-sm border border-sky-200 dark:border-sky-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1">
+                              <div className="text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded-md border border-sky-200 dark:border-sky-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1 font-medium">
                                 <span className="font-bold">💬 Customer:</span> {order.customerNote}
                               </div>
                             )}
                             {/* Reseller Internal Note */}
                             {order.internalNote && (
-                              <div className="text-[10px] bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 p-1.5 rounded-sm border border-amber-200 dark:border-amber-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1">
+                              <div className="text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 p-1.5 rounded-md border border-amber-200 dark:border-amber-900/50 mt-1 whitespace-pre-wrap flex items-start gap-1 font-medium">
                                 <span className="font-bold">🔒 Private:</span> {order.internalNote}
                               </div>
                             )}
                             {/* System Note / Fulfillment */}
                             {order.systemNote && (
-                              <div className="text-[10px] bg-muted/60 text-muted-foreground p-1 rounded-sm border border-border mt-1 font-mono flex items-center gap-1">
+                              <div className="text-xs bg-muted/60 text-muted-foreground p-1 rounded-md border border-border mt-1 font-mono flex items-center gap-1">
                                 <span>⚙️</span> {order.systemNote}
                               </div>
                             )}
@@ -697,23 +697,23 @@ function OrdersContent() {
 
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-bold text-sm">৳{Math.round(order.totalAmount)}</span>
+                            <span className="font-extrabold text-base">৳{Math.round(order.totalAmount)}</span>
                           </div>
                         </TableCell>
 
                         <TableCell>
                           <div className="flex flex-col gap-1 items-start">
-                            <span className="font-bold text-green-600 text-sm">৳{Math.round(order.resellerCommission || 0)}</span>
+                            <span className="font-bold text-green-600 text-base">৳{Math.round(order.resellerCommission || 0)}</span>
                             {order.commissionStatus === 'cleared' ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[9px] px-1.5 py-0 font-medium">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-xs px-2 py-0.5 font-bold">
                                 Received
                               </Badge>
                             ) : order.commissionStatus === 'cancelled' ? (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-[9px] px-1.5 py-0 font-medium">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs px-2 py-0.5 font-bold">
                                 Cancelled
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-[9px] px-1.5 py-0 font-medium">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs px-2 py-0.5 font-bold">
                                 Pending
                               </Badge>
                             )}
@@ -721,11 +721,11 @@ function OrdersContent() {
                         </TableCell>
 
                         <TableCell>
-                          <Badge variant={order.paymentStatus === 'Paid' ? 'default' : 'outline'} className={
+                          <Badge variant={order.paymentStatus === 'Paid' ? 'default' : 'outline'} className={`text-xs px-2.5 py-0.5 font-bold ${
                             order.paymentStatus === 'Pending' ? 'text-yellow-600 border-yellow-300 bg-yellow-50' :
                               order.paymentStatus === 'Failed' ? 'text-red-600 border-red-300 bg-red-50' :
                                 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }>
+                          }`}>
                             {order.paymentStatus || 'Pending'}
                           </Badge>
                         </TableCell>

@@ -123,7 +123,7 @@ function FraudCheckBadge({ phone }: { phone?: string }) {
   const colorClass = ratio >= 80 ? 'text-green-600 font-extrabold' : ratio >= 60 ? 'text-yellow-600 font-extrabold' : 'text-red-600 font-extrabold';
 
   return (
-    <span className={`text-[10px] px-1 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 ${colorClass}`} title={`${data.total_parcel} total parcels`}>
+    <span className={`text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 font-bold inline-block ${colorClass}`} title={`${data.total_parcel} total parcels`}>
       {ratio}% Success
     </span>
   );
@@ -734,10 +734,10 @@ function OrdersContent() {
     switch (status) {
       case 'Order Placed': return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-none">Placed</Badge>;
       case 'Confirmed': return <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-none">Confirmed</Badge>;
-      case 'Paid': return <Badge variant="secondary" className="bg-green-100 text-green-800 border-none text-[10px]">Paid</Badge>;
-      case 'Hold': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none text-[10px]">Hold</Badge>;
-      case 'Ready for Delivery': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-[10px]">Ready</Badge>;
-      case 'Released for Delivery': return <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none text-[10px]">Released</Badge>;
+      case 'Paid': return <Badge variant="secondary" className="bg-green-100 text-green-800 border-none text-xs px-2.5 py-0.5 font-bold">Paid</Badge>;
+      case 'Hold': return <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-none text-xs px-2.5 py-0.5 font-bold">Hold</Badge>;
+      case 'Ready for Delivery': return <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-none text-xs px-2.5 py-0.5 font-bold">Ready</Badge>;
+      case 'Released for Delivery': return <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-none text-xs px-2.5 py-0.5 font-bold">Released</Badge>;
       case 'Delivered': return <Badge variant="default" className="bg-green-600 text-white border-none">Delivered</Badge>;
       case 'Cancelled': return <Badge variant="destructive">Cancelled</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
@@ -1081,13 +1081,13 @@ function OrdersContent() {
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Order Info</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Commission</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Order Info</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Items</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Total</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Commission</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Payment</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Status</TableHead>
+                <TableHead className="text-right font-bold text-sm text-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1106,31 +1106,31 @@ function OrdersContent() {
                         onCheckedChange={() => toggleSelect(order._id)}
                       />
                     </TableCell>
-                    <TableCell className="max-w-[200px] whitespace-normal">
-                      <div className="flex flex-col gap-1.5 text-xs">
+                    <TableCell className="max-w-[220px] whitespace-normal">
+                      <div className="flex flex-col gap-1.5 text-sm">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             className="cursor-pointer hover:opacity-80 transition-opacity"
                             onClick={() => openDetails(order._id)}
                           >
-                            <span className={`font-bold hover:underline ${order.isDuplicate ? 'text-red-500 font-extrabold' : order.isRepeat ? 'text-yellow-600 font-extrabold' : 'text-primary'}`}>
+                            <span className={`font-bold hover:underline text-sm ${order.isDuplicate ? 'text-red-500 font-extrabold' : order.isRepeat ? 'text-yellow-600 font-extrabold' : 'text-primary'}`}>
                               #{order.shortId || order._id.slice(-8).toUpperCase()}
                             </span>
                           </button>
                           {order.isDuplicate ? (
-                            <Badge className="bg-red-500 text-white hover:bg-red-600 border-none text-[9px] px-1 py-0 h-4">Duplicate</Badge>
+                            <Badge className="bg-red-500 text-white hover:bg-red-600 border-none text-[10px] px-1.5 py-0.5 h-5 font-bold">Duplicate</Badge>
                           ) : order.isRepeat ? (
-                            <Badge className="bg-yellow-500 text-black hover:bg-yellow-600 border-none text-[9px] px-1 py-0 h-4">Repeat</Badge>
+                            <Badge className="bg-yellow-500 text-black hover:bg-yellow-600 border-none text-[10px] px-1.5 py-0.5 h-5 font-bold">Repeat</Badge>
                           ) : null}
                         </div>
                         
-                        <div className="flex flex-col text-[11px] text-slate-700 dark:text-zinc-300 mt-1 space-y-0.5">
-                          <span className="font-semibold text-slate-900 dark:text-white break-words block">{order.shippingAddress?.fullName || order.user?.name || 'Guest User'}</span>
+                        <div className="flex flex-col text-xs text-slate-700 dark:text-zinc-300 mt-1 space-y-1">
+                          <span className="font-bold text-sm text-slate-900 dark:text-white break-words block leading-snug">{order.shippingAddress?.fullName || order.user?.name || 'Guest User'}</span>
                           <div className="flex items-center gap-1.5">
                             <span 
                               onClick={() => order.shippingAddress?.phone && setSearchTerm(order.shippingAddress.phone)}
-                              className="text-muted-foreground hover:text-primary cursor-pointer hover:underline font-medium"
+                              className="text-foreground hover:text-primary cursor-pointer hover:underline font-semibold text-xs"
                             >
                               {order.shippingAddress?.phone || 'No Phone'}
                             </span>
@@ -1143,7 +1143,7 @@ function OrdersContent() {
                                   className="text-green-600 hover:text-green-700 transition-colors p-0.5 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded"
                                   title="Chat on WhatsApp"
                                 >
-                                  <WhatsAppIcon className="h-3.5 w-3.5" />
+                                  <WhatsAppIcon className="h-4 w-4" />
                                 </a>
                                 <button
                                   type="button"
@@ -1154,7 +1154,7 @@ function OrdersContent() {
                                   className="text-muted-foreground hover:text-primary transition-colors p-0.5 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded animate-in fade-in duration-200"
                                   title="Copy Phone Number"
                                 >
-                                  <Copy className="h-3 w-3" />
+                                  <Copy className="h-3.5 w-3.5" />
                                 </button>
                               </>
                             )}
@@ -1164,8 +1164,8 @@ function OrdersContent() {
                               <FraudCheckBadge phone={order.shippingAddress.phone} />
                             </div>
                           )}
-                          <span className="text-muted-foreground truncate max-w-[150px]">{order.user?.email || 'No Email'}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                          <span className="text-muted-foreground text-xs truncate max-w-[170px]">{order.user?.email || 'No Email'}</span>
+                          <span className="text-xs text-muted-foreground font-medium uppercase mt-0.5">
                             {order.createdAt ? format(new Date(order.createdAt), 'MMM dd, p') : 'N/A'}
                           </span>
                         </div>
@@ -1173,9 +1173,9 @@ function OrdersContent() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1.5">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        <div className="flex flex-wrap gap-1 max-w-[220px]">
                           {order.items?.map((item: any, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-[9px] px-1 py-0 font-normal truncate max-w-[180px]">
+                            <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5 font-medium truncate max-w-[200px]">
                               {item.quantity}× {item.name}
                               {(item.color || item.size) && (
                                 <span className="text-muted-foreground ml-1">
@@ -1187,70 +1187,70 @@ function OrdersContent() {
                         </div>
                         {/* Customer Note */}
                         {order.customerNote && (
-                          <div className="mt-1 text-[10px] bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 px-1.5 py-0.5 rounded border border-sky-200/50 font-medium whitespace-pre-line max-w-[200px]" title={`Customer Note: ${order.customerNote}`}>
+                          <div className="mt-1 text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded border border-sky-200/50 font-medium whitespace-pre-line max-w-[220px]" title={`Customer Note: ${order.customerNote}`}>
                             💬 Customer: {order.customerNote}
                           </div>
                         )}
                         {/* Internal Note */}
                         {order.internalNote && (
-                          <div className="mt-1 text-[10px] bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium whitespace-pre-line max-w-[200px]" title={`Internal Note: ${order.internalNote}`}>
+                          <div className="mt-1 text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-1.5 rounded border border-amber-200/50 font-medium whitespace-pre-line max-w-[220px]" title={`Internal Note: ${order.internalNote}`}>
                             🔒 Staff: {order.internalNote}
                           </div>
                         )}
                         {/* System Note */}
                         {order.systemNote && (
-                          <div className="mt-1 text-[9px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono max-w-[200px] truncate" title={`System Info: ${order.systemNote}`}>
+                          <div className="mt-1 text-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono max-w-[220px] truncate" title={`System Info: ${order.systemNote}`}>
                             ⚙️ {order.systemNote}
                           </div>
                         )}
                         {order.resellerId && typeof order.resellerId === 'object' && order.resellerId.storeName && (
-                          <div className="mt-1 text-[9px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/50 font-bold whitespace-nowrap max-w-[200px] truncate" title={order.resellerId.storeName}>
+                          <div className="mt-1 text-xs bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/50 font-bold whitespace-nowrap max-w-[220px] truncate" title={order.resellerId.storeName}>
                             Store: {order.resellerId.storeName}
                           </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-bold">৳{Math.round(order.totalAmount ?? 0)}</TableCell>
+                    <TableCell className="font-extrabold text-base">৳{Math.round(order.totalAmount ?? 0)}</TableCell>
                     <TableCell>
                       {order.resellerId ? (
                         <div className="flex flex-col gap-1 items-start">
-                          <span className="font-bold text-green-600 text-sm">
+                          <span className="font-bold text-green-600 text-base">
                             ৳{Math.round(order.resellerCommission || 0)}
                           </span>
                           {order.commissionStatus === 'cleared' ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[9px] px-1.5 py-0 font-semibold">
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-xs px-2 py-0.5 font-bold">
                               Paid
                             </Badge>
                           ) : order.commissionStatus === 'cancelled' ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-[9px] px-1.5 py-0 font-semibold">
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs px-2 py-0.5 font-bold">
                               Cancelled
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-[9px] px-1.5 py-0 font-semibold">
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs px-2 py-0.5 font-bold">
                               Pending
                             </Badge>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground font-mono">—</span>
+                        <span className="text-sm text-muted-foreground font-mono">—</span>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <Badge
                           variant="outline"
-                          className={order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700 border-none font-bold' : 'bg-yellow-100 text-yellow-700 border-none font-bold'}
+                          className={order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700 border-none font-bold text-xs px-2.5 py-0.5' : 'bg-yellow-100 text-yellow-700 border-none font-bold text-xs px-2.5 py-0.5'}
                         >
                           {order.paymentStatus}
                         </Badge>
                         {order.paymentMethod === 'Manual' && order.manualPaymentDetails && (
-                          <div className="flex flex-col text-[10px] text-muted-foreground bg-slate-50 dark:bg-zinc-900 p-1.5 rounded border border-slate-100 dark:border-zinc-800 font-mono">
-                            <span className="font-bold text-primary uppercase text-[9px]">{order.manualPaymentDetails.methodName}</span>
+                          <div className="flex flex-col text-xs text-muted-foreground bg-slate-50 dark:bg-zinc-900 p-1.5 rounded border border-slate-100 dark:border-zinc-800 font-mono">
+                            <span className="font-bold text-primary uppercase text-xs">{order.manualPaymentDetails.methodName}</span>
                             {order.manualPaymentDetails.senderNumber && (
                               <span>No: {order.manualPaymentDetails.senderNumber}</span>
                             )}
                             {order.manualPaymentDetails.transactionId && (
-                              <span className="truncate max-w-[120px] font-bold text-slate-800 dark:text-zinc-200" title={order.manualPaymentDetails.transactionId}>
+                              <span className="truncate max-w-[130px] font-bold text-slate-800 dark:text-zinc-200" title={order.manualPaymentDetails.transactionId}>
                                 TrxID: {order.manualPaymentDetails.transactionId}
                               </span>
                             )}

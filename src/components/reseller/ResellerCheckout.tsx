@@ -31,7 +31,7 @@ import { resellerFbEvent, resellerTtEvent, waitForResellerPixel } from '@/lib/re
 
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'নাম আবশ্যক'),
-  phone: z.string().min(11, 'সঠিক মোবাইল নম্বর দিন'),
+  phone: z.string().regex(/^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/, 'সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)'),
   street: z.string().min(5, 'ঠিকানা আবশ্যক'),
   deliveryArea: z.enum(['inside', 'outside']),
   paymentMethod: z.string().min(1),
@@ -556,7 +556,22 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                       <FormItem>
                         <FormLabel>মোবাইল নম্বর</FormLabel>
                         <FormControl>
-                          <Input placeholder="যেমন: 017XXXXXXXX" {...field} className="h-11 focus-visible:ring-primary/20" />
+                          <Input 
+                            placeholder="যেমন: 017XXXXXXXX" 
+                            {...field} 
+                            onChange={(e) => {
+                              const sanitized = e.target.value.replace(/[^\d০-৯+]/g, '');
+                              field.onChange(sanitized);
+                            }}
+                            onBlur={(e) => {
+                              field.onBlur();
+                              const norm = normalizePhoneNumber(e.target.value);
+                              if (norm) {
+                                form.setValue('phone', norm, { shouldValidate: true });
+                              }
+                            }}
+                            className="h-11 focus-visible:ring-primary/20" 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
