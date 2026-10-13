@@ -161,7 +161,8 @@ export default function LandingPagesPage() {
         </div>
       </div>
 
-      <div className="border rounded-2xl bg-white overflow-hidden shadow-sm">
+      {/* Desktop Table View */}
+      <div className="border rounded-2xl bg-card overflow-hidden shadow-sm hidden md:block">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
@@ -196,8 +197,8 @@ export default function LandingPagesPage() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={page.isActive ?"default" :"secondary"} className="rounded-full px-3">
-                    {page.isActive ?"Active" :"Inactive"}
+                  <Badge variant={page.isActive ? "default" : "secondary"} className="rounded-full px-3">
+                    {page.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-center">
@@ -231,7 +232,7 @@ export default function LandingPagesPage() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
-                        className="cursor-pointer gap-2 text-red-500 focus:text-red-500"
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                         onClick={() => handleDelete(page._id)}
                       >
                         <Trash2 className="h-4 w-4" /> Delete Page
@@ -243,6 +244,71 @@ export default function LandingPagesPage() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="block md:hidden space-y-3">
+        {loading ? (
+          <div className="text-center py-10 bg-card border rounded-2xl text-muted-foreground text-sm">Loading pages...</div>
+        ) : filteredPages.length === 0 ? (
+          <div className="text-center py-10 bg-card border rounded-2xl text-muted-foreground text-sm">No landing pages found. Create your first one!</div>
+        ) : (
+          filteredPages.map((page) => (
+            <div key={page._id} className="p-4 rounded-2xl border bg-card shadow-sm space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm leading-tight">{page.title}</h3>
+                  <Link 
+                    href={`/lp/${page.slug}`} 
+                    target="_blank" 
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    /lp/{page.slug} <ExternalLink className="h-2.5 w-2.5" />
+                  </Link>
+                </div>
+                <Badge variant={page.isActive ? "default" : "secondary"} className="rounded-full px-2.5 text-xs shrink-0">
+                  {page.isActive ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center gap-3">
+                  <span>Sections: <strong className="text-foreground">{page.sections?.length || 0}</strong></span>
+                  <span>Orders: <strong className="text-emerald-600 font-bold">{page.orderCount || 0}</strong></span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" asChild className="h-8 rounded-lg text-xs gap-1">
+                    <Link href={`/admin/landing-pages/${page._id}/builder`}>
+                      <Edit3 className="h-3 w-3 text-primary" /> Builder
+                    </Link>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="rounded-xl w-44 shadow-xl">
+                      <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => window.open(`/lp/${page.slug}`, '_blank')}>
+                        <Eye className="h-4 w-4 text-emerald-500" /> View Live
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer gap-2">
+                        <BarChart2 className="h-4 w-4 text-purple-500" /> Analytics
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                        onClick={() => handleDelete(page._id)}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete Page
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

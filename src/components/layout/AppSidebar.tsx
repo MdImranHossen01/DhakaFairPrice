@@ -11,6 +11,7 @@ import {
   FileText,
   Users,
   Image as ImageIcon,
+  Monitor,
   Settings,
   Store,
   Mail,
@@ -308,6 +309,17 @@ const data = {
       ],
     },
     {
+      title: "Landing Pages",
+      url: "#",
+      icon: Monitor,
+      items: [
+        {
+          title: "All Landing Pages",
+          url: "/admin/landing-pages",
+        },
+      ],
+    },
+    {
       title: "Blogs",
       url: "#",
       icon: FileText,
@@ -486,12 +498,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props} className="border-r border-slate-800/80 bg-[#0a152e] text-slate-100">
-      <SidebarHeader className="border-b border-slate-800/80 h-16 px-3.5 flex items-center justify-start bg-[#0a152e] overflow-hidden">
-        <Logo 
-          className="flex items-center gap-2 min-w-0 max-w-full"
-          imageClassName="size-7 md:size-7 shrink-0 rounded-full"
-          textClassName="text-xs md:text-[13px] font-black tracking-tight text-white whitespace-nowrap truncate uppercase"
-        />
+      <SidebarHeader className="border-b border-slate-800/80 h-16 px-4 flex items-center justify-between bg-[#0a152e]">
+        <Logo textClassName="text-base font-black tracking-wide text-white whitespace-nowrap" />
       </SidebarHeader>
 
       <SidebarContent className="gap-0 bg-[#0a152e] scrollbar-thin scrollbar-thumb-slate-800">
