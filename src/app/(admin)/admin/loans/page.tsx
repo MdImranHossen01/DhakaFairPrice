@@ -18,7 +18,10 @@ import {
   Clock, 
   Search,
   HandCoins,
-  ArrowUpRight
+  ArrowUpRight,
+  MoreVertical,
+  CreditCard,
+  History
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -30,13 +33,25 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
+import { LoanRepaymentDialog } from '@/components/admin/LoanRepaymentDialog';
+import { cleanAccountName } from '@/lib/utils';
 
 export default function LoansPage() {
   const [data, setData] = useState<any>(null);
   const [providers, setProviders] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Loan Repayment Modal State
+  const [selectedLoanForRepayment, setSelectedLoanForRepayment] = useState<any | null>(null);
+  const [repaymentOpen, setRepaymentOpen] = useState(false);
 
   // New Loan Modal State
   const [newLoanOpen, setNewLoanOpen] = useState(false);
@@ -230,12 +245,13 @@ export default function LoansPage() {
                   <th className="p-3 font-bold text-rose-600">Outstanding Due</th>
                   <th className="p-3 font-bold text-muted-foreground">Repayment Date</th>
                   <th className="p-3 font-bold text-right text-foreground">Status</th>
+                  <th className="p-3 font-bold text-right text-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={10} className="p-8 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>Loading loans...</span>
@@ -255,7 +271,7 @@ export default function LoansPage() {
                       </td>
                       <td className="p-3">
                         <Badge variant="secondary" className="text-[10px]">
-                          {loan.receivingAccountId?.name || 'Account'}
+                          {cleanAccountName(loan.receivingAccountId?.name) || 'Account'}
                         </Badge>
                       </td>
                       <td className="p-3 font-bold text-foreground">৳{Math.round(loan.amount).toLocaleString()}</td>
@@ -269,11 +285,50 @@ export default function LoansPage() {
                           {loan.status}
                         </Badge>
                       </td>
+                      <td className="p-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-muted">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            {loan.status === 'Active' && loan.dueAmount > 0 ? (
+                              <DropdownMenuItem
+                                className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                onClick={() => {
+                                  setSelectedLoanForRepayment(loan);
+                                  setRepaymentOpen(true);
+                                }}
+                              >
+                                <CreditCard className="mr-2 h-3.5 w-3.5" />
+                                Pay Loan
+                              </DropdownMenuItem>
+                            ) : null}
+                            {loan.repayments && loan.repayments.length > 0 ? (
+                              <DropdownMenuItem
+                                className="cursor-pointer text-xs"
+                                onClick={() => {
+                                  setSelectedLoanForRepayment(loan);
+                                  setRepaymentOpen(true);
+                                }}
+                              >
+                                <History className="mr-2 h-3.5 w-3.5 text-primary" />
+                                Payment History
+                              </DropdownMenuItem>
+                            ) : null}
+                            {loan.status === 'Paid' && (!loan.repayments || loan.repayments.length === 0) ? (
+                              <div className="px-2 py-1.5 text-[11px] text-muted-foreground font-medium">Fully Paid</div>
+                            ) : null}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="p-6 text-center text-muted-foreground">No business loans recorded.</td>
+                    <td colSpan={10} className="p-6 text-center text-muted-foreground">No business loans recorded.</td>
                   </tr>
                 )}
               </tbody>
@@ -298,9 +353,35 @@ export default function LoansPage() {
                     </Badge>
                   }
                   footer={
-                    <div className="flex items-center justify-between w-full font-bold text-xs">
-                      <span className="text-muted-foreground">Outstanding Due:</span>
-                      <span className="text-rose-600 text-sm font-black">৳{Math.round(loan.dueAmount || 0).toLocaleString()}</span>
+                    <div className="flex items-center justify-between w-full font-bold text-xs pt-1">
+                      <div>
+                        <span className="text-muted-foreground">Due: </span>
+                        <span className="text-rose-600 text-sm font-black">৳{Math.round(loan.dueAmount || 0).toLocaleString()}</span>
+                      </div>
+                      {loan.status === 'Active' && loan.dueAmount > 0 ? (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5"
+                          onClick={() => {
+                            setSelectedLoanForRepayment(loan);
+                            setRepaymentOpen(true);
+                          }}
+                        >
+                          <CreditCard className="h-3 w-3 mr-1" /> Pay Loan
+                        </Button>
+                      ) : loan.repayments && loan.repayments.length > 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs px-2"
+                          onClick={() => {
+                            setSelectedLoanForRepayment(loan);
+                            setRepaymentOpen(true);
+                          }}
+                        >
+                          <History className="h-3 w-3 mr-1" /> History
+                        </Button>
+                      ) : null}
                     </div>
                   }
                 >
@@ -308,7 +389,7 @@ export default function LoansPage() {
                   <MobileDataRow label="Disbursement Date" value={new Date(loan.date).toLocaleDateString()} />
                   <MobileDataRow label="Principal Amount" value={<span className="font-bold">৳{Math.round(loan.amount).toLocaleString()}</span>} />
                   <MobileDataRow label="Paid So Far" value={<span className="text-emerald-600 font-semibold">৳{Math.round(loan.paidAmount || 0).toLocaleString()}</span>} />
-                  {loan.receivingAccountId?.name && <MobileDataRow label="Account" value={loan.receivingAccountId.name} />}
+                  {loan.receivingAccountId?.name && <MobileDataRow label="Account" value={cleanAccountName(loan.receivingAccountId.name)} />}
                   {loan.expectedRepaymentDate && <MobileDataRow label="Repayment Date" value={new Date(loan.expectedRepaymentDate).toLocaleDateString()} />}
                 </MobileDataCard>
               ))
@@ -407,7 +488,7 @@ export default function LoansPage() {
                   <SelectValue placeholder="Select Account to Deposit Loan">
                     {loanForm.receivingAccountId ? (
                       accounts.find(a => a._id === loanForm.receivingAccountId)
-                        ? `${accounts.find(a => a._id === loanForm.receivingAccountId)?.name} (${accounts.find(a => a._id === loanForm.receivingAccountId)?.category || accounts.find(a => a._id === loanForm.receivingAccountId)?.code || ''})`
+                        ? `${cleanAccountName(accounts.find(a => a._id === loanForm.receivingAccountId)?.name)} (${accounts.find(a => a._id === loanForm.receivingAccountId)?.category || accounts.find(a => a._id === loanForm.receivingAccountId)?.code || ''})`
                         : 'Select Account to Deposit Loan'
                     ) : 'Select Account to Deposit Loan'}
                   </SelectValue>
@@ -417,7 +498,7 @@ export default function LoansPage() {
                     .filter(a => a.code !== 'AR' && a.code !== 'AP')
                     .map(a => (
                     <SelectItem key={a._id} value={a._id} className="text-xs">
-                      {a.name} ({a.category})
+                      {cleanAccountName(a.name)} ({a.category})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -456,6 +537,15 @@ export default function LoansPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Loan Repayment Modal */}
+      <LoanRepaymentDialog
+        open={repaymentOpen}
+        onOpenChange={setRepaymentOpen}
+        loan={selectedLoanForRepayment}
+        accounts={accounts}
+        onSuccess={fetchLoans}
+      />
     </div>
   );
 }

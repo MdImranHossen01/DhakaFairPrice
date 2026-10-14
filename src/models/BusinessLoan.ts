@@ -1,5 +1,14 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+export interface IBusinessLoanRepayment {
+  amount: number;
+  paymentAccountId: mongoose.Types.ObjectId;
+  paymentAccountName?: string;
+  date: Date;
+  note?: string;
+  createdAt: Date;
+}
+
 export interface IBusinessLoan extends Document {
   loanId: string;
   lenderName: string;
@@ -13,6 +22,7 @@ export interface IBusinessLoan extends Document {
   interestAmount: number;
   totalRepaymentAmount: number;
   status: 'Active' | 'Paid';
+  repayments?: IBusinessLoanRepayment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +41,16 @@ const BusinessLoanSchema: Schema<IBusinessLoan> = new Schema(
     interestAmount: { type: Number, default: 0, min: 0 },
     totalRepaymentAmount: { type: Number, required: true, min: 0 },
     status: { type: String, enum: ['Active', 'Paid'], default: 'Active' },
+    repayments: [
+      {
+        amount: { type: Number, required: true },
+        paymentAccountId: { type: Schema.Types.ObjectId, ref: 'LedgerAccount', required: true },
+        paymentAccountName: { type: String },
+        date: { type: Date, default: Date.now },
+        note: { type: String },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ]
   },
   { timestamps: true }
 );

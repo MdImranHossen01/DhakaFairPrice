@@ -11,27 +11,51 @@ import {
   Loader2, 
   RefreshCw, 
   ArrowLeft, 
-  AlertCircle
+  AlertCircle,
+  MoreVertical,
+  CreditCard,
+  History
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { LoanRepaymentDialog } from '@/components/admin/LoanRepaymentDialog';
 
 export default function UpcomingPayablePage() {
   const [loans, setLoans] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Repayment Modal State
+  const [selectedLoanForRepayment, setSelectedLoanForRepayment] = useState<any | null>(null);
+  const [repaymentOpen, setRepaymentOpen] = useState(false);
 
   const fetchUpcoming = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/loans?status=Active');
-      if (res.ok) {
-        const json = await res.json();
+      const [loansRes, accRes] = await Promise.all([
+        fetch('/api/admin/loans?status=Active'),
+        fetch('/api/admin/accounts')
+      ]);
+
+      if (loansRes.ok) {
+        const json = await loansRes.json();
         // Sort by expectedRepaymentDate ascending (nearest dues first)
         const sorted = (json.loans || []).sort((a: any, b: any) => 
           new Date(a.expectedRepaymentDate).getTime() - new Date(b.expectedRepaymentDate).getTime()
         );
         setLoans(sorted);
+      }
+
+      if (accRes.ok) {
+        const accJson = await accRes.json();
+        setAccounts(accJson.accounts || []);
       }
     } catch (error) {
       console.error('Failed to fetch upcoming payables:', error);
@@ -56,7 +80,7 @@ export default function UpcomingPayablePage() {
             <Link href="/admin/loans" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Upcoming Payable (আসন্ন লোন পরিশোধ)</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Upcoming Payable</h1>
           </div>
           <p className="text-muted-foreground text-xs md:text-sm mt-1">
             Active loans ordered chronologically by repayment maturity date for financial planning.
@@ -103,13 +127,14 @@ export default function UpcomingPayablePage() {
                   <th className="p-3 text-left font-bold text-foreground">Lender / Bank</th>
                   <th className="p-3 font-bold text-foreground">Principal (৳)</th>
                   <th className="p-3 font-bold text-emerald-600">Paid (৳)</th>
-                  <th className="p-3 font-bold text-rose-600 text-right">Payable Due</th>
+                  <th className="p-3 font-bold text-rose-600">Payable Due</th>
+                  <th className="p-3 font-bold text-right text-foreground">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>Loading upcoming schedule...</span>
@@ -136,15 +161,51 @@ export default function UpcomingPayablePage() {
                         </td>
                         <td className="p-3 font-medium text-foreground">৳{Math.round(l.amount).toLocaleString()}</td>
                         <td className="p-3 font-medium text-emerald-600">৳{Math.round(l.paidAmount || 0).toLocaleString()}</td>
-                        <td className="p-3 font-bold text-right text-rose-600">
+                        <td className="p-3 font-bold text-rose-600">
                           ৳{Math.round(l.dueAmount || 0).toLocaleString()}
+                        </td>
+                        <td className="p-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-muted">
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              {l.status === 'Active' && l.dueAmount > 0 ? (
+                                <DropdownMenuItem
+                                  className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                  onClick={() => {
+                                    setSelectedLoanForRepayment(l);
+                                    setRepaymentOpen(true);
+                                  }}
+                                >
+                                  <CreditCard className="mr-2 h-3.5 w-3.5" />
+                                  Pay Loan
+                                </DropdownMenuItem>
+                              ) : null}
+                              {l.repayments && l.repayments.length > 0 ? (
+                                <DropdownMenuItem
+                                  className="cursor-pointer text-xs"
+                                  onClick={() => {
+                                    setSelectedLoanForRepayment(l);
+                                    setRepaymentOpen(true);
+                                  }}
+                                >
+                                  <History className="mr-2 h-3.5 w-3.5 text-primary" />
+                                  Payment History
+                                </DropdownMenuItem>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-muted-foreground">No active upcoming loan repayments due.</td>
+                    <td colSpan={7} className="p-6 text-center text-muted-foreground">No active upcoming loan repayments due.</td>
                   </tr>
                 )}
               </tbody>
@@ -152,6 +213,15 @@ export default function UpcomingPayablePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Loan Repayment Modal */}
+      <LoanRepaymentDialog
+        open={repaymentOpen}
+        onOpenChange={setRepaymentOpen}
+        loan={selectedLoanForRepayment}
+        accounts={accounts}
+        onSuccess={fetchUpcoming}
+      />
     </div>
   );
 }

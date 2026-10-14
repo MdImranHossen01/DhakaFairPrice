@@ -106,6 +106,32 @@ export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'A
 }
 
 /**
+ * Recalculate ledger balance for any account by its ObjectId
+ */
+export async function recalculateLedgerBalanceByAccountId(accountId: any) {
+  if (!accountId) return;
+  await connectToDatabase();
+  const account = await LedgerAccount.findById(accountId);
+  if (!account) return;
+
+  const transactions = await LedgerTransaction.find({ account: account._id }).sort({ date: 1, createdAt: 1 });
+
+  let runningBalance = account.openingBalance || 0;
+
+  for (const tx of transactions) {
+    const change = account.type === 'liability'
+      ? (tx.type === 'credit' ? tx.amount : -tx.amount)
+      : (tx.type === 'debit' ? tx.amount : -tx.amount);
+    runningBalance += change;
+    tx.balanceAfter = runningBalance;
+    await tx.save();
+  }
+
+  account.currentBalance = runningBalance;
+  await account.save();
+}
+
+/**
  * Log order payment to the ledger
  */
 export async function logOrderPaymentToLedger(order: any) {
