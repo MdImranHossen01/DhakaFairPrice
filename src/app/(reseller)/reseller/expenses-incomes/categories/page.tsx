@@ -133,8 +133,8 @@ export default function ResellerCategoriesPage() {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="expense" className="text-xs">Expense (খরচ)</SelectItem>
-                    <SelectItem value="income" className="text-xs">Income (আয়)</SelectItem>
+                    <SelectItem value="expense" className="text-xs">Expense</SelectItem>
+                    <SelectItem value="income" className="text-xs">Income</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

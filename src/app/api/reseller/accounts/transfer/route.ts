@@ -75,6 +75,16 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    if ((fromAccount.currentBalance || 0) <= 0) {
+      await dbSession.abortTransaction();
+      dbSession.endSession();
+      dbSession = null;
+      return NextResponse.json(
+        { message: `Cannot transfer from ${fromAccount.name} because its balance is zero or negative (Available: ৳${fromAccount.currentBalance || 0}).` },
+        { status: 400 }
+      );
+    }
+
     // Atomically decrement source with sufficiency filter within session
     const updatedFrom = await LedgerAccount.findOneAndUpdate(
       { _id: fromAccountId, currentBalance: { $gte: transferAmount }, resellerId: reseller._id },

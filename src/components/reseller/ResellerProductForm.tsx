@@ -500,16 +500,16 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             </Button>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                {initialData ? 'ব্যক্তিগত পণ্য সম্পাদনা করুন' : 'নতুন ব্যক্তিগত পণ্য তৈরি করুন'}
+                {initialData ? 'Edit Custom Product' : 'Create New Custom Product'}
               </h1>
-              <p className="text-sm text-muted-foreground">আপনার স্টোরের জন্য প্রিমিয়াম পণ্য যুক্ত করুন</p>
+              <p className="text-sm text-muted-foreground">Add and manage custom products for your store</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>বাতিল</Button>
+            <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              সংরক্ষণ করুন
+              Save Product
             </Button>
           </div>
         </div>
@@ -524,9 +524,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>পণ্যের নাম *</FormLabel>
+                      <FormLabel>Product Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="প্রিমিয়াম পাঞ্জাবি" {...field} />
+                        <Input placeholder="Enter product name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -538,7 +538,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="slug"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>স্লাগ (Slug)</FormLabel>
+                        <FormLabel>Slug</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="product-slug"
@@ -559,9 +559,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       <FormItem>
                         <div className="flex items-center justify-between">
                           <FormLabel>
-                            SKU (কোড)
+                            SKU
                             {variantFields.length > 0
-                              ? <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
+                              ? <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
                               : <span className="ml-1 text-xs font-normal text-destructive">*</span>
                             }
                           </FormLabel>
@@ -569,7 +569,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                             type="button"
                             onClick={() => field.onChange(generateRandomSku())}
                             className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
-                            title="অটো কোড তৈরি করুন"
+                            title="Generate Auto SKU"
                           >
                             <RefreshCw className="size-3" />
                             Auto
@@ -590,21 +590,21 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                         <div className="flex items-center justify-between">
                           <FormLabel className="flex items-center gap-1">
                             <Barcode className="size-3.5 text-muted-foreground" />
-                            বারকোড (Barcode)
-                            <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
+                            Barcode
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
                           </FormLabel>
                           <button
                             type="button"
                             onClick={() => field.onChange(generateRandomBarcode())}
                             className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
-                            title="অটো বারকোড তৈরি করুন"
+                            title="Generate Auto Barcode"
                           >
                             <RefreshCw className="size-3" />
                             Auto
                           </button>
                         </div>
                         <FormControl>
-                          <Input placeholder="যেমন 890123456789" {...field} value={field.value || ''} />
+                          <Input placeholder="e.g. 890123456789" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -617,7 +617,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between mb-1">
-                        <FormLabel>পণ্যের বিবরণ *</FormLabel>
+                        <FormLabel>Product Description *</FormLabel>
                         <Button
                           type="button"
                           variant="outline"
@@ -631,7 +631,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                           ) : (
                             <Sparkles className="h-3 w-3 mr-1.5 text-primary" />
                           )}
-                          AI দিয়ে বিবরণ লিখুন
+                          Write with AI
                         </Button>
                       </div>
                       <FormControl>
@@ -661,7 +661,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             {/* Gallery Images */}
             <Card>
               <CardContent className="pt-6 space-y-4">
-                <Label className="text-base font-bold">পণ্যের গ্যালারি ইমেজসমূহ</Label>
+                <Label className="text-base font-bold">Product Gallery Images</Label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {form.watch('images').map((url, index) => (
                     <div key={`${url}-${index}`} className="relative aspect-square rounded-md overflow-hidden border bg-muted">
@@ -697,9 +697,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                 <div>
                   <h3 className="text-lg font-bold text-primary flex items-center gap-2">
                     <PlusCircle className="h-5 w-5" />
-                    ভ্যারিয়েশন ম্যানেজার (সাইজ ও কালার)
+                    Variation Manager (Size & Color)
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">প্রতিটি কালার ভ্যারিয়েন্টের জন্য ছবি এবং সাইজ সেট করুন।</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Set images and sizes for each color variant.</p>
                 </div>
                 <Button
                   type="button"
@@ -708,13 +708,13 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   className="bg-background hover:bg-primary hover:text-white transition-all border-primary/20"
                   onClick={() => appendVariant({ color: '', images: [], sizes: [{ size: '', price: form.getValues('price') || '', stock: '', sku: '' }] })}
                 >
-                  <Plus className="mr-2 h-4 w-4" /> কালার ভ্যারিয়েন্ট যোগ করুন
+                  <Plus className="mr-2 h-4 w-4" /> Add Color Variant
                 </Button>
               </div>
               <CardContent className="p-6">
                 {variantFields.length === 0 ? (
                   <div className="text-center py-10 border-2 border-dashed border-muted rounded-xl text-muted-foreground italic text-sm">
-                    কোনো ভ্যারিয়েশন যোগ করা হয়নি। শুরু করতে "কালার ভ্যারিয়েন্ট যোগ করুন" ক্লিক করুন।
+                    No variations added yet. Click &quot;Add Color Variant&quot; to get started.
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -733,16 +733,16 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
 
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="space-y-2">
-                              <Label className="text-sm font-bold">কালার নাম</Label>
+                              <Label className="text-sm font-bold">Color Name</Label>
                               <Input
                                 {...form.register(`variants.${colorIndex}.color` as const)}
-                                placeholder="যেমন: লাল"
+                                placeholder="e.g. Red, Black"
                                 className="h-10 bg-background"
                               />
                             </div>
 
                             <div className="lg:col-span-2 space-y-2">
-                              <Label className="text-sm font-bold">কালার ইমেজসমূহ</Label>
+                              <Label className="text-sm font-bold">Color Images</Label>
                               <div className="flex flex-wrap gap-2 items-center">
                                 {colorImages.map((imgUrl: string, imgIdx: number) => (
                                   <div key={imgIdx} className="relative h-16 w-16 rounded-lg overflow-hidden border bg-background group">
@@ -779,7 +779,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
 
                           <div className="space-y-4 pt-4 border-t border-muted/50">
                             <div className="flex items-center justify-between">
-                              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">সাইজ ও মূল্য তালিকা</Label>
+                              <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Size & Price List</Label>
                               <Button
                                 type="button"
                                 variant="outline"
@@ -792,7 +792,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                   ]);
                                 }}
                               >
-                                <Plus className="mr-1.5 h-3.5 w-3.5" /> সাইজ যোগ করুন
+                                <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Size
                               </Button>
                             </div>
 
@@ -815,16 +815,16 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
 
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2">
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">সাইজ</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Size</Label>
                                         <Input
                                           {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.size` as const)}
-                                          placeholder="যেমন: XL"
+                                          placeholder="e.g. XL"
                                           className="h-9 mt-1"
                                         />
                                       </div>
                                       <div>
                                         <Label className="text-xs font-medium text-muted-foreground">
-                                          বিক্রয় মূল্য <span className="text-destructive">*</span>
+                                          Selling Price <span className="text-destructive">*</span>
                                         </Label>
                                         <Input
                                           type="number"
@@ -841,7 +841,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">ক্রয় মূল্য</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Cost Price</Label>
                                         <Input
                                           type="number"
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.purchasePrice`) ?? ''}
@@ -853,7 +853,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">স্টক</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Stock</Label>
                                         <Input
                                           type="number"
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.stock`) ?? ''}
@@ -866,7 +866,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                       </div>
                                       <div>
                                         <Label className="text-xs font-medium text-muted-foreground">
-                                          SKU (কোড) *
+                                          SKU *
                                         </Label>
                                         <Input
                                           {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.sku` as const)}
@@ -878,7 +878,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
 
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">ডিসকাউন্ট (%)</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Discount (%)</Label>
                                         <Input
                                           type="number"
                                           placeholder="0"
@@ -897,10 +897,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">অফার মূল্য</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Offer Price</Label>
                                         <Input
                                           type="number"
-                                          placeholder="ঐচ্ছিক"
+                                          placeholder="Optional"
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`) ?? ''}
                                           className="h-9 mt-1"
                                           onChange={(e) => {
@@ -916,10 +916,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div className="col-span-2 md:col-span-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">বারকোড</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Barcode</Label>
                                         <Input
                                           {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.barcode` as const)}
-                                          placeholder="ঐচ্ছিক"
+                                          placeholder="Optional"
                                           className="h-9 mt-1"
                                         />
                                       </div>
@@ -942,8 +942,8 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
               <CardContent className="pt-6">
                 {variantFields.length > 0 && (
                   <div className="mb-4 flex items-center gap-2 rounded-md bg-muted/60 border border-muted px-4 py-2 text-xs text-muted-foreground">
-                    <span className="font-semibold text-primary">ℹ️ ভ্যারিয়েন্ট পাওয়া গেছে:</span>
-                    নিচের প্রাইস এবং স্টক অপশনাল, কাস্টমার কেনার সময় ভ্যারিয়েন্ট অনুযায়ী মূল্য কার্যকর হবে।
+                    <span className="font-semibold text-primary">ℹ️ Variants detected:</span>
+                    Base pricing and stock are optional; individual variant prices will apply during customer checkout.
                   </div>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -953,9 +953,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          নিয়মিত মূল্য (Tk)
+                          Regular Price (Tk)
                           {variantFields.length > 0
-                            ? <span className="ml-1 text-xs font-normal text-muted-foreground">(ঐচ্ছিক)</span>
+                            ? <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
                             : <span className="ml-1 text-xs font-normal text-destructive">*</span>
                           }
                         </FormLabel>
@@ -986,7 +986,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="purchasePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ক্রয় মূল্য/খরচ (Tk)</FormLabel>
+                        <FormLabel>Purchase / Cost Price (Tk)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1008,7 +1008,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="discountRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ডিসকাউন্ট (%)</FormLabel>
+                        <FormLabel>Discount (%)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1037,7 +1037,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="salePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>অফার মূল্য (Tk)</FormLabel>
+                        <FormLabel>Sale / Offer Price (Tk)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1068,7 +1068,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="stock"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>স্টক পরিমাণ</FormLabel>
+                        <FormLabel>Stock Quantity</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -1092,7 +1092,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-bold">পণ্য ক্যাটাগরি *</Label>
+                  <Label className="text-base font-bold">Product Categories *</Label>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   {mainCategories.map((mainCat) => (
@@ -1108,7 +1108,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                 </div>
                 {!hasMainCategory && form.formState.isSubmitted && (
                   <p className="text-[0.8rem] font-medium text-destructive">
-                    অন্তত একটি ক্যাটাগরি সিলেক্ট করুন
+                    Please select at least one category
                   </p>
                 )}
               </CardContent>
@@ -1118,7 +1118,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-bold">সাব-ক্যাটাগরি</Label>
+                  <Label className="text-base font-bold">Sub-categories</Label>
                 </div>
                 <div className="space-y-4 pt-2">
                   {selectedMainCategoryIds.length > 0 ? (
@@ -1141,7 +1141,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground italic">
-                      সাব-ক্যাটাগরি দেখতে আগে ক্যাটাগরি সিলেক্ট করুন
+                      Select a main category first to see sub-categories
                     </p>
                   )}
                 </div>
@@ -1152,7 +1152,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-bold">SEO ট্যাগ ও কিওয়ার্ডস</Label>
+                  <Label className="text-base font-bold">SEO Tags & Keywords</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -1166,12 +1166,12 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     ) : (
                       <Sparkles className="h-3 w-3 mr-1.5 text-primary" />
                     )}
-                    AI দিয়ে ট্যাগ জেনারেট করুন
+                    Generate Tags with AI
                   </Button>
                 </div>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="ট্যাগ লিখে এন্টার চাপুন"
+                    placeholder="Type tag and press enter"
                     value={tagInput}
                     onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => {
@@ -1202,7 +1202,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                       }
                     }}
                   >
-                    যোগ
+                    Add
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1229,7 +1229,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="featured">ফিচার্ড প্রোডাক্ট</Label>
+                  <Label htmlFor="featured">Featured Product</Label>
                   <input
                     type="checkbox"
                     id="featured"
@@ -1238,7 +1238,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="new-arrival">নতুন আগমন (New Arrival)</Label>
+                  <Label htmlFor="new-arrival">New Arrival</Label>
                   <input
                     type="checkbox"
                     id="new-arrival"
@@ -1247,7 +1247,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="flash-sale">ফ্ল্যাশ সেল (Flash Sale)</Label>
+                  <Label htmlFor="flash-sale">Flash Sale</Label>
                   <input
                     type="checkbox"
                     id="flash-sale"
@@ -1256,7 +1256,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="published">পাবলিশ করুন (স্টোরে লাইভ দেখাবে)</Label>
+                  <Label htmlFor="published">Publish (Live in store)</Label>
                   <input
                     type="checkbox"
                     id="published"
@@ -1265,7 +1265,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   />
                 </div>
                 <div className="flex items-center justify-between border-t pt-4">
-                  <Label htmlFor="isShared" className="font-bold text-primary">অন্যান্য রিসেলারদের বিক্রয়ের জন্য শেয়ার করুন</Label>
+                  <Label htmlFor="isShared" className="font-bold text-primary">Share with other resellers to sell</Label>
                   <input
                     type="checkbox"
                     id="isShared"

@@ -630,7 +630,7 @@ function ProductsContent() {
 
             {selectedProduct?.variants && selectedProduct.variants.length > 0 ? (
               <div className="space-y-2 border-t pt-2">
-                <Label className="text-xs font-bold text-foreground">Add Quantity per Variant (কালার/সাইজ অনুযায়ী স্টক যোগ করুন)</Label>
+                <Label className="text-xs font-bold text-foreground">Add Quantity per Variant (Color / Size)</Label>
                 <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
                   {selectedProduct.variants.map((v: any) => {
                     const key = v._id || `${v.color}-${v.size}`;
@@ -661,7 +661,7 @@ function ProductsContent() {
               </div>
             ) : (
               <div className="space-y-2 border-t pt-2">
-                <Label className="text-xs font-bold">Quantity to Add (যোগ করার পরিমাণ)</Label>
+                <Label className="text-xs font-bold">Quantity to Add</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"

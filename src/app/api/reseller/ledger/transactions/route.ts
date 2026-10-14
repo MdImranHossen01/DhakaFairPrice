@@ -97,11 +97,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: `Insufficient balance in ${account.name}. Available: ৳${account.currentBalance}` }, { status: 400 });
       }
 
+      const updateFilter: any = { _id: account._id, resellerId: reseller._id };
+      if (!isDeposit) {
+        updateFilter.currentBalance = { $gte: numAmount };
+      }
+
       const updatedAccount = await LedgerAccount.findOneAndUpdate(
-        { _id: account._id, resellerId: reseller._id },
+        updateFilter,
         { $inc: { currentBalance: incAmount } },
         { new: true, session: dbSession }
       );
+
+      if (!updatedAccount) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({ message: `Insufficient balance or account unavailable in ${account.name}` }, { status: 400 });
+      }
 
       const [transaction] = await LedgerTransaction.create(
         [
@@ -112,7 +123,7 @@ export async function POST(req: NextRequest) {
             description: description.trim(),
             type: isDeposit ? 'credit' : 'debit',
             amount: numAmount,
-            balanceAfter: updatedAccount?.currentBalance ?? (account.currentBalance + incAmount),
+            balanceAfter: updatedAccount.currentBalance,
           },
         ],
         { session: dbSession }
@@ -143,6 +154,30 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'One or both accounts not found in your store' }, { status: 404 });
       }
 
+      const isTransferable = (acc: any) => {
+        const name = (acc.name || '').toLowerCase();
+        const code = (acc.code || '').toLowerCase();
+        if (name.includes('receivable') || code.includes('receivable') || name.includes('প্রাপ্য')) return false;
+        if (name.includes('payable') || code.includes('payable') || name.includes('প্রদেয়')) return false;
+        return true;
+      };
+
+      if (!isTransferable(fromAcc) || !isTransferable(toAcc)) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({
+          message: 'Accounts Payable and Accounts Receivable cannot be used for fund transfers. Transfers are only permitted between liquid accounts (Cash, Bank, MFS).'
+        }, { status: 400 });
+      }
+
+      if ((fromAcc.currentBalance || 0) <= 0) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({
+          message: `Cannot transfer from ${fromAcc.name} because its balance is zero or negative (Available: ৳${fromAcc.currentBalance || 0}).`
+        }, { status: 400 });
+      }
+
       const updatedFrom = await LedgerAccount.findOneAndUpdate(
         { _id: fromAccountId, currentBalance: { $gte: numAmount }, resellerId: reseller._id },
         { $inc: { currentBalance: -numAmount } },
@@ -152,7 +187,7 @@ export async function POST(req: NextRequest) {
       if (!updatedFrom) {
         await dbSession.abortTransaction();
         dbSession.endSession();
-        return NextResponse.json({ message: `Insufficient balance in ${fromAcc.name}` }, { status: 400 });
+        return NextResponse.json({ message: `Insufficient balance in ${fromAcc.name}. Available: ৳${fromAcc.currentBalance}` }, { status: 400 });
       }
 
       const updatedTo = await LedgerAccount.findOneAndUpdate(

@@ -27,6 +27,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
+import { cleanAccountName } from '@/lib/utils';
 
 function ResellerLedgerContent() {
   const router = useRouter();
@@ -146,7 +147,7 @@ function ResellerLedgerContent() {
           <Card key={acc._id} className="shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground font-medium truncate">{acc.name}</p>
+                <p className="text-xs text-muted-foreground font-medium truncate">{cleanAccountName(acc.name)}</p>
                 <Badge variant="outline" className="text-[9px] px-1.5 py-0">{acc.code}</Badge>
               </div>
               <p className="text-xl font-black text-foreground mt-1">৳{(acc.currentBalance || 0).toLocaleString()}</p>
@@ -179,7 +180,7 @@ function ResellerLedgerContent() {
               <SelectItem value="all" className="text-xs">All Accounts</SelectItem>
               {accounts.map((a) => (
                 <SelectItem key={a._id} value={a._id} className="text-xs">
-                  {a.name}
+                  {cleanAccountName(a.name)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -257,7 +258,7 @@ function ResellerLedgerContent() {
                       </TableCell>
                       <TableCell className="text-xs font-semibold">
                         <Badge variant="outline" className="text-[10px]">
-                          {tx.account?.name || 'Account'}
+                          {cleanAccountName(tx.account?.name) || 'Account'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs">
