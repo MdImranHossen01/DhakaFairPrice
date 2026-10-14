@@ -18,6 +18,7 @@ import {
   LogOut,
   Store,
   CreditCard,
+  BarChart3,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -75,6 +76,21 @@ const resellerNav = [
     items: [
       { title: "All Orders", url: "/reseller/orders" },
       { title: "Abandoned Carts", url: "/reseller/abandoned-carts" },
+    ],
+  },
+  {
+    title: "Reports & Analytics",
+    icon: BarChart3,
+    items: [
+      { title: "Reports Overview", url: "/reseller/reports" },
+      { title: "Daily Report", url: "/reseller/reports/daily" },
+      { title: "Monthly Report", url: "/reseller/reports/monthly" },
+      { title: "Order Profit Report", url: "/reseller/reports/order-profit" },
+      { title: "Item Profit Report", url: "/reseller/reports/item-profit" },
+      { title: "Top & Low Sales", url: "/reseller/reports/product-sales" },
+      { title: "Brand Wise Sales", url: "/reseller/reports/brand-sales" },
+      { title: "Payout & Earnings", url: "/reseller/reports/payouts" },
+      { title: "Expense Report", url: "/reseller/reports/expense" },
     ],
   },
   {
