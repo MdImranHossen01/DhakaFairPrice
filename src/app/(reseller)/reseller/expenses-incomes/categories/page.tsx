@@ -128,7 +128,7 @@ export default function ResellerCategoriesPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="type" className="text-xs">Category Type</Label>
-                <Select value={type} onValueChange={(val: 'expense' | 'income') => setType(val)}>
+                <Select value={type} onValueChange={(val: any) => val && setType(val)}>
                   <SelectTrigger id="type" className="h-8 text-xs">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
