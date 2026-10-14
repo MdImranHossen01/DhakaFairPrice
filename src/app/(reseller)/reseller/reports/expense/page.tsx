@@ -129,7 +129,7 @@ export default function ResellerExpenseReportPage() {
             />
           </div>
 
-          <Select value={category} onValueChange={(val) => setCategory(val)}>
+          <Select value={category} onValueChange={(val) => val && setCategory(val)}>
             <SelectTrigger className="w-[140px] h-9 text-xs">
               <SelectValue placeholder="Category" />
             </SelectTrigger>

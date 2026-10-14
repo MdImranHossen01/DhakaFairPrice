@@ -410,7 +410,7 @@ export default function ResellerAccountsPage() {
                 <Label className="text-xs">Category *</Label>
                 <Select
                   value={accountForm.category}
-                  onValueChange={(val) => setAccountForm({ ...accountForm, category: val })}
+                  onValueChange={(val) => val && setAccountForm({ ...accountForm, category: val })}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -453,7 +453,7 @@ export default function ResellerAccountsPage() {
                   <Label className="text-xs">Provider</Label>
                   <Select
                     value={accountForm.mfsProvider}
-                    onValueChange={(val) => setAccountForm({ ...accountForm, mfsProvider: val })}
+                    onValueChange={(val) => val && setAccountForm({ ...accountForm, mfsProvider: val })}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />

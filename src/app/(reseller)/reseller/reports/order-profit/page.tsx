@@ -137,7 +137,7 @@ export default function ResellerOrderProfitReportPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val)}>
+          <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
             <SelectTrigger className="w-[140px] h-9 text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>

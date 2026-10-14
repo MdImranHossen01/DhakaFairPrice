@@ -118,7 +118,7 @@ export default function ResellerPayoutsReportPage() {
       {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between print:hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val)}>
+          <Select value={typeFilter} onValueChange={(val) => val && setTypeFilter(val)}>
             <SelectTrigger className="w-[160px] h-9 text-xs">
               <SelectValue placeholder="Transaction Type" />
             </SelectTrigger>
@@ -131,7 +131,7 @@ export default function ResellerPayoutsReportPage() {
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val)}>
+          <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
             <SelectTrigger className="w-[130px] h-9 text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
