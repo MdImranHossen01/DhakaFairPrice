@@ -42,6 +42,7 @@ interface TransactionFormProps {
   presetType?: 'expense' | 'income';
   presetAccountId?: string;
   presetTab?: 'journal' | 'transfer';
+  apiPrefix?: string;
   onSuccess: (wasEdit: boolean) => void;
 }
 
@@ -50,6 +51,7 @@ export function TransactionForm({
   presetType, 
   presetAccountId, 
   presetTab, 
+  apiPrefix = '/api/admin',
   onSuccess 
 }: TransactionFormProps) {
   const [activeTab, setActiveTab] = useState<'journal' | 'transfer'>(presetTab || 'journal');
@@ -104,8 +106,8 @@ export function TransactionForm({
   const loadAccountsAndCategories = async () => {
     try {
       const [catRes, accRes] = await Promise.all([
-        fetch(`/api/admin/expenses-incomes/categories?type=${selectedType}`),
-        fetch('/api/admin/accounts')
+        fetch(`${apiPrefix}/expenses-incomes/categories?type=${selectedType}`),
+        fetch(`${apiPrefix}/accounts`)
       ]);
 
       if (catRes.ok) {
@@ -232,7 +234,7 @@ export function TransactionForm({
 
     setLoading(true);
     try {
-      const url = initialData ? `/api/admin/expenses-incomes/${initialData._id}` : '/api/admin/expenses-incomes';
+      const url = initialData ? `${apiPrefix}/expenses-incomes/${initialData._id}` : `${apiPrefix}/expenses-incomes`;
       const method = initialData ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -348,7 +350,7 @@ export function TransactionForm({
 
     setTransferLoading(true);
     try {
-      const res = await fetch('/api/admin/accounts/transfer', {
+      const res = await fetch(`${apiPrefix}/accounts/transfer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -34,7 +34,7 @@ export async function PUT(
     await connectToDatabase();
     
     const expense = await Expense.findOneAndUpdate(
-      { _id: id }, 
+      { _id: id, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }, 
       updateData, 
       { new: true, runValidators: true }
     );
@@ -99,7 +99,7 @@ export async function DELETE(
 
     await connectToDatabase();
     
-    const expense = await Expense.findById(id);
+    const expense = await Expense.findOne({ _id: id, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] });
     if (!expense) {
       return NextResponse.json({ message: 'Record not found' }, { status: 404 });
     }

@@ -13,6 +13,7 @@ export interface ILedgerAccount extends Document {
   currentBalance: number;
   type: 'asset' | 'liability';
   category: 'Cash' | 'Bank' | 'MFS' | 'Other';
+  resellerId?: mongoose.Types.ObjectId;
   description?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -21,7 +22,7 @@ export interface ILedgerAccount extends Document {
 const LedgerAccountSchema: Schema<ILedgerAccount> = new Schema(
   {
     name: { type: String, required: true },
-    code: { type: String, required: true, unique: true },
+    code: { type: String, required: true },
     accountNumber: { type: String },
     bankName: { type: String },
     branchName: { type: String },
@@ -32,10 +33,18 @@ const LedgerAccountSchema: Schema<ILedgerAccount> = new Schema(
     currentBalance: { type: Number, default: 0 },
     type: { type: String, default: 'asset', enum: ['asset', 'liability'] },
     category: { type: String, default: 'Bank', enum: ['Cash', 'Bank', 'MFS', 'Other'] },
+    resellerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Reseller',
+      default: null,
+      index: true,
+    },
     description: { type: String },
   },
   { timestamps: true }
 );
+
+LedgerAccountSchema.index({ resellerId: 1, code: 1 }, { unique: true });
 
 const LedgerAccount: Model<ILedgerAccount> =
   mongoose.models.LedgerAccount || mongoose.model<ILedgerAccount>('LedgerAccount', LedgerAccountSchema);

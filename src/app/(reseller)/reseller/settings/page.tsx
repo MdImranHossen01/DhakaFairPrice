@@ -247,7 +247,7 @@ export default function ResellerSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                 {/* Division Dropdown */}
                 <div className="space-y-1">
-                  <Label>Division / বিভাগ</Label>
+                  <Label>Division</Label>
                   <select
                     value={pickup.division}
                     onChange={e => {
@@ -256,7 +256,7 @@ export default function ResellerSettingsPage() {
                     }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    <option value="">-- বিভাগ নির্বাচন করুন --</option>
+                    <option value="">-- Select Division --</option>
                     {divisions.map(div => (
                       <option key={div} value={div}>{div}</option>
                     ))}
@@ -265,7 +265,7 @@ export default function ResellerSettingsPage() {
 
                 {/* District Dropdown */}
                 <div className="space-y-1">
-                  <Label>District / জেলা</Label>
+                  <Label>District</Label>
                   <select
                     value={pickup.district}
                     disabled={!pickup.division}
@@ -275,7 +275,7 @@ export default function ResellerSettingsPage() {
                     }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{pickup.division ? '-- জেলা নির্বাচন করুন --' : '-- আগে বিভাগ বাছুন --'}</option>
+                    <option value="">{pickup.division ? '-- Select District --' : '-- Select Division First --'}</option>
                     {(pickup.division ? getDistrictsByDivision(pickup.division) : []).map(dist => (
                       <option key={dist} value={dist}>{dist}</option>
                     ))}
@@ -284,14 +284,14 @@ export default function ResellerSettingsPage() {
 
                 {/* Thana Dropdown */}
                 <div className="space-y-1">
-                  <Label>Thana / থানা / উপজেলা</Label>
+                  <Label>Thana / Upazila</Label>
                   <select
                     value={pickup.thana}
                     disabled={!pickup.district}
                     onChange={e => setPickup(p => ({ ...p, thana: e.target.value }))}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{pickup.district ? '-- থানা বাছুন --' : '-- আগে জেলা বাছুন --'}</option>
+                    <option value="">{pickup.district ? '-- Select Thana --' : '-- Select District First --'}</option>
                     {(pickup.district ? getThanasByDistrict(pickup.district) : []).map(th => (
                       <option key={th} value={th}>{th}</option>
                     ))}

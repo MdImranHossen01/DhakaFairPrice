@@ -35,16 +35,16 @@ export default function ResellerWalletPage() {
 
   const submitPayout = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payoutForm.number || payoutForm.amount <= 0) { toast.error('সঠিক তথ্য দিন'); return; }
-    if (payoutForm.amount > reseller?.walletBalance) { toast.error('ব্যালেন্স অপর্যাপ্ত'); return; }
+    if (!payoutForm.number || payoutForm.amount <= 0) { toast.error('Please enter valid payout details'); return; }
+    if (payoutForm.amount > reseller?.walletBalance) { toast.error('Insufficient wallet balance'); return; }
     setSubmitting(true);
     const res = await fetch('/api/reseller/payout-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payoutForm, resellerId: reseller._id }),
     });
-    if (res.ok) { toast.success('পেআউট অনুরোধ পাঠানো হয়েছে!'); fetchData(); }
-    else toast.error('সমস্যা হয়েছে');
+    if (res.ok) { toast.success('Payout request submitted successfully!'); fetchData(); }
+    else toast.error('Failed to submit payout request');
     setSubmitting(false);
   };
 
@@ -114,11 +114,11 @@ export default function ResellerWalletPage() {
           <TabsContent value="transactions" className="mt-3">
             <Card>
               <CardHeader className="p-3.5 md:p-6 pb-2 md:pb-2">
-                <CardTitle className="text-xs md:text-sm">লেনদেন ইতিহাস</CardTitle>
+                <CardTitle className="text-xs md:text-sm">Transaction History</CardTitle>
               </CardHeader>
               <CardContent className="p-3.5 md:p-6 pt-0 md:pt-0">
                 {transactions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8 text-xs md:text-sm">কোনো লেনদেন নেই</p>
+                  <p className="text-center text-muted-foreground py-8 text-xs md:text-sm">No transactions found</p>
                 ) : (
                   <div className="space-y-2">
                     {transactions.map((t: any) => (
@@ -151,11 +151,11 @@ export default function ResellerWalletPage() {
               </CardHeader>
               <CardContent className="p-3.5 md:p-6 pt-0 md:pt-0">
                 {(reseller?.walletBalance ?? 0) <= 0 ? (
-                  <p className="text-center text-muted-foreground py-4 text-xs md:text-sm">উত্তোলনযোগ্য ব্যালেন্স নেই</p>
+                  <p className="text-center text-muted-foreground py-4 text-xs md:text-sm">No withdrawable balance available</p>
                 ) : (
                   <form onSubmit={submitPayout} className="space-y-3 md:space-y-4">
                     <div className="space-y-1">
-                      <Label className="text-xs">পেআউট পদ্ধতি</Label>
+                      <Label className="text-xs">Payout Method</Label>
                       <select value={payoutForm.method} onChange={e => setPayoutForm(f => ({ ...f, method: e.target.value }))}
                         className="w-full h-9 border rounded-lg px-3 text-xs md:text-sm bg-background">
                         <option value="bkash">bKash</option>

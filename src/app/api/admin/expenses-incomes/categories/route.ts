@@ -16,7 +16,9 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const query: any = {};
+    const query: any = {
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    };
     if (type) query.type = type;
 
     let categories = await TransactionCategory.find(query).sort({ type: 1, name: 1 }).lean();
@@ -24,18 +26,18 @@ export async function GET(req: NextRequest) {
     // If no categories exist, auto-seed default categories
     if (categories.length === 0) {
       const defaultCategories = [
-        { name: 'Ads & Marketing', type: 'expense' },
-        { name: 'Salary & Wages', type: 'expense' },
-        { name: 'Office Rent', type: 'expense' },
-        { name: 'Utility & Bills', type: 'expense' },
-        { name: 'Courier & Shipping', type: 'expense' },
-        { name: 'Packaging & Supplies', type: 'expense' },
-        { name: 'Software & Tools', type: 'expense' },
-        { name: 'Others Expense', type: 'expense' },
-        { name: 'Sales Revenue', type: 'income' },
-        { name: 'Investment / Capital', type: 'income' },
-        { name: 'Service Income', type: 'income' },
-        { name: 'Other Income', type: 'income' }
+        { name: 'Ads & Marketing', type: 'expense', resellerId: null },
+        { name: 'Salary & Wages', type: 'expense', resellerId: null },
+        { name: 'Office Rent', type: 'expense', resellerId: null },
+        { name: 'Utility & Bills', type: 'expense', resellerId: null },
+        { name: 'Courier & Shipping', type: 'expense', resellerId: null },
+        { name: 'Packaging & Supplies', type: 'expense', resellerId: null },
+        { name: 'Software & Tools', type: 'expense', resellerId: null },
+        { name: 'Others Expense', type: 'expense', resellerId: null },
+        { name: 'Sales Revenue', type: 'income', resellerId: null },
+        { name: 'Investment / Capital', type: 'income', resellerId: null },
+        { name: 'Service Income', type: 'income', resellerId: null },
+        { name: 'Other Income', type: 'income', resellerId: null }
       ];
       await TransactionCategory.insertMany(defaultCategories);
       categories = await TransactionCategory.find(query).sort({ type: 1, name: 1 }).lean();
@@ -65,14 +67,19 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    const existing = await TransactionCategory.findOne({ name: name.trim(), type });
+    const existing = await TransactionCategory.findOne({
+      name: name.trim(),
+      type,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
     if (existing) {
       return NextResponse.json({ message: 'Category already exists for this type' }, { status: 400 });
     }
 
     const category = await TransactionCategory.create({
       name: name.trim(),
-      type
+      type,
+      resellerId: null
     });
 
     return NextResponse.json({ message: 'Category created successfully', category });

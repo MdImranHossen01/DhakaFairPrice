@@ -17,6 +17,7 @@ import {
   Rocket,
   LogOut,
   Store,
+  CreditCard,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -74,8 +75,19 @@ const resellerNav = [
     items: [
       { title: "All Orders", url: "/reseller/orders" },
       { title: "Abandoned Carts", url: "/reseller/abandoned-carts" },
+    ],
+  },
+  {
+    title: "Ledger & Accounting",
+    icon: CreditCard,
+    items: [
+      { title: "All Accounts", url: "/reseller/accounts" },
       { title: "Expenses & Incomes", url: "/reseller/expenses-incomes" },
+      { title: "Add New Entry", url: "/reseller/expenses-incomes?action=new" },
+      { title: "Category", url: "/reseller/expenses-incomes/categories" },
       { title: "Accounts Ledger", url: "/reseller/ledger" },
+      { title: "Account Payable", url: "/reseller/ledger/payable" },
+      { title: "Account Receivable", url: "/reseller/ledger/receivable" },
     ],
   },
   {
@@ -230,7 +242,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
   const storeHomeUrl = customDomain?.trim()
     ? (customDomain.trim().startsWith("http") ? customDomain.trim() : `https://${customDomain.trim()}`)
     : subdomain?.trim()
-    ? `https://${subdomain.trim()}.dhakafairprice.com`
+    ? `https://${subdomain.trim()}.swapnobaz.com`
     : "/"
 
   return (
@@ -244,31 +256,24 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
           title={`Visit ${storeName || "Store"} Home Page`}
         >
           {storeLogo ? (
-            <div className="relative h-6 w-auto max-w-[120px] flex items-center">
+            <div className="relative h-7 w-auto max-w-[140px] flex items-center">
               <Image
                 src={storeLogo}
                 alt={storeName || "Store"}
-                width={120}
-                height={24}
-                className="max-h-6 max-w-[120px] w-auto h-auto object-contain"
+                width={140}
+                height={28}
+                className="max-h-7 max-w-[140px] w-auto h-auto object-contain"
                 unoptimized
               />
             </div>
           ) : (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="h-6 w-6 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 border border-primary/30">
-                <Store className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 border border-primary/30">
+                <Store className="h-4 w-4" />
               </div>
-              <div className="min-w-0 flex flex-col">
-                <span className="text-xs font-black tracking-tight text-white truncate max-w-[140px]">
-                  {storeName || user?.name || "My Store"}
-                </span>
-                {subdomain && (
-                  <span className="text-[9px] text-slate-400 truncate max-w-[140px]">
-                    {subdomain}.dhakafairprice.com
-                  </span>
-                )}
-              </div>
+              <span className="text-sm font-bold tracking-tight text-white truncate max-w-[160px]">
+                {storeName || user?.name || "My Store"}
+              </span>
             </div>
           )}
         </a>

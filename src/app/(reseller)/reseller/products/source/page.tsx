@@ -22,11 +22,11 @@ import {
 type SourceFilter = 'all' | 'top_selling' | 'admin' | 'reseller' | 'sourced';
 
 const SOURCE_TABS: { key: SourceFilter; label: string; icon: any; color: string }[] = [
-  { key: 'all',         label: 'সব প্রোডাক্ট',        icon: Filter,       color: 'bg-primary text-primary-foreground border-primary' },
+  { key: 'all',         label: 'All Products',        icon: Filter,       color: 'bg-primary text-primary-foreground border-primary' },
   { key: 'top_selling', label: 'Top Selling',          icon: Flame,        color: 'bg-amber-600 text-white border-amber-600' },
   { key: 'admin',       label: 'Main Store',           icon: Store,        color: 'bg-blue-600 text-white border-blue-600' },
-  { key: 'reseller',    label: 'অন্য Reseller',         icon: Users,        color: 'bg-purple-600 text-white border-purple-600' },
-  { key: 'sourced',     label: 'আমার Store-এ আছে',     icon: CheckCircle2, color: 'bg-green-600 text-white border-green-600' },
+  { key: 'reseller',    label: 'Other Resellers',      icon: Users,        color: 'bg-purple-600 text-white border-purple-600' },
+  { key: 'sourced',     label: 'In My Store',          icon: CheckCircle2, color: 'bg-green-600 text-white border-green-600' },
 ];
 
 function SourceProductsContent() {
@@ -62,11 +62,11 @@ function SourceProductsContent() {
         setTotal(d.pagination?.total || 0);
         if (d.counts) setCounts(d.counts);
       } else {
-        toast.error('প্রোডাক্ট লোড করতে সমস্যা হয়েছে');
+        toast.error('Failed to load products');
       }
     } catch (err) {
       console.error(err);
-      toast.error('নেটওয়ার্ক ত্রুটি');
+      toast.error('Network error');
     } finally {
       setLoading(false);
     }
@@ -103,11 +103,11 @@ function SourceProductsContent() {
     const wholesalePrice = selectedProduct.resellerPrice || selectedProduct.purchasePrice || selectedProduct.price || 0;
 
     if (isNaN(priceNum) || priceNum <= 0) {
-      toast.error('সঠিক retail price দিন');
+      toast.error('Please enter a valid retail price');
       return;
     }
     if (priceNum < wholesalePrice) {
-      toast.error(`Retail price কমপক্ষে ৳${wholesalePrice} হতে হবে`);
+      toast.error(`Retail price must be at least ৳${wholesalePrice}`);
       return;
     }
 
@@ -120,16 +120,16 @@ function SourceProductsContent() {
       });
 
       if (res.ok) {
-        toast.success(selectedProduct.isSourced ? 'Retail price আপডেট হয়েছে ✓' : 'প্রোডাক্ট আপনার Store-এ যোগ হয়েছে ✓');
+        toast.success(selectedProduct.isSourced ? 'Retail price updated successfully ✓' : 'Product added to your store ✓');
         setSelectedProduct(null);
         fetchProducts(page, sourceFilter, search);
       } else {
         const error = await res.json();
-        toast.error(error.error || 'সমস্যা হয়েছে');
+        toast.error(error.error || 'Failed to process request');
       }
     } catch (err) {
       console.error(err);
-      toast.error('নেটওয়ার্ক ত্রুটি');
+      toast.error('Network error');
     } finally {
       setSubmitting(false);
     }
@@ -146,7 +146,7 @@ function SourceProductsContent() {
         <div>
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Source B2B Products</h2>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Main Store বা অন্য Reseller-এর product আপনার store-এ যোগ করুন
+            Add products from the Main Store or other Resellers to your storefront
           </p>
         </div>
       </div>
@@ -176,17 +176,17 @@ function SourceProductsContent() {
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2  max-w-sm">
+      <form onSubmit={handleSearch} className="flex gap-2 max-w-sm">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-8 h-9 text-xs md:text-sm"
-            placeholder="নাম বা SKU দিয়ে খুঁজুন..."
+            placeholder="Search by name or SKU..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <Button type="submit" variant="outline" size="sm" className="h-9 text-xs">খুঁজুন</Button>
+        <Button type="submit" variant="outline" size="sm" className="h-9 text-xs">Search</Button>
       </form>
 
       {/* Source type badge description */}
@@ -197,10 +197,10 @@ function SourceProductsContent() {
           sourceFilter === 'reseller' ? 'bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-300' :
           'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-300'
         }`}>
-          {sourceFilter === 'top_selling' && <><Flame className="h-3.5 w-3.5 text-amber-500" /> সর্বাধিক বিক্রিত ও জনপ্রিয় প্রোডাক্ট (Top Selling) দেখাচ্ছে</>}
-          {sourceFilter === 'admin' && <><Store className="h-3.5 w-3.5" /> Main Store (Admin) এর product দেখাচ্ছে</>}
-          {sourceFilter === 'reseller' && <><Users className="h-3.5 w-3.5" /> অন্য Reseller-এর shared product দেখাচ্ছে</>}
-          {sourceFilter === 'sourced' && <><CheckCircle2 className="h-3.5 w-3.5" /> আপনার Store-এ ইতিমধ্যে যোগ করা product দেখাচ্ছে</>}
+          {sourceFilter === 'top_selling' && <><Flame className="h-3.5 w-3.5 text-amber-500" /> Showing top selling & trending products</>}
+          {sourceFilter === 'admin' && <><Store className="h-3.5 w-3.5" /> Showing products from Main Store (Admin)</>}
+          {sourceFilter === 'reseller' && <><Users className="h-3.5 w-3.5" /> Showing products shared by other resellers</>}
+          {sourceFilter === 'sourced' && <><CheckCircle2 className="h-3.5 w-3.5" /> Showing products already added to your store</>}
         </div>
       )}
 
@@ -212,20 +212,20 @@ function SourceProductsContent() {
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center border border-dashed rounded-xl p-8 md:p-12 bg-card text-center gap-2 mx-1 md:mx-0">
           <Package className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
-          <p className="font-semibold text-base md:text-lg">কোনো প্রোডাক্ট পাওয়া যায়নি</p>
+          <p className="font-semibold text-base md:text-lg">No Products Found</p>
           <p className="text-xs md:text-sm text-muted-foreground max-w-sm">
             {sourceFilter === 'sourced'
-              ? 'আপনি এখনো কোনো product source করেননি।'
+              ? 'You have not sourced any products yet.'
               : sourceFilter === 'reseller'
-              ? 'কোনো reseller তাদের product share করেনি।'
+              ? 'No other resellers have shared products yet.'
               : sourceFilter === 'top_selling'
-              ? 'কোনো Top Selling প্রোডাক্ট পাওয়া যায়নি।'
-              : 'কোনো B2B product পাওয়া যায়নি।'}
+              ? 'No top selling products found.'
+              : 'No B2B products found.'}
           </p>
         </div>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">{total} টি প্রোডাক্ট পাওয়া গেছে</p>
+          <p className="text-xs text-muted-foreground">{total} products found</p>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
               const wholesalePrice = product.resellerPrice || product.purchasePrice || product.price || 0;
@@ -268,7 +268,7 @@ function SourceProductsContent() {
                     </div>
                     {/* Sourced badge */}
                     {isSourced && (
-                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-sm" title="আপনার Store-এ আছে">
+                      <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full p-1 shadow-sm" title="Added to your store">
                         <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                       </div>
                     )}
@@ -281,7 +281,7 @@ function SourceProductsContent() {
                         {product.categories?.[0]?.name || 'Uncategorized'}
                       </span>
                       <span className={isAdmin ? 'text-blue-600 font-bold shrink-0' : 'text-purple-600 font-bold shrink-0 truncate max-w-[110px]'}>
-                        {isAdmin ? 'Dhaka Fair Price' : resellerStore}
+                        {isAdmin ? 'Swapnobaz' : resellerStore}
                       </span>
                     </div>
                     <p className="text-xs md:text-sm font-bold line-clamp-2 leading-snug">{product.name}</p>
@@ -303,7 +303,7 @@ function SourceProductsContent() {
                       </div>
                       {isSourced && (
                         <div className="text-right">
-                          <span className="text-green-600 block text-[9px] uppercase font-bold">আপনার দাম</span>
+                          <span className="text-green-600 block text-[9px] uppercase font-bold">Your Price</span>
                           <span className="font-extrabold text-green-600">
                             ৳{product.sourcedDetails?.retailPrice?.toLocaleString()}
                           </span>
@@ -317,7 +317,7 @@ function SourceProductsContent() {
                       className={`w-full text-xs font-semibold h-8 mt-1 ${isSourced ? 'border-green-500 text-green-600 hover:bg-green-500/10' : ''}`}
                       onClick={() => openSourcingDialog(product)}
                     >
-                      {isSourced ? '✓ দাম পরিবর্তন করুন' : '+ Store-এ যোগ করুন'}
+                      {isSourced ? '✓ Update Price' : '+ Add to Store'}
                     </Button>
                   </div>
                 </div>
@@ -329,13 +329,13 @@ function SourceProductsContent() {
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-2 mt-4 md:mt-6 px-2">
               <Button variant="outline" size="sm" className="h-8 text-xs px-2.5" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                ← পূর্ববর্তী
+                ← Previous
               </Button>
               <span className="text-xs py-1.5 px-2.5 border rounded-lg">
                 {page} / {totalPages}
               </span>
               <Button variant="outline" size="sm" className="h-8 text-xs px-2.5" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                পরবর্তী →
+                Next →
               </Button>
             </div>
           )}
@@ -347,10 +347,10 @@ function SourceProductsContent() {
         <DialogContent className="max-w-md rounded-xl">
           <DialogHeader>
             <DialogTitle>
-              {selectedProduct?.isSourced ? '💰 Retail Price আপডেট' : '🛒 Store-এ যোগ করুন'}
+              {selectedProduct?.isSourced ? '💰 Update Retail Price' : '🛒 Add to Store'}
             </DialogTitle>
             <DialogDescription>
-              আপনার store-এ এই product কোন দামে বিক্রি করতে চান সেটি নির্ধারণ করুন।
+              Set your customer selling price for this product.
             </DialogDescription>
           </DialogHeader>
 
@@ -370,7 +370,7 @@ function SourceProductsContent() {
                   <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedProduct.sku || '-'}</p>
                   <Badge className={`text-[9px] mt-1 ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                     {selectedProduct.sourceType === 'admin'
-                      ? 'Main Store (Dhaka Fair Price)'
+                      ? 'Main Store (Swapnobaz)'
                       : `Reseller: ${selectedProduct.uploadedBy?.storeName || selectedProduct.sourceStoreName || 'Reseller'}`}
                   </Badge>
                 </div>
@@ -386,7 +386,7 @@ function SourceProductsContent() {
                 </div>
                 <div className={`border p-3 rounded-lg text-center ${profit > 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/40'}`}>
                   <span className={`text-[10px] block uppercase font-bold ${profit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    আপনার লাভ
+                    Your Profit
                   </span>
                   <span className={`text-lg font-black ${profit > 0 ? 'text-green-600' : 'text-foreground'}`}>
                     ৳{profit.toLocaleString()}
@@ -396,7 +396,7 @@ function SourceProductsContent() {
 
               {/* Price input */}
               <div className="space-y-1">
-                <Label htmlFor="retail-price" className="font-bold text-xs">আপনার বিক্রয় মূল্য (Tk)</Label>
+                <Label htmlFor="retail-price" className="font-bold text-xs">Your Selling Price (৳)</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-muted-foreground text-sm font-bold">৳</span>
                   <Input
@@ -404,22 +404,22 @@ function SourceProductsContent() {
                     type="number"
                     value={retailPrice}
                     onChange={e => setRetailPrice(e.target.value)}
-                    placeholder="বিক্রয় মূল্য লিখুন"
+                    placeholder="Enter retail price"
                     className="pl-7 h-10 text-sm font-extrabold"
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Wholesale cost-এর চেয়ে বেশি দাম দিতে হবে
+                  Price must be equal to or higher than wholesale cost
                 </p>
               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedProduct(null)} disabled={submitting}>বাতিল</Button>
+            <Button variant="outline" onClick={() => setSelectedProduct(null)} disabled={submitting}>Cancel</Button>
             <Button onClick={handleSourceProduct} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedProduct?.isSourced ? 'দাম আপডেট করুন' : 'Store-এ যোগ করুন'}
+              {selectedProduct?.isSourced ? 'Update Price' : 'Add to Store'}
             </Button>
           </DialogFooter>
         </DialogContent>

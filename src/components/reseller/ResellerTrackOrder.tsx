@@ -25,7 +25,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
     e.preventDefault();
     const query = searchQuery.trim();
     if (!query) {
-      toast.error('অর্ডার আইডি অথবা মোবাইল নম্বর দিন');
+      toast.error('Please enter order ID or phone number');
       return;
     }
 
@@ -38,17 +38,17 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
         setOrders(fetchedOrders);
         setSelectedOrder(fetchedOrders[0]);
         toast.success(fetchedOrders.length > 1 
-          ? `${fetchedOrders.length}টি অর্ডার পাওয়া গেছে!` 
-          : 'অর্ডার তথ্য পাওয়া গেছে!'
+          ? `${fetchedOrders.length} orders found!` 
+          : 'Order details retrieved!'
         );
       } else {
         setOrders([]);
         setSelectedOrder(null);
         const errorData = await res.json();
-        toast.error(errorData.message || 'অর্ডার পাওয়া যায়নি। সঠিক আইডি বা মোবাইল নম্বর দিন।');
+        toast.error(errorData.message || 'Order not found. Please enter a valid ID or phone number.');
       }
     } catch {
-      toast.error('অর্ডার ট্র্যাক করতে ব্যর্থ হয়েছে');
+      toast.error('Failed to track order');
     } finally {
       setLoading(false);
     }
@@ -77,10 +77,10 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
   };
 
   const steps = [
-    { label: 'অর্ডার প্লেসড', desc: 'অর্ডার সফলভাবে নেওয়া হয়েছে', icon: Clock },
-    { label: 'কনফার্মড', desc: 'অর্ডার কনফার্ম করা হয়েছে', icon: CheckCircle2 },
-    { label: 'ডেলিভারিতে আছে', desc: 'কুরিয়ারে পাঠানো হয়েছে', icon: Truck },
-    { label: 'ডেলিভার্ড', desc: 'সফলভাবে ডেলিভারি হয়েছে', icon: MapPin },
+    { label: 'Order Placed', desc: 'Order placed successfully', icon: Clock },
+    { label: 'Confirmed', desc: 'Order has been confirmed', icon: CheckCircle2 },
+    { label: 'Out for Delivery', desc: 'Handed over to courier', icon: Truck },
+    { label: 'Delivered', desc: 'Successfully delivered', icon: MapPin },
   ];
 
   const currentStep = selectedOrder ? getStatusStep(selectedOrder.status) : -1;
@@ -94,7 +94,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder="অর্ডার আইডি বা মোবাইল নম্বর লিখুন (যেমন: 017XXXXXXXX বা #RS12345)"
+                placeholder="Enter order ID or phone number (e.g. 017XXXXXXXX or #RS12345)"
                 className="h-12 pl-12 rounded-xl border focus-visible:ring-primary bg-background font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -105,7 +105,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
               disabled={loading}
               className="h-12 px-8 rounded-xl font-bold gap-2 text-sm"
             >
-              {loading ? 'অনুসন্ধান হচ্ছে...' : 'অর্ডার ট্র্যাক করুন'}
+              {loading ? 'Searching...' : 'Track Order'}
             </Button>
           </form>
         </CardContent>
@@ -116,9 +116,9 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
         <div className="space-y-3 animate-in fade-in duration-300">
           <div className="flex items-center justify-between">
             <p className="text-xs sm:text-sm font-bold text-muted-foreground">
-              এই নম্বরে {orders.length}টি অর্ডার পাওয়া গেছে:
+              Found {orders.length} orders for this number:
             </p>
-            <span className="text-xs text-primary font-semibold">অর্ডারটি সিলেক্ট করুন</span>
+            <span className="text-xs text-primary font-semibold">Select an order</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {orders.map((ord) => {
@@ -155,16 +155,16 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
         <Card className="border shadow-xl rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="bg-primary text-primary-foreground p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/75">অর্ডার আইডি:</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary-foreground/75">Order ID:</p>
               <h2 className="text-2xl font-black">#{selectedOrder.shortId}</h2>
             </div>
             <div className="flex gap-4 text-xs font-medium">
               <div>
-                <p className="text-primary-foreground/75">তারিখ:</p>
-                <p className="font-bold">{new Date(selectedOrder.createdAt).toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <p className="text-primary-foreground/75">Date:</p>
+                <p className="font-bold">{new Date(selectedOrder.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
               <div>
-                <p className="text-primary-foreground/75">মোট মূল্য:</p>
+                <p className="text-primary-foreground/75">Total Amount:</p>
                 <p className="font-bold">৳{selectedOrder.totalAmount.toLocaleString()}</p>
               </div>
             </div>
@@ -220,9 +220,9 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
               <div className="rounded-xl border bg-muted/20 p-4 flex gap-3 items-start">
                 <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground">শিপিং ইনফরমেশন:</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Shipping Information:</p>
                   <p className="text-sm font-bold text-foreground mt-0.5">
-                    {selectedOrder.shippingDetails.courierName} কুরিয়ার সার্ভিসের মাধ্যমে আপনার অর্ডারটি পাঠানো হয়েছে।
+                    Your order has been dispatched via {selectedOrder.shippingDetails.courierName} courier service.
                   </p>
                   {selectedOrder.shippingDetails.trackingUrl && (
                     <a
@@ -231,7 +231,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
                       rel="noopener noreferrer"
                       className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 mt-1.5"
                     >
-                      কুরিয়ার ট্র্যাকিং লিঙ্ক →
+                      Courier Tracking Link →
                     </a>
                   )}
                 </div>
@@ -242,7 +242,7 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
             <div className="grid md:grid-cols-2 gap-8 pt-4 border-t">
               {/* Product Details */}
               <div className="space-y-4">
-                <h3 className="font-black text-sm text-foreground uppercase tracking-wider">পণ্যসমূহ</h3>
+                <h3 className="font-black text-sm text-foreground uppercase tracking-wider">Ordered Items</h3>
                 <div className="space-y-3">
                   {selectedOrder.items.map((item: any, i: number) => (
                     <div key={i} className="flex gap-3 items-center">
@@ -267,23 +267,23 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
 
               {/* Shipping Address */}
               <div className="space-y-4">
-                <h3 className="font-black text-sm text-foreground uppercase tracking-wider">ডেলিভারি ঠিকানা</h3>
+                <h3 className="font-black text-sm text-foreground uppercase tracking-wider">Delivery Address</h3>
                 <div className="text-xs space-y-2 text-muted-foreground font-medium">
                   <div>
-                    <span className="text-foreground font-bold">নাম: </span>
+                    <span className="text-foreground font-bold">Name: </span>
                     <span>{selectedOrder.shippingDetails.name}</span>
                   </div>
                   <div>
-                    <span className="text-foreground font-bold">ফোন: </span>
+                    <span className="text-foreground font-bold">Phone: </span>
                     <span>{selectedOrder.shippingDetails.phone}</span>
                   </div>
                   <div>
-                    <span className="text-foreground font-bold">জেলা/শহর: </span>
+                    <span className="text-foreground font-bold">Address: </span>
                     <span>{selectedOrder.shippingDetails.address}</span>
                   </div>
                   <div>
-                    <span className="text-foreground font-bold">পেমেন্ট পদ্ধতি: </span>
-                    <span>{selectedOrder.paymentMethod === 'COD' ? 'ক্যাশ অন ডেলিভারি (COD)' : selectedOrder.paymentMethod}</span>
+                    <span className="text-foreground font-bold">Payment Method: </span>
+                    <span>{selectedOrder.paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : selectedOrder.paymentMethod}</span>
                   </div>
                 </div>
               </div>

@@ -21,7 +21,9 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    const query: any = {};
+    const query: any = {
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    };
     if (category && category !== 'all') query.category = category;
     if (type && type !== 'all') query.type = type;
     
@@ -90,7 +92,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Invalid payment account ID' }, { status: 400 });
       }
 
-      account = await LedgerAccount.findById(paymentAccountId).session(dbSession);
+      account = await LedgerAccount.findOne({
+        _id: paymentAccountId,
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+      }).session(dbSession);
       if (!account) {
         await dbSession.abortTransaction();
         dbSession.endSession();
@@ -108,6 +113,7 @@ export async function POST(req: NextRequest) {
           category,
           type,
           paymentAccountId: paymentAccountId || undefined,
+          resellerId: null,
           date: txDate,
           description
         }

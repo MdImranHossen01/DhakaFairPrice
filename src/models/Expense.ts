@@ -6,6 +6,7 @@ export interface IExpense extends Document {
   category: string;
   type: 'expense' | 'income';
   paymentAccountId?: mongoose.Types.ObjectId;
+  resellerId?: mongoose.Types.ObjectId;
   date: Date;
   description?: string;
   createdAt: Date;
@@ -31,11 +32,19 @@ const ExpenseSchema: Schema<IExpense> = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'LedgerAccount'
     },
+    resellerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Reseller',
+      default: null,
+      index: true,
+    },
     date: { type: Date, required: true, default: Date.now },
     description: { type: String },
   },
   { timestamps: true }
 );
+
+ExpenseSchema.index({ resellerId: 1, date: -1 });
 
 const Expense: Model<IExpense> = mongoose.models.Expense || mongoose.model<IExpense>('Expense', ExpenseSchema);
 

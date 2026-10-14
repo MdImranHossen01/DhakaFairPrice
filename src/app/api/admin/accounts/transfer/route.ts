@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
     dbSession.startTransaction();
 
     const [fromAccount, toAccount] = await Promise.all([
-      LedgerAccount.findById(fromAccountId).session(dbSession),
-      LedgerAccount.findById(toAccountId).session(dbSession)
+      LedgerAccount.findOne({ _id: fromAccountId, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }).session(dbSession),
+      LedgerAccount.findOne({ _id: toAccountId, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }).session(dbSession)
     ]);
 
     if (!fromAccount || !toAccount) {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Atomically decrement source with sufficiency filter within session
     const updatedFrom = await LedgerAccount.findOneAndUpdate(
-      { _id: fromAccountId, currentBalance: { $gte: transferAmount } },
+      { _id: fromAccountId, currentBalance: { $gte: transferAmount }, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] },
       { $inc: { currentBalance: -transferAmount } },
       { new: true, session: dbSession }
     );
@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Atomically increment destination within session
-    const updatedTo = await LedgerAccount.findByIdAndUpdate(
-      toAccountId,
+    const updatedTo = await LedgerAccount.findOneAndUpdate(
+      { _id: toAccountId, $or: [{ resellerId: null }, { resellerId: { $exists: false } }] },
       { $inc: { currentBalance: transferAmount } },
       { new: true, session: dbSession }
     );
@@ -97,7 +97,8 @@ export async function POST(req: NextRequest) {
             description: `Transfer to ${toAccount.name}${note ? ` (${note})` : ''}`,
             type: 'debit',
             amount: transferAmount,
-            balanceAfter: updatedFrom?.currentBalance ?? (fromAccount.currentBalance - transferAmount)
+            balanceAfter: updatedFrom?.currentBalance ?? (fromAccount.currentBalance - transferAmount),
+            resellerId: null
           }
         ],
         { session: dbSession }
@@ -111,7 +112,8 @@ export async function POST(req: NextRequest) {
             description: `Transfer from ${fromAccount.name}${note ? ` (${note})` : ''}`,
             type: 'credit',
             amount: transferAmount,
-            balanceAfter: updatedTo?.currentBalance ?? (toAccount.currentBalance + transferAmount)
+            balanceAfter: updatedTo?.currentBalance ?? (toAccount.currentBalance + transferAmount),
+            resellerId: null
           }
         ],
         { session: dbSession }

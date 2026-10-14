@@ -498,8 +498,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props} className="border-r border-slate-800/80 bg-[#0a152e] text-slate-100">
-      <SidebarHeader className="border-b border-slate-800/80 h-16 px-4 flex items-center justify-between bg-[#0a152e]">
-        <Logo textClassName="text-base font-black tracking-wide text-white whitespace-nowrap" />
+      <SidebarHeader className="border-b border-slate-800/80 h-14 px-3 flex items-center bg-[#0a152e]">
+        <Logo
+          className="flex items-center gap-2 overflow-hidden w-full"
+          imageClassName="!size-6 md:!size-6.5 shrink-0 rounded-full"
+          textClassName="!text-xs md:!text-sm font-black tracking-tight text-white truncate max-w-[170px]"
+        />
       </SidebarHeader>
 
       <SidebarContent className="gap-0 bg-[#0a152e] scrollbar-thin scrollbar-thumb-slate-800">

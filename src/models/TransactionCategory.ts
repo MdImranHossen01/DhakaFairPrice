@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 export interface ITransactionCategory extends Document {
   name: string;
   type: 'expense' | 'income';
+  resellerId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,11 +20,17 @@ const TransactionCategorySchema: Schema<ITransactionCategory> = new Schema(
       required: true,
       enum: ['expense', 'income'],
     },
+    resellerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Reseller',
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-TransactionCategorySchema.index({ name: 1, type: 1 }, { unique: true });
+TransactionCategorySchema.index({ resellerId: 1, name: 1, type: 1 }, { unique: true });
 
 const TransactionCategory: Model<ITransactionCategory> = 
   mongoose.models.TransactionCategory || mongoose.model<ITransactionCategory>('TransactionCategory', TransactionCategorySchema);

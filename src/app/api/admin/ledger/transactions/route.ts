@@ -20,7 +20,9 @@ export async function GET(req: NextRequest) {
     await backfillPayoutsToLedger();
     await syncBillsToLedger();
 
-    const transactions = await LedgerTransaction.find()
+    const transactions = await LedgerTransaction.find({
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    })
       .populate('account')
       .sort({ date: -1, createdAt: -1 });
 

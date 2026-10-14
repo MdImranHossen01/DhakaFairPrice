@@ -15,8 +15,13 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Ensure the default primary Cash in Hand account exists
-    const cashAccount = await LedgerAccount.findOne({ $or: [{ category: 'Cash' }, { code: 'CASH' }] });
+    // Ensure the default primary Cash in Hand account exists for admin
+    const cashAccount = await LedgerAccount.findOne({
+      $and: [
+        { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
+        { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
+      ]
+    });
     if (!cashAccount) {
       await LedgerAccount.create({
         name: 'Cash in Hand (হাতে নগদ)',
@@ -25,11 +30,14 @@ export async function GET(req: NextRequest) {
         type: 'asset',
         openingBalance: 0,
         currentBalance: 0,
+        resellerId: null,
         description: 'Default System Primary Cash Account'
       });
     }
 
-    const accounts = await LedgerAccount.find({}).sort({ category: 1, name: 1 }).lean();
+    const accounts = await LedgerAccount.find({
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    }).sort({ category: 1, name: 1 }).lean();
 
     return NextResponse.json({ accounts });
   } catch (error) {
@@ -58,9 +66,14 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Cash account rule: Only one default Cash in Hand account is permitted in the system
+    // Cash account rule: Only one default Cash in Hand account is permitted in the admin system
     if (category === 'Cash' || normalizedCode === 'CASH') {
-      const existingCash = await LedgerAccount.findOne({ $or: [{ category: 'Cash' }, { code: 'CASH' }] });
+      const existingCash = await LedgerAccount.findOne({
+        $and: [
+          { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
+          { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
+        ]
+      });
       if (existingCash) {
         return NextResponse.json({ 
           message: 'ডিফল্ট ক্যাশ অ্যাকাউন্ট ইতিমধ্যে বিদ্যমান। নতুন ক্যাশ অ্যাকাউন্ট তৈরি করা যাবে না।' 
@@ -68,7 +81,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const existing = await LedgerAccount.findOne({ code: normalizedCode });
+    const existing = await LedgerAccount.findOne({
+      code: normalizedCode,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
     if (existing) {
       return NextResponse.json({ message: 'Account code already exists' }, { status: 400 });
     }
@@ -93,6 +109,7 @@ export async function POST(req: NextRequest) {
           openingBalance: initialBalance,
           currentBalance: initialBalance,
           type: 'asset',
+          resellerId: null,
           description
         }
       ],
@@ -109,7 +126,8 @@ export async function POST(req: NextRequest) {
             description: 'Opening Balance',
             type: 'credit',
             amount: initialBalance,
-            balanceAfter: initialBalance
+            balanceAfter: initialBalance,
+            resellerId: null
           }
         ],
         { session: dbSession }
