@@ -287,14 +287,6 @@ const data = {
           title: "Reseller Payouts",
           url: "/admin/payouts",
         },
-        {
-          title: "Reseller Sales Report",
-          url: "/admin/reports/reseller-sales",
-        },
-        {
-          title: "Commission Report",
-          url: "/admin/reports/reseller-commission",
-        },
       ],
     },
     {
