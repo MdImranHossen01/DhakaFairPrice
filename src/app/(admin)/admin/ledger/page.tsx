@@ -340,12 +340,9 @@ function AccountsLedgerContent() {
         <div>
           <h2 className="text-xl md:text-3xl font-bold tracking-tight">Accounts Ledger</h2>
           <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
-            Manage cash & bank opening balances, record manual entries, and track account receivables.
+            Manage cash & bank opening balances and track account receivables.
           </p>
         </div>
-        <Button onClick={() => setIsTxOpen(true)} className="w-full sm:w-auto bg-primary text-primary-foreground font-bold h-9 text-xs">
-          <Plus className="mr-1.5 h-4 w-4" /> New Journal Entry
-        </Button>
       </div>
 
       {/* Account Balance Cards */}
@@ -606,11 +603,11 @@ function AccountsLedgerContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Manual Entry Transaction Dialog */}
-      <Dialog open={isTxOpen} onOpenChange={(open) => { setIsTxOpen(open); if(!open) resetTxForm(); }}>
+      {/* Edit Manual Transaction Dialog */}
+      <Dialog open={isTxOpen && !!editingTx} onOpenChange={(open) => { setIsTxOpen(open); if(!open) resetTxForm(); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingTx ? 'Edit' : 'New'} Journal Entry</DialogTitle>
+            <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
 
           {/* Custom Tabs */}
@@ -818,7 +815,7 @@ function AccountsLedgerContent() {
               </Button>
               <Button type="submit" size="sm" disabled={creatingTx} className="bg-primary text-primary-foreground font-bold">
                 {creatingTx && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Log Transaction
+                {editingTx ? 'Update Transaction' : 'Save Transaction'}
               </Button>
             </DialogFooter>
           </form>

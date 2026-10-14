@@ -14,11 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2,
-  Plus,
   Search,
   ArrowRightLeft,
   Wallet,
@@ -29,7 +27,6 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
-import { TransactionForm } from '@/components/admin/TransactionForm';
 
 function ResellerLedgerContent() {
   const router = useRouter();
@@ -43,7 +40,6 @@ function ResellerLedgerContent() {
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [isTxOpen, setIsTxOpen] = useState(false);
 
   const fetchLedgerData = async () => {
     setLoading(true);
@@ -122,15 +118,6 @@ function ResellerLedgerContent() {
           <p className="text-xs md:text-sm text-muted-foreground">General ledger and transaction history of your store accounts</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => setIsTxOpen(true)}
-            className="h-9 gap-1.5 text-xs font-bold"
-          >
-            <Plus className="h-4 w-4" />
-            New Entry / Transfer
-          </Button>
-
           <Button
             variant="outline"
             size="sm"
@@ -312,22 +299,6 @@ function ResellerLedgerContent() {
           </div>
         )}
       </div>
-
-      {/* Quick Journal / Transfer Dialog */}
-      <Dialog open={isTxOpen} onOpenChange={setIsTxOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">Record Journal Entry / Transfer</DialogTitle>
-          </DialogHeader>
-          <TransactionForm
-            apiPrefix="/api/reseller"
-            onSuccess={() => {
-              setIsTxOpen(false);
-              fetchLedgerData();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

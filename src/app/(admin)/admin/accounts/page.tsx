@@ -573,7 +573,7 @@ export default function AccountsPage() {
 
       {/* Add Account Modal — AmaniOutfits Style */}
       <Dialog open={newAccountOpen} onOpenChange={setNewAccountOpen}>
-        <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
+        <DialogContent showCloseButton={false} className="max-w-md p-0 overflow-hidden gap-0">
           {/* Styled Header */}
           <div className="bg-primary px-5 py-3.5 flex justify-between items-center">
             <h2 className="text-base font-bold text-primary-foreground flex items-center gap-2">
