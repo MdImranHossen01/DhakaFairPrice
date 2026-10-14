@@ -6,6 +6,7 @@ import ResellerOrder from '@/models/ResellerOrder';
 import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
+import Expense from '@/models/Expense';
 
 // Comprehensive Reseller Dashboard Stats API
 export async function GET(request: NextRequest) {
@@ -59,6 +60,9 @@ export async function GET(request: NextRequest) {
       currentPeriodAgg,
       prevPeriodAgg,
       dailyChartAgg,
+      dailyExpensesAgg,
+      currentExpensesAgg,
+      prevExpensesAgg,
       statusCountsAgg,
       walletTxAgg,
       catalogCount,
@@ -151,6 +155,59 @@ export async function GET(request: NextRequest) {
           },
         },
         { $sort: { _id: 1 } },
+      ]),
+
+      // 3b. Daily expenses aggregate
+      Expense.aggregate([
+        {
+          $match: {
+            resellerId,
+            date: { $gte: startDate, $lte: endDate },
+            type: { $ne: 'income' },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$date' },
+            },
+            expense: { $sum: '$amount' },
+          },
+        },
+      ]),
+
+      // 3c. Current Period Total Expenses
+      Expense.aggregate([
+        {
+          $match: {
+            resellerId,
+            date: { $gte: startDate, $lte: endDate },
+            type: { $ne: 'income' },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: '$amount' },
+          },
+        },
+      ]),
+
+      // 3d. Previous Period Total Expenses (for growth)
+      Expense.aggregate([
+        {
+          $match: {
+            resellerId,
+            date: { $gte: prevStartDate, $lte: prevEndDate },
+            type: { $ne: 'income' },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: '$amount' },
+          },
+        },
       ]),
 
       // 4. Order status breakdown
@@ -251,18 +308,54 @@ export async function GET(request: NextRequest) {
       ? Math.round((deliveredOrdersCount / (deliveredOrdersCount + cancelledOrdersCount)) * 100)
       : 100;
 
-    const chartData = dailyChartAgg.map((d: any) => ({
-      date: d._id,
-      revenue: d.revenue || 0,
-      commission: d.commission || 0,
-      orders: d.orders || 0,
-    }));
+    const totalExpenses = currentExpensesAgg[0]?.totalExpenses || 0;
+    const prevTotalExpenses = prevExpensesAgg[0]?.totalExpenses || 0;
+    const expenseGrowth = prevTotalExpenses > 0
+      ? Math.round(((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100)
+      : (totalExpenses > 0 ? 100 : 0);
+
+    // Merge orders and expenses into continuous chartData
+    const chartDateMap = new Map<string, any>();
+
+    dailyChartAgg.forEach((d: any) => {
+      chartDateMap.set(d._id, {
+        date: d._id,
+        revenue: d.revenue || 0,
+        commission: d.commission || 0,
+        orders: d.orders || 0,
+        expense: 0,
+        netProfit: d.commission || 0,
+      });
+    });
+
+    dailyExpensesAgg.forEach((item: any) => {
+      const dateKey = item._id;
+      const expenseAmount = item.expense || 0;
+      const existing = chartDateMap.get(dateKey);
+      if (existing) {
+        existing.expense = expenseAmount;
+        existing.netProfit = (existing.commission || 0) - expenseAmount;
+      } else {
+        chartDateMap.set(dateKey, {
+          date: dateKey,
+          revenue: 0,
+          commission: 0,
+          orders: 0,
+          expense: expenseAmount,
+          netProfit: -expenseAmount,
+        });
+      }
+    });
+
+    const chartData = Array.from(chartDateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 
     return NextResponse.json({
       reseller,
       stats: {
         totalRevenue: cur.totalRevenue || 0,
         totalEarnings: cur.totalCommission || 0,
+        totalExpenses,
+        netProfit: (cur.totalCommission || 0) - totalExpenses,
         totalOrders: cur.totalOrders || 0,
         pendingOrdersCount,
         processingOrdersCount,
@@ -273,6 +366,7 @@ export async function GET(request: NextRequest) {
         growth: {
           revenue: revenueGrowth,
           earnings: earningsGrowth,
+          expense: expenseGrowth,
           orders: ordersGrowth,
         },
       },

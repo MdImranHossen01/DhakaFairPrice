@@ -69,6 +69,10 @@ const trendChartConfig = {
     label: 'Sales Orders',
     color: '#f59e0b',
   },
+  expense: {
+    label: 'Store Expenses',
+    color: '#f43f5e',
+  },
 } satisfies ChartConfig;
 
 // Earnings Breakdown Chart Config
@@ -125,9 +129,19 @@ const CustomTrendTooltip = ({ active, payload, label }: any) => {
           <span className="text-muted-foreground">Commission:</span>
           <span className="font-bold text-emerald-600">৳{Math.round(item?.commission || 0).toLocaleString()}</span>
         </div>
+        <div className="flex justify-between items-center">
+          <span className="text-muted-foreground">Expense:</span>
+          <span className="font-bold text-rose-600">৳{Math.round(item?.expense || 0).toLocaleString()}</span>
+        </div>
         <div className="flex justify-between items-center border-t pt-1">
           <span className="text-muted-foreground">Orders Placed:</span>
           <span className="font-bold text-amber-600">{item?.orders || 0}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-foreground">Net Profit:</span>
+          <span className={`font-bold ${(item?.netProfit ?? ((item?.commission || 0) - (item?.expense || 0))) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            ৳{Math.round(item?.netProfit ?? ((item?.commission || 0) - (item?.expense || 0))).toLocaleString()}
+          </span>
         </div>
       </div>
     </div>
@@ -241,11 +255,12 @@ export default function ResellerDashboard() {
 
   // Totals for active chart tabs
   const chartTotals = useMemo(() => {
-    if (!data?.chartData) return { revenue: 0, commission: 0, orders: 0 };
+    if (!data?.chartData) return { revenue: 0, commission: 0, orders: 0, expense: 0 };
     return {
       revenue: data.chartData.reduce((acc: number, curr: any) => acc + (curr.revenue || 0), 0),
       commission: data.chartData.reduce((acc: number, curr: any) => acc + (curr.commission || 0), 0),
       orders: data.chartData.reduce((acc: number, curr: any) => acc + (curr.orders || 0), 0),
+      expense: data.chartData.reduce((acc: number, curr: any) => acc + (curr.expense || 0), 0),
     };
   }, [data]);
 
@@ -269,6 +284,8 @@ export default function ResellerDashboard() {
           revenue: 0,
           commission: 0,
           orders: 0,
+          expense: 0,
+          netProfit: 0,
         });
       }
     }
@@ -814,6 +831,7 @@ export default function ResellerDashboard() {
               { key: 'revenue', label: 'Store Sales', val: `৳${Math.round(chartTotals.revenue).toLocaleString()}` },
               { key: 'commission', label: 'Commissions', val: `৳${Math.round(chartTotals.commission).toLocaleString()}` },
               { key: 'orders', label: 'Sales Orders', val: chartTotals.orders.toLocaleString() },
+              { key: 'expense', label: 'Expenses', val: `৳${Math.round(chartTotals.expense).toLocaleString()}` },
             ].map((item) => {
               const chartKey = item.key as keyof typeof trendChartConfig;
               return (
@@ -845,6 +863,10 @@ export default function ResellerDashboard() {
                 <linearGradient id="fillStoreOrders" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.7} />
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05} />
+                </linearGradient>
+                <linearGradient id="fillStoreExpense" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.7} />
+                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
@@ -887,6 +909,14 @@ export default function ResellerDashboard() {
                 stroke="#f59e0b"
                 strokeWidth={2}
                 hide={activeChart !== 'orders'}
+              />
+              <Area
+                dataKey="expense"
+                type="monotone"
+                fill="url(#fillStoreExpense)"
+                stroke="#f43f5e"
+                strokeWidth={2}
+                hide={activeChart !== 'expense'}
               />
             </AreaChart>
           </ChartContainer>
