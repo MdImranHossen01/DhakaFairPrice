@@ -466,7 +466,6 @@ export async function GET(req: NextRequest) {
     const totalAssetValue = stockStats.totalStockValue + totalReceivable + totalLiquidBalance;
 
     // Merge Expenses with Daily Chart Data
-    const expensesMap = new Map();
     const allExpensesInRange = await Expense.aggregate([
       {
         $match: {
@@ -481,18 +480,44 @@ export async function GET(req: NextRequest) {
         }
       }
     ]);
-    allExpensesInRange.forEach(item => {
-      expensesMap.set(item._id, item.expense);
+
+    const chartDateMap = new Map<string, any>();
+
+    // 1. Seed order statistics
+    chartData.forEach((d: any) => {
+      chartDateMap.set(d.date, {
+        date: d.date,
+        revenue: d.revenue || 0,
+        orders: d.orders || 0,
+        cogs: d.cogs || 0,
+        profit: d.profit || 0,
+        expense: 0,
+        netIncome: d.profit || 0
+      });
     });
 
-    const completeChartData = chartData.map((d: any) => {
-      const exp = expensesMap.get(d.date) || 0;
-      return {
-        ...d,
-        expense: exp,
-        netIncome: (d.profit || 0) - exp
-      };
+    // 2. Merge daily expenses (including dates with expenses but no orders)
+    allExpensesInRange.forEach((item: any) => {
+      const dateKey = item._id;
+      const expenseAmount = item.expense || 0;
+      const existing = chartDateMap.get(dateKey);
+      if (existing) {
+        existing.expense = expenseAmount;
+        existing.netIncome = (existing.profit || 0) - expenseAmount;
+      } else {
+        chartDateMap.set(dateKey, {
+          date: dateKey,
+          revenue: 0,
+          orders: 0,
+          cogs: 0,
+          profit: 0,
+          expense: expenseAmount,
+          netIncome: -expenseAmount
+        });
+      }
     });
+
+    const completeChartData = Array.from(chartDateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 
     // Build 7-Day Performance Matrix Table
     const last7DaysMap = new Map();
