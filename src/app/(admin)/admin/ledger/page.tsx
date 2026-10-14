@@ -340,38 +340,9 @@ function AccountsLedgerContent() {
         <div>
           <h2 className="text-xl md:text-3xl font-bold tracking-tight">Accounts Ledger</h2>
           <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
-            Manage cash & bank opening balances and track account receivables.
+            Track and review transaction journal entries across all accounts.
           </p>
         </div>
-      </div>
-
-      {/* Account Balance Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-        {accounts.map((acc) => {
-          const isCash = acc.code === 'CASH';
-          const isBank = acc.code === 'BANK';
-
-          return (
-            <Card key={acc._id} className="relative overflow-hidden shadow-xs">
-              <CardHeader className="flex flex-row items-center justify-between pb-1 p-2.5 sm:p-3 md:p-4">
-                <CardTitle className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                  {acc.name}
-                </CardTitle>
-                {isCash ? (
-                  <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
-                ) : isBank ? (
-                  <Landmark className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
-                ) : (
-                  <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary shrink-0" />
-                )}
-              </CardHeader>
-              <CardContent className="space-y-1.5 p-2.5 sm:p-3 md:p-4 pt-0">
-                <div className="text-lg sm:text-2xl font-bold tracking-tight">৳{Math.round(acc.currentBalance).toLocaleString()}</div>
-
-              </CardContent>
-            </Card>
-          );
-        })}
       </div>
 
       {/* Transactions Journal */}
