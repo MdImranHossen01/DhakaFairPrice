@@ -252,10 +252,10 @@ export default function AdminResellersPage() {
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[11%] min-w-[95px]">Date</TableHead>
                       <TableHead className="w-[18%] min-w-[150px]">Store Name</TableHead>
                       <TableHead className="w-[20%] min-w-[160px]">Domain & Subdomain</TableHead>
                       <TableHead className="w-[15%] min-w-[130px]">Owner</TableHead>
-                      <TableHead className="w-[11%] min-w-[95px]">Date</TableHead>
                       <TableHead className="w-[8%] min-w-[65px] text-center">Total Orders</TableHead>
                       <TableHead className="w-[9%] min-w-[80px]">Revenue</TableHead>
                       <TableHead className="w-[10%] min-w-[90px]">Status</TableHead>
@@ -265,6 +265,16 @@ export default function AdminResellersPage() {
                   <TableBody>
                     {paginatedResellers.map(r => (
                       <TableRow key={r._id}>
+                        <TableCell className="w-[11%] min-w-[95px] align-top py-3 text-xs">
+                          <div className="font-semibold text-foreground">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}
+                          </div>
+                          {r.createdAt && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="w-[18%] min-w-[150px] align-top py-3 whitespace-normal">
                           <div className="space-y-1 whitespace-normal">
                             <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
@@ -315,16 +325,6 @@ export default function AdminResellersPage() {
                             <p className="text-sm font-medium truncate" title={r.userId?.name || 'Unknown'}>{r.userId?.name || 'Unknown'}</p>
                             <p className="text-xs text-muted-foreground truncate" title={r.contact?.phone || r.userId?.email}>{r.contact?.phone || r.userId?.email}</p>
                           </div>
-                        </TableCell>
-                        <TableCell className="w-[11%] min-w-[95px] align-top py-3 text-xs">
-                          <div className="font-semibold text-foreground">
-                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}
-                          </div>
-                          {r.createdAt && (
-                            <div className="text-[10px] text-muted-foreground">
-                              {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          )}
                         </TableCell>
                         <TableCell className="w-[8%] min-w-[65px] text-center align-top py-3">{r.totalOrders || 0}</TableCell>
                         <TableCell className="w-[9%] min-w-[80px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
