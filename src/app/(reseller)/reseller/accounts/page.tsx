@@ -43,7 +43,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { TransactionForm } from '@/components/admin/TransactionForm';
-import { isTransferableAccount } from '@/lib/utils';
+import { isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 export default function ResellerAccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -286,7 +286,7 @@ export default function ResellerAccountsPage() {
                         <Icon className="h-4 w-4" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-sm leading-tight text-foreground line-clamp-1">{acc.name}</h4>
+                        <h4 className="font-bold text-sm leading-tight text-foreground line-clamp-1">{cleanAccountName(acc.name)}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">{acc.code}</Badge>
                           <span className="text-[10px] text-muted-foreground">{acc.category}</span>

@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 import { TransactionForm } from '@/components/admin/TransactionForm';
-import { isTransferableAccount } from '@/lib/utils';
+import { isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -369,7 +369,7 @@ export default function AccountsPage() {
                       <td className="p-3 text-left">
                         <div className="font-bold text-foreground flex items-center gap-2">
                           {getAccountIcon(acc.category)}
-                          {acc.name}
+                          {cleanAccountName(acc.name)}
                         </div>
                         {acc.description && (
                           <div className="text-[11px] text-muted-foreground pl-6">{acc.description}</div>
@@ -475,7 +475,7 @@ export default function AccountsPage() {
                   title={
                     <div className="flex items-center gap-1.5 font-bold text-sm">
                       {getAccountIcon(acc.category)}
-                      <span>{acc.name}</span>
+                      <span>{cleanAccountName(acc.name)}</span>
                     </div>
                   }
                   badge={

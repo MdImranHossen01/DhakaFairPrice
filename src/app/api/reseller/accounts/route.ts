@@ -25,6 +25,12 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Ensure Bengali names in existing accounts are updated to English
+    await LedgerAccount.updateMany(
+      { resellerId: reseller._id, name: /হাতে নগদ/ },
+      { $set: { name: 'Cash in Hand' } }
+    );
+
     // Ensure the default primary Cash in Hand account exists for this reseller
     const cashAccount = await LedgerAccount.findOne({
       resellerId: reseller._id,
@@ -33,7 +39,7 @@ export async function GET(req: NextRequest) {
 
     if (!cashAccount) {
       await LedgerAccount.create({
-        name: 'Cash in Hand (হাতে নগদ)',
+        name: 'Cash in Hand',
         code: 'CASH',
         category: 'Cash',
         type: 'asset',

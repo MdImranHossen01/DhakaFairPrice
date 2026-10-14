@@ -263,16 +263,16 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
 
   return (
     <Sidebar {...props} className="border-r border-slate-800/80 bg-[#0a152e] text-slate-100">
-      <SidebarHeader className="border-b border-slate-800/80 h-14 px-3.5 flex items-center justify-between bg-[#0a152e]">
+      <SidebarHeader className="border-b border-slate-800/80 h-14 px-3.5 flex flex-row items-center justify-center bg-[#0a152e]">
         <a
           href={storeHomeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 min-w-0 max-w-full hover:opacity-90 transition-opacity"
+          className="flex items-center justify-center gap-2 min-w-0 max-w-full hover:opacity-90 transition-opacity mx-auto"
           title={`Visit ${storeName || "Store"} Home Page`}
         >
           {storeLogo ? (
-            <div className="relative h-7 w-auto max-w-[140px] flex items-center">
+            <div className="relative h-7 w-auto max-w-[140px] flex items-center justify-center">
               <Image
                 src={storeLogo}
                 alt={storeName || "Store"}
@@ -283,11 +283,11 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
               />
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-center gap-2.5 min-w-0">
               <div className="h-7 w-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 border border-primary/30">
                 <Store className="h-4 w-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight text-white truncate max-w-[160px]">
+              <span className="text-sm font-bold tracking-tight text-white truncate max-w-[160px] group-data-[collapsible=icon]:hidden">
                 {storeName || user?.name || "My Store"}
               </span>
             </div>

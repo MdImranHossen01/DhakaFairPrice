@@ -856,7 +856,7 @@ export default function OrderDetailsDialog({
                       }`} 
                       placeholder={
                         editForm.status === 'Hold'
-                          ? 'Hold করার কারণ লিখুন (বাধ্যতামূলক, যেমন: কাস্টমার ৩ দিন পর ডেলিভারি চেয়েছে)...'
+                          ? 'Enter reason for hold (required, e.g. Customer requested delivery after 3 days)...'
                           : 'Private internal notes for staff...'
                       }
                     />

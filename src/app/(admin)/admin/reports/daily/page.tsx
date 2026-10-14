@@ -123,7 +123,7 @@ export default function DailyReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Dhaka Fair Price E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">Swapnobaz E-Commerce</h2>
         <h3 className="text-lg font-semibold text-slate-700">Daily Sales & Profit Report</h3>
         <p className="text-xs text-slate-500">Period: {data?.monthName} {data?.year}</p>
       </div>
@@ -147,7 +147,7 @@ export default function DailyReportPage() {
             <table className="w-full text-xs md:text-sm text-center border-collapse">
               <thead>
                 <tr className="bg-muted/30 border-b text-muted-foreground font-semibold">
-                  <th className="p-2.5 text-left font-bold text-foreground">Date (তারিখ)</th>
+                  <th className="p-2.5 text-left font-bold text-foreground">Date</th>
                   <th className="p-2.5 font-bold text-emerald-600">Net Sales</th>
                   <th className="p-2.5 font-bold text-slate-600">Delivery Cost</th>
                   <th className="p-2.5 font-bold text-foreground">Total</th>

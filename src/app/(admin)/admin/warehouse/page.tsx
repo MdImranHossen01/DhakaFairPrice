@@ -43,7 +43,7 @@ export default function AdminWarehousePage() {
         setProducts(data.products || []);
       }
     } catch {
-      toast.error('পণ্য তালিকা লোড করতে সমস্যা হয়েছে');
+      toast.error('Failed to load product list');
     } finally {
       setLoading(false);
     }
@@ -70,15 +70,15 @@ export default function AdminWarehousePage() {
       });
 
       if (res.ok) {
-        toast.success('স্টক সফলভাবে আপডেট করা হয়েছে');
+        toast.success('Stock updated successfully');
         setAdjustingItem(null);
         fetchProducts();
       } else {
         const err = await res.json();
-        toast.error(err.error || 'স্টক আপডেট করতে ব্যর্থ');
+        toast.error(err.error || 'Failed to update stock');
       }
     } catch {
-      toast.error('নেটওয়ার্ক ত্রুটি');
+      toast.error('Network error');
     } finally {
       setUpdating(false);
     }
@@ -92,15 +92,15 @@ export default function AdminWarehousePage() {
   return (
     <div className="flex-1 space-y-4  font-sans">
       <div className="border-b pb-3">
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight">গুদাম ও ইনভেন্টরি কন্ট্রোল</h1>
-        <p className="text-xs md:text-sm text-muted-foreground mt-0.5">গুদামের পণ্যের স্টক লেভেল পর্যবেক্ষণ ও সমন্বয় করুন</p>
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Warehouse & Inventory Control</h1>
+        <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Monitor and adjust warehouse product stock levels</p>
       </div>
 
       <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="পণ্য বা SKU দিয়ে খুঁজুন..."
+            placeholder="Search by product name or SKU..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-8 h-9 text-xs"
@@ -117,7 +117,7 @@ export default function AdminWarehousePage() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground text-xs">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>কোনো পণ্য পাওয়া যায়নি</p>
+              <p>No products found</p>
             </div>
           ) : (
             <>
@@ -126,12 +126,12 @@ export default function AdminWarehousePage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>পণ্যের নাম</TableHead>
+                      <TableHead>Product Name</TableHead>
                       <TableHead>SKU</TableHead>
-                      <TableHead>ভ্যারিয়েন্ট বিবরণ</TableHead>
-                      <TableHead>স্টক লেভেল</TableHead>
-                      <TableHead>স্ট্যাটাস</TableHead>
-                      <TableHead className="text-right">সমন্বয়</TableHead>
+                      <TableHead>Variant Details</TableHead>
+                      <TableHead>Stock Level</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Adjustment</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -140,7 +140,7 @@ export default function AdminWarehousePage() {
                       return (
                         <TableRow key={p._id}>
                           <TableCell className="font-semibold">{p.name}</TableCell>
-                          <TableCell className="font-mono text-xs">{p.sku || 'ভ্যারিয়েন্ট SKU'}</TableCell>
+                          <TableCell className="font-mono text-xs">{p.sku || 'Variant SKU'}</TableCell>
                           <TableCell>
                             {hasVariants ? (
                               <div className="space-y-1">
@@ -158,13 +158,13 @@ export default function AdminWarehousePage() {
                                         setAdjustmentType('inc');
                                       }}
                                     >
-                                      স্টক এডজাস্ট
+                                      Adjust Stock
                                     </Button>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">কোনো ভ্যারিয়েন্ট নেই</span>
+                              <span className="text-xs text-muted-foreground">No variants</span>
                             )}
                           </TableCell>
                           <TableCell>
@@ -190,7 +190,7 @@ export default function AdminWarehousePage() {
                                   setAdjustmentType('inc');
                                 }}
                               >
-                                স্টক এডজাস্ট
+                                Adjust Stock
                               </Button>
                             )}
                           </TableCell>
@@ -228,7 +228,7 @@ export default function AdminWarehousePage() {
                               setAdjustmentType('inc');
                             }}
                           >
-                            স্টক এডজাস্ট করুন
+                            Adjust Stock
                           </Button>
                         ) : undefined
                       }
@@ -244,7 +244,7 @@ export default function AdminWarehousePage() {
                       />
                       {hasVariants && (
                         <div className="border-t pt-2 space-y-1.5">
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">ভ্যারিয়েন্ট তালিকা:</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Variant List:</p>
                           {p.variants.map((v: any) => (
                             <div key={v._id} className="text-xs flex items-center justify-between bg-muted/40 p-1.5 rounded">
                               <span>{v.color || ''} {v.size ? `(${v.size})` : ''}</span>
@@ -260,7 +260,7 @@ export default function AdminWarehousePage() {
                                     setAdjustmentType('inc');
                                   }}
                                 >
-                                  এডজাস্ট
+                                  Adjust
                                 </Button>
                               </div>
                             </div>
@@ -280,25 +280,25 @@ export default function AdminWarehousePage() {
       <Dialog open={adjustingItem !== null} onOpenChange={open => !open && setAdjustingItem(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>ইনভেন্টরি স্টক সমন্বয়</DialogTitle>
+            <DialogTitle>Adjust Inventory Stock</DialogTitle>
             <DialogDescription>
-              {adjustingItem?.product?.name} {adjustingItem?.variant ? `(${adjustingItem.variant.color || ''} / ${adjustingItem.variant.size || ''})` : ''} এর স্টক এডজাস্ট করুন।
+              Adjust stock for {adjustingItem?.product?.name} {adjustingItem?.variant ? `(${adjustingItem.variant.color || ''} / ${adjustingItem.variant.size || ''})` : ''}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
-              <Label className="text-xs">সমন্বয়ের ধরন</Label>
+              <Label className="text-xs">Adjustment Type</Label>
               <select
                 value={adjustmentType}
                 onChange={e => setAdjustmentType(e.target.value as 'inc' | 'set')}
                 className="w-full h-8 border rounded-lg px-2 text-xs bg-background"
               >
-                <option value="inc">যোগ/বিয়োগ করুন (যেমন: +১০ বা -৫)</option>
-                <option value="set">সরাসরি নতুন স্টক নির্ধারণ করুন (যেমন: ৫০)</option>
+                <option value="inc">Add / Deduct (e.g. +10 or -5)</option>
+                <option value="set">Set Exact New Stock (e.g. 50)</option>
               </select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">পরিমাণ (সংখ্যা)</Label>
+              <Label className="text-xs">Quantity</Label>
               <Input
                 type="number"
                 value={adjustmentValue}
@@ -307,24 +307,24 @@ export default function AdminWarehousePage() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">সমন্বয়ের কারণ</Label>
+              <Label className="text-xs">Adjustment Reason</Label>
               <select
                 value={adjustmentReason}
                 onChange={e => setAdjustmentReason(e.target.value)}
                 className="w-full h-8 border rounded-lg px-2 text-xs bg-background"
               >
-                <option value="Restock">নতুন রি-স্টক (Restock)</option>
-                <option value="Damage">ক্ষতিগ্রস্ত পণ্য (Damage)</option>
-                <option value="Customer Return">গ্রাহক রিটার্ন (Return)</option>
-                <option value="Audit adjustment">অডিট এবং কাউন্ট সমন্বয় (Audit)</option>
+                <option value="Restock">New Restock</option>
+                <option value="Damage">Damaged Product</option>
+                <option value="Customer Return">Customer Return</option>
+                <option value="Audit adjustment">Audit Count Adjustment</option>
               </select>
             </div>
           </div>
           <DialogFooter className="pt-2">
-            <Button variant="outline" size="sm" onClick={() => setAdjustingItem(null)} disabled={updating}>বাতিল</Button>
+            <Button variant="outline" size="sm" onClick={() => setAdjustingItem(null)} disabled={updating}>Cancel</Button>
             <Button size="sm" onClick={handleAdjustStock} disabled={updating} className="font-bold">
               {updating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              স্টক সেভ করুন
+              Save Stock
             </Button>
           </DialogFooter>
         </DialogContent>

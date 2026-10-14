@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Check duplicate for this reseller
     const existing = await ResellerCoupon.findOne({ resellerId, code: cleanCode });
     if (existing) {
-      return NextResponse.json({ error: 'এই কুপন কোডটি ইতিমধ্যে আপনার লিস্টে রয়েছে' }, { status: 400 });
+      return NextResponse.json({ error: 'This coupon code already exists in your list' }, { status: 400 });
     }
 
     const coupon = await ResellerCoupon.create({

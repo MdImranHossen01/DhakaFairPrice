@@ -64,5 +64,13 @@ export function isTransferableAccount(acc: any): boolean {
   return true;
 }
 
+/**
+ * Remove Bengali text or annotations like '(হাতে নগদ)' from account names.
+ */
+export function cleanAccountName(name?: string | null): string {
+  if (!name) return '';
+  return name.replace(/\s*\(হাতে নগদ\)/g, '').replace(/[\u0980-\u09FF]/g, '').trim();
+}
+
 
 

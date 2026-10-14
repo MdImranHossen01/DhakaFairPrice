@@ -100,7 +100,7 @@ export function ResellerSidebar({
         </div>
         <div className="flex items-center justify-between pt-1">
           <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-bold ${statusColor[reseller.status] || ''}`}>
-            {reseller.status === 'active' ? '● সক্রিয় স্টোর' : reseller.status === 'pending' ? 'অনুমোদনের অপেক্ষায়' : 'স্থগিত'}
+            {reseller.status === 'active' ? '● Active Store' : reseller.status === 'pending' ? 'Pending Approval' : 'Suspended'}
           </Badge>
         </div>
       </div>
@@ -109,12 +109,12 @@ export function ResellerSidebar({
       <div className="p-3 flex-1 overflow-y-auto space-y-4">
         <div>
           <p className="px-3 py-1.5 text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-2">
-            ন্যাভিগেশন মেনু
+            Navigation Menu
           </p>
           <TabsList className="flex flex-col h-auto w-full justify-start gap-2 bg-transparent p-0 mt-1">
             {/* Overview Group */}
             <NavGroup
-              title="Overview (ওভারভিউ)"
+              title="Overview"
               icon={LayoutDashboard}
               isOpen={expandedGroups.overview}
               onToggle={() => toggleGroup('overview')}
@@ -123,7 +123,7 @@ export function ResellerSidebar({
                 value="dashboard"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● ড্যাশবোর্ড / পরিসংখ্যান
+                ● Dashboard & Stats
               </TabsTrigger>
             </NavGroup>
 
@@ -138,7 +138,7 @@ export function ResellerSidebar({
                 value="wallet"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● ওয়ালেট ও পেআউট
+                ● Wallet & Payouts
               </TabsTrigger>
             </NavGroup>
 
@@ -153,19 +153,19 @@ export function ResellerSidebar({
                 value="store-products"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● স্টোরের পণ্য (All Products)
+                ● Store Products (All)
               </TabsTrigger>
               <TabsTrigger
                 value="my-products"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● আমার ব্যক্তিগত পণ্য
+                ● My Custom Products
               </TabsTrigger>
               <TabsTrigger
                 value="add-product"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● নতুন পণ্য যোগ করুন
+                ● Add New Product
               </TabsTrigger>
             </NavGroup>
 
@@ -180,7 +180,7 @@ export function ResellerSidebar({
                 value="orders"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                <span className="flex-1 text-left">● অর্ডার সমূহ</span>
+                <span className="flex-1 text-left">● Orders</span>
                 {recentOrdersCount > 0 && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0 font-black">
                     {recentOrdersCount}
@@ -200,7 +200,7 @@ export function ResellerSidebar({
                 value="settings"
                 className="w-full justify-start gap-2 px-3 py-2 rounded-lg font-bold text-xs text-muted-foreground hover:text-foreground data-[state=active]:bg-primary/10 data-[state=active]:text-primary shadow-none transition-all text-left"
               >
-                ● স্টোর সেটিংস ও ডোমেইন
+                ● Store Settings & Domain
               </TabsTrigger>
             </NavGroup>
           </TabsList>
@@ -211,17 +211,17 @@ export function ResellerSidebar({
       <div className="p-3 border-t bg-muted/20 space-y-2.5 mt-auto">
         <div className="rounded-xl border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-primary">
-            <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> স্টোর লিংক</span>
+            <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Store Link</span>
             <Badge variant="outline" className="text-[9px] px-1 py-0">Live</Badge>
           </div>
           <p className="text-[11px] font-mono text-muted-foreground truncate">{reseller.subdomain}.swapnobaz.com</p>
           <div className="grid grid-cols-2 gap-1.5 pt-0.5">
             <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={copyStoreLink}>
-              <Copy className="h-3 w-3 mr-1" /> কপি
+              <Copy className="h-3 w-3 mr-1" /> Copy
             </Button>
             <Button size="sm" variant="default" className="h-7 text-[11px] px-2" asChild>
               <a href={storeLink} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1" /> স্টোর দেখুন
+                <ExternalLink className="h-3 w-3 mr-1" /> View Store
               </a>
             </Button>
           </div>

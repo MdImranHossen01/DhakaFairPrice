@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, ArrowRightLeft, ReceiptText } from 'lucide-react';
-import { cn, isTransferableAccount } from '@/lib/utils';
+import { cn, isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 const transactionSchema = z.object({
   type: z.enum(['expense', 'income']),
@@ -478,13 +478,13 @@ export function TransactionForm({
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="expense" id="type-expense" />
                         <Label htmlFor="type-expense" className="text-rose-600 dark:text-rose-400 font-bold cursor-pointer text-xs select-none">
-                          Expense (খরচ)
+                          Expense
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="income" id="type-income" />
                         <Label htmlFor="type-income" className="text-emerald-600 dark:text-emerald-400 font-bold cursor-pointer text-xs select-none">
-                          Income (আয়)
+                          Income
                         </Label>
                       </div>
                     </RadioGroup>
@@ -545,7 +545,7 @@ export function TransactionForm({
                           <SelectValue placeholder="Select Account">
                             {field.value
                               ? transferableAccounts.find((a) => a._id === field.value)
-                                ? `${transferableAccounts.find((a) => a._id === field.value)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === field.value)?.currentBalance || 0).toLocaleString()})`
+                                ? `${cleanAccountName(transferableAccounts.find((a) => a._id === field.value)?.name)} (৳${Math.round(transferableAccounts.find((a) => a._id === field.value)?.currentBalance || 0).toLocaleString()})`
                                 : "Select Account"
                               : "Select Account"}
                           </SelectValue>
@@ -560,7 +560,7 @@ export function TransactionForm({
                               value={a._id} 
                               className="text-xs"
                             >
-                              {a.name} (৳{Math.round(a.currentBalance || 0).toLocaleString()})
+                              {cleanAccountName(a.name)} (৳${Math.round(a.currentBalance || 0).toLocaleString()})
                               {hasInsufficient && " ⚠️"}
                             </SelectItem>
                           );
@@ -699,7 +699,7 @@ export function TransactionForm({
                   <SelectValue placeholder="Select Source">
                     {fromAccountId
                       ? transferableAccounts.find((a) => a._id === fromAccountId)
-                        ? `${transferableAccounts.find((a) => a._id === fromAccountId)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === fromAccountId)?.currentBalance || 0).toLocaleString()})`
+                        ? `${cleanAccountName(transferableAccounts.find((a) => a._id === fromAccountId)?.name)} (৳${Math.round(transferableAccounts.find((a) => a._id === fromAccountId)?.currentBalance || 0).toLocaleString()})`
                         : "Select Source"
                       : "Select Source"}
                   </SelectValue>
@@ -714,7 +714,7 @@ export function TransactionForm({
                         value={acc._id} 
                         className="text-xs"
                       >
-                        {acc.name} (৳{Math.round(acc.currentBalance || 0).toLocaleString()})
+                        {cleanAccountName(acc.name)} (৳${Math.round(acc.currentBalance || 0).toLocaleString()})
                         {hasInsufficient && " ⚠️"}
                       </SelectItem>
                     );
@@ -744,7 +744,7 @@ export function TransactionForm({
                   <SelectValue placeholder="Select Destination">
                     {toAccountId
                       ? transferableAccounts.find((a) => a._id === toAccountId)
-                        ? `${transferableAccounts.find((a) => a._id === toAccountId)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === toAccountId)?.currentBalance || 0).toLocaleString()})`
+                        ? `${cleanAccountName(transferableAccounts.find((a) => a._id === toAccountId)?.name)} (৳${Math.round(transferableAccounts.find((a) => a._id === toAccountId)?.currentBalance || 0).toLocaleString()})`
                         : "Select Destination"
                       : "Select Destination"}
                   </SelectValue>
@@ -752,7 +752,7 @@ export function TransactionForm({
                 <SelectContent>
                   {transferableAccounts.map((acc) => (
                     <SelectItem key={acc._id} value={acc._id} className="text-xs">
-                      {acc.name} (৳{Math.round(acc.currentBalance || 0).toLocaleString()})
+                      {cleanAccountName(acc.name)} (৳${Math.round(acc.currentBalance || 0).toLocaleString()})
                     </SelectItem>
                   ))}
                 </SelectContent>

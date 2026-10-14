@@ -48,7 +48,7 @@ export default function AdminPayoutsPage() {
         setPayouts(data.payouts || []);
       }
     } catch {
-      toast.error('পেআউট তথ্য লোড করতে সমস্যা হয়েছে');
+      toast.error('Failed to load payout data');
     } finally {
       setLoading(false);
     }
@@ -72,16 +72,16 @@ export default function AdminPayoutsPage() {
         }),
       });
       if (res.ok) {
-        toast.success(action === 'approve' ? 'পেআউট সফলভাবে পরিশোধিত হয়েছে' : 'পেআউট বাতিল ও রিফান্ড করা হয়েছে');
+        toast.success(action === 'approve' ? 'Payout disbursed successfully' : 'Payout cancelled and refunded');
         setProcessingTransaction(null);
         setPayoutReference('');
         fetchPayouts();
       } else {
         const err = await res.json();
-        toast.error(err.error || 'সমস্যা হয়েছে');
+        toast.error(err.error || 'Operation failed');
       }
     } catch {
-      toast.error('নেটওয়ার্ক ত্রুটি');
+      toast.error('Network error');
     } finally {
       setSubmitting(false);
     }
@@ -109,8 +109,8 @@ export default function AdminPayoutsPage() {
     <div className="flex-1 space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold tracking-tight">পেআউট অনুরোধ সমূহ</h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">রিসেলারদের সকল পেআউট অনুরোধ ও পেমেন্ট রেকর্ড পরিচালনা করুন</p>
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight">Payout Requests</h1>
+          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Manage all reseller payout requests and payment records</p>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export default function AdminPayoutsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="স্টোর নাম, মেথড বা রেফারেন্স..."
+            placeholder="Search store name, method, or reference..."
             value={search}
             onChange={e => {
               setSearch(e.target.value);
@@ -138,7 +138,7 @@ export default function AdminPayoutsPage() {
           ) : paginatedPayouts.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground text-xs">
               <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>কোনো পেআউট অনুরোধ পাওয়া যায়নি</p>
+              <p>No payout requests found</p>
             </div>
           ) : (
             <>
@@ -147,14 +147,14 @@ export default function AdminPayoutsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>তারিখ</TableHead>
-                      <TableHead>রিসেলার স্টোর</TableHead>
-                      <TableHead>মালিক</TableHead>
-                      <TableHead>পরিমাণ</TableHead>
-                      <TableHead>পদ্ধতি</TableHead>
-                      <TableHead>হিসাব নম্বর / রেফারেন্স</TableHead>
-                      <TableHead>স্ট্যাটাস</TableHead>
-                      <TableHead className="text-right">অ্যাকশন</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Reseller Store</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Account / Reference</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -177,7 +177,7 @@ export default function AdminPayoutsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={statusBadgeColor[p.status] || ''}>
-                            {p.status === 'cleared' ? 'পরিশোধিত' : p.status === 'pending' ? 'পেন্ডিং' : 'বাতিল'}
+                            {p.status === 'cleared' ? 'Paid' : p.status === 'pending' ? 'Pending' : 'Cancelled'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right space-x-1">
@@ -191,7 +191,7 @@ export default function AdminPayoutsPage() {
                                   setPayoutReference('');
                                 }}
                               >
-                                <Check className="h-3.5 w-3.5 mr-1" />পেমেন্ট রিলিজ
+                                <Check className="h-3.5 w-3.5 mr-1" />Release Payment
                               </Button>
                               <Button
                                 size="sm"
@@ -199,21 +199,21 @@ export default function AdminPayoutsPage() {
                                 className="h-8 text-xs font-semibold"
                                 onClick={async () => {
                                   const result = await Swal.fire({
-                                    title: 'অনুরোধটি বাতিল করতে চান?',
-                                    text: 'বাতিল করলে টাকা রিসেলারের ওয়ালেটে ফেরত যাবে।',
+                                    title: 'Cancel this request?',
+                                    text: 'Funds will be refunded to the reseller wallet.',
                                     icon: 'warning',
                                     showCancelButton: true,
                                     confirmButtonColor: '#d33',
                                     cancelButtonColor: '#3085d6',
-                                    confirmButtonText: 'হ্যাঁ, বাতিল করুন',
-                                    cancelButtonText: 'ফিরে যান'
+                                    confirmButtonText: 'Yes, cancel it',
+                                    cancelButtonText: 'Back'
                                   });
                                   if (result.isConfirmed) {
                                     handleProcessPayout('reject', p);
                                   }
                                 }}
                               >
-                                <X className="h-3.5 w-3.5 mr-1" />বাতিল
+                                <X className="h-3.5 w-3.5 mr-1" />Cancel
                               </Button>
                             </>
                           )}
@@ -232,7 +232,7 @@ export default function AdminPayoutsPage() {
                     title={p.resellerId?.storeName || 'Deleted Store'}
                     badge={
                       <Badge variant="outline" className={`text-[10px] ${statusBadgeColor[p.status] || ''}`}>
-                        {p.status === 'cleared' ? 'পরিশোধিত' : p.status === 'pending' ? 'পেন্ডিং' : 'বাতিল'}
+                        {p.status === 'cleared' ? 'Paid' : p.status === 'pending' ? 'Pending' : 'Cancelled'}
                       </Badge>
                     }
                     footer={
@@ -257,7 +257,7 @@ export default function AdminPayoutsPage() {
                             setPayoutReference('');
                           }}
                         >
-                          <Check className="h-3 w-3 mr-1" /> রিলিজ
+                          <Check className="h-3 w-3 mr-1" /> Release
                         </Button>
                         <Button
                           size="sm"
@@ -265,21 +265,21 @@ export default function AdminPayoutsPage() {
                           className="h-7 text-xs font-semibold px-2"
                           onClick={async () => {
                             const result = await Swal.fire({
-                              title: 'অনুরোধটি বাতিল করতে চান?',
-                              text: 'বাতিল করলে টাকা রিসেলারের ওয়ালেটে ফেরত যাবে।',
+                              title: 'Cancel this request?',
+                              text: 'Funds will be refunded to the reseller wallet.',
                               icon: 'warning',
                               showCancelButton: true,
                               confirmButtonColor: '#d33',
                               cancelButtonColor: '#3085d6',
-                              confirmButtonText: 'হ্যাঁ, বাতিল করুন',
-                              cancelButtonText: 'ফিরে যান'
+                              confirmButtonText: 'Yes, cancel it',
+                              cancelButtonText: 'Back'
                             });
                             if (result.isConfirmed) {
                               handleProcessPayout('reject', p);
                             }
                           }}
                         >
-                          <X className="h-3 w-3 mr-1" /> বাতিল
+                          <X className="h-3 w-3 mr-1" /> Cancel
                         </Button>
                       </div>
                     )}
@@ -291,8 +291,8 @@ export default function AdminPayoutsPage() {
               {!loading && totalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t">
                   <p className="text-xs text-muted-foreground">
-                    দেখাচ্ছে {(currentPage - 1) * ITEMS_PER_PAGE + 1} থেকে{' '}
-                    {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} (মোট {filtered.length})
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+                    {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} (Total {filtered.length})
                   </p>
                   <Pagination
                     currentPage={currentPage}
@@ -310,28 +310,28 @@ export default function AdminPayoutsPage() {
       <Dialog open={processingTransaction !== null && processingTransaction.status === 'pending'} onOpenChange={open => !open && setProcessingTransaction(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>পেমেন্ট রিলিজ নিশ্চিতকরণ</DialogTitle>
+            <DialogTitle>Confirm Payment Release</DialogTitle>
             <DialogDescription>
-              রিসেলারকে পেমেন্ট পাঠানোর পর প্রাপ্ত ট্রানজেকশন আইডি বা রেফারেন্স নম্বর এখানে সংরক্ষণ করুন।
+              Record the transaction ID or payout reference number after sending payment to the reseller.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
-              <Label className="text-xs">পেমেন্ট মেথড</Label>
+              <Label className="text-xs">Payment Method</Label>
               <Input value={processingTransaction?.payoutMethod?.toUpperCase()} disabled className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">হিসাব নম্বর</Label>
+              <Label className="text-xs">Account Number</Label>
               <Input value={processingTransaction?.payoutReference} disabled className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">পরিমাণ (৳)</Label>
+              <Label className="text-xs">Amount (৳)</Label>
               <Input value={Math.abs(processingTransaction?.amount || 0)} disabled className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">ট্রানজেকশন আইডি / পেমেন্ট রেফারেন্স</Label>
+              <Label className="text-xs">Transaction ID / Payment Reference</Label>
               <Input
-                placeholder="যেমন: TRXXXXXXXX"
+                placeholder="e.g. TRXXXXXXXX"
                 value={payoutReference}
                 onChange={e => setPayoutReference(e.target.value)}
                 className="h-8 text-xs"
@@ -339,10 +339,10 @@ export default function AdminPayoutsPage() {
             </div>
           </div>
           <DialogFooter className="pt-2">
-            <Button variant="outline" size="sm" onClick={() => setProcessingTransaction(null)} disabled={submitting}>বাতিল</Button>
+            <Button variant="outline" size="sm" onClick={() => setProcessingTransaction(null)} disabled={submitting}>Cancel</Button>
             <Button size="sm" onClick={() => handleProcessPayout('approve')} disabled={submitting || !payoutReference} className="font-bold">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-              পরিশোধ সম্পন্ন করুন
+              Complete Payment
             </Button>
           </DialogFooter>
         </DialogContent>

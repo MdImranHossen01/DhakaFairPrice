@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    // Ensure Bengali names in existing accounts are updated to English
+    await LedgerAccount.updateMany(
+      { name: /হাতে নগদ/ },
+      { $set: { name: 'Cash in Hand' } }
+    );
+
     // Ensure the default primary Cash in Hand account exists for admin
     const cashAccount = await LedgerAccount.findOne({
       $and: [
@@ -24,7 +30,7 @@ export async function GET(req: NextRequest) {
     });
     if (!cashAccount) {
       await LedgerAccount.create({
-        name: 'Cash in Hand (হাতে নগদ)',
+        name: 'Cash in Hand',
         code: 'CASH',
         category: 'Cash',
         type: 'asset',
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
       });
       if (existingCash) {
         return NextResponse.json({ 
-          message: 'ডিফল্ট ক্যাশ অ্যাকাউন্ট ইতিমধ্যে বিদ্যমান। নতুন ক্যাশ অ্যাকাউন্ট তৈরি করা যাবে না।' 
+          message: 'Default cash account already exists. Multiple primary cash accounts cannot be created.' 
         }, { status: 400 });
       }
     }
