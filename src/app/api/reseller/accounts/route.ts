@@ -31,6 +31,12 @@ export async function GET(req: NextRequest) {
       { $set: { name: 'Cash in Hand' } }
     );
 
+    // Ensure CASH code accounts are correctly categorized as Cash
+    await LedgerAccount.updateMany(
+      { resellerId: reseller._id, code: 'CASH', category: { $ne: 'Cash' } },
+      { $set: { category: 'Cash' } }
+    );
+
     // Ensure the default primary Cash in Hand account exists for this reseller
     const cashAccount = await LedgerAccount.findOne({
       resellerId: reseller._id,

@@ -8,11 +8,11 @@ import LedgerTransaction from '@/models/LedgerTransaction';
 export async function seedLedgerAccounts() {
   await connectToDatabase();
 
-  const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability' }[] = [
-    { name: 'Cash', code: 'CASH', type: 'asset' },
-    { name: 'Bank', code: 'BANK', type: 'asset' },
-    { name: 'Accounts Receivable', code: 'AR', type: 'asset' },
-    { name: 'Accounts Payable', code: 'AP', type: 'liability' },
+  const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability'; category: 'Cash' | 'Bank' | 'Other' }[] = [
+    { name: 'Cash', code: 'CASH', type: 'asset', category: 'Cash' },
+    { name: 'Bank', code: 'BANK', type: 'asset', category: 'Bank' },
+    { name: 'Accounts Receivable', code: 'AR', type: 'asset', category: 'Other' },
+    { name: 'Accounts Payable', code: 'AP', type: 'liability', category: 'Other' },
   ];
 
   for (const acc of accounts) {
@@ -22,9 +22,13 @@ export async function seedLedgerAccounts() {
         name: acc.name,
         code: acc.code,
         type: acc.type,
+        category: acc.category,
         openingBalance: 0,
         currentBalance: 0,
       });
+    } else if (exists.category !== acc.category) {
+      exists.category = acc.category;
+      await exists.save();
     }
   }
 }

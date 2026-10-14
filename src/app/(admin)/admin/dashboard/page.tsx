@@ -136,6 +136,10 @@ const liquidAccountsChartConfig = {
     label: 'Bank Accounts',
     color: 'var(--chart-1)',
   },
+  mfs: {
+    label: 'Mobile Wallets',
+    color: 'var(--chart-3)',
+  },
 } satisfies ChartConfig;
 
 // Business Assets Chart Config
@@ -384,9 +388,11 @@ export default function AdminDashboard() {
   const liquidAccountsData = useMemo(() => {
     const cash = Math.max(0, data?.stats?.cashBalance || 0);
     const bank = Math.max(0, data?.stats?.bankBalance || 0);
+    const mfs = Math.max(0, data?.stats?.mfsBalance || 0);
     return [
-      { account: 'Cash', balance: cash, fill: 'var(--color-cash)' },
-      { account: 'Bank', balance: bank, fill: 'var(--color-bank)' },
+      { account: 'Cash', balance: cash, fill: 'var(--chart-2)' },
+      { account: 'Bank', balance: bank, fill: 'var(--chart-1)' },
+      { account: 'Mobile Wallets', balance: mfs, fill: 'var(--chart-3)' },
     ];
   }, [data?.stats]);
 
@@ -394,7 +400,7 @@ export default function AdminDashboard() {
   const assetsDistributionData = useMemo(() => {
     const inv = data?.stats?.totalStockValue || 0;
     const rec = data?.stats?.totalReceivable || 0;
-    const liquid = Math.max(0, (data?.stats?.cashBalance || 0) + (data?.stats?.bankBalance || 0));
+    const liquid = Math.max(0, (data?.stats?.cashBalance || 0) + (data?.stats?.bankBalance || 0) + (data?.stats?.mfsBalance || 0));
 
     return [
       { name: 'Inventory', value: inv, fill: 'var(--color-inventory)' },
@@ -830,7 +836,7 @@ export default function AdminDashboard() {
                 <Coins className="h-4 w-4 text-indigo-500 absolute opacity-70" />
               </div>
 
-              <div className="flex-1 space-y-1 text-xs">
+              <div className="flex-1 space-y-1.5 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <div className="w-2 h-2 rounded-full bg-[var(--chart-2)]" /> Cash
@@ -843,6 +849,12 @@ export default function AdminDashboard() {
                   </span>
                   <span className="font-bold text-foreground">৳{Math.round(stats?.bankBalance || 0).toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-[var(--chart-3)]" /> Mobile Wallets
+                  </span>
+                  <span className="font-bold text-foreground">৳{Math.round(stats?.mfsBalance || 0).toLocaleString()}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -850,7 +862,7 @@ export default function AdminDashboard() {
           <div className="pt-2 border-t border-muted/50">
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-300">
               <span>Total Liquid Funds:</span>
-              <span>৳{Math.round((stats?.cashBalance || 0) + (stats?.bankBalance || 0)).toLocaleString()}</span>
+              <span>৳{Math.round((stats?.cashBalance || 0) + (stats?.bankBalance || 0) + (stats?.mfsBalance || 0)).toLocaleString()}</span>
             </div>
           </div>
         </div>

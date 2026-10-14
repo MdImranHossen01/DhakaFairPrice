@@ -241,7 +241,7 @@ export default function ResellerAccountsPage() {
         </Card>
 
         {['Cash', 'Bank', 'MFS'].map((cat) => {
-          const catAccounts = accounts.filter(a => a.category === cat);
+          const catAccounts = accounts.filter(a => cat === 'Cash' ? (a.category === 'Cash' || a.code === 'CASH') : cat === 'Bank' ? (a.category === 'Bank' && a.code !== 'CASH') : a.category === cat);
           const catBal = catAccounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
           const Icon = cat === 'Cash' ? Wallet : cat === 'Bank' ? Landmark : Smartphone;
           return (
@@ -275,7 +275,7 @@ export default function ResellerAccountsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {accounts.map((acc) => {
             const isCash = acc.code === 'CASH' || acc.category === 'Cash';
-            const Icon = acc.category === 'Cash' ? Wallet : acc.category === 'Bank' ? Landmark : Smartphone;
+            const Icon = isCash ? Wallet : acc.category === 'Bank' ? Landmark : Smartphone;
 
             return (
               <Card key={acc._id} className="relative overflow-hidden hover:shadow-md transition-all border">
@@ -289,7 +289,7 @@ export default function ResellerAccountsPage() {
                         <h4 className="font-bold text-sm leading-tight text-foreground line-clamp-1">{cleanAccountName(acc.name)}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">{acc.code}</Badge>
-                          <span className="text-[10px] text-muted-foreground">{acc.category}</span>
+                          <span className="text-[10px] text-muted-foreground">{isCash ? 'Cash' : acc.category}</span>
                         </div>
                       </div>
                     </div>

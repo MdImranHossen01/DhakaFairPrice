@@ -169,7 +169,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const txDate = date ? new Date(date) : new Date();
+    let txDate = new Date();
+    if (date) {
+      const parsed = new Date(date);
+      const now = new Date();
+      if (parsed.toDateString() === now.toDateString()) {
+        txDate = now;
+      } else {
+        txDate = parsed;
+      }
+    }
 
     const [expense] = await Expense.create(
       [

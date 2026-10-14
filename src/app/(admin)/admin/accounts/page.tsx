@@ -22,6 +22,7 @@ import {
   FileText,
   MoreHorizontal,
   ArrowDownCircle,
+  ArrowUpCircle,
   X,
   Save,
 } from 'lucide-react';
@@ -217,21 +218,28 @@ export default function AccountsPage() {
     }
   };
 
-  // Group accounts by category
-  const bankAccounts = accounts.filter(a => a.category === 'Bank');
-  const cashAccounts = accounts.filter(a => a.category === 'Cash');
+  // Group accounts by category (Excluding AR and AP from liquid cashflow accounts)
+  const bankAccounts = accounts.filter(a => (a.category === 'Bank' || a.code === 'BANK') && a.code !== 'AR' && a.code !== 'AP');
+  const cashAccounts = accounts.filter(a => a.category === 'Cash' || a.code === 'CASH');
   const mfsAccounts = accounts.filter(a => a.category === 'MFS');
-  const totalBalance = accounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0);
+  const totalBalance = (bankAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (cashAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (mfsAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0));
 
-  const getAccountIcon = (category: string) => {
-    switch (category) {
-      case 'Cash':
-        return <Wallet className="h-4 w-4 text-emerald-600" />;
-      case 'MFS':
-        return <Smartphone className="h-4 w-4 text-sky-600" />;
-      default:
-        return <Building2 className="h-4 w-4 text-indigo-600" />;
+  const getAccountIcon = (category: string, code?: string) => {
+    if (code === 'CASH' || category === 'Cash') {
+      return <Wallet className="h-4 w-4 text-emerald-600" />;
     }
+    if (category === 'MFS') {
+      return <Smartphone className="h-4 w-4 text-sky-600" />;
+    }
+    if (code === 'AR') {
+      return <ArrowDownCircle className="h-4 w-4 text-blue-600" />;
+    }
+    if (code === 'AP') {
+      return <ArrowUpCircle className="h-4 w-4 text-rose-600" />;
+    }
+    return <Building2 className="h-4 w-4 text-indigo-600" />;
   };
 
   return (
@@ -368,7 +376,7 @@ export default function AccountsPage() {
                     <tr key={acc._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
                       <td className="p-3 text-left">
                         <div className="font-bold text-foreground flex items-center gap-2">
-                          {getAccountIcon(acc.category)}
+                          {getAccountIcon(acc.category, acc.code)}
                           {cleanAccountName(acc.name)}
                         </div>
                         {acc.description && (
@@ -377,7 +385,7 @@ export default function AccountsPage() {
                       </td>
                       <td className="p-3">
                         <Badge variant="secondary" className="text-[10px] font-semibold">
-                          {acc.category}
+                          {acc.code === 'CASH' ? 'Cash' : acc.code === 'AR' ? 'Receivable' : acc.code === 'AP' ? 'Payable' : acc.category}
                         </Badge>
                       </td>
                       <td className="p-3 font-mono text-xs text-muted-foreground">{acc.code}</td>
@@ -474,13 +482,13 @@ export default function AccountsPage() {
                   key={acc._id}
                   title={
                     <div className="flex items-center gap-1.5 font-bold text-sm">
-                      {getAccountIcon(acc.category)}
+                      {getAccountIcon(acc.category, acc.code)}
                       <span>{cleanAccountName(acc.name)}</span>
                     </div>
                   }
                   badge={
                     <Badge variant="secondary" className="text-[10px]">
-                      {acc.category}
+                      {acc.code === 'CASH' ? 'Cash' : acc.code === 'AR' ? 'Receivable' : acc.code === 'AP' ? 'Payable' : acc.category}
                     </Badge>
                   }
                   footer={

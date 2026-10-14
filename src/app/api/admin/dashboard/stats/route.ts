@@ -429,13 +429,19 @@ export async function GET(req: NextRequest) {
     // Process Ledger Balances
     let cashBalance = 0;
     let bankBalance = 0;
+    let mfsBalance = 0;
     let cashAccountsCount = 0;
     const bankAccountsList: any[] = [];
     (ledgerAccounts as any[]).forEach((acc: any) => {
+      // Exclude AR and AP from liquid cashflow funds
+      if (['AR', 'AP'].includes(acc.code)) return;
+
       if (acc.code === 'CASH' || acc.category === 'Cash') {
         cashBalance += acc.currentBalance || 0;
         cashAccountsCount += 1;
-      } else if (acc.code === 'BANK' || acc.category === 'Bank' || acc.category === 'MFS') {
+      } else if (acc.category === 'MFS') {
+        mfsBalance += acc.currentBalance || 0;
+      } else if (acc.code === 'BANK' || acc.category === 'Bank') {
         bankBalance += acc.currentBalance || 0;
         bankAccountsList.push({ name: acc.name, balance: acc.currentBalance || 0 });
       }
@@ -456,7 +462,7 @@ export async function GET(req: NextRequest) {
     const totalActiveLoansDue = (activeLoansStats as any[])?.[0]?.totalActiveLoansDue || 0;
 
     // Total Assets Calculation
-    const totalLiquidBalance = cashBalance + bankBalance;
+    const totalLiquidBalance = cashBalance + bankBalance + mfsBalance;
     const totalAssetValue = stockStats.totalStockValue + totalReceivable + totalLiquidBalance;
 
     // Merge Expenses with Daily Chart Data
@@ -552,6 +558,8 @@ export async function GET(req: NextRequest) {
         totalProductsCount: stockStats.totalProductsCount,
         cashBalance,
         bankBalance,
+        mfsBalance,
+        totalLiquidBalance,
         cashAccountsCount,
         bankAccountsList,
         resellerWalletTotal,
