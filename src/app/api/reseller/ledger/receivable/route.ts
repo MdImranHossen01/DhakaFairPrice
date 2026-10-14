@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const pendingOrders = await ResellerOrder.find({
       resellerId: reseller._id,
       paymentStatus: { $ne: 'Paid' },
-      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Shipped', 'Delivered'] },
+      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
       deletedAt: null
     })
       .select('shortId customer totalAmount status paymentMethod shippingAddress createdAt')
