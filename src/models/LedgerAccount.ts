@@ -13,7 +13,7 @@ export interface ILedgerAccount extends Document {
   currentBalance: number;
   type: 'asset' | 'liability';
   category: 'Cash' | 'Bank' | 'MFS' | 'Other';
-  resellerId?: mongoose.Types.ObjectId;
+  resellerId?: mongoose.Types.ObjectId | null;
   description?: string;
   createdAt: Date;
   updatedAt: Date;

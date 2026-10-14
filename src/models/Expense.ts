@@ -6,7 +6,7 @@ export interface IExpense extends Document {
   category: string;
   type: 'expense' | 'income';
   paymentAccountId?: mongoose.Types.ObjectId;
-  resellerId?: mongoose.Types.ObjectId;
+  resellerId?: mongoose.Types.ObjectId | null;
   date: Date;
   description?: string;
   createdAt: Date;

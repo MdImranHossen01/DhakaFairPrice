@@ -8,7 +8,7 @@ export interface ILedgerTransaction extends Document {
   amount: number;
   reference?: string;
   balanceAfter: number;
-  resellerId?: mongoose.Types.ObjectId;
+  resellerId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }

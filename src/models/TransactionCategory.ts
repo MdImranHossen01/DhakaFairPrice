@@ -3,7 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 export interface ITransactionCategory extends Document {
   name: string;
   type: 'expense' | 'income';
-  resellerId?: mongoose.Types.ObjectId;
+  resellerId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
