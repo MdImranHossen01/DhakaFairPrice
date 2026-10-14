@@ -58,7 +58,16 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
     await seedLedgerAccounts();
 
-    const txDate = date ? new Date(date) : new Date();
+    let txDate = new Date();
+    if (date) {
+      const parsed = new Date(date);
+      const now = new Date();
+      if (parsed.toDateString() === now.toDateString()) {
+        txDate = now;
+      } else {
+        txDate = parsed;
+      }
+    }
 
     if (entryType === 'transfer') {
       if (!fromAccountCode || !toAccountCode) {

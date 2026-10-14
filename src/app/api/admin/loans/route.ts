@@ -80,7 +80,16 @@ export async function POST(req: NextRequest) {
     const loanId = `LOAN-${new Date().getFullYear()}-${uniqueSuffix}`;
     const interest = Number(interestAmount) || 0;
     const totalRepay = principal + interest;
-    const txDate = date ? new Date(date) : new Date();
+    let txDate = new Date();
+    if (date) {
+      const parsed = new Date(date);
+      const now = new Date();
+      if (parsed.toDateString() === now.toDateString()) {
+        txDate = now;
+      } else {
+        txDate = parsed;
+      }
+    }
 
     const loan = await BusinessLoan.create({
       loanId,
