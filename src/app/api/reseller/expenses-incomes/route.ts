@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 
     const [entries, incomeAgg, expenseAgg] = await Promise.all([
       Expense.find(query)
-        .sort({ date: -1, createdAt: -1 })
+        .sort({ date: -1, createdAt: -1, _id: -1 })
         .populate('paymentAccountId', 'name code category currentBalance')
         .lean(),
       Expense.aggregate([
