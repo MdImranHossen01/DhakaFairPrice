@@ -22,7 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Pagination } from '@/components/ui/pagination';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -246,19 +252,20 @@ export default function AdminResellersPage() {
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[22%] min-w-[170px]">Store Name</TableHead>
-                      <TableHead className="w-[24%] min-w-[170px]">Domain & Subdomain</TableHead>
-                      <TableHead className="w-[16%] min-w-[130px]">Owner</TableHead>
-                      <TableHead className="w-[10%] min-w-[75px] text-center">Total Orders</TableHead>
-                      <TableHead className="w-[10%] min-w-[85px]">Revenue</TableHead>
-                      <TableHead className="w-[10%] min-w-[95px]">Status</TableHead>
-                      <TableHead className="text-right w-[140px]">Actions</TableHead>
+                      <TableHead className="w-[18%] min-w-[150px]">Store Name</TableHead>
+                      <TableHead className="w-[20%] min-w-[160px]">Domain & Subdomain</TableHead>
+                      <TableHead className="w-[15%] min-w-[130px]">Owner</TableHead>
+                      <TableHead className="w-[11%] min-w-[95px]">Date</TableHead>
+                      <TableHead className="w-[8%] min-w-[65px] text-center">Total Orders</TableHead>
+                      <TableHead className="w-[9%] min-w-[80px]">Revenue</TableHead>
+                      <TableHead className="w-[10%] min-w-[90px]">Status</TableHead>
+                      <TableHead className="text-right w-[70px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedResellers.map(r => (
                       <TableRow key={r._id}>
-                        <TableCell className="w-[22%] min-w-[170px] align-top py-3 whitespace-normal">
+                        <TableCell className="w-[18%] min-w-[150px] align-top py-3 whitespace-normal">
                           <div className="space-y-1 whitespace-normal">
                             <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
                             {r.description && (
@@ -268,17 +275,17 @@ export default function AdminResellersPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="w-[24%] min-w-[170px] align-top py-3">
+                        <TableCell className="w-[20%] min-w-[160px] align-top py-3">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <a
-                                href={`https://${r.subdomain}.dhakafairprice.com`}
+                                href={`https://${r.subdomain}.swapnobaz.com`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-semibold max-w-full"
-                                title={`${r.subdomain}.dhakafairprice.com`}
+                                title={`${r.subdomain}.swapnobaz.com`}
                               >
-                                <span className="truncate">{r.subdomain}.dhakafairprice.com</span>
+                                <span className="truncate">{r.subdomain}.swapnobaz.com</span>
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
                             </div>
@@ -303,49 +310,81 @@ export default function AdminResellersPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[16%] min-w-[130px] align-top py-3">
+                        <TableCell className="w-[15%] min-w-[130px] align-top py-3">
                           <div>
                             <p className="text-sm font-medium truncate" title={r.userId?.name || 'Unknown'}>{r.userId?.name || 'Unknown'}</p>
                             <p className="text-xs text-muted-foreground truncate" title={r.contact?.phone || r.userId?.email}>{r.contact?.phone || r.userId?.email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[10%] min-w-[75px] text-center align-top py-3">{r.totalOrders || 0}</TableCell>
-                        <TableCell className="w-[10%] min-w-[85px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
-                        <TableCell className="w-[10%] min-w-[95px] align-top py-3">
+                        <TableCell className="w-[11%] min-w-[95px] align-top py-3 text-xs">
+                          <div className="font-semibold text-foreground">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}
+                          </div>
+                          {r.createdAt && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="w-[8%] min-w-[65px] text-center align-top py-3">{r.totalOrders || 0}</TableCell>
+                        <TableCell className="w-[9%] min-w-[80px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
+                        <TableCell className="w-[10%] min-w-[90px] align-top py-3">
                           <Badge variant="outline" className={`text-xs whitespace-nowrap ${statusBadgeColor[r.status] || ''}`}>
                             {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : 'Suspended'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right w-[140px] align-top py-3 space-x-1">
-                          {r.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 h-8 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                            >
-                              <Check className="h-3.5 w-3.5 mr-1" />Approve
-                            </Button>
-                          )}
-                          {r.status === 'active' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-8 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
-                            >
-                              <ShieldAlert className="h-3.5 w-3.5 mr-1" />Suspend
-                            </Button>
-                          )}
-                          {r.status === 'suspended' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                            >
-                              <Check className="h-3.5 w-3.5 mr-1" />Activate
-                            </Button>
-                          )}
+                        <TableCell className="text-right w-[70px] align-top py-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-muted">
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {r.status === 'pending' && (
+                                <DropdownMenuItem
+                                  className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                  onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                >
+                                  <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                                  Approve Store
+                                </DropdownMenuItem>
+                              )}
+                              {r.status === 'active' && (
+                                <DropdownMenuItem
+                                  className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
+                                  onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                                >
+                                  <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
+                                  Suspend Store
+                                </DropdownMenuItem>
+                              )}
+                              {r.status === 'suspended' && (
+                                <DropdownMenuItem
+                                  className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                  onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                >
+                                  <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                                  Activate Store
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                className="cursor-pointer text-xs"
+                                onClick={() => openDomainModal(r)}
+                              >
+                                <Globe className="mr-2 h-4 w-4 text-primary" />
+                                Configure Domain
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer text-xs"
+                                onClick={() => window.open(`https://${r.subdomain}.swapnobaz.com`, '_blank')}
+                              >
+                                <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
+                                Visit Storefront
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -361,6 +400,11 @@ export default function AdminResellersPage() {
                       <div>
                         <h4 className="font-bold text-sm text-foreground">{r.storeName}</h4>
                         <p className="text-[11px] text-muted-foreground">{r.userId?.name || 'Unknown'} • {r.contact?.phone || r.userId?.email}</p>
+                        {r.createdAt && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Date: {new Date(r.createdAt).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
                       <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadgeColor[r.status] || ''}`}>
                         {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : 'Suspended'}
@@ -370,12 +414,12 @@ export default function AdminResellersPage() {
                     <div className="text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <a
-                          href={`https://${r.subdomain}.dhakafairprice.com`}
+                          href={`https://${r.subdomain}.swapnobaz.com`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
                         >
-                          {r.subdomain}.dhakafairprice.com
+                          {r.subdomain}.swapnobaz.com
                           <ExternalLink className="h-3 w-3" />
                         </a>
                         <Button
@@ -407,36 +451,61 @@ export default function AdminResellersPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5 pt-1">
-                      {r.status === 'pending' && (
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs px-2.5 bg-green-600 hover:bg-green-700"
-                          onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                        >
-                          <Check className="h-3 w-3 mr-1" />Approve
-                        </Button>
-                      )}
-                      {r.status === 'active' && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-7 text-xs px-2.5"
-                          onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
-                        >
-                          <ShieldAlert className="h-3 w-3 mr-1" />Suspend
-                        </Button>
-                      )}
-                      {r.status === 'suspended' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs px-2.5"
-                          onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                        >
-                          <Check className="h-3 w-3 mr-1" />Activate
-                        </Button>
-                      )}
+                    <div className="flex items-center justify-between pt-1 border-t">
+                      <div className="text-[11px] text-muted-foreground">
+                        {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-7 text-xs px-2.5">
+                            <MoreVertical className="h-3.5 w-3.5 mr-1" />
+                            Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {r.status === 'pending' && (
+                            <DropdownMenuItem
+                              className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                            >
+                              <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                              Approve Store
+                            </DropdownMenuItem>
+                          )}
+                          {r.status === 'active' && (
+                            <DropdownMenuItem
+                              className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
+                              onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                            >
+                              <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
+                              Suspend Store
+                            </DropdownMenuItem>
+                          )}
+                          {r.status === 'suspended' && (
+                            <DropdownMenuItem
+                              className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                            >
+                              <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                              Activate Store
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="cursor-pointer text-xs"
+                            onClick={() => openDomainModal(r)}
+                          >
+                            <Globe className="mr-2 h-4 w-4 text-primary" />
+                            Configure Domain
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="cursor-pointer text-xs"
+                            onClick={() => window.open(`https://${r.subdomain}.swapnobaz.com`, '_blank')}
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
+                            Visit Storefront
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
@@ -480,7 +549,7 @@ export default function AdminResellersPage() {
             <div className="space-y-1.5 p-3.5 rounded-lg border bg-muted/20">
               <label className="text-xs font-bold text-foreground">Free Store Subdomain</label>
               <p className="text-[11px] text-muted-foreground">
-                Set unique subdomain name on dhakafairprice platform:
+                Set unique subdomain name on swapnobaz platform:
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <Input
@@ -490,19 +559,19 @@ export default function AdminResellersPage() {
                   className="font-mono text-sm h-9 bg-background"
                 />
                 <span className="text-xs font-bold text-primary whitespace-nowrap bg-primary/10 px-2.5 py-2 rounded-md border border-primary/20">
-                  .dhakafairprice.com
+                  .swapnobaz.com
                 </span>
               </div>
               {editSubdomain && (
                 <div className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1">
                   <span>Preview Store:</span>
                   <a
-                    href={`https://${editSubdomain}.dhakafairprice.com`}
+                    href={`https://${editSubdomain}.swapnobaz.com`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline font-semibold inline-flex items-center gap-0.5"
                   >
-                    https://{editSubdomain}.dhakafairprice.com
+                    https://{editSubdomain}.swapnobaz.com
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
