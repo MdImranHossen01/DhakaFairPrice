@@ -298,7 +298,7 @@ export function LoanRepaymentDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">Pay From Account (Liquid Asset) *</Label>
               <Select value={paymentAccountId} onValueChange={(val) => val && setPaymentAccountId(val)}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="w-full h-9 text-xs">
                   <SelectValue placeholder="Select Payment Account">
                     {paymentAccountId ? (
                       selectedAccount ? (
@@ -311,7 +311,7 @@ export function LoanRepaymentDialog({
                     )}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-(--anchor-width) min-w-[320px]">
                   {liquidAccounts.map((acc) => {
                     const bal = acc.currentBalance || 0;
                     const isZero = bal <= 0;
@@ -321,7 +321,7 @@ export function LoanRepaymentDialog({
                         key={acc._id}
                         value={acc._id}
                         disabled={isZero}
-                        className="text-xs"
+                        className="text-xs py-1.5"
                       >
                         {cleanAccountName(acc.name)} (৳{Math.round(bal).toLocaleString()})
                         {isZero ? ' — (Zero Balance)' : isLow ? ' ⚠️ (Low Balance)' : ''}

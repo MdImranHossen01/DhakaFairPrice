@@ -404,17 +404,17 @@ export default function LoansPage() {
 
       {/* Record Loan Modal */}
       <Dialog open={newLoanOpen} onOpenChange={setNewLoanOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 font-bold">
+            <DialogTitle className="flex items-center gap-2 font-bold text-base md:text-lg">
               <HandCoins className="h-5 w-5 text-primary" />
               Record New Business Loan
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateLoan} className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <Label className="text-xs">Loan Provider / Lender *</Label>
+          <form onSubmit={handleCreateLoan} className="space-y-3.5 py-2 text-xs">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Loan Provider / Lender *</Label>
               {providers.length > 0 ? (
                 <Select
                   value={loanForm.lenderId}
@@ -424,7 +424,7 @@ export default function LoansPage() {
                     setLoanForm(prev => ({ ...prev, lenderId: val, lenderName: p ? p.name : '' }));
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="w-full h-9 text-xs">
                     <SelectValue placeholder="Select Loan Provider">
                       {loanForm.lenderId ? (
                         providers.find(p => p._id === loanForm.lenderId)
@@ -433,10 +433,13 @@ export default function LoansPage() {
                       ) : 'Select Loan Provider'}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="w-(--anchor-width) min-w-[320px]">
                     {providers.map(p => (
-                      <SelectItem key={p._id} value={p._id} className="text-xs">
-                        {p.name} {p.phone ? `(${p.phone})` : ''}
+                      <SelectItem key={p._id} value={p._id} className="text-xs py-2">
+                        <div className="flex flex-col text-left">
+                          <span className="font-semibold text-foreground">{p.name}</span>
+                          {p.phone && <span className="text-[11px] text-muted-foreground">{p.phone}</span>}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -447,14 +450,14 @@ export default function LoansPage() {
                   placeholder="Lender / Bank Name"
                   value={loanForm.lenderName}
                   onChange={(e) => setLoanForm(prev => ({ ...prev, lenderName: e.target.value }))}
-                  className="h-8 text-xs"
+                  className="w-full h-9 text-xs"
                 />
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Loan Amount (Principal ৳) *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Loan Amount (Principal ৳) *</Label>
                 <Input
                   required
                   type="number"
@@ -462,29 +465,29 @@ export default function LoansPage() {
                   placeholder="e.g. 100000"
                   value={loanForm.amount}
                   onChange={(e) => setLoanForm(prev => ({ ...prev, amount: e.target.value }))}
-                  className="h-8 text-xs"
+                  className="w-full h-9 text-xs font-semibold"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Interest / Fee (৳)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Interest / Fee (৳)</Label>
                 <Input
                   type="number"
                   min="0"
                   placeholder="0"
                   value={loanForm.interestAmount}
                   onChange={(e) => setLoanForm(prev => ({ ...prev, interestAmount: e.target.value }))}
-                  className="h-8 text-xs"
+                  className="w-full h-9 text-xs"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Receiving Bank / Cash Account *</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Receiving Bank / Cash Account *</Label>
               <Select
                 value={loanForm.receivingAccountId}
                 onValueChange={(val) => val && setLoanForm(prev => ({ ...prev, receivingAccountId: val }))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="w-full h-9 text-xs">
                   <SelectValue placeholder="Select Account to Deposit Loan">
                     {loanForm.receivingAccountId ? (
                       accounts.find(a => a._id === loanForm.receivingAccountId)
@@ -493,11 +496,11 @@ export default function LoansPage() {
                     ) : 'Select Account to Deposit Loan'}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-(--anchor-width) min-w-[300px]">
                   {accounts
                     .filter(a => a.code !== 'AR' && a.code !== 'AP')
                     .map(a => (
-                    <SelectItem key={a._id} value={a._id} className="text-xs">
+                    <SelectItem key={a._id} value={a._id} className="text-xs py-1.5">
                       {cleanAccountName(a.name)} ({a.category})
                     </SelectItem>
                   ))}
