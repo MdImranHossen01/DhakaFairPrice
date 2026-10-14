@@ -22,11 +22,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Pagination } from '@/components/ui/pagination';
@@ -111,18 +112,18 @@ export default function AdminResellersPage() {
     }
   };
 
-  const handleStatusChange = async (resellerId: string, status: 'active' | 'suspended', name: string) => {
-    const actionVerb = status === 'active' ? 'approve' : 'suspend';
-    const actionText = status === 'active' ? 'Approved' : 'Suspended';
+  const handleStatusChange = async (resellerId: string, status: 'active' | 'suspended' | 'rejected', name: string) => {
+    const actionVerb = status === 'active' ? 'approve' : status === 'rejected' ? 'reject' : 'suspend';
+    const actionText = status === 'active' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Suspended';
     const confirmResult = await Swal.fire({
       title: 'Are you sure?',
       text: `Do you want to ${actionVerb} "${name}" store?`,
-      icon: 'warning',
+      icon: status === 'active' ? 'question' : 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes',
+      confirmButtonText: `Yes, ${actionVerb}`,
       cancelButtonText: 'Cancel',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
+      confirmButtonColor: status === 'active' ? '#10b981' : '#d33',
+      cancelButtonColor: '#6b7280',
     });
 
     if (!confirmResult.isConfirmed) return;
@@ -145,10 +146,41 @@ export default function AdminResellersPage() {
     }
   };
 
+  const handleDeleteReseller = async (resellerId: string, name: string) => {
+    const confirmResult = await Swal.fire({
+      title: 'Delete Reseller Store?',
+      text: `Are you sure you want to permanently delete "${name}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6b7280',
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/resellers?resellerId=${resellerId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast.success('Store deleted successfully');
+        fetchResellers();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to delete store');
+      }
+    } catch {
+      toast.error('Network error while deleting store');
+    }
+  };
+
   const statusBadgeColor: Record<string, string> = {
     active: 'bg-green-500/10 text-green-600 border-green-500/20',
     pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-    suspended: 'bg-red-500/10 text-red-600 border-red-500/20',
+    suspended: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+    rejected: 'bg-red-500/10 text-red-600 border-red-500/20',
   };
 
   const filtered = resellers.filter(r => {
@@ -172,6 +204,7 @@ export default function AdminResellersPage() {
     pending: resellers.filter(r => r.status === 'pending').length,
     active: resellers.filter(r => r.status === 'active').length,
     suspended: resellers.filter(r => r.status === 'suspended').length,
+    rejected: resellers.filter(r => r.status === 'rejected').length,
   };
 
   return (
@@ -194,7 +227,7 @@ export default function AdminResellersPage() {
 
       {/* Status Filter Tabs */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        {(['all', 'pending', 'active', 'suspended'] as const).map(s => (
+        {(['all', 'pending', 'active', 'suspended', 'rejected'] as const).map(s => (
           <button
             key={s}
             onClick={() => {
@@ -208,12 +241,14 @@ export default function AdminResellersPage() {
                   : s === 'active'
                   ? 'bg-green-600 text-white border-green-600'
                   : s === 'suspended'
+                  ? 'bg-orange-600 text-white border-orange-600'
+                  : s === 'rejected'
                   ? 'bg-red-600 text-white border-red-600'
                   : 'bg-primary text-primary-foreground border-primary'
                 : 'bg-card text-muted-foreground border-border hover:bg-muted/40'
             }`}
           >
-            {s === 'all' ? 'All' : s === 'pending' ? 'Pending' : s === 'active' ? 'Active' : 'Suspended'}
+            {s === 'all' ? 'All' : s === 'pending' ? 'Pending' : s === 'active' ? 'Active' : s === 'suspended' ? 'Suspended' : 'Rejected'}
             <span className="ml-1.5 opacity-70">({counts[s]})</span>
           </button>
         ))}
@@ -330,7 +365,7 @@ export default function AdminResellersPage() {
                         <TableCell className="w-[9%] min-w-[80px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
                         <TableCell className="w-[10%] min-w-[90px] align-top py-3">
                           <Badge variant="outline" className={`text-xs whitespace-nowrap ${statusBadgeColor[r.status] || ''}`}>
-                            {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : 'Suspended'}
+                            {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right w-[70px] align-top py-3">
@@ -343,13 +378,22 @@ export default function AdminResellersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               {r.status === 'pending' && (
-                                <DropdownMenuItem
-                                  className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                                  onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                                >
-                                  <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                                  Approve Store
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                    onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                  >
+                                    <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                                    Approve Store
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer font-bold text-rose-600 focus:text-rose-700 text-xs"
+                                    onClick={() => handleStatusChange(r._id, 'rejected', r.storeName)}
+                                  >
+                                    <XCircle className="mr-2 h-4 w-4 text-rose-600" />
+                                    Reject Store
+                                  </DropdownMenuItem>
+                                </>
                               )}
                               {r.status === 'active' && (
                                 <DropdownMenuItem
@@ -360,7 +404,7 @@ export default function AdminResellersPage() {
                                   Suspend Store
                                 </DropdownMenuItem>
                               )}
-                              {r.status === 'suspended' && (
+                              {(r.status === 'suspended' || r.status === 'rejected') && (
                                 <DropdownMenuItem
                                   className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
                                   onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
@@ -382,6 +426,14 @@ export default function AdminResellersPage() {
                               >
                                 <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
                                 Visit Storefront
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="cursor-pointer font-bold text-destructive focus:text-destructive text-xs"
+                                onClick={() => handleDeleteReseller(r._id, r.storeName)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                                Delete Store
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -407,7 +459,7 @@ export default function AdminResellersPage() {
                         )}
                       </div>
                       <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadgeColor[r.status] || ''}`}>
-                        {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : 'Suspended'}
+                        {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
                       </Badge>
                     </div>
 
@@ -464,13 +516,22 @@ export default function AdminResellersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           {r.status === 'pending' && (
-                            <DropdownMenuItem
-                              className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
-                            >
-                              <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                              Approve Store
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuItem
+                                className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                              >
+                                <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                                Approve Store
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer font-bold text-rose-600 focus:text-rose-700 text-xs"
+                                onClick={() => handleStatusChange(r._id, 'rejected', r.storeName)}
+                              >
+                                <XCircle className="mr-2 h-4 w-4 text-rose-600" />
+                                Reject Store
+                              </DropdownMenuItem>
+                            </>
                           )}
                           {r.status === 'active' && (
                             <DropdownMenuItem
@@ -481,7 +542,7 @@ export default function AdminResellersPage() {
                               Suspend Store
                             </DropdownMenuItem>
                           )}
-                          {r.status === 'suspended' && (
+                          {(r.status === 'suspended' || r.status === 'rejected') && (
                             <DropdownMenuItem
                               className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
                               onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
@@ -503,6 +564,14 @@ export default function AdminResellersPage() {
                           >
                             <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
                             Visit Storefront
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="cursor-pointer font-bold text-destructive focus:text-destructive text-xs"
+                            onClick={() => handleDeleteReseller(r._id, r.storeName)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                            Delete Store
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

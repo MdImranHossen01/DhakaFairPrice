@@ -40,6 +40,9 @@ export async function PATCH(request: NextRequest) {
       } else if (status === 'suspended') {
         updatePayload.suspendedAt = new Date();
         updatePayload.suspendReason = suspendReason || '';
+      } else if (status === 'rejected') {
+        updatePayload.suspendedAt = new Date();
+        updatePayload.suspendReason = suspendReason || 'Application rejected by administrator';
       }
     }
     if (commissionRate !== undefined) {
@@ -80,9 +83,10 @@ export async function PATCH(request: NextRequest) {
       { new: true }
     );
 
-    // If suspended, optionally demote role, but usually keep it reseller to allow logging into dashboard to view history.
     if (status === 'active' && updated) {
-      await User.findByIdAndUpdate(updated.userId, { role: 'reseller' });
+      await User.findByIdAndUpdate(updated.userId, { role: 'reseller', resellerId: updated._id });
+    } else if (status === 'rejected' && updated) {
+      await User.findByIdAndUpdate(updated.userId, { role: 'user' });
     }
 
     return NextResponse.json({ success: true, reseller: updated });
@@ -90,3 +94,90 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user || !['admin', 'super_admin'].includes((session.user as any).role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const resellerId = searchParams.get('resellerId');
+
+    if (!resellerId) {
+      return NextResponse.json({ error: 'resellerId is required' }, { status: 400 });
+    }
+
+    await dbConnect();
+
+    const reseller = await Reseller.findById(resellerId);
+    if (!reseller) {
+      return NextResponse.json({ error: 'Reseller not found' }, { status: 404 });
+    }
+
+    // 1. Reset user role and unlink resellerId
+    if (reseller.userId) {
+      await User.findByIdAndUpdate(reseller.userId, {
+        $unset: { resellerId: 1 },
+        role: 'user',
+      });
+    }
+
+    // 2. Cascade delete all related reseller data
+    const [
+      ResellerProduct,
+      ResellerOrder,
+      Order,
+      ResellerWalletTransaction,
+      LedgerTransaction,
+      LedgerAccount,
+      Expense,
+      TransactionCategory,
+      ResellerCoupon,
+      Banner,
+      FAQ,
+      ResellerTestimonial,
+      AbandonedCart,
+    ] = await Promise.all([
+      import('@/models/ResellerProduct').then((m) => m.default),
+      import('@/models/ResellerOrder').then((m) => m.default),
+      import('@/models/Order').then((m) => m.default),
+      import('@/models/ResellerWalletTransaction').then((m) => m.default),
+      import('@/models/LedgerTransaction').then((m) => m.default),
+      import('@/models/LedgerAccount').then((m) => m.default),
+      import('@/models/Expense').then((m) => m.default),
+      import('@/models/TransactionCategory').then((m) => m.default),
+      import('@/models/ResellerCoupon').then((m) => m.default),
+      import('@/models/Banner').then((m) => m.default),
+      import('@/models/FAQ').then((m) => m.default),
+      import('@/models/ResellerTestimonial').then((m) => m.default),
+      import('@/models/AbandonedCart').then((m) => m.default),
+    ]);
+
+    await Promise.all([
+      ResellerProduct.deleteMany({ resellerId }),
+      ResellerOrder.deleteMany({ resellerId }),
+      Order.deleteMany({ resellerId }),
+      ResellerWalletTransaction.deleteMany({ resellerId }),
+      LedgerTransaction.deleteMany({ resellerId }),
+      LedgerAccount.deleteMany({ resellerId }),
+      Expense.deleteMany({ resellerId }),
+      TransactionCategory.deleteMany({ resellerId }),
+      ResellerCoupon.deleteMany({ resellerId }),
+      Banner.deleteMany({ resellerId }),
+      FAQ.deleteMany({ resellerId }),
+      ResellerTestimonial.deleteMany({ resellerId }),
+      AbandonedCart.deleteMany({ resellerId }),
+      Reseller.findByIdAndDelete(resellerId),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Store and all associated products, ledger history, and data deleted successfully',
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+

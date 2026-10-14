@@ -84,8 +84,8 @@ export default async function ResellerStorePage({ params }: Props) {
     );
   }
 
-  // Suspended/expired → Store Suspended page
-  if (reseller.status === 'suspended' || reseller.status === 'expired') {
+  // Suspended/expired/rejected → Store Suspended page
+  if (reseller.status === 'suspended' || reseller.status === 'expired' || reseller.status === 'rejected') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-rose-100 px-4 text-center">
         <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full">

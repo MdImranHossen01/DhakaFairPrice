@@ -9,7 +9,7 @@ export interface IReseller extends Document {
   faviconUrl?: string;
   description?: string;
   marqueeText?: string;
-  status: 'pending' | 'active' | 'suspended' | 'expired';
+  status: 'pending' | 'active' | 'suspended' | 'expired' | 'rejected';
   commissionRate: number;                    // % profit share for reseller (e.g. 10 = 10%)
   walletBalance: number;                     // cleared wallet balance
   pendingBalance: number;                    // uncleared (in-transit) balance

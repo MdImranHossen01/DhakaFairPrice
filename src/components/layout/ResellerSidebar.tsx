@@ -100,7 +100,7 @@ export function ResellerSidebar({
         </div>
         <div className="flex items-center justify-between pt-1">
           <Badge variant="outline" className={`text-[10px] px-2 py-0.5 font-bold ${statusColor[reseller.status] || ''}`}>
-            {reseller.status === 'active' ? '● Active Store' : reseller.status === 'pending' ? 'Pending Approval' : 'Suspended'}
+            {reseller.status === 'active' ? '● Active Store' : reseller.status === 'pending' ? 'Pending Approval' : reseller.status === 'rejected' ? 'Rejected' : 'Suspended'}
           </Badge>
         </div>
       </div>
