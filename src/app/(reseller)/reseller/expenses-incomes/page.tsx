@@ -227,7 +227,7 @@ function ResellerExpensesContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={typeFilter} onValueChange={(val: any) => { setTypeFilter(val); setCurrentPage(1); }}>
+          <Select value={typeFilter} onValueChange={(val: any) => { if (val) setTypeFilter(val); setCurrentPage(1); }}>
             <SelectTrigger className="w-[125px] h-9 text-xs">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>

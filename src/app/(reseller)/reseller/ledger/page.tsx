@@ -183,7 +183,7 @@ function ResellerLedgerContent() {
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={selectedAccountId}
-            onValueChange={(val) => { setSelectedAccountId(val); setCurrentPage(1); }}
+            onValueChange={(val) => { if (val) setSelectedAccountId(val); setCurrentPage(1); }}
           >
             <SelectTrigger className="w-[150px] h-9 text-xs">
               <SelectValue placeholder="All Accounts" />
