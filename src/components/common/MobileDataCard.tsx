@@ -61,6 +61,7 @@ export const ReportRowItem = MobileDataRow;
 
 export interface MobileDataCardProps {
   title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   badge?:
     | React.ReactNode
     | {
@@ -77,6 +78,7 @@ export interface MobileDataCardProps {
 
 export const MobileDataCard: React.FC<MobileDataCardProps> = ({
   title,
+  subtitle,
   badge,
   rows,
   children,
@@ -110,9 +112,12 @@ export const MobileDataCard: React.FC<MobileDataCardProps> = ({
         onClick ? 'cursor-pointer hover:border-primary/50' : ''
       } ${className}`}
     >
-      {(title || badge || actions) && (
+      {(title || subtitle || badge || actions) && (
         <div className="px-3 py-2 bg-muted/30 border-b border-border flex items-center justify-between gap-2">
-          <div className="font-bold text-sm text-foreground truncate min-w-0 flex-1">{title}</div>
+          <div className="min-w-0 flex-1">
+            {title && <div className="font-bold text-sm text-foreground truncate">{title}</div>}
+            {subtitle && <div className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</div>}
+          </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {renderBadge()}
             {actions}
