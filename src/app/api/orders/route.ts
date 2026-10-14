@@ -599,7 +599,7 @@ export async function GET(req: NextRequest) {
               },
               paymentMethod: ro.paymentMethod || 'COD',
               paymentStatus: ro.paymentStatus || 'Pending',
-              status: ro.status || 'Order Placed',
+              status: (ro.status as any) || 'Order Placed',
               resellerId: ro.resellerId,
               customerNote: ro.customerNote || '',
               internalNote: ro.internalNote || '',
