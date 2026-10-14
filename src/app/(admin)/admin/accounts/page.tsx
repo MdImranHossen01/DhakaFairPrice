@@ -42,10 +42,12 @@ import {
 } from '@/components/ui/dialog';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 import { TransactionForm } from '@/components/admin/TransactionForm';
+import { isTransferableAccount } from '@/lib/utils';
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const transferableAccounts = accounts.filter(isTransferableAccount);
 
   // Quick Transaction Modal State (Add Money / Debit / Transfer)
   const [txModalOpen, setTxModalOpen] = useState(false);
@@ -427,13 +429,15 @@ export default function AccountsPage() {
                               <ArrowDownCircle className="h-3.5 w-3.5 text-rose-600" />
                               <span>Debit - (Expense)</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleOpenTransfer(acc)}
-                              className="text-primary font-semibold cursor-pointer gap-2"
-                            >
-                              <ArrowRightLeft className="h-3.5 w-3.5" />
-                              <span>Transfer Funds</span>
-                            </DropdownMenuItem>
+                            {isTransferableAccount(acc) && (
+                              <DropdownMenuItem
+                                onClick={() => handleOpenTransfer(acc)}
+                                className="text-primary font-semibold cursor-pointer gap-2"
+                              >
+                                <ArrowRightLeft className="h-3.5 w-3.5" />
+                                <span>Transfer Funds</span>
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem asChild>
                               <Link
                                 href={`/admin/ledger?search=${encodeURIComponent(acc.name)}`}
@@ -507,13 +511,15 @@ export default function AccountsPage() {
                             <ArrowDownCircle className="h-3.5 w-3.5 text-rose-600" />
                             <span>Debit - (Expense)</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleOpenTransfer(acc)}
-                            className="text-primary font-semibold cursor-pointer gap-2"
-                          >
-                            <ArrowRightLeft className="h-3.5 w-3.5" />
-                            <span>Transfer Funds</span>
-                          </DropdownMenuItem>
+                          {isTransferableAccount(acc) && (
+                            <DropdownMenuItem
+                              onClick={() => handleOpenTransfer(acc)}
+                              className="text-primary font-semibold cursor-pointer gap-2"
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                              <span>Transfer Funds</span>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem asChild>
                             <Link
                               href={`/admin/ledger?search=${encodeURIComponent(acc.name)}`}
@@ -794,14 +800,14 @@ export default function AccountsPage() {
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select Source Account">
                     {transferForm.fromAccountId ? (
-                      accounts.find(a => a._id === transferForm.fromAccountId)
-                        ? `${accounts.find(a => a._id === transferForm.fromAccountId)?.name} (Available: ৳${Math.round(accounts.find(a => a._id === transferForm.fromAccountId)?.currentBalance || 0)})`
+                      transferableAccounts.find(a => a._id === transferForm.fromAccountId)
+                        ? `${transferableAccounts.find(a => a._id === transferForm.fromAccountId)?.name} (Available: ৳${Math.round(transferableAccounts.find(a => a._id === transferForm.fromAccountId)?.currentBalance || 0)})`
                         : 'Select Source Account'
                     ) : 'Select Source Account'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map(a => (
+                  {transferableAccounts.map(a => (
                     <SelectItem key={a._id} value={a._id} className="text-xs">
                       {a.name} (Available: ৳{Math.round(a.currentBalance || 0)})
                     </SelectItem>
@@ -822,14 +828,14 @@ export default function AccountsPage() {
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select Destination Account">
                     {transferForm.toAccountId ? (
-                      accounts.find(a => a._id === transferForm.toAccountId)
-                        ? `${accounts.find(a => a._id === transferForm.toAccountId)?.name} (Balance: ৳${Math.round(accounts.find(a => a._id === transferForm.toAccountId)?.currentBalance || 0)})`
+                      transferableAccounts.find(a => a._id === transferForm.toAccountId)
+                        ? `${transferableAccounts.find(a => a._id === transferForm.toAccountId)?.name} (Balance: ৳${Math.round(transferableAccounts.find(a => a._id === transferForm.toAccountId)?.currentBalance || 0)})`
                         : 'Select Destination Account'
                     ) : 'Select Destination Account'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.filter(a => a._id !== transferForm.fromAccountId).map(a => (
+                  {transferableAccounts.filter(a => a._id !== transferForm.fromAccountId).map(a => (
                     <SelectItem key={a._id} value={a._id} className="text-xs">
                       {a.name} (Balance: ৳{Math.round(a.currentBalance || 0)})
                     </SelectItem>

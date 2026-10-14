@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Loader2, ArrowRightLeft, ReceiptText } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isTransferableAccount } from '@/lib/utils';
 
 const transactionSchema = z.object({
   type: z.enum(['expense', 'income']),
@@ -58,6 +58,7 @@ export function TransactionForm({
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const transferableAccounts = useMemo(() => accounts.filter(isTransferableAccount), [accounts]);
 
   // Account Transfer Form State
   const [transferDate, setTransferDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -131,19 +132,26 @@ export function TransactionForm({
         const loadedAccounts = aData.accounts || [];
         setAccounts(loadedAccounts);
 
-        // Set default transfer accounts if empty
-        if (loadedAccounts.length > 0) {
-          setFromAccountId((prev) => prev || loadedAccounts[0]._id);
-          if (loadedAccounts.length > 1) {
-            setToAccountId((prev) => prev || loadedAccounts[1]._id);
+        const liquidAccounts = loadedAccounts.filter(isTransferableAccount);
+
+        // Set default transfer accounts from liquid/transferable accounts only
+        if (liquidAccounts.length > 0) {
+          setFromAccountId((prev) => (liquidAccounts.some((a: any) => a._id === prev) ? prev : liquidAccounts[0]._id));
+          if (liquidAccounts.length > 1) {
+            setToAccountId((prev) => {
+              if (prev && liquidAccounts.some((a: any) => a._id === prev && a._id !== liquidAccounts[0]._id)) {
+                return prev;
+              }
+              return liquidAccounts[1]._id;
+            });
           } else {
-            setToAccountId((prev) => prev || loadedAccounts[0]._id);
+            setToAccountId(liquidAccounts[0]._id);
           }
 
           // Default payment account for journal if not set
           const currentAcc = form.getValues('paymentAccountId');
-          if (!currentAcc && !initialData) {
-            form.setValue('paymentAccountId', loadedAccounts[0]._id);
+          if ((!currentAcc || !liquidAccounts.some((a: any) => a._id === currentAcc)) && !initialData) {
+            form.setValue('paymentAccountId', liquidAccounts[0]._id);
           }
         }
       }
@@ -342,7 +350,12 @@ export function TransactionForm({
       return;
     }
 
-    const sourceAcc = accounts.find((a) => a._id === fromAccountId);
+    const sourceAcc = transferableAccounts.find((a) => a._id === fromAccountId);
+    const destAcc = transferableAccounts.find((a) => a._id === toAccountId);
+    if (!sourceAcc || !destAcc) {
+      toast.error('Accounts Payable and Accounts Receivable cannot be used for fund transfers. Transfers are only allowed between Cash, Bank, or MFS accounts.');
+      return;
+    }
     if (sourceAcc && amt > (sourceAcc.currentBalance || 0)) {
       toast.error(`Insufficient balance in ${sourceAcc.name}. Available: ৳${(sourceAcc.currentBalance || 0).toLocaleString()}`);
       return;
@@ -531,15 +544,15 @@ export function TransactionForm({
                         >
                           <SelectValue placeholder="Select Account">
                             {field.value
-                              ? accounts.find((a) => a._id === field.value)
-                                ? `${accounts.find((a) => a._id === field.value)?.name} (৳${Math.round(accounts.find((a) => a._id === field.value)?.currentBalance || 0).toLocaleString()})`
+                              ? transferableAccounts.find((a) => a._id === field.value)
+                                ? `${transferableAccounts.find((a) => a._id === field.value)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === field.value)?.currentBalance || 0).toLocaleString()})`
                                 : "Select Account"
                               : "Select Account"}
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {accounts.map((a) => {
+                        {transferableAccounts.map((a) => {
                           const hasInsufficient = selectedType === 'expense' && selectedAmount > (a.currentBalance || 0);
                           return (
                             <SelectItem 
@@ -673,7 +686,7 @@ export function TransactionForm({
                   const value = val || '';
                   setFromAccountId(value);
                   if (value === toAccountId) {
-                    const nextAcc = accounts.find((a) => a._id !== value);
+                    const nextAcc = transferableAccounts.find((a) => a._id !== value);
                     if (nextAcc) setToAccountId(nextAcc._id);
                   }
                 }}
@@ -685,14 +698,14 @@ export function TransactionForm({
                 >
                   <SelectValue placeholder="Select Source">
                     {fromAccountId
-                      ? accounts.find((a) => a._id === fromAccountId)
-                        ? `${accounts.find((a) => a._id === fromAccountId)?.name} (৳${Math.round(accounts.find((a) => a._id === fromAccountId)?.currentBalance || 0).toLocaleString()})`
+                      ? transferableAccounts.find((a) => a._id === fromAccountId)
+                        ? `${transferableAccounts.find((a) => a._id === fromAccountId)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === fromAccountId)?.currentBalance || 0).toLocaleString()})`
                         : "Select Source"
                       : "Select Source"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((acc) => {
+                  {transferableAccounts.map((acc) => {
                     const amtVal = parseFloat(transferAmount) || 0;
                     const hasInsufficient = amtVal > (acc.currentBalance || 0);
                     return (
@@ -718,7 +731,7 @@ export function TransactionForm({
                   const value = val || '';
                   setToAccountId(value);
                   if (value === fromAccountId) {
-                    const nextAcc = accounts.find((a) => a._id !== value);
+                    const nextAcc = transferableAccounts.find((a) => a._id !== value);
                     if (nextAcc) setFromAccountId(nextAcc._id);
                   }
                 }}
@@ -730,14 +743,14 @@ export function TransactionForm({
                 >
                   <SelectValue placeholder="Select Destination">
                     {toAccountId
-                      ? accounts.find((a) => a._id === toAccountId)
-                        ? `${accounts.find((a) => a._id === toAccountId)?.name} (৳${Math.round(accounts.find((a) => a._id === toAccountId)?.currentBalance || 0).toLocaleString()})`
+                      ? transferableAccounts.find((a) => a._id === toAccountId)
+                        ? `${transferableAccounts.find((a) => a._id === toAccountId)?.name} (৳${Math.round(transferableAccounts.find((a) => a._id === toAccountId)?.currentBalance || 0).toLocaleString()})`
                         : "Select Destination"
                       : "Select Destination"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {accounts.map((acc) => (
+                  {transferableAccounts.map((acc) => (
                     <SelectItem key={acc._id} value={acc._id} className="text-xs">
                       {acc.name} (৳{Math.round(acc.currentBalance || 0).toLocaleString()})
                     </SelectItem>

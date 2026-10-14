@@ -5,6 +5,7 @@ import connectToDatabase from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
+import { isTransferableAccount } from '@/lib/utils';
 
 async function getReseller(userId: string) {
   await connectToDatabase();
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
       dbSession.endSession();
       dbSession = null;
       return NextResponse.json({ message: 'One or both accounts not found in your store' }, { status: 404 });
+    }
+
+    if (!isTransferableAccount(fromAccount) || !isTransferableAccount(toAccount)) {
+      await dbSession.abortTransaction();
+      dbSession.endSession();
+      dbSession = null;
+      return NextResponse.json({
+        message: 'Accounts Payable and Accounts Receivable cannot be used for fund transfers. Transfers are only permitted between liquid accounts (Cash, Bank, MFS).'
+      }, { status: 400 });
     }
 
     // Atomically decrement source with sufficiency filter within session

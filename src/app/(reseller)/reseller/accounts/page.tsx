@@ -43,6 +43,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { TransactionForm } from '@/components/admin/TransactionForm';
+import { isTransferableAccount } from '@/lib/utils';
 
 export default function ResellerAccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -360,14 +361,16 @@ export default function ResellerAccountsPage() {
                     >
                       - Debit
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] px-1 text-primary border-primary/20 hover:bg-primary/10"
-                      onClick={() => openQuickTx(acc, 'expense', 'transfer')}
-                    >
-                      <ArrowRightLeft className="h-3 w-3 mr-1" /> Transfer
-                    </Button>
+                    {isTransferableAccount(acc) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[10px] px-1 text-primary border-primary/20 hover:bg-primary/10"
+                        onClick={() => openQuickTx(acc, 'expense', 'transfer')}
+                      >
+                        <ArrowRightLeft className="h-3 w-3 mr-1" /> Transfer
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

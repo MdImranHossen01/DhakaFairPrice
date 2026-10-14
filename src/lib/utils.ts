@@ -49,4 +49,20 @@ export function normalizePhoneNumber(phone?: string | null): string {
   return cleaned;
 }
 
+/**
+ * Check if a ledger account is a liquid payment account (Cash, Bank, MFS).
+ * Accounts Payable (AP) and Accounts Receivable (AR) are balance sheet debt tracking accounts,
+ * not liquid funds, and cannot be used for fund transfers or cash in/out payment methods.
+ */
+export function isTransferableAccount(acc: any): boolean {
+  if (!acc) return false;
+  const code = String(acc.code || '').toUpperCase().trim();
+  const name = String(acc.name || '').toLowerCase().trim();
+  if (code === 'AR' || code === 'AP') return false;
+  if (name.includes('receivable') || name.includes('payable')) return false;
+  if (code.includes('RECEIVABLE') || code.includes('PAYABLE')) return false;
+  return true;
+}
+
+
 

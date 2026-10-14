@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import connectToDatabase from '@/lib/db';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
+import { isTransferableAccount } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   let dbSession: mongoose.ClientSession | null = null;
@@ -54,6 +55,15 @@ export async function POST(req: NextRequest) {
       dbSession.endSession();
       dbSession = null;
       return NextResponse.json({ message: 'One or both accounts not found' }, { status: 404 });
+    }
+
+    if (!isTransferableAccount(fromAccount) || !isTransferableAccount(toAccount)) {
+      await dbSession.abortTransaction();
+      dbSession.endSession();
+      dbSession = null;
+      return NextResponse.json({
+        message: 'Accounts Payable and Accounts Receivable cannot be used for fund transfers. Transfers are only permitted between liquid accounts (Cash, Bank, MFS).'
+      }, { status: 400 });
     }
 
     // Atomically decrement source with sufficiency filter within session

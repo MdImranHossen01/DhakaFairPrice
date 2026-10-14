@@ -65,6 +65,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'From and To accounts are required for transfers' }, { status: 400 });
       }
 
+      if (['AR', 'AP'].includes(fromAccountCode) || ['AR', 'AP'].includes(toAccountCode)) {
+        return NextResponse.json({ message: 'Accounts Payable and Accounts Receivable cannot be used for fund transfers' }, { status: 400 });
+      }
+
       // Credit the source account
       await logLedgerTransaction(
         fromAccountCode,
