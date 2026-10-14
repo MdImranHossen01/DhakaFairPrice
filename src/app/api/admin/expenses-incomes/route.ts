@@ -103,6 +103,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (type === 'expense') {
+      if (!account) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({ message: 'A payment account is required for recording expenses' }, { status: 400 });
+      }
+      if ((account.currentBalance || 0) <= 0) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({ 
+          message: `Cannot record expense from ${account.name} because its balance is zero or negative (৳${Math.round(account.currentBalance || 0).toLocaleString()}).` 
+        }, { status: 400 });
+      }
+      if (numAmount > (account.currentBalance || 0)) {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({ 
+          message: `Insufficient balance in ${account.name}. Available balance is ৳${Math.round(account.currentBalance || 0).toLocaleString()}` 
+        }, { status: 400 });
+      }
+    }
+
     const txDate = date ? new Date(date) : new Date();
 
     const [expense] = await Expense.create(
@@ -124,11 +146,24 @@ export async function POST(req: NextRequest) {
     // If an account is selected, atomically update balance using $inc and record LedgerTransaction
     if (account) {
       const incAmount = type === 'expense' ? -numAmount : numAmount;
-      const updatedAccount = await LedgerAccount.findByIdAndUpdate(
-        account._id,
+      const filter: any = { _id: account._id };
+      if (type === 'expense') {
+        filter.currentBalance = { $gte: numAmount };
+      }
+
+      const updatedAccount = await LedgerAccount.findOneAndUpdate(
+        filter,
         { $inc: { currentBalance: incAmount } },
         { new: true, session: dbSession }
       );
+
+      if (!updatedAccount && type === 'expense') {
+        await dbSession.abortTransaction();
+        dbSession.endSession();
+        return NextResponse.json({ 
+          message: `Insufficient balance in ${account.name}. The transaction could not be completed.` 
+        }, { status: 400 });
+      }
 
       await LedgerTransaction.create(
         [

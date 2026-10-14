@@ -133,25 +133,32 @@ export function TransactionForm({
         setAccounts(loadedAccounts);
 
         const liquidAccounts = loadedAccounts.filter(isTransferableAccount);
+        const positiveAccounts = liquidAccounts.filter((a: any) => (a.currentBalance || 0) > 0);
 
-        // Set default transfer accounts from liquid/transferable accounts only
+        // Set default transfer accounts from liquid/transferable accounts with positive balance
         if (liquidAccounts.length > 0) {
-          setFromAccountId((prev) => (liquidAccounts.some((a: any) => a._id === prev) ? prev : liquidAccounts[0]._id));
+          setFromAccountId((prev) => (positiveAccounts.some((a: any) => a._id === prev) ? prev : (positiveAccounts[0]?._id || '')));
           if (liquidAccounts.length > 1) {
             setToAccountId((prev) => {
-              if (prev && liquidAccounts.some((a: any) => a._id === prev && a._id !== liquidAccounts[0]._id)) {
+              if (prev && liquidAccounts.some((a: any) => a._id === prev && a._id !== (positiveAccounts[0]?._id || liquidAccounts[0]._id))) {
                 return prev;
               }
-              return liquidAccounts[1]._id;
+              return liquidAccounts.find((a: any) => a._id !== (positiveAccounts[0]?._id || liquidAccounts[0]._id))?._id || liquidAccounts[1]._id;
             });
           } else {
             setToAccountId(liquidAccounts[0]._id);
           }
 
-          // Default payment account for journal if not set
+          // Default payment account for journal
           const currentAcc = form.getValues('paymentAccountId');
-          if ((!currentAcc || !liquidAccounts.some((a: any) => a._id === currentAcc)) && !initialData) {
-            form.setValue('paymentAccountId', liquidAccounts[0]._id);
+          if (selectedType === 'expense') {
+            if (!currentAcc || !positiveAccounts.some((a: any) => a._id === currentAcc)) {
+              form.setValue('paymentAccountId', positiveAccounts[0]?._id || '');
+            }
+          } else {
+            if ((!currentAcc || !liquidAccounts.some((a: any) => a._id === currentAcc)) && !initialData) {
+              form.setValue('paymentAccountId', liquidAccounts[0]._id);
+            }
           }
         }
       }
@@ -227,14 +234,22 @@ export function TransactionForm({
 
   // Journal Form Submit Handler
   const onSubmit = async (values: TransactionFormValues) => {
-    // Insufficient balance check for expense
-    if (values.type === 'expense' && values.paymentAccountId) {
+    // Strict balance check for expense
+    if (values.type === 'expense') {
+      if (!values.paymentAccountId) {
+        toast.error('Please select an account for this expense.');
+        return;
+      }
       const selectedAcc = accounts.find((a) => a._id === values.paymentAccountId);
       if (selectedAcc) {
         const isEditSame = initialData && initialData.paymentAccountId?._id === selectedAcc._id && initialData.type === 'expense';
         const effectiveBalance = (selectedAcc.currentBalance || 0) + (isEditSame ? initialData.amount : 0);
+        if (effectiveBalance <= 0) {
+          toast.error(`Cannot record expense: ${cleanAccountName(selectedAcc.name)} has zero or negative balance (৳${Math.round(effectiveBalance).toLocaleString()}).`);
+          return;
+        }
         if (values.amount > effectiveBalance) {
-          toast.error(`Insufficient balance in ${selectedAcc.name}. Available: ৳${effectiveBalance.toLocaleString()}`);
+          toast.error(`Insufficient balance in ${cleanAccountName(selectedAcc.name)}. Available: ৳${Math.round(effectiveBalance).toLocaleString()}`);
           return;
         }
       }
@@ -356,8 +371,13 @@ export function TransactionForm({
       toast.error('Accounts Payable and Accounts Receivable cannot be used for fund transfers. Transfers are only allowed between Cash, Bank, or MFS accounts.');
       return;
     }
-    if (sourceAcc && amt > (sourceAcc.currentBalance || 0)) {
-      toast.error(`Insufficient balance in ${sourceAcc.name}. Available: ৳${(sourceAcc.currentBalance || 0).toLocaleString()}`);
+    const sourceBal = sourceAcc.currentBalance || 0;
+    if (sourceBal <= 0) {
+      toast.error(`Cannot transfer funds: ${cleanAccountName(sourceAcc.name)} has zero or negative balance (৳${Math.round(sourceBal).toLocaleString()}).`);
+      return;
+    }
+    if (amt > sourceBal) {
+      toast.error(`Insufficient balance in ${cleanAccountName(sourceAcc.name)}. Available: ৳${Math.round(sourceBal).toLocaleString()}`);
       return;
     }
 
@@ -472,7 +492,17 @@ export function TransactionForm({
                   <FormControl>
                     <RadioGroup
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(val: 'expense' | 'income') => {
+                        field.onChange(val);
+                        if (val === 'expense') {
+                          const currentId = form.getValues('paymentAccountId');
+                          const currentAcc = accounts.find(a => a._id === currentId);
+                          if (!currentAcc || (currentAcc.currentBalance || 0) <= 0) {
+                            const firstPositive = transferableAccounts.find(a => (a.currentBalance || 0) > 0);
+                            form.setValue('paymentAccountId', firstPositive?._id || '');
+                          }
+                        }
+                      }}
                       className="flex items-center gap-6 pt-0.5"
                     >
                       <div className="flex items-center space-x-2">
@@ -553,20 +583,39 @@ export function TransactionForm({
                       </FormControl>
                       <SelectContent>
                         {transferableAccounts.map((a) => {
-                          const hasInsufficient = selectedType === 'expense' && selectedAmount > (a.currentBalance || 0);
+                          const bal = a.currentBalance || 0;
+                          const isZeroOrNeg = bal <= 0;
+                          const isDisabled = selectedType === 'expense' && isZeroOrNeg;
+                          const hasInsufficient = selectedType === 'expense' && !isZeroOrNeg && selectedAmount > bal;
                           return (
                             <SelectItem 
                               key={a._id} 
                               value={a._id} 
-                              className="text-xs"
+                              disabled={isDisabled}
+                              className={cn("text-xs", isDisabled && "opacity-50 cursor-not-allowed text-muted-foreground")}
                             >
-                              {cleanAccountName(a.name)} (৳${Math.round(a.currentBalance || 0).toLocaleString()})
-                              {hasInsufficient && " ⚠️"}
+                              {cleanAccountName(a.name)} (৳${Math.round(bal).toLocaleString()})
+                              {isDisabled 
+                                ? " (Zero / Insufficient Balance)" 
+                                : hasInsufficient 
+                                ? " ⚠️ (Low Balance)" 
+                                : ""}
                             </SelectItem>
                           );
                         })}
                       </SelectContent>
                     </Select>
+                    {selectedType === 'expense' && (() => {
+                      const selAcc = transferableAccounts.find((a) => a._id === field.value);
+                      if (selAcc && (selAcc.currentBalance || 0) <= 0) {
+                        return (
+                          <p className="text-[11px] font-semibold text-destructive mt-1">
+                            ⚠️ This account has zero or negative balance (৳{Math.round(selAcc.currentBalance || 0).toLocaleString()}). Expenses cannot be recorded from it.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -707,15 +756,18 @@ export function TransactionForm({
                 <SelectContent>
                   {transferableAccounts.map((acc) => {
                     const amtVal = parseFloat(transferAmount) || 0;
-                    const hasInsufficient = amtVal > (acc.currentBalance || 0);
+                    const bal = acc.currentBalance || 0;
+                    const isZeroOrNeg = bal <= 0;
+                    const hasInsufficient = !isZeroOrNeg && amtVal > bal;
                     return (
                       <SelectItem 
                         key={acc._id} 
                         value={acc._id} 
-                        className="text-xs"
+                        disabled={isZeroOrNeg}
+                        className={cn("text-xs", isZeroOrNeg && "opacity-50 cursor-not-allowed text-muted-foreground")}
                       >
-                        {cleanAccountName(acc.name)} (৳${Math.round(acc.currentBalance || 0).toLocaleString()})
-                        {hasInsufficient && " ⚠️"}
+                        {cleanAccountName(acc.name)} (৳${Math.round(bal).toLocaleString()})
+                        {isZeroOrNeg ? " (Zero Balance)" : hasInsufficient ? " ⚠️ (Low Balance)" : ""}
                       </SelectItem>
                     );
                   })}

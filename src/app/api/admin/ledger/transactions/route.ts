@@ -69,6 +69,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ message: 'Accounts Payable and Accounts Receivable cannot be used for fund transfers' }, { status: 400 });
       }
 
+      const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+      const sourceAccount = await LedgerAccount.findOne({ code: fromAccountCode });
+      if (!sourceAccount || (sourceAccount.currentBalance || 0) <= 0) {
+        return NextResponse.json({ 
+          message: `Cannot transfer from ${fromAccountCode} because its balance is zero or negative (৳${Math.round(sourceAccount?.currentBalance || 0).toLocaleString()}).` 
+        }, { status: 400 });
+      }
+      if (amount > (sourceAccount.currentBalance || 0)) {
+        return NextResponse.json({ 
+          message: `Insufficient balance in ${fromAccountCode}. Available: ৳${Math.round(sourceAccount.currentBalance || 0).toLocaleString()}` 
+        }, { status: 400 });
+      }
+
       // Credit the source account
       await logLedgerTransaction(
         fromAccountCode,
@@ -104,6 +117,20 @@ export async function POST(req: NextRequest) {
       if (!accountCode) {
         return NextResponse.json({ message: 'Account code is required' }, { status: 400 });
       }
+
+      const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+      const targetAccount = await LedgerAccount.findOne({ code: accountCode });
+      if (!targetAccount || (targetAccount.currentBalance || 0) <= 0) {
+        return NextResponse.json({ 
+          message: `Cannot withdraw from ${accountCode} because its balance is zero or negative (৳${Math.round(targetAccount?.currentBalance || 0).toLocaleString()}).` 
+        }, { status: 400 });
+      }
+      if (amount > (targetAccount.currentBalance || 0)) {
+        return NextResponse.json({ 
+          message: `Insufficient balance in ${accountCode}. Available: ৳${Math.round(targetAccount.currentBalance || 0).toLocaleString()}` 
+        }, { status: 400 });
+      }
+
       await logLedgerTransaction(
         accountCode,
         'credit',
