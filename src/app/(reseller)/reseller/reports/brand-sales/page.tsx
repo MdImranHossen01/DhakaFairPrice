@@ -64,7 +64,7 @@ export default function ResellerBrandSalesReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Brand Wise Sales Report</h1>
@@ -118,28 +118,6 @@ export default function ResellerBrandSalesReportPage() {
         <h3 className="text-lg font-semibold text-slate-700">Brand-wise Sales Performance</h3>
         <p className="text-xs text-slate-500">Period: {selectedMonth}/{selectedYear}</p>
       </div>
-
-      {/* KPI Cards */}
-      {data?.summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Active Brands</p>
-            <p className="text-lg font-bold mt-1 text-slate-800 dark:text-slate-200">{data.summary.totalBrands}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Units Sold</p>
-            <p className="text-lg font-bold mt-1 text-blue-600">{fmtQty(data.summary.totalQty)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Sales</p>
-            <p className="text-lg font-bold mt-1 text-slate-700">{fmt(data.summary.totalSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Earned Profit</p>
-            <p className="text-lg font-bold mt-1 text-emerald-600">{fmt(data.summary.totalProfit)}</p>
-          </Card>
-        </div>
-      )}
 
       {/* Table Card */}
       <Card className="shadow-xs overflow-hidden print:border-none print:shadow-none">

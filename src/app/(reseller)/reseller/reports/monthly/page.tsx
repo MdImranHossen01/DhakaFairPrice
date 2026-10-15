@@ -47,7 +47,7 @@ export default function ResellerMonthlyReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Monthly Financial Report</h1>
@@ -89,38 +89,6 @@ export default function ResellerMonthlyReportPage() {
         <h3 className="text-lg font-semibold text-slate-700">Annual Monthly Performance Statement</h3>
         <p className="text-xs text-slate-500">Year: {data?.year}</p>
       </div>
-
-      {/* KPI Cards */}
-      {data?.summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 print:grid-cols-6 print:gap-2">
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Annual Orders</p>
-            <p className="text-lg font-bold mt-1">{data.summary.orderCount || 0}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Sales</p>
-            <p className="text-lg font-bold mt-1 text-blue-600">{fmt(data.summary.totalSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Net Sales</p>
-            <p className="text-lg font-bold mt-1 text-slate-700">{fmt(data.summary.netSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Gross Profit</p>
-            <p className="text-lg font-bold mt-1 text-emerald-600">{fmt(data.summary.grossProfit)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Expenses</p>
-            <p className="text-lg font-bold mt-1 text-rose-500">{fmt(data.summary.expense)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Net Profit</p>
-            <p className={`text-lg font-bold mt-1 ${data.summary.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {fmt(data.summary.netProfit)}
-            </p>
-          </Card>
-        </div>
-      )}
 
       {/* Report Table */}
       <Card className="shadow-xs overflow-hidden print:border-none print:shadow-none">

@@ -65,7 +65,7 @@ export default function ResellerExpenseReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Expense & Operations Report</h1>
@@ -92,28 +92,6 @@ export default function ResellerExpenseReportPage() {
         <h2 className="text-2xl font-bold uppercase tracking-wider">Store Reseller Portal</h2>
         <h3 className="text-lg font-semibold text-slate-700">Store Operational Expenses Statement</h3>
         <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString('en-GB')}</p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-        <Card className="p-3 shadow-xs">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Expenses</p>
-          <p className="text-xl font-bold mt-1 text-rose-500">{fmt(totalExpenseAmount)}</p>
-        </Card>
-        <Card className="p-3 shadow-xs">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase">Expense Entries</p>
-          <p className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-200">{expenses.length}</p>
-        </Card>
-        <Card className="p-3 shadow-xs">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase">Active Categories</p>
-          <p className="text-xl font-bold mt-1 text-indigo-600">{categoryBreakdown.length}</p>
-        </Card>
-        <Card className="p-3 shadow-xs">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase">Top Category</p>
-          <p className="text-base font-bold mt-1 text-slate-700 truncate">
-            {categoryBreakdown[0]?._id || 'None'}
-          </p>
-        </Card>
       </div>
 
       {/* Filter Toolbar */}

@@ -64,7 +64,7 @@ export default function ResellerPayoutsReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Payout & Earnings Report</h1>
@@ -92,28 +92,6 @@ export default function ResellerPayoutsReportPage() {
         <h3 className="text-lg font-semibold text-slate-700">Wallet & Payout Statement</h3>
         <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString('en-GB')}</p>
       </div>
-
-      {/* KPI Cards */}
-      {walletInfo && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-          <Card className="p-3 shadow-xs border-primary/20 bg-primary/5">
-            <p className="text-[11px] font-semibold text-primary uppercase">Available Balance</p>
-            <p className="text-xl font-bold mt-1 text-primary">{fmt(walletInfo.currentBalance)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Pending Balance</p>
-            <p className="text-xl font-bold mt-1 text-amber-600">{fmt(walletInfo.pendingBalance)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Withdrawn</p>
-            <p className="text-xl font-bold mt-1 text-slate-700">{fmt(walletInfo.totalWithdrawn)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Earned</p>
-            <p className="text-xl font-bold mt-1 text-emerald-600">{fmt(walletInfo.totalEarned)}</p>
-          </Card>
-        </div>
-      )}
 
       {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between print:hidden">

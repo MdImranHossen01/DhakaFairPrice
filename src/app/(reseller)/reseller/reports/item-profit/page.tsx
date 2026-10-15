@@ -61,7 +61,7 @@ export default function ResellerItemProfitReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Product Wise Profit Report</h1>
@@ -89,32 +89,6 @@ export default function ResellerItemProfitReportPage() {
         <h3 className="text-lg font-semibold text-slate-700">Product Profit Margins Statement</h3>
         <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString('en-GB')}</p>
       </div>
-
-      {/* KPI Cards */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 print:grid-cols-5 print:gap-2">
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Quantity Sold</p>
-            <p className="text-lg font-bold mt-1 text-slate-800 dark:text-slate-200">{fmtQty(summary.totalQty)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Retail Revenue</p>
-            <p className="text-lg font-bold mt-1 text-blue-600">{fmt(summary.totalSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Wholesale Cost</p>
-            <p className="text-lg font-bold mt-1 text-muted-foreground">{fmt(summary.totalPurchase)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Profit</p>
-            <p className="text-lg font-bold mt-1 text-emerald-600">{fmt(summary.totalProfit)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Average Margin</p>
-            <p className="text-lg font-bold mt-1 text-indigo-600">{summary.avgMargin}%</p>
-          </Card>
-        </div>
-      )}
 
       {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between print:hidden">

@@ -82,7 +82,6 @@ const resellerNav = [
     title: "Reports & Analytics",
     icon: BarChart3,
     items: [
-      { title: "Reports Overview", url: "/reseller/reports" },
       { title: "Daily Report", url: "/reseller/reports/daily" },
       { title: "Monthly Report", url: "/reseller/reports/monthly" },
       { title: "Order Profit Report", url: "/reseller/reports/order-profit" },

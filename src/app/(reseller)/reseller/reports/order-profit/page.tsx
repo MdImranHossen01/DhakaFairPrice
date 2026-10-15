@@ -73,7 +73,7 @@ export default function ResellerOrderProfitReportPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/reseller/reports" className="text-muted-foreground hover:text-foreground">
+            <Link href="/reseller/dashboard" className="text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Order Wise Profit Report</h1>
@@ -101,28 +101,6 @@ export default function ResellerOrderProfitReportPage() {
         <h3 className="text-lg font-semibold text-slate-700">Order-wise Profit & Commission Statement</h3>
         <p className="text-xs text-slate-500">Generated on {new Date().toLocaleDateString('en-GB')}</p>
       </div>
-
-      {/* KPI Cards */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Order Value</p>
-            <p className="text-lg font-bold mt-1 text-blue-600">{fmt(summary.totalSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Total Delivery</p>
-            <p className="text-lg font-bold mt-1 text-muted-foreground">{fmt(summary.totalDelivery)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Net Item Sales</p>
-            <p className="text-lg font-bold mt-1 text-slate-700">{fmt(summary.netSales)}</p>
-          </Card>
-          <Card className="p-3 shadow-xs">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase">Your Commission</p>
-            <p className="text-lg font-bold mt-1 text-emerald-600">{fmt(summary.totalCommission)}</p>
-          </Card>
-        </div>
-      )}
 
       {/* Filter Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between print:hidden">
