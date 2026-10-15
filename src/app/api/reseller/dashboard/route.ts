@@ -7,6 +7,7 @@ import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
 import Expense from '@/models/Expense';
+import LedgerAccount from '@/models/LedgerAccount';
 
 // Comprehensive Reseller Dashboard Stats API
 export async function GET(request: NextRequest) {
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
       outOfStockCount,
       recentOrders,
       recentTransactions,
+      ledgerAccounts,
     ] = await Promise.all([
       // 1. Current Period Revenue & Commission
       ResellerOrder.aggregate([
@@ -262,10 +264,38 @@ export async function GET(request: NextRequest) {
 
       // 10. Recent transactions
       ResellerWalletTransaction.find({ resellerId }).sort({ createdAt: -1 }).limit(5).lean(),
+
+      // 11. Ledger Accounts (Cash, Bank, MFS)
+      LedgerAccount.find({ resellerId }).lean(),
     ]);
 
     const cur = currentPeriodAgg[0] || { totalRevenue: 0, totalCommission: 0, totalOrders: 0, activeOrdersCount: 0 };
     const prev = prevPeriodAgg[0] || { totalRevenue: 0, totalCommission: 0, totalOrders: 0 };
+
+    // Process Ledger Balances
+    let cashBalance = 0;
+    let bankBalance = 0;
+    let mfsBalance = 0;
+    let cashAccountsCount = 0;
+    let bankAccountsCount = 0;
+    let mfsAccountsCount = 0;
+
+    ((ledgerAccounts || []) as any[]).forEach((acc: any) => {
+      if (['AR', 'AP'].includes(acc.code)) return;
+
+      if (acc.code === 'CASH' || acc.category === 'Cash') {
+        cashBalance += acc.currentBalance || 0;
+        cashAccountsCount += 1;
+      } else if (acc.category === 'MFS') {
+        mfsBalance += acc.currentBalance || 0;
+        mfsAccountsCount += 1;
+      } else if (acc.code === 'BANK' || acc.category === 'Bank') {
+        bankBalance += acc.currentBalance || 0;
+        bankAccountsCount += 1;
+      }
+    });
+
+    const totalLiquidBalance = cashBalance + bankBalance + mfsBalance;
 
     // Growth calculations
     const revenueGrowth = prev.totalRevenue > 0
@@ -363,6 +393,13 @@ export async function GET(request: NextRequest) {
         cancelledOrdersCount,
         averageOrderValue,
         deliverySuccessRate,
+        cashBalance,
+        bankBalance,
+        mfsBalance,
+        totalLiquidBalance,
+        cashAccountsCount,
+        bankAccountsCount,
+        mfsAccountsCount,
         growth: {
           revenue: revenueGrowth,
           earnings: earningsGrowth,
@@ -371,6 +408,12 @@ export async function GET(request: NextRequest) {
         },
       },
       breakdown: {
+        liquidAccounts: {
+          cash: cashBalance,
+          bank: bankBalance,
+          mfs: mfsBalance,
+          total: totalLiquidBalance,
+        },
         earnings: {
           walletBalance: reseller.walletBalance || 0,
           pendingBalance: reseller.pendingBalance || 0,

@@ -39,6 +39,7 @@ import {
   Tag,
   CreditCard,
   ArrowUpRight,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +109,22 @@ const orderStatusChartConfig = {
   cancelled: {
     label: 'Cancelled',
     color: 'var(--chart-5)',
+  },
+} satisfies ChartConfig;
+
+// Liquid Accounts Chart Config
+const liquidAccountsChartConfig = {
+  cash: {
+    label: 'Cash',
+    color: 'var(--chart-2)',
+  },
+  bank: {
+    label: 'Bank',
+    color: 'var(--chart-1)',
+  },
+  mfs: {
+    label: 'Mobile Wallets',
+    color: 'var(--chart-3)',
   },
 } satisfies ChartConfig;
 
@@ -350,6 +367,18 @@ export default function ResellerDashboard() {
       { status: 'cancelled', count: cancelled, fill: 'var(--chart-5)' },
     ].filter(d => d.count > 0);
   }, [data?.breakdown]);
+
+  // Liquid Accounts Chart Data
+  const liquidAccountsData = useMemo(() => {
+    const cash = Math.max(0, data?.stats?.cashBalance || 0);
+    const bank = Math.max(0, data?.stats?.bankBalance || 0);
+    const mfs = Math.max(0, data?.stats?.mfsBalance || 0);
+    return [
+      { account: 'Cash', balance: cash, fill: 'var(--chart-2)' },
+      { account: 'Bank', balance: bank, fill: 'var(--chart-1)' },
+      { account: 'Mobile Wallets', balance: mfs, fill: 'var(--chart-3)' },
+    ];
+  }, [data?.stats?.cashBalance, data?.stats?.bankBalance, data?.stats?.mfsBalance]);
 
   if (loading && !data) {
     return (
@@ -771,8 +800,74 @@ export default function ResellerDashboard() {
         </Card>
       </div>
 
-      {/* 4. Operational Insights Row (Conversion Rate, Catalog Health, Payout Threshold) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 4. Operational Insights & Liquid Accounts Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Liquid Accounts with Visual Donut Chart */}
+        <div className="bg-card rounded-2xl border p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-colors">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600">
+                  <Landmark className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-bold text-foreground">Liquid Accounts</span>
+              </div>
+              <Link href="/reseller/accounts" className="text-xs font-semibold text-primary hover:underline">
+                View Details &rarr;
+              </Link>
+            </div>
+
+            {/* Visual Donut Chart */}
+            <div className="py-2 flex items-center justify-center gap-3">
+              <div className="w-[85px] h-[85px] relative flex items-center justify-center shrink-0">
+                <ChartContainer config={liquidAccountsChartConfig} className="mx-auto aspect-square h-[80px] w-[80px]">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                    <Pie
+                      data={liquidAccountsData.some(d => d.balance > 0) ? liquidAccountsData : [{ account: 'Cash', balance: 1, fill: 'var(--muted)' }]}
+                      dataKey="balance"
+                      nameKey="account"
+                      innerRadius={24}
+                      outerRadius={38}
+                      strokeWidth={2}
+                      stroke="var(--background)"
+                    />
+                  </PieChart>
+                </ChartContainer>
+                <Coins className="h-3.5 w-3.5 text-indigo-500 absolute opacity-70" />
+              </div>
+
+              <div className="flex-1 space-y-1.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-[var(--chart-2)]" /> Cash
+                  </span>
+                  <span className="font-bold text-foreground">৳{Math.round(stats?.cashBalance || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-[var(--chart-1)]" /> Bank
+                  </span>
+                  <span className="font-bold text-foreground">৳{Math.round(stats?.bankBalance || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <div className="w-2 h-2 rounded-full bg-[var(--chart-3)]" /> Mobile Wallets
+                  </span>
+                  <span className="font-bold text-foreground">৳{Math.round(stats?.mfsBalance || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-muted/50">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-300">
+              <span>Total Liquid Funds:</span>
+              <span>৳{Math.round(stats?.totalLiquidBalance || ((stats?.cashBalance || 0) + (stats?.bankBalance || 0) + (stats?.mfsBalance || 0))).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Order Fulfillment & Success Rate */}
         <div className="bg-card rounded-2xl border p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-colors">
           <div>
