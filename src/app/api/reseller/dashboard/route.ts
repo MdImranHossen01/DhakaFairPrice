@@ -8,6 +8,7 @@ import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
 import Expense from '@/models/Expense';
 import LedgerAccount from '@/models/LedgerAccount';
+import { seedResellerLedgerAccounts } from '@/lib/ledgerHelper';
 
 // Comprehensive Reseller Dashboard Stats API
 export async function GET(request: NextRequest) {
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     if (!reseller) return NextResponse.json({ error: 'Reseller not found' }, { status: 404 });
 
     const resellerId = (reseller as any)._id;
+    await seedResellerLedgerAccounts(resellerId);
 
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');

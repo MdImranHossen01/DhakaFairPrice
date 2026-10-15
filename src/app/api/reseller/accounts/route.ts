@@ -6,6 +6,8 @@ import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
 
+import { seedResellerLedgerAccounts } from '@/lib/ledgerHelper';
+
 async function getReseller(userId: string) {
   await connectToDatabase();
   return await Reseller.findOne({ userId });
@@ -25,36 +27,8 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Ensure Bengali names in existing accounts are updated to English
-    await LedgerAccount.updateMany(
-      { resellerId: reseller._id, name: /হাতে নগদ/ },
-      { $set: { name: 'Cash in Hand' } }
-    );
-
-    // Ensure CASH code accounts are correctly categorized as Cash
-    await LedgerAccount.updateMany(
-      { resellerId: reseller._id, code: 'CASH', category: { $ne: 'Cash' } },
-      { $set: { category: 'Cash' } }
-    );
-
-    // Ensure the default primary Cash in Hand account exists for this reseller
-    const cashAccount = await LedgerAccount.findOne({
-      resellerId: reseller._id,
-      $or: [{ category: 'Cash' }, { code: 'CASH' }]
-    });
-
-    if (!cashAccount) {
-      await LedgerAccount.create({
-        name: 'Cash in Hand',
-        code: 'CASH',
-        category: 'Cash',
-        type: 'asset',
-        openingBalance: 0,
-        currentBalance: 0,
-        resellerId: reseller._id,
-        description: 'Default Store Primary Cash Account'
-      });
-    }
+    // Ensure the 4 default accounts (Bank, Cash in Hand, AP, AR) exist for this reseller
+    await seedResellerLedgerAccounts(reseller._id);
 
     const accounts = await LedgerAccount.find({
       resellerId: reseller._id

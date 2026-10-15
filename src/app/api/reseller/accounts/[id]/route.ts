@@ -88,8 +88,8 @@ export async function DELETE(
       return NextResponse.json({ message: 'Account not found in your store' }, { status: 404 });
     }
 
-    if (account.code === 'CASH' || account.category === 'Cash') {
-      return NextResponse.json({ message: 'Default cash account cannot be deleted' }, { status: 400 });
+    if (['CASH', 'BANK', 'AP', 'AR'].includes(account.code) || account.category === 'Cash') {
+      return NextResponse.json({ message: 'Default system accounts cannot be deleted' }, { status: 400 });
     }
 
     // Check if account has transactions

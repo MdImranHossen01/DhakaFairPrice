@@ -22,6 +22,7 @@ import {
   FileText,
   MoreHorizontal,
   ArrowDownCircle,
+  ArrowUpCircle,
   X,
   Save,
   Trash2
@@ -98,7 +99,13 @@ export default function ResellerAccountsPage() {
     fetchAccounts();
   }, []);
 
-  const totalBalance = accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+  // Group accounts by category (Excluding AR and AP from liquid cashflow accounts)
+  const bankAccounts = accounts.filter(a => (a.category === 'Bank' || a.code === 'BANK') && a.code !== 'AR' && a.code !== 'AP');
+  const cashAccounts = accounts.filter(a => a.category === 'Cash' || a.code === 'CASH');
+  const mfsAccounts = accounts.filter(a => a.category === 'MFS');
+  const totalBalance = (bankAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (cashAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (mfsAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0));
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,36 +236,62 @@ export default function ResellerAccountsPage() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="border-primary/20 bg-primary/5 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              <p className="text-xs text-muted-foreground font-medium">Total Current Balance</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
+        <Card className="bg-primary/5 border-primary/20 shadow-xs">
+          <CardContent className="p-3 md:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-semibold text-primary uppercase">Liquid Balance</p>
+              <p className="text-base md:text-2xl font-black text-foreground mt-0.5 md:mt-1">
+                ৳{Math.round(totalBalance).toLocaleString()}
+              </p>
             </div>
-            <p className="text-2xl font-black text-foreground mt-1">৳{totalBalance.toLocaleString()}</p>
+            <div className="p-2 md:p-2.5 rounded-xl bg-primary text-primary-foreground">
+              <Landmark className="h-4 w-4 md:h-5 md:w-5" />
+            </div>
           </CardContent>
         </Card>
 
-        {['Cash', 'Bank', 'MFS'].map((cat) => {
-          const catAccounts = accounts.filter(a => cat === 'Cash' ? (a.category === 'Cash' || a.code === 'CASH') : cat === 'Bank' ? (a.category === 'Bank' && a.code !== 'CASH') : a.category === cat);
-          const catBal = catAccounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
-          const Icon = cat === 'Cash' ? Wallet : cat === 'Bank' ? Landmark : Smartphone;
-          return (
-            <Card key={cat} className="shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground font-medium">{cat} Accounts</p>
-                  </div>
-                  <Badge variant="secondary" className="text-[10px]">{catAccounts.length}</Badge>
-                </div>
-                <p className="text-xl font-black text-foreground mt-1">৳{catBal.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
+        <Card className="shadow-xs">
+          <CardContent className="p-3 md:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-semibold text-muted-foreground uppercase">Bank Balance</p>
+              <p className="text-base md:text-xl font-bold text-foreground mt-0.5 md:mt-1">
+                ৳{Math.round(bankAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-2 md:p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600">
+              <Building2 className="h-4 w-4 md:h-5 md:w-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs">
+          <CardContent className="p-3 md:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-semibold text-muted-foreground uppercase">Cash in Hand</p>
+              <p className="text-base md:text-xl font-bold text-foreground mt-0.5 md:mt-1">
+                ৳{Math.round(cashAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-2 md:p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600">
+              <Wallet className="h-4 w-4 md:h-5 md:w-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs">
+          <CardContent className="p-3 md:p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-semibold text-muted-foreground uppercase">Mobile Wallets</p>
+              <p className="text-base md:text-xl font-bold text-foreground mt-0.5 md:mt-1">
+                ৳{Math.round(mfsAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-2 md:p-2.5 rounded-xl bg-sky-500/10 text-sky-600">
+              <Smartphone className="h-4 w-4 md:h-5 md:w-5" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Accounts List Grid */}
@@ -275,28 +308,65 @@ export default function ResellerAccountsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {accounts.map((acc) => {
             const isCash = acc.code === 'CASH' || acc.category === 'Cash';
-            const Icon = isCash ? Wallet : acc.category === 'Bank' ? Landmark : Smartphone;
+            const isBank = acc.code === 'BANK' || acc.category === 'Bank';
+            const isAR = acc.code === 'AR';
+            const isAP = acc.code === 'AP';
+            const isDefault = ['CASH', 'BANK', 'AP', 'AR'].includes(acc.code);
+
+            const Icon = isCash
+              ? Wallet
+              : isBank
+              ? Building2
+              : isAR
+              ? ArrowDownCircle
+              : isAP
+              ? ArrowUpCircle
+              : acc.category === 'MFS'
+              ? Smartphone
+              : Building2;
+
+            const iconClass = isCash
+              ? 'bg-emerald-500/10 text-emerald-600'
+              : isBank
+              ? 'bg-indigo-500/10 text-indigo-600'
+              : isAR
+              ? 'bg-blue-500/10 text-blue-600'
+              : isAP
+              ? 'bg-rose-500/10 text-rose-600'
+              : acc.category === 'MFS'
+              ? 'bg-sky-500/10 text-sky-600'
+              : 'bg-muted text-muted-foreground';
+
+            const typeLabel = isCash
+              ? 'Cash'
+              : isAR
+              ? 'Receivable'
+              : isAP
+              ? 'Payable'
+              : acc.category || 'Bank';
 
             return (
               <Card key={acc._id} className="relative overflow-hidden hover:shadow-md transition-all border">
                 <CardHeader className="p-4 pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
                         <Icon className="h-4 w-4" />
                       </div>
                       <div>
                         <h4 className="font-bold text-sm leading-tight text-foreground line-clamp-1">{cleanAccountName(acc.name)}</h4>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">{acc.code}</Badge>
-                          <span className="text-[10px] text-muted-foreground">{isCash ? 'Cash' : acc.category}</span>
+                          <span className="text-[10px] text-muted-foreground font-medium">{typeLabel}</span>
                         </div>
                       </div>
                     </div>
 
                     <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" className="h-7 w-7 p-0" />}>
-                        <MoreHorizontal className="h-4 w-4" />
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
@@ -309,7 +379,7 @@ export default function ResellerAccountsPage() {
                         >
                           Edit Opening Balance
                         </DropdownMenuItem>
-                        {!isCash && (
+                        {!isDefault && (
                           <DropdownMenuItem
                             onClick={() => handleDeleteAccount(acc)}
                             className="text-xs cursor-pointer text-destructive focus:text-destructive"
@@ -336,10 +406,15 @@ export default function ResellerAccountsPage() {
                   </div>
 
                   {/* Account details if available */}
-                  {(acc.accountNumber || acc.bankName) && (
+                  {(acc.accountNumber || acc.bankName || acc.mfsProvider) ? (
                     <div className="text-[11px] text-muted-foreground space-y-0.5">
-                      {acc.bankName && <p className="truncate">Bank: <span className="text-foreground font-medium">{acc.bankName}</span></p>}
-                      {acc.accountNumber && <p className="truncate">A/C: <span className="text-foreground font-medium">{acc.accountNumber}</span></p>}
+                      {acc.bankName && <p className="truncate">Bank: <span className="text-foreground font-medium">{acc.bankName} {acc.branchName ? `(${acc.branchName})` : ''}</span></p>}
+                      {acc.accountNumber && <p className="truncate font-mono">A/C: <span className="text-foreground font-medium">{acc.accountNumber}</span></p>}
+                      {acc.mfsProvider && <p className="truncate text-sky-600 font-semibold">{acc.mfsProvider} {acc.mfsType ? `· ${acc.mfsType}` : ''}</p>}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-muted-foreground italic">
+                      Direct account
                     </div>
                   )}
 

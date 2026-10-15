@@ -34,6 +34,44 @@ export async function seedLedgerAccounts() {
 }
 
 /**
+ * Seed primary default 4 ledger accounts for a reseller:
+ * Bank, Cash in Hand, Accounts Payable, Accounts Receivable
+ */
+export async function seedResellerLedgerAccounts(resellerId: any) {
+  if (!resellerId) return;
+  await connectToDatabase();
+
+  const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability'; category: 'Cash' | 'Bank' | 'Other'; description: string }[] = [
+    { name: 'Bank', code: 'BANK', type: 'asset', category: 'Bank', description: 'Direct account' },
+    { name: 'Cash in Hand', code: 'CASH', type: 'asset', category: 'Cash', description: 'Default Store Primary Cash Account' },
+    { name: 'Accounts Payable', code: 'AP', type: 'liability', category: 'Other', description: 'Direct account' },
+    { name: 'Accounts Receivable', code: 'AR', type: 'asset', category: 'Other', description: 'Direct account' },
+  ];
+
+  for (const acc of accounts) {
+    const exists = await LedgerAccount.findOne({ resellerId, code: acc.code });
+    if (!exists) {
+      await LedgerAccount.create({
+        name: acc.name,
+        code: acc.code,
+        type: acc.type,
+        category: acc.category,
+        description: acc.description,
+        openingBalance: 0,
+        currentBalance: 0,
+        resellerId,
+      });
+    } else {
+      if (acc.code === 'CASH' && exists.name !== 'Cash in Hand') {
+        exists.name = 'Cash in Hand';
+        exists.category = 'Cash';
+        await exists.save();
+      }
+    }
+  }
+}
+
+/**
  * Log a transaction to the ledger
  */
 export async function logLedgerTransaction(
