@@ -33,6 +33,47 @@ export default {
       
       return token;
     },
+    async redirect({ url, baseUrl }) {
+      // 1. Keep relative URLs relative so the browser remains on the current host/domain
+      if (url.startsWith('/')) {
+        return url;
+      }
+
+      try {
+        const targetUrl = new URL(url);
+
+        // 2. Allow same origin
+        if (targetUrl.origin === baseUrl) {
+          return url;
+        }
+
+        const targetHostname = targetUrl.hostname.toLowerCase();
+
+        // 3. Allow localhost / 127.0.0.1 in local development
+        if (targetHostname === 'localhost' || targetHostname === '127.0.0.1') {
+          return url;
+        }
+
+        // 4. Allow mother platform domain and tenant subdomains (*.swapnobaz.com, *.dhakafairprice.com)
+        if (
+          targetHostname === 'swapnobaz.com' ||
+          targetHostname.endsWith('.swapnobaz.com') ||
+          targetHostname === 'dhakafairprice.com' ||
+          targetHostname.endsWith('.dhakafairprice.com')
+        ) {
+          return url;
+        }
+
+        // 5. Allow custom reseller domains (http / https)
+        if (targetUrl.protocol === 'http:' || targetUrl.protocol === 'https:') {
+          return url;
+        }
+      } catch {
+        // Fallback to baseUrl if URL parsing fails
+      }
+
+      return baseUrl;
+    },
   },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
