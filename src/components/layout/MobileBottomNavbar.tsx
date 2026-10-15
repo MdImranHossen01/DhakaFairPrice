@@ -26,6 +26,7 @@ import { CartDrawer } from '@/components/layout/CartDrawer';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession, signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import Swal from 'sweetalert2';
 import { toast } from 'sonner';
 import { UserAvatar } from '@/components/ui/user-avatar';
@@ -537,7 +538,7 @@ export function MobileBottomNavbar() {
                   </div>
 
                   <button
-                    onClick={() => signOut({ callbackUrl: window.location.origin })}
+                    onClick={() => handleSignOut()}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-destructive/10 text-sm font-medium text-destructive transition-colors border border-destructive/20 mt-2"
                   >
                     <LogOut className="h-5 w-5" /> Sign Out

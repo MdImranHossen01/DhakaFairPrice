@@ -23,6 +23,7 @@ import {
   Store
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -852,7 +853,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                           )}
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => signOut({ callbackUrl: window.location.origin })} className="text-destructive cursor-pointer">
+                        <DropdownMenuItem onClick={() => handleSignOut()} className="text-destructive cursor-pointer">
                           <LogOut className="mr-2 h-4 w-4" /> Sign Out
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -1093,7 +1094,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                               )}
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => signOut({ callbackUrl: window.location.origin })} className="text-destructive cursor-pointer">
+                            <DropdownMenuItem onClick={() => handleSignOut()} className="text-destructive cursor-pointer">
                               <LogOut className="mr-2 h-4 w-4" /> Sign Out
                             </DropdownMenuItem>
                           </DropdownMenuContent>

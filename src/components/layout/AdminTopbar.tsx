@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import { 
   User, 
   LogOut,
@@ -68,7 +69,7 @@ export default function AdminTopbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 variant="destructive"
-                onClick={() => signOut({ callbackUrl: window.location.origin })}
+                onClick={() => handleSignOut()}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>

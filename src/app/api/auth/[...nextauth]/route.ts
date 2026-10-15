@@ -1,4 +1,5 @@
 import { handlers } from '@/auth';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -18,20 +19,20 @@ const KNOWN_AUTH_COOKIES = [
   '__Secure-next-auth.callback-url',
 ];
 
-function appendClearCookies(res: Response, req: NextRequest) {
-  // 1. Collect all potential auth cookie names and chunk variations (.0 to .5)
-  const cookieNamesToClear = new Set<string>();
-
-  KNOWN_AUTH_COOKIES.forEach((name) => {
-    cookieNamesToClear.add(name);
-    for (let i = 0; i < 6; i++) {
-      cookieNamesToClear.add(`${name}.${i}`);
-    }
-  });
-
-  // 2. Also harvest any cookies in the incoming request that match auth patterns
+async function clearAllSessionCookies(response?: Response) {
   try {
-    req.cookies.getAll().forEach((c) => {
+    const cookieStore = await cookies();
+    const allExisting = cookieStore.getAll();
+    const toDelete = new Set<string>();
+
+    KNOWN_AUTH_COOKIES.forEach((name) => {
+      toDelete.add(name);
+      for (let i = 0; i < 6; i++) {
+        toDelete.add(`${name}.${i}`);
+      }
+    });
+
+    allExisting.forEach((c) => {
       const lower = c.name.toLowerCase();
       if (
         lower.includes('session-token') ||
@@ -40,57 +41,78 @@ function appendClearCookies(res: Response, req: NextRequest) {
         lower.includes('next-auth') ||
         lower.includes('callback-url')
       ) {
-        cookieNamesToClear.add(c.name);
+        toDelete.add(c.name);
       }
     });
-  } catch {
-    // Ignore cookie read issues
-  }
 
-  // 3. Clear each cookie across both Secure and non-Secure flags to guarantee deletion
-  // on custom domains, reverse proxies, and Cloudflare setups.
-  cookieNamesToClear.forEach((name) => {
-    // Non-secure clear
-    res.headers.append(
-      'Set-Cookie',
-      `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax`
-    );
-    // Secure clear
-    res.headers.append(
-      'Set-Cookie',
-      `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax; Secure`
-    );
-  });
+    toDelete.forEach((name) => {
+      try {
+        cookieStore.delete(name);
+        cookieStore.set(name, '', {
+          path: '/',
+          maxAge: 0,
+          expires: new Date(0),
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: true,
+        });
+        cookieStore.set(name, '', {
+          path: '/',
+          maxAge: 0,
+          expires: new Date(0),
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
+        });
+      } catch {
+        // Ignore
+      }
+
+      if (response && 'cookies' in response) {
+        try {
+          (response as any).cookies.delete(name);
+          (response as any).cookies.set(name, '', {
+            path: '/',
+            maxAge: 0,
+            expires: new Date(0),
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: true,
+          });
+        } catch {
+          // Ignore
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error clearing cookies in nextauth route:', err);
+  }
 }
 
 export async function GET(req: NextRequest) {
   const isSignOut = req.nextUrl.pathname.endsWith('/signout');
-  const response = await handlers.GET(req);
   if (isSignOut) {
-    appendClearCookies(response, req);
+    await clearAllSessionCookies();
   }
-  return response;
+  return handlers.GET(req);
 }
 
 export async function POST(req: NextRequest) {
   const isSignOut = req.nextUrl.pathname.endsWith('/signout');
 
-  let response: Response;
-  try {
-    response = await handlers.POST(req);
-  } catch (error) {
-    if (isSignOut) {
-      // If NextAuth throws (e.g. CSRF mismatch across custom domain), fallback gracefully with redirect URL
+  if (isSignOut) {
+    await clearAllSessionCookies();
+    try {
+      const res = await handlers.POST(req);
+      await clearAllSessionCookies(res);
+      return res;
+    } catch {
       const fallbackUrl = req.headers.get('referer') || req.nextUrl.origin || '/';
-      response = NextResponse.json({ url: fallbackUrl });
-    } else {
-      throw error;
+      const fallbackResponse = NextResponse.json({ url: fallbackUrl });
+      await clearAllSessionCookies(fallbackResponse);
+      return fallbackResponse;
     }
   }
 
-  if (isSignOut) {
-    appendClearCookies(response, req);
-  }
-
-  return response;
+  return handlers.POST(req);
 }

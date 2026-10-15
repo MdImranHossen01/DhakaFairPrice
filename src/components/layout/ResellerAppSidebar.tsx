@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
+import { handleSignOut } from "@/lib/logout"
 import {
   ChevronRight,
   LayoutDashboard,
@@ -332,7 +333,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
             </div>
           </div>
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => handleSignOut('/login')}
             className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800/60 rounded-lg transition-colors shrink-0"
             title="Log Out"
           >

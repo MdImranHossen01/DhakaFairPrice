@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import { User, LogOut, Store } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -104,7 +105,7 @@ export default function ResellerTopbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => signOut({ callbackUrl: window.location.origin })}
+                onClick={() => handleSignOut()}
                 className="cursor-pointer"
               >
                 <LogOut className="mr-2 h-4 w-4" />

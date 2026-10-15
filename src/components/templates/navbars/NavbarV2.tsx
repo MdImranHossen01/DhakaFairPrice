@@ -22,6 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/store/hooks';
 import { useSession, signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import { CartDrawer } from '@/components/layout/CartDrawer';
 import { ModeToggle } from '@/components/mode-toggle';
 import { useSettings } from '@/components/SettingsProvider';
@@ -439,7 +440,7 @@ export default function NavbarV2() {
                         )}
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => signOut({ callbackUrl: window.location.origin })} className="text-destructive cursor-pointer">
+                      <DropdownMenuItem onClick={() => handleSignOut()} className="text-destructive cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" /> Sign Out
                       </DropdownMenuItem>
                     </DropdownMenuContent>

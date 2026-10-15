@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { signOut } from 'next-auth/react';
+import { handleSignOut } from '@/lib/logout';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
@@ -83,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             variant="ghost"
             size="sm"
             className="text-destructive h-8 px-2 shrink-0 text-xs gap-1 hover:bg-destructive/10"
-            onClick={() => signOut({ callbackUrl: window.location.origin })}
+            onClick={() => handleSignOut()}
           >
             <LogOut className="h-3.5 w-3.5" /> Sign Out
           </Button>
@@ -182,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Button 
                     variant="ghost" 
                     className="justify-start px-5 h-11 rounded-none border-l-4 border-transparent text-destructive hover:bg-destructive/10 text-sm font-medium"
-                    onClick={() => signOut({ callbackUrl: window.location.origin })}
+                    onClick={() => handleSignOut()}
                 >
                   <LogOut className="mr-3 h-4 w-4" /> Sign Out
                 </Button>
