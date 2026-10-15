@@ -29,6 +29,34 @@ import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
 import { cleanAccountName } from '@/lib/utils';
 
+function isDebitTransaction(tx: any) {
+  const desc = (tx.description || '').toLowerCase();
+  // Deductions: expense, withdrawal, transfer to another account
+  if (
+    desc.startsWith('expense') ||
+    desc.startsWith('manual withdrawal') ||
+    desc.startsWith('transfer to') ||
+    desc.startsWith('payment credit for bill') ||
+    desc.startsWith('upfront payment credit')
+  ) {
+    return true;
+  }
+  // Additions: income, opening balance, deposit, transfer from another account
+  if (
+    desc.startsWith('income') ||
+    desc.startsWith('opening balance') ||
+    desc.startsWith('manual deposit') ||
+    desc.startsWith('transfer from') ||
+    desc.startsWith('business loan inflow') ||
+    desc.startsWith('payment received') ||
+    desc.startsWith('cash paid upfront') ||
+    desc.startsWith('bill generated')
+  ) {
+    return false;
+  }
+  return tx.type === 'debit';
+}
+
 function ResellerLedgerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -250,7 +278,7 @@ function ResellerLedgerContent() {
                 </TableRow>
               ) : (
                 paginatedTransactions.map((tx) => {
-                  const isDebit = tx.type === 'debit';
+                  const isDebit = isDebitTransaction(tx);
                   return (
                     <TableRow key={tx._id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="text-xs whitespace-nowrap">
@@ -268,10 +296,10 @@ function ResellerLedgerContent() {
                         )}
                       </TableCell>
                       <TableCell className="text-right text-xs font-bold text-rose-600">
-                        {isDebit ? `৳${tx.amount?.toLocaleString()}` : '-'}
+                        {isDebit ? `-৳${tx.amount?.toLocaleString()}` : '-'}
                       </TableCell>
                       <TableCell className="text-right text-xs font-bold text-emerald-600">
-                        {!isDebit ? `৳${tx.amount?.toLocaleString()}` : '-'}
+                        {!isDebit ? `+৳${tx.amount?.toLocaleString()}` : '-'}
                       </TableCell>
                       <TableCell className="text-right text-xs font-black">
                         ৳{(tx.balanceAfter || 0).toLocaleString()}

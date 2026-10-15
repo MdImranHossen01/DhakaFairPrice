@@ -129,7 +129,7 @@ export default function ResellerWalletPage() {
                         </div>
                         <div className="text-right shrink-0 ml-2">
                           <p className={`font-bold text-xs md:text-sm ${t.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {t.amount > 0 ? '+' : ''}৳{Math.abs(t.amount).toLocaleString()}
+                            {t.amount > 0 ? '+' : '-'}৳{Math.abs(t.amount).toLocaleString()}
                           </p>
                           <Badge variant="outline" className="text-[9px] md:text-[10px] px-1 py-0">{t.status}</Badge>
                         </div>

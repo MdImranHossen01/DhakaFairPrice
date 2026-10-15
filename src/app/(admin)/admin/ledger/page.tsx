@@ -43,6 +43,64 @@ import Swal from 'sweetalert2';
 import { Pagination } from '@/components/ui/pagination';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 
+function getTransactionTypeInfo(tx: any) {
+  const desc = (tx.description || '').toLowerCase();
+
+  // Deductions: expense, withdrawal, transfer to another account, bill payment credit from receivable
+  const isDeduction =
+    desc.startsWith('expense') ||
+    desc.startsWith('manual withdrawal') ||
+    desc.startsWith('transfer to') ||
+    desc.startsWith('payment credit for bill') ||
+    desc.startsWith('upfront payment credit');
+
+  // Additions: income, opening balance, deposit, loan inflow, transfer from another account, bill payment received into cash/bank
+  const isAddition =
+    desc.startsWith('income') ||
+    desc.startsWith('opening balance') ||
+    desc.startsWith('manual deposit') ||
+    desc.startsWith('transfer from') ||
+    desc.startsWith('business loan inflow') ||
+    desc.startsWith('payment received') ||
+    desc.startsWith('cash paid upfront') ||
+    desc.startsWith('bill generated');
+
+  if (isDeduction) {
+    return {
+      label: 'Debit (-)',
+      sign: '-',
+      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+      textColor: 'text-rose-600 dark:text-rose-400',
+    };
+  }
+
+  if (isAddition) {
+    return {
+      label: 'Credit (+)',
+      sign: '+',
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+      textColor: 'text-emerald-600 dark:text-emerald-400',
+    };
+  }
+
+  // Fallback for any unknown transaction
+  if (tx.type === 'debit') {
+    return {
+      label: 'Debit (-)',
+      sign: '-',
+      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+      textColor: 'text-rose-600 dark:text-rose-400',
+    };
+  }
+
+  return {
+    label: 'Credit (+)',
+    sign: '+',
+    color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+    textColor: 'text-emerald-600 dark:text-emerald-400',
+  };
+}
+
 function AccountsLedgerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -418,7 +476,9 @@ function AccountsLedgerContent() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedTransactions.map((tx) => (
+                    {paginatedTransactions.map((tx) => {
+                      const txInfo = getTransactionTypeInfo(tx);
+                      return (
                       <TableRow key={tx._id}>
                         <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
                           {format(new Date(tx.date), 'dd MMM yyyy')}
@@ -436,13 +496,15 @@ function AccountsLedgerContent() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <Badge
-                            variant={tx.type === 'debit' ? 'default' : 'outline'}
-                            className={tx.type === 'debit' ? 'bg-primary/20 text-primary hover:bg-primary/20 border-transparent text-xs' : 'text-xs'}
+                            variant="outline"
+                            className={`text-xs font-semibold ${txInfo.color}`}
                           >
-                            {tx.type === 'debit' ? 'Debit (+)' : 'Credit (-)'}
+                            {txInfo.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-semibold whitespace-nowrap text-xs md:text-sm">৳{Math.round(tx.amount).toLocaleString()}</TableCell>
+                        <TableCell className={`text-right font-semibold whitespace-nowrap text-xs md:text-sm ${txInfo.textColor}`}>
+                          {txInfo.sign}৳{Math.round(tx.amount).toLocaleString()}
+                        </TableCell>
                         <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">৳{Math.round(tx.balanceAfter).toLocaleString()}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           {tx.reference && ['manual-deposit', 'manual-withdrawal', 'manual-transfer'].includes(tx.reference) ? (
@@ -471,23 +533,26 @@ function AccountsLedgerContent() {
                           )}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
 
               {/* Mobile Card List */}
               <div className="block md:hidden p-2 space-y-2.5">
-                {paginatedTransactions.map((tx) => (
+                {paginatedTransactions.map((tx) => {
+                  const txInfo = getTransactionTypeInfo(tx);
+                  return (
                   <MobileDataCard
                     key={tx._id}
                     title={tx.description || 'Transaction'}
                     badge={
                       <Badge
-                        variant={tx.type === 'debit' ? 'default' : 'outline'}
-                        className={`text-[10px] ${tx.type === 'debit' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}
+                        variant="outline"
+                        className={`text-[10px] font-semibold ${txInfo.color}`}
                       >
-                        {tx.type === 'debit' ? 'Debit (+)' : 'Credit (-)'}
+                        {txInfo.label}
                       </Badge>
                     }
                     footer={
@@ -502,8 +567,8 @@ function AccountsLedgerContent() {
                     <MobileDataRow 
                       label="Amount" 
                       value={
-                        <span className={`font-bold ${tx.type === 'debit' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {tx.type === 'debit' ? '+' : '-'}৳{Math.round(tx.amount).toLocaleString()}
+                        <span className={`font-bold ${txInfo.textColor}`}>
+                          {txInfo.sign}৳{Math.round(tx.amount).toLocaleString()}
                         </span>
                       } 
                     />
@@ -524,7 +589,8 @@ function AccountsLedgerContent() {
                       </div>
                     )}
                   </MobileDataCard>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
