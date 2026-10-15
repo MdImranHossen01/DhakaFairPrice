@@ -16,6 +16,8 @@ export async function handleSignOut(targetUrl?: string) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
+      cache: 'no-store',
     });
   } catch (err) {
     console.error('Logout API error:', err);
@@ -29,20 +31,48 @@ export async function handleSignOut(targetUrl?: string) {
   }
 
   if (typeof window !== 'undefined') {
-    // 3. Clear any client-accessible cookies
+    // 3. Clear any client-accessible cookies across host and parent domains
     try {
+      const hostname = window.location.hostname;
+      const domains = ['', `;domain=${hostname}`];
+      const parts = hostname.split('.');
+      if (parts.length > 2) {
+        const apex = parts.slice(-2).join('.');
+        domains.push(`;domain=.${apex}`, `;domain=${apex}`);
+      }
+
       document.cookie.split(';').forEach((c) => {
         const trimmed = c.trim();
         const eqPos = trimmed.indexOf('=');
         const name = eqPos > -1 ? trimmed.substr(0, eqPos) : trimmed;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+        for (const d of domains) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/${d}`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/${d};Secure`;
+        }
       });
     } catch {
       // Ignore
     }
 
-    // 4. Force hard navigation to reload the page without cached session
-    window.location.href = destination;
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('nextauth.message');
+    } catch {
+      // Ignore
+    }
+
+    // 4. Force hard navigation or reload so cached session state is wiped
+    const currentHref = window.location.href;
+    const isSamePage =
+      currentHref === destination ||
+      currentHref === destination + '/' ||
+      (destination === '/' && window.location.pathname === '/');
+
+    if (isSamePage) {
+      window.location.reload();
+    } else {
+      window.location.replace(destination);
+    }
   }
 }
+

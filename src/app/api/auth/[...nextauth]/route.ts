@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
 
   const cookieHeader = req.headers.get('cookie');
   const https = requestIsHttps(req.headers, req.nextUrl);
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || req.nextUrl.hostname;
 
   let source: Response;
   try {
@@ -25,8 +26,11 @@ export async function POST(req: NextRequest) {
 
   // Re-wrap so headers are guaranteed mutable (Response.redirect() headers are immutable).
   const headers = new Headers(source.headers);
-  for (const header of buildClearCookieHeaders(cookieHeader, https)) {
+  for (const header of buildClearCookieHeaders(cookieHeader, https, host)) {
     headers.append('Set-Cookie', header);
+  }
+  if (https) {
+    headers.set('Clear-Site-Data', '"cookies", "storage"');
   }
   return new Response(source.body, {
     status: source.status,
@@ -34,3 +38,4 @@ export async function POST(req: NextRequest) {
     headers,
   });
 }
+
