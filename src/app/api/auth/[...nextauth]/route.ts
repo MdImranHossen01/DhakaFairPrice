@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     headers.append('Set-Cookie', header);
   }
   if (https) {
-    headers.set('Clear-Site-Data', '"cookies", "storage"');
+    headers.set('Clear-Site-Data', '"cookies"');
   }
   return new Response(source.body, {
     status: source.status,

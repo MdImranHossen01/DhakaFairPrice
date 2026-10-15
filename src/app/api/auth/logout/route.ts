@@ -17,7 +17,7 @@ function logout(req: NextRequest) {
     response.headers.append('Set-Cookie', header);
   }
   if (isHttps) {
-    response.headers.set('Clear-Site-Data', '"cookies", "storage"');
+    response.headers.set('Clear-Site-Data', '"cookies"');
   }
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   return response;
