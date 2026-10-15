@@ -1,15 +1,8 @@
 import { handlers } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { buildClearCookieHeaders } from '@/lib/clear-auth-cookies';
+import { buildClearCookieHeaders, requestIsHttps } from '@/lib/clear-auth-cookies';
 
 export const dynamic = 'force-dynamic';
-
-function attachClearCookies(res: Response, req: NextRequest) {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  for (const header of buildClearCookieHeaders(req.headers.get('cookie'), host)) {
-    res.headers.append('Set-Cookie', header);
-  }
-}
 
 export async function GET(req: NextRequest) {
   return handlers.GET(req);
@@ -19,13 +12,25 @@ export async function POST(req: NextRequest) {
   const isSignOut = req.nextUrl.pathname.endsWith('/signout');
   if (!isSignOut) return handlers.POST(req);
 
-  let res: Response;
+  const cookieHeader = req.headers.get('cookie');
+  const https = requestIsHttps(req.headers, req.nextUrl);
+
+  let source: Response;
   try {
-    res = await handlers.POST(req);
+    source = await handlers.POST(req);
   } catch {
     // e.g. CSRF mismatch on a custom domain – still sign the user out.
-    res = NextResponse.json({ url: req.headers.get('referer') || req.nextUrl.origin });
+    source = NextResponse.json({ url: req.nextUrl.origin });
   }
-  attachClearCookies(res, req);
-  return res;
+
+  // Re-wrap so headers are guaranteed mutable (Response.redirect() headers are immutable).
+  const headers = new Headers(source.headers);
+  for (const header of buildClearCookieHeaders(cookieHeader, https)) {
+    headers.append('Set-Cookie', header);
+  }
+  return new Response(source.body, {
+    status: source.status,
+    statusText: source.statusText,
+    headers,
+  });
 }
