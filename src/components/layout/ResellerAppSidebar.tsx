@@ -236,6 +236,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
   const [storeName, setStoreName] = useState<string>("")
   const [subdomain, setSubdomain] = useState<string>("")
   const [customDomain, setCustomDomain] = useState<string>("")
+  const [storeStatus, setStoreStatus] = useState<string>("active")
 
   useEffect(() => {
     let isMounted = true
@@ -247,6 +248,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
           if (data.reseller.storeName) setStoreName(data.reseller.storeName)
           if (data.reseller.subdomain) setSubdomain(data.reseller.subdomain)
           if (data.reseller.customDomain) setCustomDomain(data.reseller.customDomain)
+          if (data.reseller.status) setStoreStatus(data.reseller.status)
         }
       })
       .catch(() => {})
@@ -313,7 +315,21 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
               <p className="text-xs font-bold text-slate-100 truncate max-w-[125px]">
                 {storeName || user?.name || "Reseller Partner"}
               </p>
-              <p className="text-[10px] text-emerald-400 font-medium">Verified Reseller</p>
+              <p className={`text-[10px] font-medium ${
+                storeStatus === 'active'
+                  ? 'text-emerald-400'
+                  : storeStatus === 'pending'
+                  ? 'text-amber-400'
+                  : 'text-rose-400'
+              }`}>
+                {storeStatus === 'active'
+                  ? 'Verified Reseller'
+                  : storeStatus === 'pending'
+                  ? 'Pending Approval'
+                  : storeStatus === 'suspended'
+                  ? 'Suspended'
+                  : 'Not Approved'}
+              </p>
             </div>
           </div>
           <button

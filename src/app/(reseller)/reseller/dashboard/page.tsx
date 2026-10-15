@@ -111,6 +111,37 @@ const orderStatusChartConfig = {
   },
 } satisfies ChartConfig;
 
+const getStoreStatusBadge = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return {
+        label: '● Pending Approval',
+        className: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+      };
+    case 'suspended':
+      return {
+        label: '● Suspended',
+        className: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+      };
+    case 'rejected':
+      return {
+        label: '● Rejected',
+        className: 'bg-red-500/10 text-red-600 border-red-500/20',
+      };
+    case 'expired':
+      return {
+        label: '● Expired',
+        className: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+      };
+    case 'active':
+    default:
+      return {
+        label: '● Active Store',
+        className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+      };
+  }
+};
+
 // Custom Chart Tooltip
 const CustomTrendTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload || !payload.length) return null;
@@ -386,9 +417,14 @@ export default function ResellerDashboard() {
             <p className="text-muted-foreground text-xs opacity-75">
               Store: <span className="font-semibold text-foreground">{reseller.storeName}</span>
             </p>
-            <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-              ● Active Store
-            </Badge>
+            {(() => {
+              const statusInfo = getStoreStatusBadge(reseller.status || 'pending');
+              return (
+                <Badge variant="outline" className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 ${statusInfo.className}`}>
+                  {statusInfo.label}
+                </Badge>
+              );
+            })()}
             {lastUpdated && (
               <span className="text-[11px] text-muted-foreground hidden sm:inline-block">
                 • Updated at {lastUpdated}
@@ -460,6 +496,45 @@ export default function ResellerDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Status Notice Banner if not active */}
+      {reseller?.status === 'pending' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">স্টোর অনুমোদনের অপেক্ষায় (Pending Approval)</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                আপনার স্টোরটি এখনো অ্যাডমিন অনুমোদনের অপেক্ষায় রয়েছে। অ্যাডমিন অনুমোদন করার পর আপনার স্টোরফ্রন্ট কাস্টমারদের জন্য লাইভ হয়ে যাবে।
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40 text-xs px-2.5 py-1 font-semibold shrink-0">
+            অপেক্ষমান
+          </Badge>
+        </div>
+      )}
+
+      {reseller?.status === 'suspended' && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-800 dark:text-rose-300">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">স্টোর সাময়িকভাবে স্থগিত (Suspended)</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {reseller?.suspendReason || 'আপনার স্টোরটি সাময়িকভাবে বন্ধ রাখা হয়েছে। সহায়তার জন্য অ্যাডমিনের সাথে যোগাযোগ করুন।'}
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/40 text-xs px-2.5 py-1 font-semibold shrink-0">
+            স্থগিত
+          </Badge>
+        </div>
+      )}
 
       {/* 2. Top KPI Cards (Rich Colorful Gradients Matching Admin Dashboard) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
