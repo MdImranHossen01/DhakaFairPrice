@@ -1,83 +1,59 @@
 /**
- * Builds `Set-Cookie` header strings that delete Auth.js / NextAuth cookies across
- * root domains, subdomains, and reseller custom domains (e.g. bhootbazar.com / www.bhootbazar.com).
+ * Builds compact `Set-Cookie` header strings that delete Auth.js / NextAuth cookies.
  *
- * Keeps total response header size small (~1.2KB) to stay well within nginx proxy_buffer_size (4KB).
+ * CRITICAL CONSTRAINT:
+ * Nginx reverse proxy default `proxy_buffer_size` is 4KB.
+ * Response headers MUST stay well below 1KB to prevent Nginx 502 Bad Gateway.
+ * Total size of headers emitted here is ~450 bytes.
  */
 
-const CORE_AUTH_COOKIES = [
+const CORE_NAMES = [
   'authjs.session-token',
   '__Secure-authjs.session-token',
   'next-auth.session-token',
   '__Secure-next-auth.session-token',
-  'authjs.csrf-token',
-  '__Host-authjs.csrf-token',
-  'next-auth.csrf-token',
-  '__Host-next-auth.csrf-token',
 ];
 
-const AUTH_PATTERN = /session-token|csrf-token|callback-url|authjs|next-auth/i;
-
-export function getPresentAuthCookieNames(cookieHeader: string | null | undefined): string[] {
-  const names = new Set<string>(CORE_AUTH_COOKIES);
-  if (cookieHeader) {
-    for (const pair of cookieHeader.split(';')) {
-      const name = pair.split('=')[0]?.trim();
-      if (name && AUTH_PATTERN.test(name)) names.add(name);
-    }
-  }
-  return [...names];
-}
+const AUTH_PATTERN = /session-token/i;
 
 export function buildClearCookieHeaders(
   cookieHeader: string | null | undefined,
   isHttps: boolean,
   hostname?: string | null
 ): string[] {
-  const headers = new Set<string>();
-  const names = getPresentAuthCookieNames(cookieHeader);
+  const names = new Set<string>(CORE_NAMES);
 
-  // Extract clean hostname and parent apex domain (e.g. www.bhootbazar.com -> bhootbazar.com)
+  // If request contains any chunked or specific session cookie, add it
+  if (cookieHeader) {
+    for (const pair of cookieHeader.split(';')) {
+      const name = pair.split('=')[0]?.trim();
+      if (name && AUTH_PATTERN.test(name)) names.add(name);
+    }
+  }
+
+  // At most 2 domains: host-only (undefined) and parent apex domain (e.g. .bhootbazar.com)
+  const domains: (string | undefined)[] = [undefined];
   const cleanHost = (hostname || '').split(':')[0].toLowerCase();
-  const domains: (string | undefined)[] = [undefined]; // undefined = host-only deletion
-
   if (cleanHost && cleanHost !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) {
     const parts = cleanHost.split('.');
     if (parts.length > 2) {
-      const apex = parts.slice(-2).join('.');
-      domains.push(apex);
-      domains.push(`.${apex}`);
+      domains.push(`.${parts.slice(-2).join('.')}`);
     }
   }
 
-  const expirePart = 'Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax';
-
+  const headers: string[] = [];
   for (const name of names) {
-    const isHostOnlyPrefix = name.startsWith('__Host-');
-    const isSecurePrefix = name.startsWith('__Secure-') || isHostOnlyPrefix;
-
+    const isSecure = isHttps || name.startsWith('__Secure-') || name.startsWith('__Host-');
     for (const domain of domains) {
-      // RFC: __Host- cookies must NOT have a Domain attribute
-      if (domain && isHostOnlyPrefix) continue;
-
+      if (domain && name.startsWith('__Host-')) continue;
       const domainAttr = domain ? `; Domain=${domain}` : '';
-
-      if (isSecurePrefix) {
-        headers.add(`${name}=; ${expirePart}${domainAttr}; Secure`);
-      } else {
-        // Non-prefixed cookie might have been issued with or without Secure
-        if (isHttps) {
-          headers.add(`${name}=; ${expirePart}${domainAttr}; Secure`);
-          headers.add(`${name}=; ${expirePart}${domainAttr}`);
-        } else {
-          headers.add(`${name}=; ${expirePart}${domainAttr}`);
-          headers.add(`${name}=; ${expirePart}${domainAttr}; Secure`);
-        }
-      }
+      headers.push(
+        `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${domainAttr}${isSecure ? '; Secure' : ''}`
+      );
     }
   }
 
-  return [...headers];
+  return headers;
 }
 
 export function requestIsHttps(headers: Headers, url: URL): boolean {
@@ -90,4 +66,5 @@ export function requestIsHttps(headers: Headers, url: URL): boolean {
   if (cfVisitor && cfVisitor.includes('"https"')) return true;
   return url.protocol === 'https:';
 }
+
 
