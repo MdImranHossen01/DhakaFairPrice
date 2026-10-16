@@ -96,10 +96,13 @@ export async function POST(
           productId: productDoc?._id || rp.productId,
         }).lean();
 
+        const baseCost = uploaderRp?.purchasePrice ?? productDoc?.purchasePrice ?? 0;
+
         uploaderItemsMap.get(uploaderId)!.push({
           ...validatedItem,
+          resellerProductId: uploaderRp?._id || rp._id,
           retailPrice: rp.purchasePrice,
-          purchasePrice: uploaderRp?.purchasePrice || rp.purchasePrice,
+          purchasePrice: baseCost,
         });
       }
     }
@@ -329,9 +332,9 @@ export async function POST(
       let fIndex = 1;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
         const uploaderSubtotal = fItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
-        const uploaderCommission = fItems.reduce((sum, item) => sum + (item.retailPrice - item.purchasePrice) * item.quantity, 0);
+        const uploaderCommission = fItems.reduce((sum, item) => sum + Math.max(0, (item.retailPrice - item.purchasePrice) * item.quantity), 0);
 
-        await ResellerOrder.create([{
+        const [uploaderRO] = (await ResellerOrder.create([{
           resellerId: uploaderId,
           motherOrderId: motherOrder._id,
           customer,
@@ -339,16 +342,34 @@ export async function POST(
           subtotal: uploaderSubtotal,
           deliveryCharge: 0,
           totalAmount: uploaderSubtotal,
-          paymentMethod: 'COD',
+          paymentMethod: paymentMethod || 'COD',
           paymentStatus: 'Pending',
           status: 'Order Placed',
           resellerCommission: uploaderCommission,
           commissionStatus: 'pending',
           customerNote: notes || '',
           internalNote: '',
-          systemNote: `Fulfillment for Order ${shortId}`,
+          systemNote: `Fulfillment for Storefront Order (${reseller.storeName} - ${shortId})`,
           shortId: `${shortId}-F${fIndex}`,
-        }], { session: sessionConn });
+        }], { session: sessionConn })) as any[];
+
+        // Update uploader reseller stats (atomic)
+        await Reseller.findByIdAndUpdate(uploaderId, {
+          $inc: { totalOrders: 1, totalRevenue: uploaderSubtotal },
+        }, { session: sessionConn });
+
+        // Create pending commission ledger entry for uploader
+        if (uploaderCommission > 0) {
+          await ResellerWalletTransaction.create([{
+            resellerId: uploaderId,
+            type: 'commission_earned',
+            amount: uploaderCommission,
+            orderId: uploaderRO._id,
+            description: `Commission from fulfillment order ${shortId}-F${fIndex}`,
+            status: 'pending',
+          }], { session: sessionConn });
+        }
+
         fIndex++;
       }
 

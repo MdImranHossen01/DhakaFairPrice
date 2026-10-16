@@ -249,10 +249,10 @@ export async function POST(request: NextRequest) {
       customerUser = newUser;
     }
 
-    // 2. Validate Items & Stock & compute totals
     let serverComputedSubtotal = 0;
     let totalCommission = 0;
     const validatedItems: any[] = [];
+    const uploaderItemsMap = new Map<string, any[]>();
     const shortId = 'ORD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
     for (const item of items) {
@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
       serverComputedSubtotal += itemSubtotal;
       totalCommission += itemCommission;
 
-      validatedItems.push({
+      const validatedItem = {
         resellerProductId: product._id,
         productId: product._id,
         name: product.name,
@@ -316,7 +316,21 @@ export async function POST(request: NextRequest) {
         image: item.image || product.images?.[0] || '',
         color: item.color || undefined,
         size: item.size || undefined,
-      });
+      };
+
+      validatedItems.push(validatedItem);
+
+      const uploaderId = product.uploadedBy ? product.uploadedBy.toString() : null;
+      if (uploaderId && uploaderId !== reseller._id.toString()) {
+        if (!uploaderItemsMap.has(uploaderId)) {
+          uploaderItemsMap.set(uploaderId, []);
+        }
+        uploaderItemsMap.get(uploaderId)!.push({
+          ...validatedItem,
+          retailPrice: purchasePrice,
+          purchasePrice: product.purchasePrice || 0,
+        });
+      }
     }
 
     const delCharge = Number(deliveryCharge) || 0;
@@ -406,6 +420,58 @@ export async function POST(request: NextRequest) {
       description: `Commission from manual order ${shortId}`,
       status: 'pending',
     }], { session: sessionConn });
+
+    // 7. Create Fulfillment Orders for other resellers whose products were included
+    let fIndex = 1;
+    for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
+      const uploaderSubtotal = fItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
+      const uploaderCommission = fItems.reduce((sum, item) => sum + Math.max(0, (item.retailPrice - item.purchasePrice) * item.quantity), 0);
+
+      const [uploaderRO] = (await ResellerOrder.create([{
+        resellerId: uploaderId,
+        motherOrderId: motherOrder._id,
+        customer: {
+          name: customer.name.trim(),
+          phone: customerPhone,
+          email: customerEmail,
+          address: {
+            street: customer.address.street.trim(),
+            city: customer.address.city || 'Dhaka',
+            division: customer.address.division || 'Dhaka',
+            zipCode: customer.address.zipCode || '1200',
+          },
+        },
+        items: fItems,
+        subtotal: uploaderSubtotal,
+        deliveryCharge: 0,
+        totalAmount: uploaderSubtotal,
+        paymentMethod: paymentMethod || 'COD',
+        paymentStatus: paymentStatus || 'Pending',
+        status: status || 'Order Placed',
+        resellerCommission: uploaderCommission,
+        commissionStatus: 'pending',
+        shortId: `${shortId}-F${fIndex}`,
+        internalNote: '',
+        systemNote: `Fulfillment for Manual Order (${reseller.storeName} - ${shortId})`,
+      }], { session: sessionConn })) as any[];
+
+      await Reseller.findByIdAndUpdate(uploaderId, {
+        $inc: { totalOrders: 1, totalRevenue: uploaderSubtotal },
+      }, { session: sessionConn });
+
+      if (uploaderCommission > 0) {
+        await ResellerWalletTransaction.create([{
+          resellerId: uploaderId,
+          type: 'commission_earned',
+          amount: uploaderCommission,
+          orderId: uploaderRO._id,
+          description: `Commission from fulfillment order ${shortId}-F${fIndex}`,
+          status: 'pending',
+        }], { session: sessionConn });
+      }
+
+      fIndex++;
+    }
 
     await sessionConn.commitTransaction();
     sessionConn.endSession();
