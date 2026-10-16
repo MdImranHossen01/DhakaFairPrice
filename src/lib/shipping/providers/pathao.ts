@@ -210,9 +210,19 @@ export class PathaoProvider implements ShippingProvider {
         };
       }
 
+      let errorMsg = data.message || 'Failed to create Pathao store';
+      if (data.errors && typeof data.errors === 'object') {
+        const details = Object.entries(data.errors)
+          .map(([k, v]: [string, any]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(' | ');
+        if (details) {
+          errorMsg = `${data.message ? data.message + ' - ' : ''}${details}`;
+        }
+      }
+
       return {
         success: false,
-        message: data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to create Pathao store'),
+        message: errorMsg,
         raw: data,
       };
     } catch (e: any) {
