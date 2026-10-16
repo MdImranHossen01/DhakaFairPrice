@@ -192,6 +192,7 @@ export async function POST(req: NextRequest) {
 
     let serverComputedTotal = 0;
     const validatedItems: IOrderItem[] = [];
+    const uploaderItemsMap = new Map<string, any[]>();
 
     try {
       // 2a. Group items by product/variant to avoid duplicate checks failing during deduction
@@ -323,6 +324,24 @@ export async function POST(req: NextRequest) {
           color: item.color,
           size: item.size,
         });
+
+        // Track items uploaded by resellers so fulfillment & commission orders can be created
+        const uploaderId = product.uploadedBy ? product.uploadedBy.toString() : null;
+        if (uploaderId) {
+          if (!uploaderItemsMap.has(uploaderId)) {
+            uploaderItemsMap.set(uploaderId, []);
+          }
+          uploaderItemsMap.get(uploaderId)!.push({
+            productId: product._id,
+            name: product.name,
+            quantity: item.quantity,
+            retailPrice: itemPrice,
+            purchasePrice: itemPurchasePrice,
+            image: item.image || product.images?.[0] || '',
+            color: item.color,
+            size: item.size,
+          });
+        }
       }
     } catch (err: any) {
       throw err;
@@ -475,6 +494,131 @@ export async function POST(req: NextRequest) {
         { orderId: newOrder._id },
         { session }
       );
+    }
+
+    // If any items were uploaded by resellers, create corresponding ResellerOrders for fulfillment & tracking
+    if (uploaderItemsMap.size > 0) {
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      const ResellerProduct = (await import('@/models/ResellerProduct')).default;
+      const Reseller = (await import('@/models/Reseller')).default;
+      const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+
+      let fIndex = 1;
+      for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
+        const uploaderSubtotal = fItems.reduce((sum: number, it: any) => sum + it.retailPrice * it.quantity, 0);
+        const uploaderCommission = fItems.reduce(
+          (sum: number, it: any) => sum + Math.max(0, (it.retailPrice - (it.purchasePrice || 0)) * it.quantity),
+          0
+        );
+
+        // Resolve or create ResellerProduct for each item
+        const orderItemsWithRP = await Promise.all(
+          fItems.map(async (it: any) => {
+            let rp = await ResellerProduct.findOne({
+              resellerId: uploaderId,
+              productId: it.productId,
+            }).session(session);
+
+            if (!rp) {
+              const [newRP] = await ResellerProduct.create(
+                [
+                  {
+                    resellerId: uploaderId,
+                    productId: it.productId,
+                    retailPrice: it.retailPrice,
+                    name: it.name,
+                    slug: `product-${it.productId}`,
+                    images: it.image ? [it.image] : [],
+                    stock: 0,
+                    purchasePrice: it.purchasePrice || 0,
+                    motherPrice: it.retailPrice,
+                    isAvailableOnMother: true,
+                    isPublished: true,
+                    syncedAt: new Date(),
+                  },
+                ],
+                { session }
+              );
+              rp = newRP;
+            }
+
+            return {
+              resellerProductId: rp._id,
+              productId: it.productId,
+              name: it.name,
+              quantity: it.quantity,
+              retailPrice: it.retailPrice,
+              purchasePrice: it.purchasePrice || 0,
+              image: it.image,
+              color: it.color,
+              size: it.size,
+            };
+          })
+        );
+
+        const resellerShortId =
+          uploaderItemsMap.size === 1 ? newOrder.shortId : `${newOrder.shortId}-M${fIndex}`;
+
+        const [createdRO] = await ResellerOrder.create(
+          [
+            {
+              resellerId: uploaderId,
+              motherOrderId: newOrder._id,
+              customer: {
+                name: shippingAddress.fullName,
+                phone: shippingAddress.phone,
+                email: user?.email,
+                address: {
+                  street: shippingAddress.street,
+                  city: shippingAddress.city,
+                  division: shippingAddress.division,
+                  zipCode: shippingAddress.zipCode,
+                },
+              },
+              items: orderItemsWithRP,
+              subtotal: uploaderSubtotal,
+              deliveryCharge: 0,
+              totalAmount: uploaderSubtotal,
+              paymentMethod: paymentMethod || 'COD',
+              paymentStatus: newOrder.paymentStatus || 'Pending',
+              status: newOrder.status || 'Order Placed',
+              resellerCommission: uploaderCommission,
+              commissionStatus: 'pending',
+              customerNote: (validation.data as any).customerNote || (validation.data as any).notes || '',
+              internalNote: '',
+              systemNote: `Mother Shop Order (${newOrder.shortId})`,
+              shortId: resellerShortId,
+            },
+          ],
+          { session }
+        );
+
+        // Update reseller stats atomically
+        await Reseller.findByIdAndUpdate(
+          uploaderId,
+          {
+            $inc: { totalOrders: 1, totalRevenue: uploaderSubtotal },
+          },
+          { session }
+        );
+
+        // Record pending commission in reseller wallet
+        await ResellerWalletTransaction.create(
+          [
+            {
+              resellerId: uploaderId,
+              type: 'commission_earned',
+              amount: uploaderCommission,
+              orderId: createdRO._id,
+              description: `Commission from Mother Shop order ${newOrder.shortId}`,
+              status: 'pending',
+            },
+          ],
+          { session }
+        );
+
+        fIndex++;
+      }
     }
 
     await session.commitTransaction();
