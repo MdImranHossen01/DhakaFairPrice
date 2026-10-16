@@ -462,67 +462,72 @@ export default function ResellerDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Presets */}
-          <div className="hidden sm:flex items-center bg-muted/40 rounded-lg p-0.5 border h-8">
-            <button
-              onClick={() => setPresetRange(7)}
-              className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
-            >
-              7D
-            </button>
-            <button
-              onClick={() => setPresetRange(30)}
-              className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
-            >
-              30D
-            </button>
-            <button
-              onClick={() => setPresetRange(90)}
-              className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
-            >
-              90D
-            </button>
+        <div className="flex flex-col items-start md:items-end gap-2.5">
+          {/* Top Right: Store Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" className="h-8 text-xs font-semibold shadow-xs" onClick={copyLink}>
+              <Copy className="h-3.5 w-3.5 mr-1" /> Copy Link
+            </Button>
+            <Button size="sm" className="h-8 text-xs font-semibold shadow-xs" asChild>
+              <a href={storeLink} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Visit Store
+              </a>
+            </Button>
           </div>
 
-          {/* Date Picker */}
-          <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-0.5 rounded-lg border h-8 w-full sm:w-auto">
-            <div className="flex items-center gap-1 shrink-0">
-              <Filter className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Range</span>
+          {/* Underneath: Filtering Bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Presets */}
+            <div className="hidden sm:flex items-center bg-muted/40 rounded-lg p-0.5 border h-8">
+              <button
+                onClick={() => setPresetRange(7)}
+                className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
+              >
+                7D
+              </button>
+              <button
+                onClick={() => setPresetRange(30)}
+                className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
+              >
+                30D
+              </button>
+              <button
+                onClick={() => setPresetRange(90)}
+                className="text-[11px] px-2.5 py-0.5 rounded hover:bg-background font-semibold transition-colors"
+              >
+                90D
+              </button>
             </div>
-            <div className="flex items-center gap-1 flex-1 sm:flex-initial">
-              <Input
-                type="date"
-                className="h-6 w-full sm:w-28 border-none bg-transparent focus-visible:ring-0 cursor-pointer text-[11px] p-0"
-                value={dateRange.from}
-                onChange={(e) => handleDateChange('from', e.target.value)}
-                max={format(new Date(), 'yyyy-MM-dd')}
-              />
-              <span className="text-muted-foreground text-[9px] shrink-0 font-medium">to</span>
-              <Input
-                type="date"
-                className="h-6 w-full sm:w-28 border-none bg-transparent focus-visible:ring-0 cursor-pointer text-[11px] p-0"
-                value={dateRange.to}
-                onChange={(e) => handleDateChange('to', e.target.value)}
-                max={format(new Date(), 'yyyy-MM-dd')}
-              />
+
+            {/* Date Picker */}
+            <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-0.5 rounded-lg border h-8 w-full sm:w-auto">
+              <div className="flex items-center gap-1 shrink-0">
+                <Filter className="h-3 w-3 text-muted-foreground" />
+                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Range</span>
+              </div>
+              <div className="flex items-center gap-1 flex-1 sm:flex-initial">
+                <Input
+                  type="date"
+                  className="h-6 w-full sm:w-28 border-none bg-transparent focus-visible:ring-0 cursor-pointer text-[11px] p-0"
+                  value={dateRange.from}
+                  onChange={(e) => handleDateChange('from', e.target.value)}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                />
+                <span className="text-muted-foreground text-[9px] shrink-0 font-medium">to</span>
+                <Input
+                  type="date"
+                  className="h-6 w-full sm:w-28 border-none bg-transparent focus-visible:ring-0 cursor-pointer text-[11px] p-0"
+                  value={dateRange.to}
+                  onChange={(e) => handleDateChange('to', e.target.value)}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                />
+              </div>
             </div>
+
+            <Button variant="outline" size="icon" onClick={fetchStats} className="h-8 w-8 rounded-lg shrink-0" title="Refresh">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
+            </Button>
           </div>
-
-          <Button variant="outline" size="icon" onClick={fetchStats} className="h-8 w-8 rounded-lg shrink-0" title="Refresh">
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
-          </Button>
-
-          {/* Store Actions */}
-          <Button size="sm" variant="secondary" className="h-8 text-xs font-semibold shadow-xs" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5 mr-1" /> Copy Link
-          </Button>
-          <Button size="sm" className="h-8 text-xs font-semibold shadow-xs" asChild>
-            <a href={storeLink} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Visit Store
-            </a>
-          </Button>
         </div>
       </div>
 
