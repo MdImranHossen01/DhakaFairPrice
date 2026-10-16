@@ -11,7 +11,7 @@ jobs:
   sync-courier-status:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync Courier Delivery Status from Steadfast
+      - name: Sync Courier Delivery Status (Steadfast, Pathao & RedX)
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" \
             -X GET \

@@ -204,10 +204,10 @@ async function handleSyncCourierStatus(req: NextRequest) {
           const statusData = await getRedXStatus(consignmentId, redxConfig);
           const trackingList = statusData?.tracking || [];
           const latestMsg = trackingList.length > 0 ? trackingList[trackingList.length - 1]?.message_en : '';
-          courierStatus = statusData?.status || latestMsg || '';
+          courierStatus = statusData?.status || statusData?.parcel?.status || latestMsg || '';
           const normalized = (courierStatus || '').toLowerCase();
 
-          if (normalized.includes('delivered')) {
+          if (normalized.includes('delivered') || normalized === 'paid') {
             isDelivered = true;
           } else if (normalized.includes('cancel') || normalized.includes('return')) {
             isCancelled = true;
