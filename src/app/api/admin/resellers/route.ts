@@ -76,6 +76,9 @@ export async function PATCH(request: NextRequest) {
       }
       updatePayload.customDomain = cleanCustom;
     }
+    if (body.courierConfig !== undefined) {
+      updatePayload.courierConfig = body.courierConfig;
+    }
 
     const updated = await Reseller.findByIdAndUpdate(
       resellerId,

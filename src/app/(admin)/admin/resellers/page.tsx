@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2 } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +52,58 @@ export default function AdminResellersPage() {
   const [editSubdomain, setEditSubdomain] = useState('');
   const [editCustomDomain, setEditCustomDomain] = useState('');
   const [savingDomain, setSavingDomain] = useState(false);
+
+  // Courier Hub Modal state
+  const [courierDialogOpen, setCourierDialogOpen] = useState(false);
+  const [selectedCourierReseller, setSelectedCourierReseller] = useState<any>(null);
+  const [courierSteadfastApiKey, setCourierSteadfastApiKey] = useState('');
+  const [courierSteadfastSecretKey, setCourierSteadfastSecretKey] = useState('');
+  const [courierPathaoStoreId, setCourierPathaoStoreId] = useState('');
+  const [savingCourier, setSavingCourier] = useState(false);
+
+  const openCourierModal = (reseller: any) => {
+    setSelectedCourierReseller(reseller);
+    setCourierSteadfastApiKey(reseller.courierConfig?.steadfast?.apiKey || '');
+    setCourierSteadfastSecretKey(reseller.courierConfig?.steadfast?.secretKey || '');
+    setCourierPathaoStoreId(reseller.courierConfig?.pathao?.storeId || '');
+    setCourierDialogOpen(true);
+  };
+
+  const handleSaveCourier = async () => {
+    if (!selectedCourierReseller) return;
+    setSavingCourier(true);
+    try {
+      const res = await fetch('/api/admin/resellers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resellerId: selectedCourierReseller._id,
+          courierConfig: {
+            ...(selectedCourierReseller.courierConfig || {}),
+            steadfast: {
+              apiKey: courierSteadfastApiKey.trim(),
+              secretKey: courierSteadfastSecretKey.trim(),
+            },
+            pathao: {
+              storeId: courierPathaoStoreId.trim(),
+            },
+          },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Courier hub configuration saved successfully');
+        setCourierDialogOpen(false);
+        fetchResellers();
+      } else {
+        toast.error(data.error || 'Failed to save courier configuration');
+      }
+    } catch {
+      toast.error('Network error saving courier configuration');
+    } finally {
+      setSavingCourier(false);
+    }
+  };
 
   const fetchResellers = async () => {
     try {
@@ -343,14 +395,22 @@ export default function AdminResellersPage() {
                             ) : (
                               <span className="text-[11px] text-muted-foreground italic block">No custom domain linked</span>
                             )}
-                            <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="h-6 text-[11px] px-2 text-primary border-primary/30 hover:bg-primary/5 gap-1"
                                 onClick={() => openDomainModal(r)}
                               >
-                                <Globe className="h-3 w-3" /> Configure Domain
+                                <Globe className="h-3 w-3" /> Domain
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 text-[11px] px-2 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/5 gap-1"
+                                onClick={() => openCourierModal(r)}
+                              >
+                                <Truck className="h-3 w-3" /> Courier Hub
                               </Button>
                             </div>
                           </div>
@@ -419,6 +479,13 @@ export default function AdminResellersPage() {
                               >
                                 <Globe className="mr-2 h-4 w-4 text-primary" />
                                 Configure Domain
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer text-xs"
+                                onClick={() => openCourierModal(r)}
+                              >
+                                <Truck className="mr-2 h-4 w-4 text-emerald-600" />
+                                Courier Hub Settings
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="cursor-pointer text-xs"
@@ -700,6 +767,113 @@ export default function AdminResellersPage() {
             >
               {savingDomain && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Save Domain Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Courier Hub Configuration Dialog */}
+      <Dialog open={courierDialogOpen} onOpenChange={setCourierDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              Courier Hub Configuration
+            </DialogTitle>
+            <DialogDescription>
+              Assign dedicated sub-merchant or warehouse pickup credentials for{' '}
+              <span className="font-bold text-foreground">{selectedCourierReseller?.storeName}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {/* Pickup Info Banner */}
+            <div className="p-3 rounded-lg border bg-muted/40 space-y-1">
+              <span className="font-semibold text-foreground block">Registered Pickup Address:</span>
+              <p className="text-muted-foreground">
+                {selectedCourierReseller?.pickupAddress?.address || 'No address set yet'}
+                {selectedCourierReseller?.pickupAddress?.thana ? `, ${selectedCourierReseller.pickupAddress.thana}` : ''}
+                {selectedCourierReseller?.pickupAddress?.district ? `, ${selectedCourierReseller.pickupAddress.district}` : ''}
+              </p>
+              <p className="text-muted-foreground font-mono">
+                Phone: {selectedCourierReseller?.pickupAddress?.phone || selectedCourierReseller?.contact?.phone || 'N/A'}
+              </p>
+            </div>
+
+            {/* Steadfast Sub-Merchant */}
+            <div className="space-y-2 p-3.5 rounded-lg border bg-background">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+                  Steadfast Sub-Merchant (Business Profile)
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">steadfast.com.bd</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                In Steadfast dashboard, create a Business for this reseller, then paste its Api-Key and Secret-Key below. All COD funds will still be credited to your main payout account.
+              </p>
+              <div className="space-y-2 pt-1">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground">Steadfast API Key</label>
+                  <Input
+                    value={courierSteadfastApiKey}
+                    onChange={e => setCourierSteadfastApiKey(e.target.value.trim())}
+                    placeholder="Enter business Api-Key"
+                    className="font-mono text-xs h-9 mt-0.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground">Steadfast Secret Key</label>
+                  <Input
+                    value={courierSteadfastSecretKey}
+                    onChange={e => setCourierSteadfastSecretKey(e.target.value.trim())}
+                    placeholder="Enter business Secret-Key"
+                    className="font-mono text-xs h-9 mt-0.5"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pathao Store ID */}
+            <div className="space-y-2 p-3.5 rounded-lg border bg-background">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-rose-500 inline-block" />
+                  Pathao Courier Hub (Store ID)
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">merchant.pathao.com</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Pathao Store ID for this reseller's pickup hub (Auto-synced or manually entered).
+              </p>
+              <div>
+                <Input
+                  value={courierPathaoStoreId}
+                  onChange={e => setCourierPathaoStoreId(e.target.value.trim())}
+                  placeholder="e.g. 383246"
+                  className="font-mono text-xs h-9 mt-0.5"
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCourierDialogOpen(false)}
+              disabled={savingCourier}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveCourier}
+              disabled={savingCourier}
+              className="font-semibold"
+            >
+              {savingCourier && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Save Courier Configuration
             </Button>
           </DialogFooter>
         </DialogContent>
