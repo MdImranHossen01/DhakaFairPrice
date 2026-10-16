@@ -830,8 +830,8 @@ export default function AdminResellersPage() {
 
       {/* Courier Hub Configuration Dialog */}
       <Dialog open={courierDialogOpen} onOpenChange={setCourierDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-5 pb-3 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
               Courier Hub Configuration
@@ -842,7 +842,7 @@ export default function AdminResellersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2 text-xs">
+          <div className="space-y-4 p-5 overflow-y-auto flex-1 text-xs">
             {/* Pickup Info Banner */}
             <div className="p-3 rounded-lg border bg-muted/40 space-y-1">
               <span className="font-semibold text-foreground block">Registered Pickup Address:</span>
@@ -957,7 +957,7 @@ export default function AdminResellersPage() {
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+          <DialogFooter className="p-4 px-5 border-t bg-muted/20 flex items-center justify-end gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
