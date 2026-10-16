@@ -73,6 +73,8 @@ interface AdminProduct {
   description?: string;
   categories?: any[];
   variants?: any[];
+  purchasePrice?: number;
+  resellerPrice?: number;
   uploadedBy?: { _id: string; storeName: string; subdomain: string } | null;
   isMotherProduct?: boolean;
 }
