@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Store, Save, ShieldCheck } from 'lucide-react';
+import { Loader2, Store, Save, ShieldCheck, Truck, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { PasswordChangeForm } from '@/components/user/PasswordChangeForm';
@@ -20,6 +20,8 @@ export default function ResellerSettingsPage() {
   const [reseller, setReseller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncingPathao, setSyncingPathao] = useState(false);
+  const [pathaoStoreId, setPathaoStoreId] = useState('');
 
   const [general, setGeneral] = useState({
     storeName: '', description: '', logoUrl: '', faviconUrl: '', marqueeText: '',
@@ -70,6 +72,7 @@ export default function ResellerSettingsPage() {
         twitter: r.socialLinks?.twitter || '',
         linkedin: r.socialLinks?.linkedin || '',
       });
+      setPathaoStoreId(r.courierConfig?.pathao?.storeId || '');
     }
     setLoading(false);
   };
@@ -96,6 +99,47 @@ export default function ResellerSettingsPage() {
     }
     else toast.error('Failed to save settings');
     setSaving(false);
+  };
+
+  const handleSyncPathao = async () => {
+    if (!pickup.address || !pickup.phone) {
+      toast.error('Please enter pickup address and phone number first.');
+      return;
+    }
+    setSyncingPathao(true);
+    try {
+      await fetch('/api/reseller/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          resellerId: reseller._id, 
+          pickupAddress: pickup,
+          courierConfig: {
+            ...(reseller?.courierConfig || {}),
+            pathao: { ...(reseller?.courierConfig?.pathao || {}), storeId: pathaoStoreId }
+          }
+        }),
+      });
+
+      const res = await fetch('/api/reseller/courier/pathao-sync-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Pathao store synced successfully!');
+        if (data.storeId) {
+          setPathaoStoreId(String(data.storeId));
+        }
+        fetchSettings();
+      } else {
+        toast.error(data.message || 'Failed to sync with Pathao');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Network error syncing with Pathao');
+    } finally {
+      setSyncingPathao(false);
+    }
   };
 
   if (loading) {
@@ -308,7 +352,64 @@ export default function ResellerSettingsPage() {
                   placeholder="e.g. Holding 124, Rupatoli Bus Stand, Barishal Sadar"
                 />
               </div>
-              <Button onClick={() => save({ pickupAddress: pickup })} disabled={saving}>
+
+              {/* Pathao Store Integration */}
+              <div className="p-4 rounded-xl border bg-muted/30 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-primary" />
+                      <span className="font-semibold text-sm">Pathao Courier Pickup Integration</span>
+                      {pathaoStoreId ? (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
+                          <CheckCircle2 className="h-3 w-3" /> Linked (Store ID: {pathaoStoreId})
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">
+                          Not Synced
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Sync this pickup location with Pathao Courier so riders directly pick up parcels from your shop.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSyncPathao}
+                    disabled={syncingPathao || saving}
+                    className="shrink-0"
+                  >
+                    {syncingPathao ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}
+                    {pathaoStoreId ? 'Re-sync with Pathao' : 'Sync / Create Pathao Store'}
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Pathao Store ID (Auto-filled on Sync or Manual)</Label>
+                    <Input
+                      value={pathaoStoreId}
+                      onChange={e => setPathaoStoreId(e.target.value)}
+                      placeholder="e.g. 383246"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => save({ 
+                  pickupAddress: pickup, 
+                  courierConfig: { 
+                    ...(reseller?.courierConfig || {}), 
+                    pathao: { ...(reseller?.courierConfig?.pathao || {}), storeId: pathaoStoreId } 
+                  } 
+                })} 
+                disabled={saving}
+              >
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Save className="mr-2 h-4 w-4" /> Save Pickup Point
               </Button>

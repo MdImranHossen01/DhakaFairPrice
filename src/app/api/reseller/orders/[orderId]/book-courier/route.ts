@@ -144,7 +144,44 @@ export async function POST(
     const customNote = body.note ? `${body.note.trim()} - ` : '';
     const fullNote = `${customNote}${itemsNote.slice(0, 60)}${pickupNote}`;
 
-    const pStoreId = body.store_id || (r?.courierConfig?.pathao?.storeId ? Number(r.courierConfig.pathao.storeId) : undefined) || pathao?.storeId;
+    let pStoreId = body.store_id || (r?.courierConfig?.pathao?.storeId ? Number(r.courierConfig.pathao.storeId) : undefined);
+
+    const pClientId = pathao?.clientId;
+    const pClientSecret = pathao?.clientSecret;
+
+    // Auto-discover or create Pathao store if missing for this reseller
+    if (targetCourier === 'pathao' && !pStoreId && r?.pickupAddress?.address && r?.pickupAddress?.phone && pClientId && pClientSecret) {
+      try {
+        const autoProvider = new PathaoProvider({
+          clientId: pClientId,
+          clientSecret: pClientSecret,
+          username: pathao?.username,
+          password: pathao?.password,
+          isSandbox: pathao?.isSandbox,
+        });
+        const autoStore = await autoProvider.findOrCreateStoreForReseller({
+          hubName: r.pickupAddress.hubName,
+          storeName: r.storeName,
+          contactPerson: r.pickupAddress.contactPerson,
+          phone: r.pickupAddress.phone,
+          address: r.pickupAddress.address,
+          division: r.pickupAddress.division,
+          district: r.pickupAddress.district,
+          thana: r.pickupAddress.thana,
+        });
+        if (autoStore.success && autoStore.storeId) {
+          pStoreId = autoStore.storeId;
+          const ResellerModel = (await import('@/models/Reseller')).default;
+          await ResellerModel.updateOne({ _id: resellerId }, { $set: { 'courierConfig.pathao.storeId': String(autoStore.storeId) } });
+        }
+      } catch (autoErr) {
+        console.warn('Auto Pathao store sync failed during booking:', autoErr);
+      }
+    }
+
+    if (!pStoreId && pathao?.storeId) {
+      pStoreId = Number(pathao.storeId);
+    }
 
     const shippingData = {
       invoice: resellerOrder.shortId || order.shortId || order._id.toString().slice(-8).toUpperCase(),
@@ -166,9 +203,6 @@ export async function POST(
 
     const sApiKey = r?.courierConfig?.steadfast?.apiKey || steadfast?.apiKey;
     const sSecretKey = r?.courierConfig?.steadfast?.secretKey || steadfast?.secretKey;
-
-    const pClientId = pathao?.clientId;
-    const pClientSecret = pathao?.clientSecret;
 
     const rApiKey = r?.courierConfig?.redx?.apiKey || redx?.apiKey;
 

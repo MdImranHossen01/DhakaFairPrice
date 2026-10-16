@@ -168,6 +168,148 @@ export class PathaoProvider implements ShippingProvider {
     }
   }
 
+  async createStore(storeData: {
+    name: string;
+    contact_name: string;
+    contact_number: string;
+    address: string;
+    city_id: number;
+    zone_id: number;
+    area_id: number;
+    secondary_contact?: string;
+  }): Promise<{ success: boolean; message?: string; storeId?: number; raw?: any }> {
+    try {
+      const token = await this.getAccessToken();
+      const res = await fetch(`${this.baseUrl}/aladdin/api/v1/stores`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          name: storeData.name,
+          contact_name: storeData.contact_name,
+          contact_number: storeData.contact_number,
+          address: storeData.address,
+          city_id: Number(storeData.city_id),
+          zone_id: Number(storeData.zone_id),
+          area_id: Number(storeData.area_id),
+          secondary_contact: storeData.secondary_contact || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && (data.code === 200 || data.type === 'success')) {
+        const storeId = data.data?.store_id || data.data?.id;
+        return {
+          success: true,
+          message: data.message || 'Store created successfully',
+          storeId: storeId ? Number(storeId) : undefined,
+          raw: data,
+        };
+      }
+
+      return {
+        success: false,
+        message: data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to create Pathao store'),
+        raw: data,
+      };
+    } catch (e: any) {
+      console.error('Error creating Pathao store:', e);
+      return { success: false, message: e.message || 'Error creating Pathao store' };
+    }
+  }
+
+  async findOrCreateStoreForReseller(pickup: {
+    hubName?: string;
+    storeName?: string;
+    contactPerson?: string;
+    phone?: string;
+    address?: string;
+    division?: string;
+    district?: string;
+    thana?: string;
+  }): Promise<{ success: boolean; storeId?: number; storeName?: string; message?: string }> {
+    try {
+      const stores = await this.getStores();
+      const targetName = (pickup.hubName || `${pickup.storeName || 'Reseller'} Hub`).trim().toLowerCase();
+      
+      // Check if existing store matches hub name or phone/address
+      const existing = stores.find((s: any) => {
+        const sName = (s.store_name || s.name || '').trim().toLowerCase();
+        const sAddr = (s.store_address || s.address || '').toLowerCase();
+        return sName === targetName || (pickup.address && sAddr.includes(pickup.address.toLowerCase().slice(0, 20)));
+      });
+
+      if (existing) {
+        const foundId = Number(existing.store_id || existing.id);
+        return { success: true, storeId: foundId, storeName: existing.store_name || existing.name };
+      }
+
+      // If no address info, cannot create store
+      if (!pickup.address || !pickup.phone) {
+        return { success: false, message: 'Pickup address and contact phone are required to create a Pathao store.' };
+      }
+
+      // Resolve City from Pathao
+      const cities = await this.getCities();
+      const targetDist = (pickup.district || '').toLowerCase().trim();
+      let matchedCity = cities.find((c: any) => 
+        targetDist && c.city_name && (c.city_name.toLowerCase().includes(targetDist) || targetDist.includes(c.city_name.toLowerCase().trim()))
+      );
+      if (!matchedCity && cities.length > 0) {
+        matchedCity = cities.find((c: any) => c.city_id === 1) || cities[0];
+      }
+      const cityId = matchedCity ? Number(matchedCity.city_id) : 1;
+
+      // Resolve Zone from Pathao
+      const zones = await this.getZones(cityId);
+      const targetThana = (pickup.thana || '').toLowerCase().trim();
+      let matchedZone = zones.find((z: any) => 
+        targetThana && z.zone_name && (z.zone_name.toLowerCase().includes(targetThana) || targetThana.includes(z.zone_name.toLowerCase().trim()))
+      );
+      if (!matchedZone && zones.length > 0) {
+        matchedZone = zones[0];
+      }
+      const zoneId = matchedZone ? Number(matchedZone.zone_id) : 1;
+
+      // Resolve Area from Pathao
+      const areas = await this.getAreas(zoneId);
+      const areaId = areas.length > 0 ? Number(areas[0].area_id) : 1;
+
+      const cleanPhone = (pickup.phone || '').replace(/\D/g, '').slice(-11);
+
+      const created = await this.createStore({
+        name: pickup.hubName || `${pickup.storeName || 'Reseller'} Hub`,
+        contact_name: pickup.contactPerson || pickup.storeName || 'Store Manager',
+        contact_number: cleanPhone,
+        address: pickup.address,
+        city_id: cityId,
+        zone_id: zoneId,
+        area_id: areaId,
+      });
+
+      if (created.success) {
+        if (created.storeId) {
+          return { success: true, storeId: created.storeId, storeName: pickup.hubName || pickup.storeName, message: created.message };
+        }
+        // Re-fetch stores to check if id appeared
+        const reStores = await this.getStores();
+        const found = reStores.find((s: any) => (s.store_name || s.name || '').trim().toLowerCase() === targetName);
+        if (found) {
+          return { success: true, storeId: Number(found.store_id || found.id), storeName: found.store_name, message: created.message };
+        }
+        return { success: true, message: created.message || 'Store created in Pathao, awaiting approval.' };
+      }
+
+      return { success: false, message: created.message };
+    } catch (err: any) {
+      console.error('findOrCreateStoreForReseller error:', err);
+      return { success: false, message: err.message };
+    }
+  }
+
   async createOrder(data: ShippingOrderData): Promise<ShippingOrderResponse> {
     try {
       const token = await this.getAccessToken();
