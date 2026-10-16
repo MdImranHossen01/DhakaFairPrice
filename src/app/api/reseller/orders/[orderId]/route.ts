@@ -133,6 +133,9 @@ export async function PATCH(
         }
       }
       if (customerNote !== undefined) motherUpdate.customerNote = customerNote;
+      if (internalNote !== undefined) motherUpdate.internalNote = internalNote;
+      else if (order.internalNote) motherUpdate.internalNote = order.internalNote;
+      if (order.resellerId) motherUpdate.resellerId = order.resellerId;
       if (status) motherUpdate.status = status;
       if (paymentStatus) motherUpdate.paymentStatus = paymentStatus;
       

@@ -867,28 +867,58 @@ export async function GET(req: NextRequest) {
       ordersQuery = ordersQuery.skip((page - 1) * limit).limit(limit);
     }
 
-    const orders = await ordersQuery.populate('user', 'name email').populate('resellerId', 'storeName domain subDomain');
+    const orders = await ordersQuery.populate('user', 'name email').populate('resellerId', 'storeName subdomain customDomain');
 
     let processedOrders = orders;
     if (fetchAll && isAdmin) {
       const ResellerOrder = (await import('@/models/ResellerOrder')).default;
       const orderIds = orders.map((o: any) => o._id);
+      const shortIds = orders.map((o: any) => o.shortId).filter(Boolean);
+
       const resellerOrders = await ResellerOrder.find({
-        motherOrderId: { $in: orderIds },
+        $or: [
+          { motherOrderId: { $in: orderIds } },
+          { shortId: { $in: shortIds } }
+        ],
         deletedAt: null
-      }).select('motherOrderId resellerCommission commissionStatus').lean();
-      const roMap = new Map(resellerOrders.map((ro: any) => [ro.motherOrderId?.toString(), ro]));
+      })
+      .select('motherOrderId shortId resellerCommission commissionStatus resellerId internalNote')
+      .populate('resellerId', 'storeName subdomain customDomain')
+      .lean();
+
+      const roMapByMother = new Map(resellerOrders.filter((ro: any) => ro.motherOrderId).map((ro: any) => [ro.motherOrderId.toString(), ro]));
+      const roMapByShort = new Map(resellerOrders.filter((ro: any) => ro.shortId).map((ro: any) => [ro.shortId, ro]));
 
       processedOrders = await Promise.all(orders.map(async (order: any) => {
         const orderObj = order.toObject ? order.toObject() : order;
-        const ro = roMap.get(order._id.toString());
+        const ro = roMapByMother.get(order._id.toString()) || (order.shortId ? roMapByShort.get(order.shortId) : null);
+
+        let finalReseller = orderObj.resellerId;
+        if (!finalReseller && ro?.resellerId) {
+          finalReseller = ro.resellerId;
+          const setFields: any = {
+            resellerId: typeof ro.resellerId === 'object' && (ro.resellerId as any)._id ? (ro.resellerId as any)._id : ro.resellerId
+          };
+          if (ro.internalNote && !orderObj.internalNote) {
+            setFields.internalNote = ro.internalNote;
+          }
+          Order.findByIdAndUpdate(order._id, { $set: setFields }).exec().catch(() => {});
+        }
+
+        const finalInternalNote = orderObj.internalNote || ro?.internalNote || '';
+        if (!orderObj.internalNote && ro?.internalNote) {
+          Order.findByIdAndUpdate(order._id, { $set: { internalNote: ro.internalNote } }).exec().catch(() => {});
+        }
+
         const finalCommission = ro?.resellerCommission ?? (orderObj.resellerCommission || 0);
-        const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (orderObj.resellerId ? 'pending' : undefined));
+        const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (finalReseller ? 'pending' : undefined));
 
         const phone = order.shippingAddress?.phone;
         if (!phone) {
           return {
             ...orderObj,
+            resellerId: finalReseller,
+            internalNote: finalInternalNote,
             resellerCommission: finalCommission,
             commissionStatus: finalCommStatus,
             isRepeat: false,
@@ -905,6 +935,8 @@ export async function GET(req: NextRequest) {
         if (otherOrders.length === 0) {
           return {
             ...orderObj,
+            resellerId: finalReseller,
+            internalNote: finalInternalNote,
             resellerCommission: finalCommission,
             commissionStatus: finalCommStatus,
             isRepeat: false,
@@ -926,6 +958,8 @@ export async function GET(req: NextRequest) {
 
         return {
           ...orderObj,
+          resellerId: finalReseller,
+          internalNote: finalInternalNote,
           resellerCommission: finalCommission,
           commissionStatus: finalCommStatus,
           isRepeat: true,

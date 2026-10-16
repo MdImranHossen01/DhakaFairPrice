@@ -1189,6 +1189,22 @@ function OrdersContent() {
                             </Badge>
                           ))}
                         </div>
+                        {/* Reseller Store Info */}
+                        {order.resellerId && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                              <span>🏪 Reseller:</span>
+                              <span className="font-extrabold underline decoration-indigo-400">
+                                {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Store'}
+                              </span>
+                              {typeof order.resellerId === 'object' && (order.resellerId.customDomain || order.resellerId.subdomain) && (
+                                <span className="text-[10px] text-indigo-500 font-normal font-mono">
+                                  ({order.resellerId.customDomain || order.resellerId.subdomain})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                         {/* Customer Note */}
                         {order.customerNote && (
                           <div className="mt-1 text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded border border-sky-200/50 font-medium whitespace-normal break-words" title={`Customer Note: ${order.customerNote}`}>
@@ -1197,19 +1213,14 @@ function OrdersContent() {
                         )}
                         {/* Internal Note */}
                         {order.internalNote && (
-                          <div className="mt-1 text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 p-1.5 rounded border border-amber-200/50 font-medium whitespace-normal break-words" title={`Internal Note: ${order.internalNote}`}>
-                            🔒 Staff: {order.internalNote}
+                          <div className="mt-1 text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 p-1.5 rounded border border-amber-300 dark:border-amber-800 font-medium whitespace-normal break-words" title={`Internal Note: ${order.internalNote}`}>
+                            <span className="font-bold text-amber-700 dark:text-amber-300">🔒 Reseller / Internal Note:</span> {order.internalNote}
                           </div>
                         )}
                         {/* System Note */}
                         {order.systemNote && (
                           <div className="mt-1 text-xs bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono whitespace-normal break-words" title={`System Info: ${order.systemNote}`}>
                             ⚙️ {order.systemNote}
-                          </div>
-                        )}
-                        {order.resellerId && typeof order.resellerId === 'object' && order.resellerId.storeName && (
-                          <div className="mt-1 text-xs bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/50 font-bold whitespace-normal break-words" title={order.resellerId.storeName}>
-                            Store: {order.resellerId.storeName}
                           </div>
                         )}
                       </div>
@@ -1451,20 +1462,13 @@ function OrdersContent() {
                       💬 Customer: {order.customerNote}
                     </div>
                   )}
-                  {order.internalNote && (
-                    <div className="text-[10px] bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium whitespace-pre-line">
-                      🔒 Staff: {order.internalNote}
-                    </div>
-                  )}
-                  {order.systemNote && (
-                    <div className="text-[9px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono truncate">
-                      ⚙️ {order.systemNote}
-                    </div>
-                  )}
                   {order.resellerId && (
-                    <div className="flex items-center justify-between gap-1 text-[10px] bg-indigo-50/70 dark:bg-indigo-950/20 px-2 py-1 rounded border border-indigo-200/50">
+                    <div className="flex items-center justify-between gap-1 text-[11px] bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1.5 rounded-md border border-indigo-200/60 dark:border-indigo-800">
                       <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">
-                        🏪 {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Order'}
+                        🏪 Reseller: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Order'}
+                        {typeof order.resellerId === 'object' && order.resellerId.customDomain && (
+                          <span className="text-[9px] text-indigo-500 font-normal ml-1">({order.resellerId.customDomain})</span>
+                        )}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="font-bold text-green-700 dark:text-green-400">
@@ -1484,6 +1488,16 @@ function OrdersContent() {
                           </Badge>
                         )}
                       </div>
+                    </div>
+                  )}
+                  {order.internalNote && (
+                    <div className="text-[11px] bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 p-1.5 rounded-md border border-amber-300 dark:border-amber-800 font-medium whitespace-pre-line">
+                      <span className="font-bold text-amber-700 dark:text-amber-300">🔒 Reseller / Internal Note:</span> {order.internalNote}
+                    </div>
+                  )}
+                  {order.systemNote && (
+                    <div className="text-[9px] bg-muted/60 text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono truncate">
+                      ⚙️ {order.systemNote}
                     </div>
                   )}
 

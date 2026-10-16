@@ -23,10 +23,46 @@ export async function GET(
     const order = await Order.findOne({ _id: slug })
       .populate('user', 'name email image')
       .populate('items.product', 'name price images slug uploadedBy')
-      .populate('resellerId', 'storeName subdomain pickupAddress contact');
+      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact');
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+    }
+
+    const orderObj = order.toObject ? order.toObject() : order;
+
+    // Fallback/auto-sync from ResellerOrder if resellerId or internalNote missing
+    try {
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      const ro = await ResellerOrder.findOne({
+        $or: [
+          { motherOrderId: order._id },
+          ...(order.shortId ? [{ shortId: order.shortId }] : [])
+        ],
+        deletedAt: null
+      })
+      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact')
+      .lean();
+
+      if (ro) {
+        if (!orderObj.resellerId && ro.resellerId) {
+          orderObj.resellerId = ro.resellerId;
+          const rId = typeof ro.resellerId === 'object' && (ro.resellerId as any)._id ? (ro.resellerId as any)._id : ro.resellerId;
+          Order.findByIdAndUpdate(order._id, { $set: { resellerId: rId } }).exec().catch(() => {});
+        }
+        if (!orderObj.internalNote && ro.internalNote) {
+          orderObj.internalNote = ro.internalNote;
+          Order.findByIdAndUpdate(order._id, { $set: { internalNote: ro.internalNote } }).exec().catch(() => {});
+        }
+        if (orderObj.resellerCommission === undefined && ro.resellerCommission !== undefined) {
+          orderObj.resellerCommission = ro.resellerCommission;
+        }
+        if (!orderObj.commissionStatus && ro.commissionStatus) {
+          orderObj.commissionStatus = ro.commissionStatus;
+        }
+      }
+    } catch (roErr) {
+      console.error('[Order Detail Reseller Sync Error]', roErr);
     }
 
     // Authorization: Must be an admin OR the owner of the order OR it is a guest order
@@ -38,7 +74,7 @@ export async function GET(
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json(order);
+    return NextResponse.json(orderObj);
   } catch (error) {
     console.error('Error fetching order detail:', error);
     if (error instanceof mongoose.Error.CastError) {
@@ -250,6 +286,21 @@ export async function PATCH(
         newPaymentStatus: updateData.paymentStatus,
         session: dbSession,
       });
+
+      // Also sync internalNote and customerNote to ResellerOrder
+      if (updateData.internalNote !== undefined || updateData.customerNote !== undefined || updateData.status || updateData.paymentStatus) {
+        const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+        const roUpdate: any = {};
+        if (updateData.internalNote !== undefined) roUpdate.internalNote = updateData.internalNote;
+        if (updateData.customerNote !== undefined) roUpdate.customerNote = updateData.customerNote;
+        if (updateData.status) roUpdate.status = updateData.status;
+        if (updateData.paymentStatus) roUpdate.paymentStatus = updateData.paymentStatus;
+        await ResellerOrder.updateMany(
+          { motherOrderId: slug },
+          { $set: roUpdate },
+          { session: dbSession }
+        );
+      }
 
       await dbSession.commitTransaction();
 

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, ExternalLink, FileText, Printer, Trash2, PlusCircle, Edit, X, MessageSquare, Lock, Tag } from 'lucide-react';
+import { Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, ExternalLink, FileText, Printer, Trash2, PlusCircle, Edit, X, MessageSquare, Lock, Tag, Store } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { generateInvoicePDF } from '@/lib/invoice-generator';
@@ -730,6 +730,39 @@ export default function OrderDetailsDialog({
              </div>
           ) : (
           <div className="space-y-6 pt-4">
+            {/* Reseller Store Card */}
+            {order.resellerId && (
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl text-indigo-700 dark:text-indigo-300">
+                    <Store className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">Reseller Store</span>
+                      <Badge variant="outline" className="text-[10px] bg-indigo-100/60 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-800 font-bold">
+                        {typeof order.resellerId === 'object' && order.resellerId.subdomain ? order.resellerId.subdomain : 'Partner Store'}
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-bold text-foreground">
+                      {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Store'}
+                    </p>
+                    {typeof order.resellerId === 'object' && (order.resellerId.customDomain || order.resellerId.subdomain) && (
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {order.resellerId.customDomain || `${order.resellerId.subdomain}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {order.resellerCommission !== undefined && (
+                  <div className="flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0">
+                    <span className="text-[10px] text-muted-foreground font-medium">Reseller Commission</span>
+                    <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Customer Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
@@ -1116,7 +1149,7 @@ export default function OrderDetailsDialog({
                   {order.internalNote && (
                     <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200/60 dark:border-amber-900 space-y-1">
                       <h4 className="text-xs font-bold uppercase text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                        <Lock className="h-3.5 w-3.5" /> Internal Note (Admin/Staff Private)
+                        <Lock className="h-3.5 w-3.5" /> Internal Note (Admin / Staff / Reseller Private)
                       </h4>
                       <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap">{order.internalNote}</p>
                     </div>
@@ -1154,10 +1187,15 @@ export default function OrderDetailsDialog({
                       </div>
                       <div className="flex flex-col">
                         <span className="font-medium whitespace-normal break-words leading-snug">{item.name}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           {item.color && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">{item.color}</Badge>}
                           {item.size && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">Size: {item.size}</Badge>}
                           <span className="text-xs text-muted-foreground ml-1">৳{Math.round(Number(item.price) || 0)} × {item.quantity}</span>
+                          {order.resellerId && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200">
+                              🏪 Reseller: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Partner'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
