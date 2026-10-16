@@ -153,15 +153,26 @@ export async function PUT(
       return NextResponse.json({ message: 'Product not found' }, { status: 404 });
     }
 
-    // Protect Reseller Products: Mother store admin cannot edit details, price, or stock of reseller products; only toggle visibility
+    // Protect Reseller Products: Mother Admin cannot edit physical specifications, details, or stock of reseller products;
+    // however, Mother Admin CAN manage Mother Shop approval (isMotherProduct), Mother Shop selling price (price, salePrice, discountRate), and visibility (isPublished, isShared, isFeatured, isNewArrival, isFlashSale).
     if (existingProduct.uploadedBy) {
-      const allowedKeysForResellerProducts = ['isPublished', 'isShared'];
+      const allowedKeysForResellerProducts = [
+        'isMotherProduct',
+        'price',
+        'salePrice',
+        'discountRate',
+        'isPublished',
+        'isShared',
+        'isFeatured',
+        'isNewArrival',
+        'isFlashSale',
+      ];
       const incomingKeys = Object.keys(body);
-      const isOnlyVisibilityToggle = incomingKeys.every(k => allowedKeysForResellerProducts.includes(k));
+      const isAllowedForMotherAdmin = incomingKeys.every(k => allowedKeysForResellerProducts.includes(k));
 
-      if (!isOnlyVisibilityToggle) {
+      if (!isAllowedForMotherAdmin) {
         return NextResponse.json({
-          message: 'Reseller products cannot be edited or restocked by Mother Admin. You may only toggle visibility (Publish/Hide).'
+          message: 'Reseller product specifications and stock cannot be modified by Mother Admin. You may only manage Mother Shop pricing, approval, and storefront visibility.'
         }, { status: 403 });
       }
     }
