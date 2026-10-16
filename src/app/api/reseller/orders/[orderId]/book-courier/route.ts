@@ -155,9 +155,9 @@ export async function POST(
       note: fullNote.slice(0, 160),
       // Extra fields for Pathao/RedX
       store_id: pStoreId,
-      city_id: body.city_id,
-      zone_id: body.zone_id,
-      area_id: body.area_id,
+      city_id: body.city_id || 1,
+      zone_id: body.zone_id || 1,
+      area_id: body.area_id || 1,
       item_weight: body.item_weight || body.weight || 0.5,
     };
 
