@@ -38,6 +38,10 @@ export async function syncProductToResellers(productId: string): Promise<SyncRes
       return { productId, resellersUpdated: 0, errors: ['Product not found'] };
     }
 
+    const isPersonalProduct =
+      product.isMotherProduct === false ||
+      Boolean(product.uploadedBy);
+
     const syncPayload = {
       name: product.name,
       slug: product.slug,
@@ -45,7 +49,8 @@ export async function syncProductToResellers(productId: string): Promise<SyncRes
       stock: product.stock ?? 0,
       purchasePrice: product.resellerPrice || product.purchasePrice || 0,
       motherPrice: product.price ?? 0,
-      isAvailableOnMother: product.isPublished ?? true,
+      isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
+      isPublished: product.isPublished !== undefined ? product.isPublished : true,
       syncedAt: new Date(),
     };
 
@@ -110,8 +115,21 @@ export async function addProductToReseller(
     await dbConnect();
 
     const product = await Product.findById(productId).lean();
-    if (!product) return { success: false, message: 'Product not found in Mother catalog' };
-    if (!product.isPublished) return { success: false, message: 'Product is not published on Mother site' };
+    if (!product) return { success: false, message: 'Product not found in catalog' };
+
+    const isPersonalProduct =
+      product.isMotherProduct === false ||
+      (product.uploadedBy && product.uploadedBy.toString() === resellerId.toString());
+
+    // Sourced mother products must be published on Mother shop catalog.
+    // Personal products uploaded by the reseller do not need to be published on Mother site.
+    if (!isPersonalProduct && !product.isPublished) {
+      return { success: false, message: 'Product is not published on Mother site' };
+    }
+
+    const isPublishedOnStore = isPersonalProduct
+      ? (product.isPublished !== undefined ? product.isPublished : true)
+      : true;
 
     await ResellerProduct.findOneAndUpdate(
       { resellerId, productId },
@@ -126,10 +144,10 @@ export async function addProductToReseller(
           stock: product.stock ?? 0,
           purchasePrice: product.resellerPrice || product.purchasePrice || 0,
           motherPrice: product.price ?? 0,
-          isAvailableOnMother: product.isPublished ?? true,
+          isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
+          isPublished: isPublishedOnStore,
           syncedAt: new Date(),
         },
-        $setOnInsert: { isPublished: true },
       },
       { upsert: true, new: true }
     );

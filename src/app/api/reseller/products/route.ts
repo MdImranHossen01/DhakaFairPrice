@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       variants: processedVariants.length > 0 ? processedVariants : (variants || []),
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
-      isPublished: false, // Default hidden/unpublished in Mother Shop. Mother Shop Admin decides when to publish.
+      isPublished: isPublished !== undefined ? !!isPublished : true,
       isShared: isShared !== undefined ? !!isShared : false,
       isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner
@@ -190,10 +190,12 @@ export async function PATCH(request: NextRequest) {
     if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
 
     // Sync the reseller's own storefront listing with updated product data
-    await ResellerProduct.updateOne(
+    await ResellerProduct.findOneAndUpdate(
       { resellerId, productId: product._id },
       {
         $set: {
+          resellerId,
+          productId: product._id,
           retailPrice: product.salePrice && product.salePrice > 0 ? product.salePrice : product.price,
           name: product.name,
           slug: product.slug,
@@ -201,10 +203,12 @@ export async function PATCH(request: NextRequest) {
           stock: product.stock ?? 0,
           purchasePrice: product.resellerPrice || product.purchasePrice || 0,
           motherPrice: product.price ?? 0,
-          isAvailableOnMother: product.isPublished ?? true,
+          isAvailableOnMother: true,
+          isPublished: product.isPublished !== undefined ? product.isPublished : true,
           syncedAt: new Date(),
         },
-      }
+      },
+      { upsert: true, new: true }
     );
 
     return NextResponse.json({ product });

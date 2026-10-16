@@ -216,19 +216,25 @@ export async function PATCH(request: NextRequest) {
     await product.save();
 
     // Sync uploader's storefront listing price & info
-    await ResellerProduct.updateOne(
+    await ResellerProduct.findOneAndUpdate(
       { resellerId: reseller._id, productId: product._id },
       {
-        retailPrice: Number(product.price),
-        name: product.name,
-        slug: product.slug,
-        images: product.images,
-        stock: product.stock,
-        purchasePrice: product.resellerPrice || product.purchasePrice || 0,
-        motherPrice: product.price || 0,
-        isAvailableOnMother: product.isPublished,
-        syncedAt: new Date()
-      }
+        $set: {
+          resellerId: reseller._id,
+          productId: product._id,
+          retailPrice: product.salePrice && product.salePrice > 0 ? product.salePrice : Number(product.price),
+          name: product.name,
+          slug: product.slug,
+          images: product.images,
+          stock: product.stock,
+          purchasePrice: product.resellerPrice || product.purchasePrice || 0,
+          motherPrice: product.price || 0,
+          isAvailableOnMother: true,
+          isPublished: product.isPublished !== undefined ? product.isPublished : true,
+          syncedAt: new Date(),
+        },
+      },
+      { upsert: true, new: true }
     );
 
     return NextResponse.json({ success: true, product });

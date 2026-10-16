@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import ResellerProduct from '@/models/ResellerProduct';
+import Product from '@/models/Product';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { NavbarSelector } from '@/components/templates/Registry';
@@ -24,8 +25,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   await dbConnect();
   const reseller = await Reseller.findOne({ subdomain, status: 'active' }).lean();
   if (!reseller) return { title: 'Not Found' };
-  const product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).lean();
-  if (!product) return { title: 'Product Not Found' };
+  let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).lean();
+  if (!product) {
+    const direct = await Product.findOne({ uploadedBy: reseller._id, slug, isPublished: true }).lean();
+    if (direct) {
+      return {
+        title: `${direct.name} — ${reseller.storeName}`,
+        description: direct.name,
+        openGraph: { images: direct.images?.[0] ? [direct.images[0]] : [] },
+      };
+    }
+    return { title: 'Product Not Found' };
+  }
   return {
     title: `${product.name} — ${reseller.storeName}`,
     description: product.name,
@@ -40,11 +51,10 @@ export default async function ResellerProductPage({ params }: Props) {
   const reseller = await Reseller.findOne({ subdomain, status: 'active' }).lean() as any;
   if (!reseller) notFound();
 
-  const productDoc = await ResellerProduct.findOne({
+  let productDoc = await ResellerProduct.findOne({
     resellerId: reseller._id,
     slug,
     isPublished: true,
-    isAvailableOnMother: true,
   }).populate({
     path: 'productId',
     populate: [
@@ -53,10 +63,57 @@ export default async function ResellerProductPage({ params }: Props) {
     ]
   }).lean() as any;
 
+  // If ResellerProduct is missing or not populated, check if reseller directly owns this product
+  if (!productDoc || !productDoc.productId) {
+    const directProduct = await Product.findOne({
+      uploadedBy: reseller._id,
+      slug,
+      isPublished: true,
+    }).populate([
+      { path: 'categories' },
+      { path: 'brand' }
+    ]).lean() as any;
+
+    if (directProduct) {
+      const retailPrice = directProduct.salePrice && directProduct.salePrice > 0 ? directProduct.salePrice : directProduct.price;
+      const createdRP = await ResellerProduct.findOneAndUpdate(
+        { resellerId: reseller._id, productId: directProduct._id },
+        {
+          $set: {
+            resellerId: reseller._id,
+            productId: directProduct._id,
+            retailPrice: retailPrice ?? 0,
+            name: directProduct.name,
+            slug: directProduct.slug,
+            images: directProduct.images ?? [],
+            stock: directProduct.stock ?? 0,
+            purchasePrice: directProduct.resellerPrice || directProduct.purchasePrice || 0,
+            motherPrice: directProduct.price ?? 0,
+            isAvailableOnMother: true,
+            isPublished: true,
+            syncedAt: new Date(),
+          }
+        },
+        { upsert: true, new: true }
+      ).lean() as any;
+
+      productDoc = {
+        ...createdRP,
+        productId: directProduct,
+      };
+    }
+  }
+
   if (!productDoc || !productDoc.productId) notFound();
 
-  // Format product to match the shape expected by ResellerProductDetailsClient
   const parent = productDoc.productId as any;
+  const isPersonal = parent.isMotherProduct === false || (parent.uploadedBy && parent.uploadedBy.toString() === reseller._id.toString());
+  // If it's a mother catalog product and unpublished on mother site, 404
+  if (!isPersonal && productDoc.isAvailableOnMother === false) {
+    notFound();
+  }
+
+  // Format product to match the shape expected by ResellerProductDetailsClient
   const product = {
     _id: productDoc._id.toString(),
     productId: parent._id ? parent._id.toString() : productDoc.productId?.toString(),
