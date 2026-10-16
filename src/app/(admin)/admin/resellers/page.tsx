@@ -59,8 +59,10 @@ export default function AdminResellersPage() {
   const [courierSteadfastApiKey, setCourierSteadfastApiKey] = useState('');
   const [courierSteadfastSecretKey, setCourierSteadfastSecretKey] = useState('');
   const [courierPathaoStoreId, setCourierPathaoStoreId] = useState('');
+  const [courierRedxPickupStoreId, setCourierRedxPickupStoreId] = useState('');
   const [savingCourier, setSavingCourier] = useState(false);
   const [creatingPathaoStore, setCreatingPathaoStore] = useState(false);
+  const [creatingRedxStore, setCreatingRedxStore] = useState(false);
 
   const handleCreatePathaoStore = async () => {
     if (!selectedCourierReseller) return;
@@ -86,11 +88,36 @@ export default function AdminResellersPage() {
     }
   };
 
+  const handleCreateRedxStore = async () => {
+    if (!selectedCourierReseller) return;
+    setCreatingRedxStore(true);
+    try {
+      const res = await fetch(`/api/admin/resellers/${selectedCourierReseller._id}/create-redx-store`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'RedX pickup store created successfully!');
+        if (data.storeId) {
+          setCourierRedxPickupStoreId(String(data.storeId));
+        }
+        fetchResellers();
+      } else {
+        toast.error(data.error || data.message || 'Failed to create RedX pickup store');
+      }
+    } catch {
+      toast.error('Network error creating RedX pickup store');
+    } finally {
+      setCreatingRedxStore(false);
+    }
+  };
+
   const openCourierModal = (reseller: any) => {
     setSelectedCourierReseller(reseller);
     setCourierSteadfastApiKey(reseller.courierConfig?.steadfast?.apiKey || '');
     setCourierSteadfastSecretKey(reseller.courierConfig?.steadfast?.secretKey || '');
     setCourierPathaoStoreId(reseller.courierConfig?.pathao?.storeId || '');
+    setCourierRedxPickupStoreId(reseller.courierConfig?.redx?.pickupStoreId || '');
     setCourierDialogOpen(true);
   };
 
@@ -111,6 +138,10 @@ export default function AdminResellersPage() {
             },
             pathao: {
               storeId: courierPathaoStoreId.trim(),
+            },
+            redx: {
+              ...(selectedCourierReseller.courierConfig?.redx || {}),
+              pickupStoreId: courierRedxPickupStoreId.trim(),
             },
           },
         }),
@@ -888,6 +919,39 @@ export default function AdminResellersPage() {
                 >
                   {creatingPathaoStore ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
                   ⚡ Auto-Create Store in Pathao
+                </Button>
+              </div>
+            </div>
+
+            {/* RedX Pickup Store ID */}
+            <div className="space-y-2 p-3.5 rounded-lg border bg-background">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-xs flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-600 inline-block" />
+                  RedX Courier Hub (Pickup Store ID)
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">redx.com.bd</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                RedX Pickup Store ID for this reseller. Click below to automatically create and register this pickup store in RedX using the reseller's address.
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  value={courierRedxPickupStoreId}
+                  onChange={e => setCourierRedxPickupStoreId(e.target.value.trim())}
+                  placeholder="e.g. 105"
+                  className="font-mono text-xs h-9 flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCreateRedxStore}
+                  disabled={creatingRedxStore || savingCourier}
+                  className="h-9 text-xs font-semibold text-red-600 border-red-300 hover:bg-red-50 shrink-0"
+                >
+                  {creatingRedxStore ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  ⚡ Auto-Create Store in RedX
                 </Button>
               </div>
             </div>

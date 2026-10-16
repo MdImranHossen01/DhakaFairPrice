@@ -79,7 +79,7 @@ export interface IReseller extends Document {
     activeProvider?: string;
     steadfast?: { apiKey?: string; secretKey?: string };
     pathao?: { storeId?: string };
-    redx?: { apiKey?: string };
+    redx?: { apiKey?: string; pickupStoreId?: string };
     bdCourier?: { apiKey?: string };
   };
   totalOrders: number;
@@ -158,6 +158,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
         },
         redx: {
           apiKey: { type: String, default: '' },
+          pickupStoreId: { type: String, default: '' },
         },
         bdCourier: {
           apiKey: { type: String, default: '' },

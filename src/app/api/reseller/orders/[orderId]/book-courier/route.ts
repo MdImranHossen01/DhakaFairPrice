@@ -183,6 +183,36 @@ export async function POST(
       pStoreId = Number(pathao.storeId);
     }
 
+    const rApiKey = r?.courierConfig?.redx?.apiKey || redx?.apiKey;
+    let redxStoreId = body.pickup_store_id || body.store_id || (r?.courierConfig?.redx?.pickupStoreId ? Number(r.courierConfig.redx.pickupStoreId) : undefined);
+
+    // Auto-discover or create RedX pickup store if missing for this reseller
+    if (targetCourier === 'redx' && !redxStoreId && r?.pickupAddress?.address && r?.pickupAddress?.phone && rApiKey) {
+      try {
+        const autoRedxProvider = new RedXProvider({
+          apiKey: rApiKey,
+          isSandbox: redx?.isSandbox,
+        });
+        const autoStore = await autoRedxProvider.findOrCreateStoreForReseller({
+          hubName: r.pickupAddress.hubName,
+          storeName: r.storeName,
+          contactPerson: r.pickupAddress.contactPerson,
+          phone: r.pickupAddress.phone,
+          address: r.pickupAddress.address,
+          division: r.pickupAddress.division,
+          district: r.pickupAddress.district,
+          thana: r.pickupAddress.thana,
+        });
+        if (autoStore.success && autoStore.storeId) {
+          redxStoreId = autoStore.storeId;
+          const ResellerModel = (await import('@/models/Reseller')).default;
+          await ResellerModel.updateOne({ _id: resellerId }, { $set: { 'courierConfig.redx.pickupStoreId': String(autoStore.storeId) } });
+        }
+      } catch (autoErr) {
+        console.warn('Auto RedX store sync failed during booking:', autoErr);
+      }
+    }
+
     const shippingData = {
       invoice: resellerOrder.shortId || order.shortId || order._id.toString().slice(-8).toUpperCase(),
       recipient_name: addr.fullName || resellerOrder.customer?.name || "Customer",
@@ -191,7 +221,8 @@ export async function POST(
       cod_amount: resellerOrder.paymentStatus === 'Paid' || order.paymentStatus === 'Paid' ? 0 : (resellerOrder.totalAmount || order.totalAmount || 0),
       note: fullNote.slice(0, 160),
       // Extra fields for Pathao/RedX
-      store_id: pStoreId,
+      store_id: targetCourier === 'redx' ? (redxStoreId ? String(redxStoreId) : undefined) : (pStoreId ? String(pStoreId) : undefined),
+      pickup_store_id: redxStoreId,
       city_id: body.city_id || 1,
       zone_id: body.zone_id || 1,
       area_id: body.area_id || 1,
@@ -203,8 +234,6 @@ export async function POST(
 
     const sApiKey = r?.courierConfig?.steadfast?.apiKey || steadfast?.apiKey;
     const sSecretKey = r?.courierConfig?.steadfast?.secretKey || steadfast?.secretKey;
-
-    const rApiKey = r?.courierConfig?.redx?.apiKey || redx?.apiKey;
 
     if (targetCourier === 'steadfast') {
       if (!sApiKey || !sSecretKey) {
