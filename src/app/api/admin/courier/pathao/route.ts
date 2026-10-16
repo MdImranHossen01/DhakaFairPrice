@@ -8,7 +8,7 @@ import { PathaoProvider } from '@/lib/shipping/providers/pathao';
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !(['admin', 'super_admin', 'manager', 'moderator'].includes((session.user as any)?.role))) {
+    if (!session || !(['admin', 'super_admin', 'manager', 'moderator', 'reseller'].includes((session.user as any)?.role))) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
