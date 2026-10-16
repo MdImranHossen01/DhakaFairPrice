@@ -463,23 +463,31 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     });
   };
 
+  const getCatParentId = (catObj: any): string | null => {
+    if (!catObj?.parentCategory) return null;
+    if (typeof catObj.parentCategory === 'object') {
+      return catObj.parentCategory._id?.toString() || null;
+    }
+    return catObj.parentCategory.toString();
+  };
+
+  const getAllDescendantIds = (parentId: string): string[] => {
+    const directChildren = categories
+      .filter(c => getCatParentId(c) === parentId)
+      .map(c => c._id);
+    const furtherDescendants = directChildren.flatMap(childId => getAllDescendantIds(childId));
+    return [...directChildren, ...furtherDescendants];
+  };
+
   const toggleCategory = (catId: string) => {
-    const currentCats = form.getValues('categories');
+    const currentCats = form.getValues('categories') || [];
     const category = categories.find(c => c._id === catId);
     if (!category) return;
 
     if (currentCats.includes(catId)) {
-      // Removing category
-      let newCats = currentCats.filter(id => id !== catId);
-      
-      // If it's a main category (no parent), also remove its subcategories
-      if (!category.parentCategory) {
-        newCats = newCats.filter(id => {
-          const sub = categories.find(c => c._id === id);
-          const parentId = sub?.parentCategory?._id || sub?.parentCategory;
-          return parentId !== catId;
-        });
-      }
+      // Removing category and all its descendants (subcategories and child categories)
+      const idsToRemove = new Set([catId, ...getAllDescendantIds(catId)]);
+      const newCats = currentCats.filter(id => !idsToRemove.has(id));
 
       form.setValue('categories', newCats, {
         shouldValidate: true,
@@ -494,11 +502,28 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     }
   };
 
-  const selectedCats = form.watch('categories');
-  const mainCategories = categories.filter((cat) => !cat.parentCategory);
+  const selectedCats = form.watch('categories') || [];
+
+  // Level 1: Main Categories (categories with no parent)
+  const mainCategories = categories.filter((cat) => !getCatParentId(cat));
   const selectedMainCategoryIds = mainCategories
     .filter(mc => selectedCats.includes(mc._id))
     .map(mc => mc._id);
+
+  // Level 2: Sub Categories (parent is one of selected main categories)
+  const availableSubCategories = categories.filter(sub => {
+    const parentId = getCatParentId(sub);
+    return parentId && selectedMainCategoryIds.includes(parentId);
+  });
+  const selectedSubCategoryIds = availableSubCategories
+    .filter(sc => selectedCats.includes(sc._id))
+    .map(sc => sc._id);
+
+  // Level 3: Child Categories (parent is one of selected sub categories)
+  const availableChildCategories = categories.filter(child => {
+    const parentId = getCatParentId(child);
+    return parentId && selectedSubCategoryIds.includes(parentId);
+  });
 
   // Validation Check: ensure at least one main category is selected
   const hasMainCategory = selectedMainCategoryIds.length > 0;
@@ -1306,13 +1331,9 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                 </div>
                 <div className="space-y-4 pt-2">
                   {selectedMainCategoryIds.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {categories
-                        .filter((sub) => {
-                          const parentId = sub.parentCategory?._id || sub.parentCategory;
-                          return selectedMainCategoryIds.includes(parentId);
-                        })
-                        .map((subCat) => (
+                    availableSubCategories.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {availableSubCategories.map((subCat) => (
                           <Badge
                             key={subCat._id}
                             variant={selectedCats.includes(subCat._id) ? 'default' : 'outline'}
@@ -1322,10 +1343,50 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                             {subCat.name}
                           </Badge>
                         ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        No subcategories available for the selected product category
+                      </p>
+                    )
                   ) : (
                     <p className="text-sm text-muted-foreground italic">
                       Select a product category to see available subcategories
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-bold">Child Category</Label>
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold">Optional</span>
+                </div>
+                <div className="space-y-4 pt-2">
+                  {selectedSubCategoryIds.length > 0 ? (
+                    availableChildCategories.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {availableChildCategories.map((childCat) => (
+                          <Badge
+                            key={childCat._id}
+                            variant={selectedCats.includes(childCat._id) ? 'default' : 'outline'}
+                            className="cursor-pointer py-1 px-3 text-xs"
+                            onClick={() => toggleCategory(childCat._id)}
+                          >
+                            {childCat.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        No child categories available for the selected subcategory
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      Select a subcategory to see available child categories (e.g. Bags, Wallets)
                     </p>
                   )}
                 </div>
