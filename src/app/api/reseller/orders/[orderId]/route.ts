@@ -104,6 +104,12 @@ export async function PATCH(
           return NextResponse.json({ message: 'An internal note / reason is mandatory when setting order status to Hold' }, { status: 400 });
         }
       }
+      if (status === 'Cancelled') {
+        const finalNote = internalNote !== undefined ? internalNote : order.internalNote;
+        if (!finalNote || !finalNote.trim()) {
+          return NextResponse.json({ message: 'A cancellation reason is mandatory when setting order status to Cancelled' }, { status: 400 });
+        }
+      }
       order.status = status;
       if (status === 'Cancelled') {
         order.commissionStatus = 'cancelled';
@@ -188,64 +194,10 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ orderId: string }> }
-) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== 'reseller') {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { orderId } = await params;
-    if (!orderId) {
-      return NextResponse.json({ message: 'Order ID is required' }, { status: 400 });
-    }
-
-    await dbConnect();
-
-    const reseller = await Reseller.findOne({ userId: session.user.id });
-    if (!reseller) {
-      return NextResponse.json({ message: 'Reseller not found' }, { status: 404 });
-    }
-
-    // Soft delete ResellerOrder only for this reseller.
-    const order = await ResellerOrder.findOneAndUpdate(
-      { _id: orderId, resellerId: reseller._id },
-      { $set: { deletedAt: new Date(), commissionStatus: 'cancelled' } },
-      { new: true }
-    );
-
-    if (!order) {
-      return NextResponse.json({ message: 'Order not found' }, { status: 404 });
-    }
-
-    // Cancel linked wallet transactions & reverse commission
-    try {
-      const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
-      await ResellerWalletTransaction.updateMany(
-        { orderId: order._id, status: { $ne: 'cancelled' } },
-        { $set: { status: 'cancelled' } }
-      );
-      const commission = Number(order.resellerCommission) || 0;
-      if (commission > 0) {
-        const decField = order.commissionStatus === 'cleared' ? 'walletBalance' : 'pendingBalance';
-        await Reseller.findByIdAndUpdate(reseller._id, {
-          $inc: {
-            [decField]: -commission,
-            totalEarnings: -commission
-          }
-        });
-      }
-    } catch (cancelErr) {
-      console.error('[Reseller Order Delete Wallet Reversal Error]', cancelErr);
-    }
-
-    return NextResponse.json({ message: 'Order deleted successfully from your dashboard' });
-  } catch (error: any) {
-    console.error('Error deleting reseller order:', error);
-    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
-  }
+export async function DELETE() {
+  return NextResponse.json(
+    { message: 'Order deletion is not allowed for resellers. Only Mother Shop Admin can delete orders.' },
+    { status: 403 }
+  );
 }
 

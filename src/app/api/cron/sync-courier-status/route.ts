@@ -160,7 +160,7 @@ async function handleSyncCourierStatus(req: NextRequest) {
 
           if (normalized === 'delivered' || normalized === 'partial_delivered' || normalized === 'partial delivered') {
             isDelivered = true;
-          } else if (normalized.includes('cancel') || normalized.includes('return')) {
+          } else if (normalized.includes('cancel') || normalized.includes('return') || normalized.includes('failed')) {
             isCancelled = true;
           }
 
@@ -191,7 +191,8 @@ async function handleSyncCourierStatus(req: NextRequest) {
             isDelivered = true;
           } else if (
             normalized.includes('cancel') ||
-            normalized.includes('return')
+            normalized.includes('return') ||
+            normalized.includes('failed')
           ) {
             isCancelled = true;
           }
@@ -218,7 +219,7 @@ async function handleSyncCourierStatus(req: NextRequest) {
 
           if (normalized.includes('delivered') || normalized === 'paid') {
             isDelivered = true;
-          } else if (normalized.includes('cancel') || normalized.includes('return')) {
+          } else if (normalized.includes('cancel') || normalized.includes('return') || normalized.includes('failed')) {
             isCancelled = true;
           }
 
@@ -245,6 +246,12 @@ async function handleSyncCourierStatus(req: NextRequest) {
             courierStatus,
           });
         } else if (isCancelled) {
+          updateFields.status = 'Cancelled';
+          const courierNameLabel = order.shippingDetails?.courierName || 'Courier';
+          const cancelMsg = `[Courier Auto-Cancel] Delivery not completed by ${courierNameLabel}. Courier Status: "${courierStatus}". Auto-marked as Cancelled.`;
+          updateFields.internalNote = order.internalNote ? `${order.internalNote} | ${cancelMsg}` : cancelMsg;
+          updateFields.systemNote = cancelMsg;
+
           cancelledCount++;
           results.push({
             orderId: order._id,
@@ -252,6 +259,7 @@ async function handleSyncCourierStatus(req: NextRequest) {
             courier: order.shippingDetails?.courierName,
             action: 'courier_cancelled',
             courierStatus,
+            message: cancelMsg,
           });
         } else {
           results.push({
@@ -276,6 +284,8 @@ async function handleSyncCourierStatus(req: NextRequest) {
               'shippingDetails.courierStatus': courierStatus,
               ...(updateFields.status ? { status: updateFields.status } : {}),
               ...(updateFields.paymentStatus ? { paymentStatus: updateFields.paymentStatus } : {}),
+              ...(updateFields.internalNote ? { internalNote: updateFields.internalNote } : {}),
+              ...(updateFields.systemNote ? { systemNote: updateFields.systemNote } : {}),
             },
           }
         );

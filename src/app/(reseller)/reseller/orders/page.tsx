@@ -333,46 +333,30 @@ function OrdersContent() {
 
   const handleCancelOrder = async (orderId: string) => {
     const result = await Swal.fire({
-      title: 'Cancel Order?',
-      text: "Are you sure you want to cancel this order?",
-      icon: 'warning',
+      title: 'Cancel Order Reason',
+      text: 'Please provide a mandatory reason for cancelling this order:',
+      input: 'textarea',
+      inputPlaceholder: 'Enter cancellation reason (e.g. Customer cancelled, duplicate order, wrong address/phone)...',
+      inputAttributes: {
+        'aria-label': 'Cancellation reason',
+        'rows': '3'
+      },
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, cancel it!',
-    });
-
-    if (result.isConfirmed) {
-      await updateStatus(orderId, 'Cancelled');
-    }
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    const result = await Swal.fire({
-      title: 'Delete Order?',
-      text: "Are you sure you want to remove this order from your dashboard?",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-    });
-
-    if (result.isConfirmed) {
-      try {
-        const res = await fetch(`/api/reseller/orders/${orderId}`, {
-          method: 'DELETE',
-        });
-        if (res.ok) {
-          toast.success('Order deleted successfully from your dashboard');
-          fetchOrders();
-        } else {
-          const err = await res.json().catch(() => ({}));
-          toast.error(err.message || 'Failed to delete order');
+      confirmButtonText: 'Cancel Order',
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'Cancellation reason is mandatory to cancel this order!';
         }
-      } catch {
-        toast.error('Network error while deleting order');
+        return null;
       }
+    });
+
+    if (result.isConfirmed && result.value) {
+      await updateStatus(orderId, 'Cancelled', {
+        internalNote: `[Reseller Cancelled] Reason: ${result.value.trim()}`
+      });
     }
   };
 
@@ -789,9 +773,6 @@ function OrdersContent() {
                                   <DropdownMenuItem className="text-destructive font-medium" onClick={() => handleCancelOrder(order._id)}>
                                     Cancel Order
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive font-medium" onClick={() => handleDeleteOrder(order._id)}>
-                                    Delete Order
-                                  </DropdownMenuItem>
                                 </DropdownMenuGroup>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -923,7 +904,6 @@ function OrdersContent() {
                               <DropdownMenuItem onClick={() => updateStatus(order._id, 'Confirmed')}>Confirm</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleHoldOrder(order._id)}>Hold Order</DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive font-medium" onClick={() => handleCancelOrder(order._id)}>Cancel Order</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive font-medium" onClick={() => handleDeleteOrder(order._id)}>Delete Order</DropdownMenuItem>
                             </DropdownMenuGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
