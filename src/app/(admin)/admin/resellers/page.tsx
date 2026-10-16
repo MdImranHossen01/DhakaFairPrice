@@ -60,6 +60,31 @@ export default function AdminResellersPage() {
   const [courierSteadfastSecretKey, setCourierSteadfastSecretKey] = useState('');
   const [courierPathaoStoreId, setCourierPathaoStoreId] = useState('');
   const [savingCourier, setSavingCourier] = useState(false);
+  const [creatingPathaoStore, setCreatingPathaoStore] = useState(false);
+
+  const handleCreatePathaoStore = async () => {
+    if (!selectedCourierReseller) return;
+    setCreatingPathaoStore(true);
+    try {
+      const res = await fetch(`/api/admin/resellers/${selectedCourierReseller._id}/create-pathao-store`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Pathao store created successfully!');
+        if (data.storeId) {
+          setCourierPathaoStoreId(String(data.storeId));
+        }
+        fetchResellers();
+      } else {
+        toast.error(data.error || data.message || 'Failed to create Pathao store');
+      }
+    } catch {
+      toast.error('Network error creating Pathao store');
+    } finally {
+      setCreatingPathaoStore(false);
+    }
+  };
 
   const openCourierModal = (reseller: any) => {
     setSelectedCourierReseller(reseller);
@@ -844,15 +869,26 @@ export default function AdminResellersPage() {
                 <span className="text-[10px] text-muted-foreground font-mono">merchant.pathao.com</span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Pathao Store ID for this reseller's pickup hub (Auto-synced or manually entered).
+                Pathao Store ID for this reseller's pickup hub. You can click the button below to auto-create this hub in your Pathao merchant account using the reseller's address.
               </p>
-              <div>
+              <div className="flex items-center gap-2 pt-1">
                 <Input
                   value={courierPathaoStoreId}
                   onChange={e => setCourierPathaoStoreId(e.target.value.trim())}
                   placeholder="e.g. 383246"
-                  className="font-mono text-xs h-9 mt-0.5"
+                  className="font-mono text-xs h-9 flex-1"
                 />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCreatePathaoStore}
+                  disabled={creatingPathaoStore || savingCourier}
+                  className="h-9 text-xs font-semibold text-rose-600 border-rose-300 hover:bg-rose-50 shrink-0"
+                >
+                  {creatingPathaoStore ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  ⚡ Auto-Create Store in Pathao
+                </Button>
               </div>
             </div>
           </div>
