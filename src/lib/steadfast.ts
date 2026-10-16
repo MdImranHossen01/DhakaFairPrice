@@ -65,6 +65,7 @@ export async function createSteadfastOrder(payload: SteadfastOrderPayload, confi
  * Checks the status of a Steadfast delivery
  */
 export async function getSteadfastStatus(consignmentId: string, config: SteadfastConfig) {
+  try {
     const response = await fetch(`${BASE_URL}/status_by_cid/${consignmentId}`, {
       method: 'GET',
       headers: {
@@ -73,7 +74,23 @@ export async function getSteadfastStatus(consignmentId: string, config: Steadfas
         'Content-Type': 'application/json',
       },
     });
-  
-    const data = await response.json();
+
+    const text = await response.text();
+    let data: any = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return {
+        status: response.status,
+        message: text?.trim() || `Steadfast HTTP ${response.status}`,
+      };
+    }
+
     return data;
+  } catch (err: any) {
+    return {
+      status: 500,
+      message: err.message || 'Steadfast request failed',
+    };
+  }
 }

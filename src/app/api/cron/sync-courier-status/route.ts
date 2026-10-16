@@ -144,12 +144,23 @@ async function handleSyncCourierStatus(req: NextRequest) {
 
           steadfastCount++;
           const statusData = await getSteadfastStatus(consignmentId, steadfastConfig);
+          if (statusData?.status === 401 || String(statusData?.message || '').toLowerCase().includes('unauthorized')) {
+            results.push({
+              orderId: order._id,
+              shortId: order.shortId,
+              courier: 'Steadfast',
+              action: 'error',
+              error: 'Steadfast API key/secret is unauthorized or expired. Please check Admin Settings > Courier.',
+            });
+            errorCount++;
+            continue;
+          }
           courierStatus = statusData?.delivery_status || statusData?.status || '';
-          const normalized = courierStatus.toLowerCase().trim();
+          const normalized = String(courierStatus).toLowerCase().trim();
 
           if (normalized === 'delivered' || normalized === 'partial_delivered' || normalized === 'partial delivered') {
             isDelivered = true;
-          } else if (normalized === 'cancelled' || normalized === 'canceled') {
+          } else if (normalized.includes('cancel') || normalized.includes('return')) {
             isCancelled = true;
           }
 
@@ -168,21 +179,19 @@ async function handleSyncCourierStatus(req: NextRequest) {
 
           pathaoCount++;
           const statusData = await pathaoProvider.getOrderStatus(consignmentId);
-          // Pathao returns order_status (e.g. 'Delivered', 'Partial Delivered', 'Return', 'Cancelled', 'In Transit')
+          // Pathao returns order_status (e.g. 'Delivered', 'Partial Delivered', 'Pickup Cancel', 'Return', 'Cancelled', 'In Transit')
           courierStatus =
             statusData?.order_status ||
             statusData?.order_status_slug ||
             statusData?.status ||
             '';
-          const normalized = courierStatus.toLowerCase().replace(/_/g, ' ').trim();
+          const normalized = String(courierStatus).toLowerCase().replace(/_/g, ' ').trim();
 
           if (normalized === 'delivered' || normalized === 'partial delivered') {
             isDelivered = true;
           } else if (
-            normalized === 'cancelled' ||
-            normalized === 'canceled' ||
-            normalized === 'return' ||
-            normalized === 'returned'
+            normalized.includes('cancel') ||
+            normalized.includes('return')
           ) {
             isCancelled = true;
           }
