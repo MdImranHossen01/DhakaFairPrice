@@ -1237,94 +1237,126 @@ function ProductsContent() {
       </Dialog>
 
       {/* Add Reseller Product to Mother Shop Dialog */}
-      <Dialog open={addToMotherModalOpen} onOpenChange={setAddToMotherModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-primary" />
-              <span>Add Product to Mother Shop</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              This reseller's product will be approved and displayed on the main Mother Shop storefront.
-            </DialogDescription>
-          </DialogHeader>
+      {(() => {
+        const resellerCost = selectedResellerProduct
+          ? (selectedResellerProduct.resellerPrice || selectedResellerProduct.purchasePrice || selectedResellerProduct.price || 0)
+          : 0;
+        const sellingNum = parseFloat(motherSellingPrice) || 0;
+        const motherProfit = sellingNum > resellerCost ? Math.round(sellingNum - resellerCost) : 0;
 
-          {selectedResellerProduct && (
-            <div className="space-y-4 py-2">
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/40">
-                <div className="h-14 w-14 rounded-md overflow-hidden bg-background border shrink-0">
-                  {selectedResellerProduct.images?.[0] ? (
-                    <Image
-                      src={selectedResellerProduct.images[0]}
-                      alt={selectedResellerProduct.name}
-                      width={56}
-                      height={56}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Store className="h-6 w-6 text-muted-foreground" />
+        return (
+          <Dialog open={addToMotherModalOpen} onOpenChange={setAddToMotherModalOpen}>
+            <DialogContent className="max-w-md rounded-xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-primary" />
+                  <span>Add to Mother Shop</span>
+                </DialogTitle>
+                <DialogDescription>
+                  Set your customer selling price for the Mother Shop.
+                </DialogDescription>
+              </DialogHeader>
+
+              {selectedResellerProduct && (
+                <div className="space-y-4 py-2">
+                  {/* Product preview */}
+                  <div className="flex gap-3 items-center border p-3 rounded-lg bg-muted/20">
+                    <div className="h-14 w-14 bg-muted relative rounded-md overflow-hidden border shrink-0">
+                      {selectedResellerProduct.images?.[0] ? (
+                        <Image
+                          src={selectedResellerProduct.images[0]}
+                          alt={selectedResellerProduct.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Store className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 text-xs">
-                  <p className="font-bold text-foreground text-sm truncate">{selectedResellerProduct.name}</p>
-                  <p className="text-muted-foreground font-mono">SKU: {selectedResellerProduct.sku || 'N/A'}</p>
-                  <p className="text-primary font-semibold flex items-center gap-1 mt-0.5">
-                    <Store className="h-3 w-3" /> Reseller: {selectedResellerProduct.uploadedBy?.storeName || 'Reseller'}
-                  </p>
-                </div>
-              </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm line-clamp-1">{selectedResellerProduct.name}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedResellerProduct.sku || '-'}</p>
+                      <Badge className="text-[9px] mt-1 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300/40">
+                        Reseller: {selectedResellerProduct.uploadedBy?.storeName || 'Reseller'}
+                      </Badge>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="mother-price" className="text-xs font-semibold">
-                  Mother Shop Selling Price (৳) *
-                </Label>
-                <Input
-                  id="mother-price"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="Enter selling price"
-                  value={motherSellingPrice}
-                  onChange={(e) => setMotherSellingPrice(e.target.value)}
-                  className="h-9 text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Reseller Asking Price: ৳{selectedResellerProduct.price}
-                </p>
-              </div>
-            </div>
-          )}
+                  {/* Cost / Profit display */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border p-3 rounded-lg text-center bg-muted/40">
+                      <span className="text-[10px] text-muted-foreground block uppercase font-bold">Reseller Cost</span>
+                      <span className="text-lg font-black text-foreground">
+                        ৳{resellerCost.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className={`border p-3 rounded-lg text-center ${motherProfit > 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/40'}`}>
+                      <span className={`text-[10px] block uppercase font-bold ${motherProfit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        Mother Profit
+                      </span>
+                      <span className={`text-lg font-black ${motherProfit > 0 ? 'text-green-600' : 'text-foreground'}`}>
+                        ৳{motherProfit.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddToMotherModalOpen(false)}
-              disabled={submittingToMother}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleConfirmAddToMother}
-              disabled={submittingToMother || !motherSellingPrice}
-              className="gap-1.5 font-bold"
-            >
-              {submittingToMother ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding...
-                </>
-              ) : (
-                <>
-                  <PackagePlus className="h-3.5 w-3.5" /> Confirm & Add to Mother Shop
-                </>
+                  {/* Price input */}
+                  <div className="space-y-1">
+                    <Label htmlFor="mother-price" className="font-bold text-xs">
+                      Mother Shop Selling Price (৳)
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-muted-foreground text-sm font-bold">৳</span>
+                      <Input
+                        id="mother-price"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Enter selling price"
+                        value={motherSellingPrice}
+                        onChange={(e) => setMotherSellingPrice(e.target.value)}
+                        className="pl-7 h-10 text-sm font-extrabold"
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      {motherProfit > 0
+                        ? `Estimated profit per sale: ৳${motherProfit.toLocaleString()}`
+                        : 'Price must be equal to or higher than reseller cost'}
+                    </p>
+                  </div>
+                </div>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setAddToMotherModalOpen(false)}
+                  disabled={submittingToMother}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmAddToMother}
+                  disabled={submittingToMother || !motherSellingPrice}
+                  className="font-bold"
+                >
+                  {submittingToMother ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Store className="mr-2 h-4 w-4" /> Add to Mother Shop
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
