@@ -25,7 +25,11 @@ export async function POST(req: NextRequest) {
 
     // Re-pack for ImgBB
     const imgbbFormData = new FormData();
-    imgbbFormData.append('image', image);
+    if (image instanceof File) {
+      imgbbFormData.append('image', image, image.name);
+    } else {
+      imgbbFormData.append('image', image);
+    }
 
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
       method: 'POST',
@@ -44,7 +48,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (data.success) {
-      return NextResponse.json({ url: data.data.url });
+      // Prioritize original full-quality image URL over downscaled/thumbnail viewer URLs
+      const fullQualityUrl = data.data.image?.url || data.data.display_url || data.data.url;
+      return NextResponse.json({ url: fullQualityUrl });
     } else {
       const errorMsg = data?.error?.message || data?.error || `Upload failed with status ${response.status}`;
       return NextResponse.json({ message: errorMsg }, { status: 400 });
