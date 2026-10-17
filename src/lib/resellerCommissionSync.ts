@@ -75,7 +75,11 @@ export async function syncResellerCommissionForMotherOrder({
     } else if (shouldClear && currentCommissionStatus === 'pending') {
       rOrder.commissionStatus = 'cleared';
       if (newStatus) rOrder.status = newStatus as any;
-      if (newPaymentStatus) rOrder.paymentStatus = newPaymentStatus as any;
+      if (newPaymentStatus) {
+        rOrder.paymentStatus = newPaymentStatus as any;
+      } else if (finalStatus === 'Delivered' || finalStatus === 'Paid') {
+        rOrder.paymentStatus = 'Paid';
+      }
       await rOrder.save({ session });
 
       const txQuery = ResellerWalletTransaction.updateMany(
@@ -137,6 +141,9 @@ export async function reconcileResellerCommissions(resellerId?: string | mongoos
     const commission = Number(rOrder.resellerCommission) || 0;
 
     rOrder.commissionStatus = 'cleared';
+    if (rOrder.status === 'Delivered' || rOrder.status === 'Paid') {
+      rOrder.paymentStatus = 'Paid';
+    }
     await rOrder.save();
 
     await ResellerWalletTransaction.updateMany(

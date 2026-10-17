@@ -300,6 +300,11 @@ export async function PATCH(
         updateData.deliveryCharge = 0;
       }
 
+      // In COD e-commerce, a Delivered order has collected cash upon delivery
+      if ((updateData.status === 'Delivered' || order.status === 'Delivered') && !updateData.paymentStatus && order.paymentStatus !== 'Paid') {
+        updateData.paymentStatus = 'Paid';
+      }
+
       // Final update
       const updatedOrder = await Order.findOneAndUpdate(
         { _id: slug },

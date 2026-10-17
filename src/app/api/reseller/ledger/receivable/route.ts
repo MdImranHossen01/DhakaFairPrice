@@ -19,11 +19,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Reseller profile not found' }, { status: 404 });
     }
 
-    // Pending/Delivered Unpaid Orders (COD / In-transit receivables for this reseller)
+    // Auto-sync: If any Delivered orders or orders with cleared commissions are still marked paymentStatus: Pending, mark them Paid
+    await ResellerOrder.updateMany(
+      {
+        resellerId: reseller._id,
+        paymentStatus: { $ne: 'Paid' },
+        $or: [
+          { status: 'Delivered' },
+          { status: 'Paid' },
+          { commissionStatus: 'cleared' }
+        ],
+        deletedAt: null
+      },
+      { $set: { paymentStatus: 'Paid' } }
+    );
+
+    // Pending In-transit customer orders (COD / In-transit receivables for this reseller)
+    // Note: Once an order is Delivered, COD has been paid upon delivery.
+    // Also, Mother Shop orders where commission has cleared are not pending customer receivables.
     const pendingOrders = await ResellerOrder.find({
       resellerId: reseller._id,
       paymentStatus: { $ne: 'Paid' },
-      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery'] },
+      commissionStatus: { $ne: 'cleared' },
       deletedAt: null
     })
       .select('shortId customer totalAmount status paymentMethod shippingAddress createdAt')
