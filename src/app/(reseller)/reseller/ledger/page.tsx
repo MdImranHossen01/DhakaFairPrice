@@ -13,26 +13,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Loader2,
   Search,
-  ArrowRightLeft,
   Wallet,
-  Landmark,
   RefreshCw,
-  FileText
+  Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/ui/pagination';
 import { cleanAccountName } from '@/lib/utils';
+import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 
-function isDebitTransaction(tx: any) {
+function getTransactionTypeInfo(tx: any) {
   const desc = (tx.description || '').toLowerCase();
-  // Deductions: expense, withdrawal, transfer to another account, payout to
-  if (
+
+  // Deductions: expense, withdrawal, transfer to another account, bill payment credit from receivable, payout to reseller, loan repayment, supplier payment
+  const isDeduction =
     desc.startsWith('expense') ||
     desc.startsWith('manual withdrawal') ||
     desc.startsWith('transfer to') ||
@@ -40,12 +40,13 @@ function isDebitTransaction(tx: any) {
     desc.startsWith('upfront payment credit') ||
     desc.includes('payout to') ||
     desc.includes('commission payout') ||
-    desc.includes('loan repayment')
-  ) {
-    return true;
-  }
-  // Additions: income, opening balance, deposit, transfer from another account, payout received
-  if (
+    desc.includes('loan repayment') ||
+    desc.startsWith('reseller commission payout') ||
+    desc.startsWith('supplier payment') ||
+    desc.includes('paid to');
+
+  // Additions: income, opening balance, deposit, loan inflow, transfer from another account, bill payment received into cash/bank, payout received
+  const isAddition =
     desc.startsWith('income') ||
     desc.startsWith('opening balance') ||
     desc.startsWith('manual deposit') ||
@@ -55,12 +56,45 @@ function isDebitTransaction(tx: any) {
     desc.startsWith('payout received') ||
     desc.includes('payout received') ||
     desc.startsWith('cash paid upfront') ||
-    desc.startsWith('bill generated')
-  ) {
-    return false;
+    desc.startsWith('bill generated');
+
+  if (isAddition) {
+    return {
+      label: 'Credit (+)',
+      sign: '+',
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+      textColor: 'text-emerald-600 dark:text-emerald-400',
+    };
   }
+
+  if (isDeduction) {
+    return {
+      label: 'Debit (-)',
+      sign: '-',
+      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+      textColor: 'text-rose-600 dark:text-rose-400',
+    };
+  }
+
+  // Fallback: for asset accounts (Cash, Bank, MFS), credit decreases balance (outflow/debit)
   const isAccountLiability = tx.account?.type === 'liability' || tx.account?.code === 'AP' || tx.account?.code === 'AR';
-  return isAccountLiability ? tx.type === 'debit' : tx.type === 'credit';
+  const isOutflow = isAccountLiability ? tx.type === 'debit' : tx.type === 'credit';
+
+  if (isOutflow) {
+    return {
+      label: 'Debit (-)',
+      sign: '-',
+      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
+      textColor: 'text-rose-600 dark:text-rose-400',
+    };
+  }
+
+  return {
+    label: 'Credit (+)',
+    sign: '+',
+    color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
+    textColor: 'text-emerald-600 dark:text-emerald-400',
+  };
 }
 
 function ResellerLedgerContent() {
@@ -70,11 +104,12 @@ function ResellerLedgerContent() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [journalSearchTerm, setJournalSearchTerm] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1'));
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   const fetchLedgerData = async () => {
     setLoading(true);
@@ -123,8 +158,8 @@ function ResellerLedgerContent() {
       }
 
       // Search term
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
+      if (journalSearchTerm.trim()) {
+        const term = journalSearchTerm.toLowerCase();
         const desc = tx.description?.toLowerCase() || '';
         const accName = tx.account?.name?.toLowerCase() || '';
         const ref = tx.reference?.toLowerCase() || '';
@@ -133,7 +168,7 @@ function ResellerLedgerContent() {
 
       return true;
     });
-  }, [transactions, selectedAccountId, dateFilter, searchTerm]);
+  }, [transactions, selectedAccountId, dateFilter, journalSearchTerm]);
 
   const totalBalance = accounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
 
@@ -145,12 +180,14 @@ function ResellerLedgerContent() {
   }, [filteredTransactions, currentPage]);
 
   return (
-    <div className="flex-1 space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Accounts Ledger</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">General ledger and transaction history of your store accounts</p>
+          <h2 className="text-xl md:text-3xl font-bold tracking-tight">Accounts Ledger</h2>
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
+            Track and review transaction journal entries across all accounts.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -167,7 +204,7 @@ function ResellerLedgerContent() {
 
       {/* Account Balance Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="border-primary/20 bg-primary/5 shadow-sm">
+        <Card className="border-primary/20 bg-primary/5 shadow-xs">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-primary" />
@@ -177,8 +214,8 @@ function ResellerLedgerContent() {
           </CardContent>
         </Card>
 
-        {accounts.slice(0, 3).map((acc) => (
-          <Card key={acc._id} className="shadow-sm">
+        {accounts.map((acc) => (
+          <Card key={acc._id} className="shadow-xs">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground font-medium truncate">{cleanAccountName(acc.name)}</p>
@@ -190,161 +227,216 @@ function ResellerLedgerContent() {
         ))}
       </div>
 
-      {/* Filters Toolbar */}
-      <div className="flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search descriptions or ref..."
-            className="pl-8 h-9 text-xs md:text-sm"
-            value={searchTerm}
-            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-          />
-        </div>
+      {/* Transactions Journal */}
+      <Card className="shadow-xs overflow-hidden">
+        <CardHeader className="p-3 md:p-4 bg-muted/20 border-b">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <CardTitle className="text-sm md:text-base font-bold">Transaction Journal</CardTitle>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-60 md:w-72">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search description / ref..."
+                  className="pl-8 h-8 text-xs"
+                  value={journalSearchTerm}
+                  onChange={(e) => { setJournalSearchTerm(e.target.value); setCurrentPage(1); }}
+                />
+              </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={selectedAccountId}
-            onValueChange={(val) => { if (val) setSelectedAccountId(val); setCurrentPage(1); }}
-          >
-            <SelectTrigger className="w-[150px] h-9 text-xs">
-              <SelectValue placeholder="All Accounts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All Accounts</SelectItem>
-              {accounts.map((a) => (
-                <SelectItem key={a._id} value={a._id} className="text-xs">
-                  {cleanAccountName(a.name)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <Select
+                value={selectedAccountId}
+                onValueChange={(val) => { if (val) setSelectedAccountId(val); setCurrentPage(1); }}
+              >
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="All Accounts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">All Accounts</SelectItem>
+                  {accounts.map((a) => (
+                    <SelectItem key={a._id} value={a._id} className="text-xs">
+                      {cleanAccountName(a.name)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <Input
-            type="date"
-            placeholder="From"
-            value={dateFilter.from}
-            onChange={(e) => { setDateFilter((prev) => ({ ...prev, from: e.target.value })); setCurrentPage(1); }}
-            className="w-[130px] h-9 text-xs"
-          />
-          <span className="text-xs text-muted-foreground">-</span>
-          <Input
-            type="date"
-            placeholder="To"
-            value={dateFilter.to}
-            onChange={(e) => { setDateFilter((prev) => ({ ...prev, to: e.target.value })); setCurrentPage(1); }}
-            className="w-[130px] h-9 text-xs"
-          />
+              <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-md border text-xs">
+                <Input
+                  type="date"
+                  className="h-7 w-28 border-none bg-transparent focus-visible:ring-0 text-xs px-1"
+                  value={dateFilter.from}
+                  onChange={(e) => { setDateFilter(prev => ({ ...prev, from: e.target.value })); setCurrentPage(1); }}
+                />
+                <span className="text-muted-foreground text-[10px]">to</span>
+                <Input
+                  type="date"
+                  className="h-7 w-28 border-none bg-transparent focus-visible:ring-0 text-xs px-1"
+                  value={dateFilter.to}
+                  onChange={(e) => { setDateFilter(prev => ({ ...prev, to: e.target.value })); setCurrentPage(1); }}
+                />
+              </div>
 
-          {(selectedAccountId !== 'all' || dateFilter.from || dateFilter.to || searchTerm) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedAccountId('all');
-                setDateFilter({ from: '', to: '' });
-                setSearchTerm('');
-                setCurrentPage(1);
-              }}
-              className="h-9 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Reset
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Ledger Table */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="font-bold text-xs">Date</TableHead>
-                <TableHead className="font-bold text-xs">Account</TableHead>
-                <TableHead className="font-bold text-xs">Description</TableHead>
-                <TableHead className="font-bold text-xs text-right text-rose-600">Debit (-)</TableHead>
-                <TableHead className="font-bold text-xs text-right text-emerald-600">Credit (+)</TableHead>
-                <TableHead className="font-bold text-xs text-right">Balance After</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-44 text-center">
-                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-                    <p className="text-xs text-muted-foreground mt-2 font-medium">Loading ledger transactions...</p>
-                  </TableCell>
-                </TableRow>
-              ) : paginatedTransactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-44 text-center text-muted-foreground text-xs">
-                    {searchTerm ? 'No matching transactions found' : 'No ledger transactions recorded yet.'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedTransactions.map((tx) => {
-                  const isDebit = isDebitTransaction(tx);
-                  return (
-                    <TableRow key={tx._id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold">
-                        <Badge variant="outline" className="text-[10px]">
-                          {cleanAccountName(tx.account?.name) || 'Account'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <p className="font-medium text-foreground">{tx.description}</p>
-                        {tx.reference && (
-                          <p className="text-[10px] text-muted-foreground">Ref: {tx.reference}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-bold text-rose-600">
-                        {isDebit ? `-৳${tx.amount?.toLocaleString()}` : '-'}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-bold text-emerald-600">
-                        {!isDebit ? `+৳${tx.amount?.toLocaleString()}` : '-'}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-black">
-                        ৳{(tx.balanceAfter || 0).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+              {(dateFilter.from || dateFilter.to || journalSearchTerm || selectedAccountId !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setDateFilter({ from: '', to: '' });
+                    setJournalSearchTerm('');
+                    setSelectedAccountId('all');
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary h-7 px-2"
+                >
+                  Clear
+                </Button>
               )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Pagination */}
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between p-3.5 border-t">
-            <p className="text-xs text-muted-foreground">
-              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
-              {Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of{' '}
-              {filteredTransactions.length} entries
-            </p>
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+            </div>
           </div>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="flex h-32 flex-col items-center justify-center text-muted-foreground text-xs">
+              <Plus className="h-8 w-8 mb-2 stroke-1" />
+              <p>No journal entries found</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[110px] whitespace-nowrap">Date</TableHead>
+                      <TableHead className="w-[150px] whitespace-nowrap">Account</TableHead>
+                      <TableHead className="max-w-[300px]">Description</TableHead>
+                      <TableHead className="w-[110px] whitespace-nowrap">Type</TableHead>
+                      <TableHead className="text-right w-[120px] whitespace-nowrap">Amount (৳)</TableHead>
+                      <TableHead className="text-right w-[150px] whitespace-nowrap">Running Balance (৳)</TableHead>
+                      <TableHead className="text-right w-[80px] whitespace-nowrap">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTransactions.map((tx) => {
+                      const txInfo = getTransactionTypeInfo(tx);
+                      return (
+                        <TableRow key={tx._id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="text-muted-foreground whitespace-nowrap text-xs">
+                            {tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '-'}
+                          </TableCell>
+                          <TableCell className="font-semibold whitespace-nowrap text-xs">
+                            <Badge variant="outline" className="text-[10px]">
+                              {cleanAccountName(tx.account?.name) || 'Account'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[280px] md:max-w-[340px] whitespace-normal break-words py-2.5">
+                            <div className="space-y-1">
+                              <p className="leading-snug text-xs md:text-sm text-foreground">{tx.description}</p>
+                              {tx.reference && (
+                                <span className="inline-block text-[10px] text-muted-foreground uppercase bg-muted px-1.5 py-0.5 rounded font-mono">
+                                  Ref: {tx.reference}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs font-semibold ${txInfo.color}`}
+                            >
+                              {txInfo.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`text-right font-semibold whitespace-nowrap text-xs md:text-sm ${txInfo.textColor}`}>
+                            {txInfo.sign}৳{Math.round(tx.amount || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">
+                            ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            <span className="text-xs text-muted-foreground">—</span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List */}
+              <div className="block md:hidden p-2 space-y-2.5">
+                {paginatedTransactions.map((tx) => {
+                  const txInfo = getTransactionTypeInfo(tx);
+                  return (
+                    <MobileDataCard
+                      key={tx._id}
+                      title={tx.description || 'Transaction'}
+                      badge={
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-semibold ${txInfo.color}`}
+                        >
+                          {txInfo.label}
+                        </Badge>
+                      }
+                      footer={
+                        <div className="flex items-center justify-between w-full font-bold text-xs">
+                          <span className="text-muted-foreground">Running Balance:</span>
+                          <span className="text-foreground text-sm">৳{Math.round(tx.balanceAfter || 0).toLocaleString()}</span>
+                        </div>
+                      }
+                    >
+                      <MobileDataRow label="Date" value={tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '-'} />
+                      <MobileDataRow label="Account" value={<span className="font-semibold">{cleanAccountName(tx.account?.name)}</span>} />
+                      <MobileDataRow
+                        label="Amount"
+                        value={
+                          <span className={`font-bold ${txInfo.textColor}`}>
+                            {txInfo.sign}৳{Math.round(tx.amount || 0).toLocaleString()}
+                          </span>
+                        }
+                      />
+                      {tx.reference && (
+                        <MobileDataRow
+                          label="Reference"
+                          value={<span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">{tx.reference}</span>}
+                        />
+                      )}
+                    </MobileDataCard>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {totalPages > 1 && (
+            <div className="py-3 border-t bg-background px-3">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
 export default function ResellerLedgerPage() {
   return (
-    <Suspense fallback={
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex h-48 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
       <ResellerLedgerContent />
     </Suspense>
   );
