@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import ResellerProgramPage from '@/models/ResellerProgramPage';
 import { DEFAULT_RESELLER_PROGRAM_DATA } from '@/lib/default-reseller-program';
+import { CACHE_TAGS } from '@/lib/data-fetching';
 import { auth } from '@/auth';
 
 export async function GET() {
@@ -117,6 +118,12 @@ export async function POST(req: NextRequest) {
       doc = await ResellerProgramPage.create(fullDoc);
     }
 
+    // Revalidate paths and tags so the storefront immediately reflects edits
+    try {
+      revalidateTag(CACHE_TAGS.resellerProgram, 'max');
+    } catch (tagErr) {
+      console.warn('revalidateTag error:', tagErr);
+    }
     revalidatePath('/reseller-program');
     revalidatePath('/');
 

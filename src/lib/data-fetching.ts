@@ -29,6 +29,7 @@ export const CACHE_TAGS = {
   faqs: 'faqs',
   settings: 'settings',
   coupons: 'coupons',
+  resellerProgram: 'reseller-program',
 };
 
 // --- PRODUCTS ---
@@ -357,4 +358,46 @@ export const getCachedActiveCoupon = () => {
     { revalidate: 3600, tags: [CACHE_TAGS.coupons] }
   )();
 };
+
+// --- RESELLER PROGRAM (SSG / ISR) ---
+
+export const getCachedResellerProgram = () => {
+  return unstable_cache(
+    async () => {
+      await connectToDatabase();
+      const ResellerProgramPage = (await import('@/models/ResellerProgramPage')).default;
+      const { DEFAULT_RESELLER_PROGRAM_DATA } = await import('@/lib/default-reseller-program');
+      const doc = await ResellerProgramPage.findOne().sort({ updatedAt: -1 }).lean();
+
+      if (!doc) {
+        return serialize(DEFAULT_RESELLER_PROGRAM_DATA);
+      }
+
+      const heroBenefits =
+        doc.hero?.benefits && Array.isArray(doc.hero.benefits) && doc.hero.benefits.length > 0
+          ? doc.hero.benefits
+          : DEFAULT_RESELLER_PROGRAM_DATA.hero.benefits;
+
+      const mergedData = {
+        hero: {
+          ...DEFAULT_RESELLER_PROGRAM_DATA.hero,
+          ...(doc.hero || {}),
+          benefits: heroBenefits,
+        },
+        pricingHeader: { ...DEFAULT_RESELLER_PROGRAM_DATA.pricingHeader, ...(doc.pricingHeader || {}) },
+        packages: doc.packages?.length ? doc.packages : DEFAULT_RESELLER_PROGRAM_DATA.packages,
+        whyChooseUs: { ...DEFAULT_RESELLER_PROGRAM_DATA.whyChooseUs, ...(doc.whyChooseUs || {}) },
+        workflow: { ...DEFAULT_RESELLER_PROGRAM_DATA.workflow, ...(doc.workflow || {}) },
+        comparisonTable: { ...DEFAULT_RESELLER_PROGRAM_DATA.comparisonTable, ...(doc.comparisonTable || {}) },
+        faqs: { ...DEFAULT_RESELLER_PROGRAM_DATA.faqs, ...(doc.faqs || {}) },
+        importantInfo: { ...DEFAULT_RESELLER_PROGRAM_DATA.importantInfo, ...(doc.importantInfo || {}) },
+      };
+
+      return serialize(mergedData);
+    },
+    ['reseller-program-data'],
+    { revalidate: 31536000, tags: [CACHE_TAGS.resellerProgram] }
+  )();
+};
+
 
