@@ -443,9 +443,9 @@ export async function POST(request: NextRequest) {
           },
         },
         items: fItems,
-        subtotal: uploaderSubtotal,
+        subtotal: uploaderCommission,
         deliveryCharge: 0,
-        totalAmount: uploaderSubtotal,
+        totalAmount: uploaderCommission,
         paymentMethod: paymentMethod || 'COD',
         paymentStatus: paymentStatus || 'Pending',
         status: status || 'Order Placed',
@@ -457,7 +457,11 @@ export async function POST(request: NextRequest) {
       }], { session: sessionConn })) as any[];
 
       await Reseller.findByIdAndUpdate(uploaderId, {
-        $inc: { totalOrders: 1, totalRevenue: uploaderSubtotal },
+        $inc: {
+          totalOrders: 1,
+          totalRevenue: uploaderCommission,
+          pendingBalance: uploaderCommission,
+        },
       }, { session: sessionConn });
 
       if (uploaderCommission > 0) {

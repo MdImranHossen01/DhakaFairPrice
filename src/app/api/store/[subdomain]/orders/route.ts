@@ -340,9 +340,9 @@ export async function POST(
           motherOrderId: motherOrder._id,
           customer,
           items: fItems,
-          subtotal: uploaderSubtotal,
+          subtotal: uploaderCommission,
           deliveryCharge: 0,
-          totalAmount: uploaderSubtotal,
+          totalAmount: uploaderCommission,
           paymentMethod: paymentMethod || 'COD',
           paymentStatus: 'Pending',
           status: 'Order Placed',
@@ -356,7 +356,11 @@ export async function POST(
 
         // Update uploader reseller stats (atomic)
         await Reseller.findByIdAndUpdate(uploaderId, {
-          $inc: { totalOrders: 1, totalRevenue: uploaderSubtotal },
+          $inc: {
+            totalOrders: 1,
+            totalRevenue: uploaderCommission,
+            pendingBalance: uploaderCommission,
+          },
         }, { session: sessionConn });
 
         // Create pending commission ledger entry for uploader
