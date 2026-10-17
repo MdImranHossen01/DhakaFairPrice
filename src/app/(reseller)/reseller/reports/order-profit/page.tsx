@@ -173,7 +173,7 @@ export default function ResellerOrderProfitReportPage() {
               <ReportRow label="Items" value={`${o.itemCount} items`} />
               <ReportRow label="Order Total" value={fmt(o.totalAmount)} />
               <ReportRow label="Delivery Fee" value={fmt(o.deliveryCost)} />
-              <ReportRow label="Wholesale Cost" value={fmt(o.cogs)} />
+              <ReportRow label="Product Cost" value={fmt(o.cogs)} />
               <ReportRow
                 label="Your Profit"
                 value={
@@ -201,7 +201,7 @@ export default function ResellerOrderProfitReportPage() {
                   <th className="py-2.5 px-3 text-right">Net Sales</th>
                   <th className="py-2.5 px-3 text-right">Delivery</th>
                   <th className="py-2.5 px-3 text-right">Total Amount</th>
-                  <th className="py-2.5 px-3 text-right">Wholesale Cost</th>
+                  <th className="py-2.5 px-3 text-right">Product Cost</th>
                   <th className="py-2.5 px-3 text-right text-emerald-600 font-bold">Your Profit</th>
                   <th className="py-2.5 px-3 text-center">Status</th>
                 </tr>

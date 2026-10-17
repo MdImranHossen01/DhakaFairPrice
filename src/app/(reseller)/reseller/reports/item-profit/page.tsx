@@ -67,7 +67,7 @@ export default function ResellerItemProfitReportPage() {
             <h1 className="text-xl md:text-3xl font-bold tracking-tight">Product Wise Profit Report</h1>
           </div>
           <p className="text-muted-foreground text-xs md:text-sm mt-1">
-            Analyze product-level profit margins, sold quantities, retail revenue, wholesale cost and total profit.
+            Analyze product-level profit margins, sold quantities, retail revenue, product cost and total profit.
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export default function ResellerItemProfitReportPage() {
                   <th className="py-2.5 px-3 text-center">Units Sold</th>
                   <th className="py-2.5 px-3 text-right">Avg Retail Price</th>
                   <th className="py-2.5 px-3 text-right">Total Revenue</th>
-                  <th className="py-2.5 px-3 text-right">Avg Wholesale Cost</th>
+                  <th className="py-2.5 px-3 text-right">Avg Product Cost</th>
                   <th className="py-2.5 px-3 text-right">Total Cost</th>
                   <th className="py-2.5 px-3 text-right text-emerald-600 font-bold">Total Profit</th>
                   <th className="py-2.5 px-3 text-center">Margin %</th>

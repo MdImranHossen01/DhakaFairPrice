@@ -154,7 +154,7 @@ export default function ResellerDailyReportPage() {
                   <th className="py-2.5 px-3 text-right">Net Sales</th>
                   <th className="py-2.5 px-3 text-right">Delivery</th>
                   <th className="py-2.5 px-3 text-right">Total Sales</th>
-                  <th className="py-2.5 px-3 text-right">Wholesale Cost</th>
+                  <th className="py-2.5 px-3 text-right">Product Cost</th>
                   <th className="py-2.5 px-3 text-right text-emerald-600 font-bold">Reseller Profit</th>
                   <th className="py-2.5 px-3 text-right text-rose-500">Expenses</th>
                   <th className="py-2.5 px-3 text-right font-bold">Net Profit</th>
