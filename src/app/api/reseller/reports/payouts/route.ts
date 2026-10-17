@@ -64,8 +64,36 @@ export async function GET(req: NextRequest) {
       else if (item._id === 'adjustment' || item._id === 'order_cancelled') totalAdjustments += item.totalAmount;
     });
 
+    const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+
+    const enrichedTransactions = await Promise.all(transactions.map(async (tx: any) => {
+      if (tx.type === 'payout_released' && tx.status === 'cleared') {
+        let adminTrxId = tx.adminTrxId || tx.payoutReference || '';
+        let adminAccountDetails = tx.adminAccountDetails || '';
+
+        if (!adminAccountDetails) {
+          const shortId = tx._id.toString().slice(-8).toUpperCase();
+          const ledgerTx = await LedgerTransaction.findOne({ reference: `PAYOUT-${shortId}` }).lean();
+          if (ledgerTx && ledgerTx.account) {
+            const acc = await LedgerAccount.findById(ledgerTx.account).lean();
+            if (acc) {
+              adminAccountDetails = `${acc.name}${acc.accountNumber ? ` (${acc.accountNumber})` : ''}`;
+            }
+          }
+        }
+
+        return {
+          ...tx,
+          adminTrxId: adminTrxId || undefined,
+          adminAccountDetails: adminAccountDetails || undefined,
+        };
+      }
+      return tx;
+    }));
+
     return NextResponse.json({
-      transactions,
+      transactions: enrichedTransactions,
       totalCount,
       totalPages: Math.ceil(totalCount / limit) || 1,
       currentPage: page,

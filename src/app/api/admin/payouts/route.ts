@@ -45,6 +45,20 @@ export async function PATCH(request: NextRequest) {
     sessionConn.startTransaction();
 
     try {
+      let adminAccountDetails = '';
+      let adminAccountName = '';
+      let adminAccountNumber = '';
+
+      if (action === 'approve' && fromAccountId) {
+        const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+        const sourceAcc = await LedgerAccount.findById(fromAccountId).session(sessionConn);
+        if (sourceAcc) {
+          adminAccountName = sourceAcc.name || '';
+          adminAccountNumber = sourceAcc.accountNumber || '';
+          adminAccountDetails = `${sourceAcc.name}${sourceAcc.accountNumber ? ` (${sourceAcc.accountNumber})` : ''}`;
+        }
+      }
+
       // Atomic conditional status transition targeting pending state
       const transaction = await ResellerWalletTransaction.findOneAndUpdate(
         { _id: transactionId, status: 'pending' },
@@ -52,6 +66,11 @@ export async function PATCH(request: NextRequest) {
           $set: {
             status: action === 'approve' ? 'cleared' : 'failed',
             payoutReference: action === 'approve' ? (payoutReference || 'ADMIN_MANUAL_PAYOUT') : undefined,
+            adminTrxId: action === 'approve' ? (payoutReference || 'ADMIN_MANUAL_PAYOUT') : undefined,
+            adminAccountId: action === 'approve' && fromAccountId ? fromAccountId : undefined,
+            adminAccountDetails: action === 'approve' ? (adminAccountDetails || undefined) : undefined,
+            adminAccountName: action === 'approve' ? (adminAccountName || undefined) : undefined,
+            adminAccountNumber: action === 'approve' ? (adminAccountNumber || undefined) : undefined,
             processedBy: (session.user as any).id
           }
         },

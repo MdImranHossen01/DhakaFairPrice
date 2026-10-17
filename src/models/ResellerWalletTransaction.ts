@@ -13,6 +13,12 @@ export interface IResellerWalletTransaction extends Document {
   status: 'pending' | 'cleared' | 'failed' | 'cancelled';
   payoutMethod?: string;                     // bKash, Nagad, Bank Transfer etc.
   payoutReference?: string;                  // Transaction ID from payment
+  adminTrxId?: string;                       // Transaction ID entered by admin upon payment
+  adminAccountId?: mongoose.Types.ObjectId;  // Admin's source payment account
+  adminAccountDetails?: string;              // Name & Account number of admin's payment account
+  adminAccountName?: string;                 // Admin account name (e.g. bKash, Bank)
+  adminAccountNumber?: string;               // Admin account number (e.g. 017...)
+  adminNote?: string;                        // Optional admin note
   destinationAccountId?: mongoose.Types.ObjectId; // Reseller's selected LedgerAccount
   processedBy?: mongoose.Types.ObjectId;     // Admin user who processed payout
   createdAt: Date;
@@ -37,6 +43,12 @@ const ResellerWalletTransactionSchema: Schema<IResellerWalletTransaction> = new 
     },
     payoutMethod: { type: String },
     payoutReference: { type: String },
+    adminTrxId: { type: String },
+    adminAccountId: { type: Schema.Types.ObjectId, ref: 'LedgerAccount' },
+    adminAccountDetails: { type: String },
+    adminAccountName: { type: String },
+    adminAccountNumber: { type: String },
+    adminNote: { type: String },
     destinationAccountId: { type: Schema.Types.ObjectId, ref: 'LedgerAccount' },
     processedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },

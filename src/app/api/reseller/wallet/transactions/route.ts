@@ -22,7 +22,35 @@ export async function GET(request: NextRequest) {
     const transactions = await ResellerWalletTransaction.find({ resellerId: reseller._id })
       .sort({ createdAt: -1 }).limit(50).lean();
 
-    return NextResponse.json({ transactions });
+    const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+
+    const enrichedTransactions = await Promise.all(transactions.map(async (tx: any) => {
+      if (tx.type === 'payout_released' && tx.status === 'cleared') {
+        let adminTrxId = tx.adminTrxId || tx.payoutReference || '';
+        let adminAccountDetails = tx.adminAccountDetails || '';
+
+        if (!adminAccountDetails) {
+          const shortId = tx._id.toString().slice(-8).toUpperCase();
+          const ledgerTx = await LedgerTransaction.findOne({ reference: `PAYOUT-${shortId}` }).lean();
+          if (ledgerTx && ledgerTx.account) {
+            const acc = await LedgerAccount.findById(ledgerTx.account).lean();
+            if (acc) {
+              adminAccountDetails = `${acc.name}${acc.accountNumber ? ` (${acc.accountNumber})` : ''}`;
+            }
+          }
+        }
+
+        return {
+          ...tx,
+          adminTrxId: adminTrxId || undefined,
+          adminAccountDetails: adminAccountDetails || undefined,
+        };
+      }
+      return tx;
+    }));
+
+    return NextResponse.json({ transactions: enrichedTransactions });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

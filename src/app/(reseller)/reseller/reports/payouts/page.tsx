@@ -214,7 +214,19 @@ export default function ResellerPayoutsReportPage() {
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-muted-foreground">
-                          {t.payoutMethod ? `${t.payoutMethod} (${t.payoutReference || '-'})` : '-'}
+                          <div className="space-y-0.5">
+                            {t.payoutMethod ? <span className="font-medium text-foreground">{t.payoutMethod}</span> : '-'}
+                            {t.status === 'cleared' && (t.adminTrxId || t.payoutReference) && (
+                              <div className="text-[10px] font-mono text-primary font-semibold">
+                                TrxID: {t.adminTrxId || t.payoutReference}
+                              </div>
+                            )}
+                            {t.status === 'cleared' && t.adminAccountDetails && (
+                              <div className="text-[10px] text-muted-foreground">
+                                From: {t.adminAccountDetails}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <Badge

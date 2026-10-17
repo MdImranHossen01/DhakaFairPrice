@@ -182,16 +182,34 @@ export default function ResellerWalletPage() {
                 ) : (
                   <div className="space-y-2">
                     {transactions.map((t: any) => (
-                      <div key={t._id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <div>
+                      <div key={t._id} className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 border-b last:border-0 gap-2">
+                        <div className="space-y-1">
                           <p className="text-xs md:text-sm font-medium">{t.description}</p>
-                          <p className="text-[10px] md:text-xs text-muted-foreground">{format(new Date(t.createdAt), 'dd MMM yyyy, hh:mm a')}</p>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
+                            <span>{format(new Date(t.createdAt), 'dd MMM yyyy, hh:mm a')}</span>
+                            {/* Admin Payment Details (Trx ID & Paid From Account) */}
+                            {t.status === 'cleared' && (t.adminTrxId || t.payoutReference) && (
+                              <span className="inline-flex items-center gap-1 font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-semibold border border-primary/20">
+                                TrxID: {t.adminTrxId || t.payoutReference}
+                              </span>
+                            )}
+                            {t.status === 'cleared' && t.adminAccountDetails && (
+                              <span className="inline-flex items-center gap-1 bg-muted text-foreground px-1.5 py-0.5 rounded text-[10px] font-medium border border-border">
+                                Paid From: {t.adminAccountDetails}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right shrink-0 ml-2">
+                        <div className="text-right shrink-0 sm:ml-2 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
                           <p className={`font-bold text-xs md:text-sm ${t.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {t.amount > 0 ? '+' : '-'}৳{Math.abs(t.amount).toLocaleString()}
                           </p>
-                          <Badge variant="outline" className="text-[9px] md:text-[10px] px-1 py-0">{t.status}</Badge>
+                          <Badge 
+                            variant={t.status === 'cleared' ? 'default' : t.status === 'failed' ? 'destructive' : 'outline'} 
+                            className="text-[9px] md:text-[10px] px-1.5 py-0 capitalize"
+                          >
+                            {t.status}
+                          </Badge>
                         </div>
                       </div>
                     ))}
