@@ -57,6 +57,12 @@ export async function GET(
         if (orderObj.resellerCommission === undefined && ro.resellerCommission !== undefined) {
           orderObj.resellerCommission = ro.resellerCommission;
         }
+        if (orderObj.systemFee === undefined && ro.systemFee !== undefined) {
+          orderObj.systemFee = ro.systemFee;
+        }
+        if (orderObj.salesProfit === undefined && ro.salesProfit !== undefined) {
+          orderObj.salesProfit = ro.salesProfit;
+        }
         if (!orderObj.commissionStatus && ro.commissionStatus) {
           orderObj.commissionStatus = ro.commissionStatus;
         }

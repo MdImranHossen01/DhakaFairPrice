@@ -45,6 +45,8 @@ export interface IResellerOrder extends Document {
   status: 'Order Placed' | 'Confirmed' | 'Paid' | 'Hold' | 'Processing' | 'Ready for Delivery' | 'Released for Delivery' | 'Delivered' | 'Cancelled';
   // Financial settlement
   resellerCommission: number;                  // Amount earned by reseller on this order
+  systemFee?: number;                          // Platform system fee
+  salesProfit?: number;                        // Mother shop sales profit
   commissionStatus: 'pending' | 'cleared' | 'cancelled';
   // Shipping
   shippingDetails?: {
@@ -109,6 +111,8 @@ const ResellerOrderSchema: Schema<IResellerOrder> = new Schema(
       default: 'Order Placed',
     },
     resellerCommission: { type: Number, default: 0, min: 0 },
+    systemFee: { type: Number, default: 0, min: 0 },
+    salesProfit: { type: Number, default: 0 },
     commissionStatus: {
       type: String,
       enum: ['pending', 'cleared', 'cancelled'],

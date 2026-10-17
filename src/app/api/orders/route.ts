@@ -460,6 +460,39 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Compute reseller commission, system platform fee, and sales profit
+    const platformCommissionRate = settings?.platformCommissionRate ?? 10;
+    let orderResellerCommission = 0;
+    let orderSystemFee = 0;
+    let orderSalesProfit = 0;
+
+    const resellerProductIds = new Set<string>();
+    for (const [, fItems] of uploaderItemsMap.entries()) {
+      for (const it of fItems) {
+        resellerProductIds.add(it.productId.toString());
+        const qty = it.quantity;
+        const baseCost = Number(it.purchasePrice) || 0;
+        const retail = Number(it.retailPrice) || 0;
+
+        const rComm = baseCost * qty;
+        const sFee = Math.round(baseCost * (platformCommissionRate / 100)) * qty;
+        const sProfit = Math.max(0, retail - baseCost - Math.round(baseCost * (platformCommissionRate / 100))) * qty;
+
+        orderResellerCommission += rComm;
+        orderSystemFee += sFee;
+        orderSalesProfit += sProfit;
+      }
+    }
+
+    for (const vItem of validatedItems) {
+      if (!resellerProductIds.has(vItem.product.toString())) {
+        const qty = vItem.quantity;
+        const baseCost = Number(vItem.purchasePrice) || 0;
+        const retail = Number(vItem.price) || 0;
+        orderSalesProfit += Math.max(0, retail - baseCost) * qty;
+      }
+    }
+
     // 6. Create the order
     const [newOrder] = (await Order.create(
       [
@@ -482,6 +515,10 @@ export async function POST(req: NextRequest) {
           internalNote: (validation.data as any).internalNote || undefined,
           systemNote: (validation.data as any).systemNote || undefined,
           manualPaymentDetails,
+          resellerId: uploaderItemsMap.size === 1 ? Array.from(uploaderItemsMap.keys())[0] : undefined,
+          resellerCommission: orderResellerCommission,
+          systemFee: orderSystemFee,
+          salesProfit: orderSalesProfit,
         },
       ],
       { session }
@@ -506,8 +543,23 @@ export async function POST(req: NextRequest) {
       let fIndex = 1;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
         const uploaderSubtotal = fItems.reduce((sum: number, it: any) => sum + it.retailPrice * it.quantity, 0);
+        // Base product cost payable to reseller supplier:
         const uploaderCommission = fItems.reduce(
-          (sum: number, it: any) => sum + Math.max(0, (it.retailPrice - (it.purchasePrice || 0)) * it.quantity),
+          (sum: number, it: any) => sum + (Number(it.purchasePrice) || 0) * it.quantity,
+          0
+        );
+        // System platform fee:
+        const uploaderSystemFee = fItems.reduce(
+          (sum: number, it: any) => sum + Math.round((Number(it.purchasePrice) || 0) * (platformCommissionRate / 100)) * it.quantity,
+          0
+        );
+        // Mother Shop sales profit:
+        const uploaderSalesProfit = fItems.reduce(
+          (sum: number, it: any) => {
+            const base = Number(it.purchasePrice) || 0;
+            const fee = Math.round(base * (platformCommissionRate / 100));
+            return sum + Math.max(0, it.retailPrice - base - fee) * it.quantity;
+          },
           0
         );
 
@@ -583,10 +635,12 @@ export async function POST(req: NextRequest) {
               paymentStatus: newOrder.paymentStatus || 'Pending',
               status: newOrder.status || 'Order Placed',
               resellerCommission: uploaderCommission,
+              systemFee: uploaderSystemFee,
+              salesProfit: uploaderSalesProfit,
               commissionStatus: 'pending',
               customerNote: (validation.data as any).customerNote || (validation.data as any).notes || '',
               internalNote: '',
-              systemNote: `Mother Shop Order (${newOrder.shortId})`,
+              systemNote: `Mother Shop Order (${newOrder.shortId}) - Base Payout: ৳${uploaderCommission}, System Fee: ৳${uploaderSystemFee}, Sales Profit: ৳${uploaderSalesProfit}`,
               shortId: resellerShortId,
             },
           ],
@@ -610,7 +664,7 @@ export async function POST(req: NextRequest) {
               type: 'commission_earned',
               amount: uploaderCommission,
               orderId: createdRO._id,
-              description: `Commission from Mother Shop order ${newOrder.shortId}`,
+              description: `Payout for supplied product from Mother Shop order ${newOrder.shortId}`,
               status: 'pending',
             },
           ],
@@ -882,7 +936,7 @@ export async function GET(req: NextRequest) {
         ],
         deletedAt: null
       })
-      .select('motherOrderId shortId resellerCommission commissionStatus resellerId internalNote')
+      .select('motherOrderId shortId resellerCommission commissionStatus resellerId internalNote systemFee salesProfit')
       .populate('resellerId', 'storeName subdomain customDomain')
       .lean();
 
@@ -911,6 +965,8 @@ export async function GET(req: NextRequest) {
         }
 
         const finalCommission = ro?.resellerCommission ?? (orderObj.resellerCommission || 0);
+        const finalSystemFee = ro?.systemFee ?? (orderObj.systemFee || 0);
+        const finalSalesProfit = ro?.salesProfit ?? (orderObj.salesProfit || 0);
         const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (finalReseller ? 'pending' : undefined));
 
         const phone = order.shippingAddress?.phone;
@@ -920,6 +976,8 @@ export async function GET(req: NextRequest) {
             resellerId: finalReseller,
             internalNote: finalInternalNote,
             resellerCommission: finalCommission,
+            systemFee: finalSystemFee,
+            salesProfit: finalSalesProfit,
             commissionStatus: finalCommStatus,
             isRepeat: false,
             isDuplicate: false
@@ -938,6 +996,8 @@ export async function GET(req: NextRequest) {
             resellerId: finalReseller,
             internalNote: finalInternalNote,
             resellerCommission: finalCommission,
+            systemFee: finalSystemFee,
+            salesProfit: finalSalesProfit,
             commissionStatus: finalCommStatus,
             isRepeat: false,
             isDuplicate: false
@@ -961,6 +1021,8 @@ export async function GET(req: NextRequest) {
           resellerId: finalReseller,
           internalNote: finalInternalNote,
           resellerCommission: finalCommission,
+          systemFee: finalSystemFee,
+          salesProfit: finalSalesProfit,
           commissionStatus: finalCommStatus,
           isRepeat: true,
           isDuplicate

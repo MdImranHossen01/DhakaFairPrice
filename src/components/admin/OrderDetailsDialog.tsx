@@ -756,8 +756,14 @@ export default function OrderDetailsDialog({
                 </div>
                 {order.resellerCommission !== undefined && (
                   <div className="flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0">
-                    <span className="text-[10px] text-muted-foreground font-medium">Reseller Commission</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">Reseller Payout</span>
                     <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
+                    {order.systemFee > 0 && (
+                      <span className="text-[11px] text-primary font-mono mt-0.5">System Fee (10%): +৳{Math.round(order.systemFee)}</span>
+                    )}
+                    {order.salesProfit > 0 && (
+                      <span className="text-[11px] text-emerald-600 font-semibold font-mono">Sales Profit: +৳{Math.round(order.salesProfit)}</span>
+                    )}
                   </div>
                 )}
               </div>

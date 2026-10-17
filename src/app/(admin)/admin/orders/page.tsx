@@ -1245,6 +1245,12 @@ function OrdersContent() {
                               Pending
                             </Badge>
                           )}
+                          {(order.systemFee > 0 || order.salesProfit > 0) && (
+                            <div className="text-[11px] text-muted-foreground whitespace-nowrap mt-0.5 flex flex-col font-mono leading-tight">
+                              {order.systemFee > 0 && <span className="text-primary font-medium">Fee: +৳{Math.round(order.systemFee)}</span>}
+                              {order.salesProfit > 0 && <span className="text-emerald-600 font-semibold">Profit: +৳{Math.round(order.salesProfit)}</span>}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground font-mono">—</span>

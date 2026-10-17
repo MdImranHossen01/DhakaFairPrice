@@ -332,7 +332,8 @@ export async function POST(
       let fIndex = 1;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
         const uploaderSubtotal = fItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
-        const uploaderCommission = fItems.reduce((sum, item) => sum + Math.max(0, (item.retailPrice - item.purchasePrice) * item.quantity), 0);
+        // Base product payout to uploader reseller
+        const uploaderCommission = fItems.reduce((sum, item) => sum + (Number(item.purchasePrice) || 0) * item.quantity, 0);
 
         const [uploaderRO] = (await ResellerOrder.create([{
           resellerId: uploaderId,
