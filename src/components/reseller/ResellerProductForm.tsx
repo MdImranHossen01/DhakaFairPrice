@@ -28,9 +28,27 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-const generateRandomSku = () => {
-  const randomNum = Math.floor(1000 + Math.random() * 9000);
-  return `SW-${randomNum}`;
+const generateBaseSku = () => {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const dateStr = `${dd}${mm}${yyyy}`;
+  const randomNum = String(Math.floor(1 + Math.random() * 999)).padStart(3, '0');
+  return `SB-${dateStr}-${randomNum}`;
+};
+
+const getComputedVariantSku = (
+  baseSku: string | undefined,
+  colorIndex: number,
+  sizeIndex: number,
+  hasColorVariant: boolean
+) => {
+  const cleanBase = (baseSku && baseSku.trim()) ? baseSku.trim() : generateBaseSku();
+  if (hasColorVariant) {
+    return `${cleanBase}-c${colorIndex + 1}-S${sizeIndex + 1}`;
+  }
+  return `${cleanBase}-S${sizeIndex + 1}`;
 };
 
 const generateRandomBarcode = () => {
@@ -249,7 +267,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
     purchasePrice: initialData?.purchasePrice ?? '',
     discountRate: calculateDiscount(initialData?.price, initialData?.salePrice) || '',
     salePrice: initialData?.salePrice ?? '',
-    sku: initialData?.sku || generateRandomSku(),
+    sku: initialData?.sku || generateBaseSku(),
     barcode: initialData?.barcode || '',
     stock: initialData?.stock ?? '',
     categories: initialData?.categories?.map((c: any) => typeof c === 'object' ? c._id : c) || [],
@@ -333,6 +351,48 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
     control: form.control,
     name: "variants"
   });
+
+  const handleAddColorVariant = () => {
+    const currentVariants = form.getValues('variants') || [];
+    const nextColorIndex = currentVariants.length;
+    const baseSku = form.getValues('sku') || generateBaseSku();
+    const hasColorVariant = nextColorIndex > 0 || currentVariants.some(v => Boolean(v.color?.trim()));
+    const initialSku = getComputedVariantSku(baseSku, nextColorIndex, 0, hasColorVariant);
+
+    appendVariant({
+      color: '',
+      images: [],
+      sizes: [{ size: '', price: form.getValues('price') || '', stock: '', sku: initialSku, barcode: '' }]
+    });
+  };
+
+  const handleAddSize = (colorIndex: number) => {
+    const currentSizes = form.getValues(`variants.${colorIndex}.sizes`) || [];
+    const nextSizeIndex = currentSizes.length;
+    const allVariants = form.getValues('variants') || [];
+    const hasColorVariant = allVariants.length > 1 || allVariants.some(v => Boolean(v.color?.trim()));
+    const baseSku = form.getValues('sku') || generateBaseSku();
+    const autoSku = getComputedVariantSku(baseSku, colorIndex, nextSizeIndex, hasColorVariant);
+
+    form.setValue(`variants.${colorIndex}.sizes`, [
+      ...currentSizes,
+      { size: '', price: form.getValues('price') || '', stock: '', sku: autoSku, barcode: '' }
+    ]);
+  };
+
+  const autoGenerateAllVariantSkus = () => {
+    const baseSku = form.getValues('sku') || generateBaseSku();
+    const allVariants = form.getValues('variants') || [];
+    const hasColorVariant = allVariants.length > 1 || allVariants.some(v => Boolean(v.color?.trim()));
+
+    allVariants.forEach((v, cIdx) => {
+      (v.sizes || []).forEach((_, sIdx) => {
+        const newSku = getComputedVariantSku(baseSku, cIdx, sIdx, hasColorVariant);
+        form.setValue(`variants.${cIdx}.sizes.${sIdx}.sku`, newSku, { shouldValidate: true, shouldDirty: true });
+      });
+    });
+    toast.success('সমস্ত ভ্যারিয়েশনের SKU স্বয়ংক্রিয়ভাবে তৈরি হয়েছে');
+  };
 
   useEffect(() => {
     async function fetchCategories() {
@@ -567,16 +627,16 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                           </FormLabel>
                           <button
                             type="button"
-                            onClick={() => field.onChange(generateRandomSku())}
+                            onClick={() => field.onChange(generateBaseSku())}
                             className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium transition-colors"
-                            title="Generate Auto SKU"
+                            title="Auto-generate new SKU"
                           >
                             <RefreshCw className="size-3" />
                             Auto
                           </button>
                         </div>
                         <FormControl>
-                          <Input placeholder="SW-1001" {...field} value={field.value || ''} />
+                          <Input placeholder="SB-17102026-001" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -701,15 +761,27 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">Set images and sizes for each color variant.</p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="bg-background hover:bg-primary hover:text-white transition-all border-primary/20"
-                  onClick={() => appendVariant({ color: '', images: [], sizes: [{ size: '', price: form.getValues('price') || '', stock: '', sku: '' }] })}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add Color Variant
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-background hover:bg-muted text-xs transition-all border-primary/20"
+                    onClick={autoGenerateAllVariantSkus}
+                    title="Auto-generate or sync SKUs for all variations"
+                  >
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5 text-primary" /> Auto-Fill SKUs
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="bg-background hover:bg-primary hover:text-white transition-all border-primary/20"
+                    onClick={handleAddColorVariant}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add Color Variant
+                  </Button>
+                </div>
               </div>
               <CardContent className="p-6">
                 {variantFields.length === 0 ? (
@@ -784,13 +856,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  const currentSizes = form.getValues(`variants.${colorIndex}.sizes`) || [];
-                                  form.setValue(`variants.${colorIndex}.sizes`, [
-                                    ...currentSizes,
-                                    { size: '', price: form.getValues('price') || '', stock: '', sku: '', barcode: '' }
-                                  ]);
-                                }}
+                                onClick={() => handleAddSize(colorIndex)}
                               >
                                 <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Size
                               </Button>
@@ -865,9 +931,26 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">
-                                          SKU *
-                                        </Label>
+                                        <div className="flex items-center justify-between">
+                                          <Label className="text-xs font-medium text-muted-foreground">
+                                            SKU *
+                                          </Label>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const baseSku = form.getValues('sku') || generateBaseSku();
+                                              const allVariants = form.getValues('variants') || [];
+                                              const hasColorVariant = allVariants.length > 1 || allVariants.some(v => Boolean(v.color?.trim()));
+                                              const generated = getComputedVariantSku(baseSku, colorIndex, sizeIndex, hasColorVariant);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.sku`, generated, { shouldDirty: true, shouldValidate: true });
+                                            }}
+                                            className="text-[10px] text-primary hover:underline flex items-center gap-0.5 font-medium transition-colors"
+                                            title="Auto generate variant SKU"
+                                          >
+                                            <RefreshCw className="size-2.5" />
+                                            Auto
+                                          </button>
+                                        </div>
                                         <Input
                                           {...form.register(`variants.${colorIndex}.sizes.${sizeIndex}.sku` as const)}
                                           placeholder="SKU"
