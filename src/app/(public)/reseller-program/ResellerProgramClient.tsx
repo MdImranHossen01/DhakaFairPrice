@@ -161,6 +161,33 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
     }
   };
 
+  // Auto-save specific section directly to MongoDB and revalidate
+  const saveSectionToServer = async (sectionPayload: Partial<IResellerProgramData>, successMsg: string) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/reseller-program', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sectionPayload),
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setSavedData((prev) => ({ ...prev, ...sectionPayload }));
+        setHasUnsavedChanges(false);
+        router.refresh();
+        toast.success(successMsg);
+      } else {
+        throw new Error(result.message || 'সংরক্ষণ ব্যর্থ হয়েছে');
+      }
+    } catch (err: any) {
+      console.error('Error saving section:', err);
+      toast.error(err.message || 'সংরক্ষণে সমস্যা হয়েছে');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // ── RESET TO SAVED ──
   const handleReset = async () => {
     const res = await Swal.fire({
@@ -239,11 +266,12 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
     });
 
     if (res.isConfirmed) {
+      const updatedPackages = pageData.packages.filter((p) => p.id !== pkgId);
       updatePageData((prev) => ({
         ...prev,
-        packages: prev.packages.filter((p) => p.id !== pkgId),
+        packages: updatedPackages,
       }));
-      toast.success(`প্যাকেজ "${pkgName}" মুছে ফেলা হয়েছে`);
+      saveSectionToServer({ packages: updatedPackages }, `প্যাকেজ "${pkgName}" মুছে ফেলা হয়েছে`);
     }
   };
 
@@ -971,42 +999,64 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
         open={heroDialogOpen}
         onOpenChange={setHeroDialogOpen}
         heroData={hero}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, hero: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, hero: updated }));
+          saveSectionToServer({ hero: updated }, 'হিরো ব্যানার সফলভাবে সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditPricingHeaderDialog
         open={pricingHeaderDialogOpen}
         onOpenChange={setPricingHeaderDialogOpen}
         pricingHeaderData={pricingHeader}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, pricingHeader: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, pricingHeader: updated }));
+          saveSectionToServer({ pricingHeader: updated }, 'প্রাইসিং হেডার সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditPackageDialog
         open={packageDialogOpen}
         onOpenChange={setPackageDialogOpen}
         pkg={editingPackage}
-        onSave={handleSavePackage}
+        onSave={(savedPkg) => {
+          const exists = pageData.packages.some((p) => p.id === savedPkg.id);
+          const updatedPackages = exists
+            ? pageData.packages.map((p) => (p.id === savedPkg.id ? savedPkg : p))
+            : [...pageData.packages, savedPkg];
+          updatePageData((prev) => ({ ...prev, packages: updatedPackages }));
+          saveSectionToServer({ packages: updatedPackages }, `প্যাকেজ "${savedPkg.name}" সংরক্ষিত হয়েছে!`);
+        }}
       />
 
       <EditWhyChooseUsDialog
         open={whyChooseDialogOpen}
         onOpenChange={setWhyChooseDialogOpen}
         data={whyChooseUs}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, whyChooseUs: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, whyChooseUs: updated }));
+          saveSectionToServer({ whyChooseUs: updated }, 'রিসেলার সুবিধা সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditWorkflowDialog
         open={workflowDialogOpen}
         onOpenChange={setWorkflowDialogOpen}
         data={workflow}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, workflow: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, workflow: updated }));
+          saveSectionToServer({ workflow: updated }, 'কাজের ধাপ সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditComparisonTableDialog
         open={comparisonDialogOpen}
         onOpenChange={setComparisonDialogOpen}
         data={comparisonTable}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, comparisonTable: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, comparisonTable: updated }));
+          saveSectionToServer({ comparisonTable: updated }, 'তুলনামূলক টেবিল সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditFaqDialog
@@ -1014,14 +1064,20 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
         onOpenChange={setFaqDialogOpen}
         data={faqs}
         activeFaqIndex={activeFaqIndex}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, faqs: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, faqs: updated }));
+          saveSectionToServer({ faqs: updated }, 'FAQ সংরক্ষিত হয়েছে!');
+        }}
       />
 
       <EditImportantInfoDialog
         open={importantInfoDialogOpen}
         onOpenChange={setImportantInfoDialogOpen}
         data={importantInfo}
-        onSave={(updated) => updatePageData((prev) => ({ ...prev, importantInfo: updated }))}
+        onSave={(updated) => {
+          updatePageData((prev) => ({ ...prev, importantInfo: updated }));
+          saveSectionToServer({ importantInfo: updated }, 'জরুরি তথ্য সংরক্ষিত হয়েছে!');
+        }}
       />
 
     </div>
