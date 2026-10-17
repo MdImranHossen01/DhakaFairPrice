@@ -232,6 +232,29 @@ export async function PATCH(
         updateData.isSalesCounted = true;
       }
 
+      // Handle Stock Restoration on Cancel, or Stock Re-deduction if un-cancelling
+      let stockActionProductIds: string[] = [];
+      if (updateData.status === 'Cancelled' && order.status !== 'Cancelled') {
+        const { restoreStockForOrder } = await import('@/lib/stockHelper');
+        const stockRes = await restoreStockForOrder({
+          orderId: order._id,
+          session: dbSession,
+          skipResellerSync: true,
+        });
+        stockActionProductIds = stockRes.affectedProductIds || [];
+        updateData.isStockRestored = true;
+        updateData.isSalesCounted = false;
+      } else if (order.status === 'Cancelled' && updateData.status && updateData.status !== 'Cancelled') {
+        const { reDeductStockForOrder } = await import('@/lib/stockHelper');
+        const stockRes = await reDeductStockForOrder({
+          orderId: order._id,
+          session: dbSession,
+          skipResellerSync: true,
+        });
+        stockActionProductIds = stockRes.affectedProductIds || [];
+        updateData.isStockRestored = false;
+      }
+
       // 2. Loyalty System: Award Tokens on Success
       const isOrderSuccessful = (status || order.status) === 'Delivered';
       if (isOrderSuccessful && !order.isRewarded && order.user) {
@@ -303,6 +326,19 @@ export async function PATCH(
       }
 
       await dbSession.commitTransaction();
+
+      if (stockActionProductIds.length > 0) {
+        try {
+          const { syncProductToResellers } = await import('@/lib/syncEngine');
+          for (const pId of stockActionProductIds) {
+            await syncProductToResellers(pId).catch((syncErr) =>
+              console.error(`[Reseller Sync] Error syncing product ${pId}:`, syncErr)
+            );
+          }
+        } catch (syncBatchErr) {
+          console.error('[Reseller Sync Batch Error]', syncBatchErr);
+        }
+      }
 
       if (order.paymentStatus !== 'Paid' && updatedOrder?.paymentStatus === 'Paid') {
         try {

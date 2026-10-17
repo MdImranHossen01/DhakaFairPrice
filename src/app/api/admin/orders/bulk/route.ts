@@ -91,6 +91,8 @@ export async function PATCH(req: NextRequest) {
         resellerOrderUpdate.paymentStatus = paymentStatus;
       }
 
+      const allAffectedProductIds = new Set<string>();
+
       for (const id of ids) {
         const updateObj: any = {};
         if (status) updateObj.status = status;
@@ -134,6 +136,19 @@ export async function PATCH(req: NextRequest) {
           if (regularOrder) modifiedCount++;
         }
 
+        // Auto-restore stock if status is set to Cancelled in bulk
+        if (status === 'Cancelled') {
+          const { restoreStockForOrder } = await import('@/lib/stockHelper');
+          const stockRes = await restoreStockForOrder({
+            orderId: id,
+            session: dbSession,
+            skipResellerSync: true,
+          });
+          if (stockRes.affectedProductIds) {
+            for (const pid of stockRes.affectedProductIds) allAffectedProductIds.add(pid);
+          }
+        }
+
         // Sync linked ResellerOrder and clear/cancel commissions & wallet balance
         const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
         await syncResellerCommissionForMotherOrder({
@@ -145,6 +160,19 @@ export async function PATCH(req: NextRequest) {
       }
 
       await dbSession.commitTransaction();
+
+      if (allAffectedProductIds.size > 0) {
+        try {
+          const { syncProductToResellers } = await import('@/lib/syncEngine');
+          for (const pId of allAffectedProductIds) {
+            await syncProductToResellers(pId).catch((syncErr) =>
+              console.error(`[Reseller Sync Bulk] Error syncing product ${pId}:`, syncErr)
+            );
+          }
+        } catch (syncBatchErr) {
+          console.error('[Reseller Sync Bulk Error]', syncBatchErr);
+        }
+      }
 
       if (ordersToLog.length > 0) {
         try {

@@ -252,6 +252,16 @@ async function handleSyncCourierStatus(req: NextRequest) {
           updateFields.internalNote = order.internalNote ? `${order.internalNote} | ${cancelMsg}` : cancelMsg;
           updateFields.systemNote = cancelMsg;
 
+          // Auto-restore product stock for courier cancelled order
+          try {
+            const { restoreStockForOrder } = await import('@/lib/stockHelper');
+            await restoreStockForOrder({
+              orderId: order._id,
+            });
+          } catch (stockErr) {
+            console.error(`[Courier Sync] Error restoring stock for order ${order._id}:`, stockErr);
+          }
+
           cancelledCount++;
           results.push({
             orderId: order._id,

@@ -53,6 +53,7 @@ export interface IOrder extends Document {
     courierStatus?: string;
   };
   isSalesCounted?: boolean;
+  isStockRestored?: boolean;
   manualPaymentDetails?: {
     methodName?: string;
     senderNumber?: string;
@@ -129,6 +130,7 @@ const OrderSchema: Schema<IOrder> = new Schema(
       courierStatus: { type: String },
     },
     isSalesCounted: { type: Boolean, default: false },
+    isStockRestored: { type: Boolean, default: false },
     manualPaymentDetails: {
       methodName: { type: String },
       senderNumber: { type: String },

@@ -162,9 +162,16 @@ export async function PATCH(
           console.error('[Reseller Order Sales Count Error]', salesErr);
         }
       }
-      // Sync reseller commission and ledger if status is Cancelled
+      // Sync reseller commission, restore product stock and ledger if status is Cancelled
       if (status === 'Cancelled' || paymentStatus === 'Failed') {
         try {
+          if (status === 'Cancelled' && order.motherOrderId) {
+            const { restoreStockForOrder } = await import('@/lib/stockHelper');
+            await restoreStockForOrder({
+              orderId: order.motherOrderId,
+            });
+          }
+
           const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
           await syncResellerCommissionForMotherOrder({
             motherOrderId: order.motherOrderId,
