@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { transactionId, action, payoutReference } = body;
+    const { transactionId, action, payoutReference, fromAccountId } = body;
 
     if (!transactionId || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 });
@@ -100,14 +100,54 @@ export async function PATCH(request: NextRequest) {
 
       if (action === 'approve') {
         try {
-          const { logPayoutToLedger, logResellerPayoutDepositToAccount } = await import('@/lib/ledgerHelper');
+          const { logPayoutToLedger, logResellerPayoutDepositToAccount, recalculateLedgerBalanceByAccountId } = await import('@/lib/ledgerHelper');
+          const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+          const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
           const reseller = await Reseller.findById(transaction.resellerId);
           const payoutPayload = {
             ...transaction.toObject(),
             payoutReference: payoutReference || transaction.payoutReference,
           };
-          // 1. Log Mother Shop payout credit from Cash or Bank
-          await logPayoutToLedger(payoutPayload, reseller);
+
+          const amount = Math.abs(transaction.amount || 0);
+          const shortId = transaction._id.toString().slice(-8).toUpperCase();
+          const reference = `PAYOUT-${shortId}`;
+          const storeName = reseller?.storeName || 'Reseller';
+
+          if (fromAccountId) {
+            const sourceAccount = await LedgerAccount.findOne({
+              _id: fromAccountId,
+              $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+            });
+
+            if (sourceAccount) {
+              const balanceAfter = (sourceAccount.currentBalance || 0) - amount;
+              sourceAccount.currentBalance = balanceAfter;
+              await sourceAccount.save();
+
+              const exists = await LedgerTransaction.findOne({ reference, account: sourceAccount._id });
+              if (!exists) {
+                await LedgerTransaction.create({
+                  account: sourceAccount._id,
+                  resellerId: null,
+                  date: new Date(),
+                  description: `Reseller Commission Payout to ${storeName} via ${sourceAccount.name}${payoutPayload.payoutReference ? ` (Ref: ${payoutPayload.payoutReference})` : ''}`,
+                  type: 'credit',
+                  amount,
+                  reference,
+                  balanceAfter,
+                });
+              }
+
+              await recalculateLedgerBalanceByAccountId(sourceAccount._id);
+            } else {
+              await logPayoutToLedger(payoutPayload, reseller);
+            }
+          } else {
+            // Fallback: Log Mother Shop payout credit from Cash or Bank
+            await logPayoutToLedger(payoutPayload, reseller);
+          }
+
           // 2. Deposit payout into Reseller's designated LedgerAccount (bKash/Nagad/Bank)
           await logResellerPayoutDepositToAccount(payoutPayload);
         } catch (ledgerErr) {

@@ -40,6 +40,9 @@ export default function AdminPayoutsPage() {
   const [payoutReference, setPayoutReference] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+
   const fetchPayouts = async () => {
     try {
       const res = await fetch('/api/admin/payouts');
@@ -54,12 +57,46 @@ export default function AdminPayoutsPage() {
     }
   };
 
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/admin/accounts');
+      if (res.ok) {
+        const data = await res.json();
+        const liquid = (data.accounts || []).filter((a: any) =>
+          a.type !== 'liability' && a.code !== 'AP' && a.code !== 'AR'
+        );
+        setAccounts(liquid);
+      }
+    } catch {
+      console.error('Failed to load accounts');
+    }
+  };
+
   useEffect(() => {
     fetchPayouts();
+    fetchAccounts();
   }, []);
+
+  const openPayoutDialog = (p: any) => {
+    setProcessingTransaction(p);
+    setPayoutReference('');
+    const method = (p.payoutMethod || '').toLowerCase();
+    const matched = accounts.find((a: any) =>
+      a.name?.toLowerCase().includes(method) ||
+      a.mfsProvider?.toLowerCase().includes(method) ||
+      a.code?.toLowerCase().includes(method)
+    );
+    setSelectedAccountId(matched ? matched._id : (accounts[0]?._id || ''));
+  };
+
+  const selectedAccount = accounts.find((a: any) => a._id === selectedAccountId);
 
   const handleProcessPayout = async (action: 'approve' | 'reject', transaction: any = processingTransaction) => {
     if (!transaction) return;
+    if (action === 'approve' && !selectedAccountId) {
+      toast.error('যে অ্যাকাউন্ট থেকে টাকা কর্তন হবে তা নির্বাচন করুন');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/admin/payouts', {
@@ -69,6 +106,7 @@ export default function AdminPayoutsPage() {
           transactionId: transaction._id,
           action,
           payoutReference: action === 'approve' ? payoutReference : undefined,
+          fromAccountId: action === 'approve' ? selectedAccountId : undefined,
         }),
       });
       if (res.ok) {
@@ -76,6 +114,7 @@ export default function AdminPayoutsPage() {
         setProcessingTransaction(null);
         setPayoutReference('');
         fetchPayouts();
+        fetchAccounts();
       } else {
         const err = await res.json();
         toast.error(err.error || 'Operation failed');
@@ -186,10 +225,7 @@ export default function AdminPayoutsPage() {
                               <Button
                                 size="sm"
                                 className="bg-green-600 hover:bg-green-700 h-8 text-xs font-semibold"
-                                onClick={() => {
-                                  setProcessingTransaction(p);
-                                  setPayoutReference('');
-                                }}
+                                onClick={() => openPayoutDialog(p)}
                               >
                                 <Check className="h-3.5 w-3.5 mr-1" />Release Payment
                               </Button>
@@ -252,10 +288,7 @@ export default function AdminPayoutsPage() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 h-7 text-xs font-semibold px-2"
-                          onClick={() => {
-                            setProcessingTransaction(p);
-                            setPayoutReference('');
-                          }}
+                          onClick={() => openPayoutDialog(p)}
                         >
                           <Check className="h-3 w-3 mr-1" /> Release
                         </Button>
@@ -326,8 +359,39 @@ export default function AdminPayoutsPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Amount (৳)</Label>
-              <Input value={Math.abs(processingTransaction?.amount || 0)} disabled className="h-8 text-xs" />
+              <Input value={Math.abs(processingTransaction?.amount || 0)} disabled className="h-8 text-xs font-bold" />
             </div>
+
+            {/* Deduct From Account Selection */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Deduct From Account (পরিশোধের অ্যাকাউন্ট) *</Label>
+              {accounts.length === 0 ? (
+                <p className="text-[11px] text-destructive">কোনো সক্রিয় অ্যাকাউন্ট পাওয়া যায়নি।</p>
+              ) : (
+                <select
+                  value={selectedAccountId}
+                  onChange={e => setSelectedAccountId(e.target.value)}
+                  className="w-full h-8 border rounded-md px-2 text-xs bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                  required
+                >
+                  <option value="" disabled>-- সিলেক্ট করুন --</option>
+                  {accounts.map((acc: any) => (
+                    <option key={acc._id} value={acc._id}>
+                      {acc.name} ({acc.category || acc.code}) — ব্যালেন্স: ৳{(acc.currentBalance || 0).toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedAccount && (
+                <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-0.5">
+                  <span>বর্তমান ব্যালেন্স: <strong className="text-foreground">৳{(selectedAccount.currentBalance || 0).toLocaleString()}</strong></span>
+                  {selectedAccount.currentBalance < Math.abs(processingTransaction?.amount || 0) && (
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold">সতর্কতা: অপর্যাপ্ত ব্যালেন্স</span>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1">
               <Label className="text-xs">Transaction ID / Payment Reference</Label>
               <Input
@@ -340,7 +404,12 @@ export default function AdminPayoutsPage() {
           </div>
           <DialogFooter className="pt-2">
             <Button variant="outline" size="sm" onClick={() => setProcessingTransaction(null)} disabled={submitting}>Cancel</Button>
-            <Button size="sm" onClick={() => handleProcessPayout('approve')} disabled={submitting || !payoutReference} className="font-bold">
+            <Button
+              size="sm"
+              onClick={() => handleProcessPayout('approve')}
+              disabled={submitting || !payoutReference || !selectedAccountId}
+              className="font-bold"
+            >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Complete Payment
             </Button>
