@@ -25,7 +25,15 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const transactions = await LedgerTransaction.find({ resellerId: reseller._id })
+    const resellerAccounts = await LedgerAccount.find({ resellerId: reseller._id }).select('_id').lean();
+    const accountIds = resellerAccounts.map((a: any) => a._id);
+
+    const transactions = await LedgerTransaction.find({
+      $or: [
+        { resellerId: reseller._id },
+        { account: { $in: accountIds } }
+      ]
+    })
       .populate('account')
       .sort({ date: -1, createdAt: -1 })
       .lean();

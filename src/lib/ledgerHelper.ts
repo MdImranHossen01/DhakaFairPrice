@@ -597,6 +597,7 @@ export async function logResellerPayoutDepositToAccount(payoutTx: any) {
 
     const tx = new LedgerTransaction({
       account: targetAccount._id,
+      resellerId: targetAccount.resellerId || payoutTx.resellerId,
       date: payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : new Date(),
       description: `Payout received from Mother Shop via ${payoutTx.payoutMethod || 'Mobile Banking'}${payoutTx.payoutReference ? ` (${payoutTx.payoutReference})` : ''}`,
       type: 'debit',
