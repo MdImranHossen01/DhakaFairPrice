@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { handleSignOut } from "@/lib/logout"
 import {
@@ -359,7 +359,78 @@ const data = {
   ],
 }
 
-function NavMain({ items, pathname, role }: { items: typeof data.navMain; pathname: string; role?: string }) {
+function isUrlActive(
+  itemUrl: string,
+  pathname: string,
+  searchParams: ReturnType<typeof useSearchParams> | null,
+  allSiblingUrls: string[]
+) {
+  if (!itemUrl || itemUrl === "#" || itemUrl === "/admin") {
+    return pathname === itemUrl;
+  }
+
+  // Parse path and query params from itemUrl
+  const [itemPath, itemQuery] = itemUrl.split("?");
+
+  if (itemQuery) {
+    // If the menu item specifies query parameters (e.g. /admin/users?role=admin)
+    if (pathname !== itemPath) return false;
+    if (!searchParams) return false;
+
+    const itemSearchParams = new URLSearchParams(itemQuery);
+    for (const [key, val] of itemSearchParams.entries()) {
+      if (searchParams.get(key) !== val) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    // Menu item has NO query parameters (e.g. /admin/users)
+    const pathMatches =
+      pathname === itemPath ||
+      (pathname.startsWith(itemPath + "/") &&
+        !allSiblingUrls.some(
+          (other) =>
+            other !== itemUrl &&
+            other.length > itemUrl.length &&
+            (pathname === other || pathname.startsWith(other + "/"))
+        ));
+
+    if (!pathMatches) return false;
+
+    // If pathname matches, check if any other sibling specifically matches current searchParams
+    if (searchParams && searchParams.toString().length > 0) {
+      const moreSpecificSiblingMatches = allSiblingUrls.some((siblingUrl) => {
+        if (!siblingUrl.includes("?")) return false;
+        const [sibPath, sibQuery] = siblingUrl.split("?");
+        if (sibPath !== pathname) return false;
+        const sibSearchParams = new URLSearchParams(sibQuery);
+        for (const [key, val] of sibSearchParams.entries()) {
+          if (searchParams.get(key) !== val) return false;
+        }
+        return true;
+      });
+
+      if (moreSpecificSiblingMatches) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
+function NavMain({
+  items,
+  pathname,
+  searchParams,
+  role
+}: {
+  items: typeof data.navMain;
+  pathname: string;
+  searchParams: ReturnType<typeof useSearchParams> | null;
+  role?: string;
+}) {
   const { setOpenMobile, isMobile } = useSidebar()
 
   const isLimitedStaff = role === 'manager' || role === 'moderator';
@@ -406,14 +477,11 @@ function NavMain({ items, pathname, role }: { items: typeof data.navMain; pathna
     <SidebarGroup className="py-2">
       <SidebarMenu className="gap-1">
         {filteredItems.map((item) => {
+          const siblingUrls = item.items.map((subItem: any) => subItem.url);
           const isParentActive =
-            item.items.some(
-              (subItem) =>
-                pathname === subItem.url ||
-                (subItem.url !== "#" &&
-                  subItem.url !== "/admin" &&
-                  pathname.startsWith(subItem.url + "/"))
-            ) || pathname === item.url
+            item.items.some((subItem: any) =>
+              isUrlActive(subItem.url, pathname, searchParams, siblingUrls)
+            ) || isUrlActive(item.url, pathname, searchParams, []);
 
           return (
             <Collapsible
@@ -444,17 +512,7 @@ function NavMain({ items, pathname, role }: { items: typeof data.navMain; pathna
                 <CollapsibleContent>
                   <SidebarMenuSub className="ml-4 pl-2 border-l border-slate-800/80 my-1 space-y-1">
                     {item.items.map((subItem) => {
-                      const isSubActive =
-                        pathname === subItem.url ||
-                        (subItem.url !== "#" &&
-                          subItem.url !== "/admin" &&
-                          pathname.startsWith(subItem.url + "/") &&
-                          !item.items.some(
-                            (otherItem) =>
-                              otherItem !== subItem &&
-                              otherItem.url.length > subItem.url.length &&
-                              (pathname === otherItem.url || pathname.startsWith(otherItem.url + "/"))
-                          ))
+                      const isSubActive = isUrlActive(subItem.url, pathname, searchParams, siblingUrls);
 
                       return (
                         <SidebarMenuSubItem key={subItem.title}>
@@ -483,6 +541,19 @@ function NavMain({ items, pathname, role }: { items: typeof data.navMain; pathna
   )
 }
 
+function NavMainWithSearchParams({
+  items,
+  pathname,
+  role
+}: {
+  items: typeof data.navMain;
+  pathname: string;
+  role?: string;
+}) {
+  const searchParams = useSearchParams();
+  return <NavMain items={items} pathname={pathname} searchParams={searchParams} role={role} />;
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -500,7 +571,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent className="gap-0 bg-[#0a152e] scrollbar-thin scrollbar-thumb-slate-800">
-        <NavMain items={data.navMain} pathname={pathname} role={role} />
+        <React.Suspense fallback={<NavMain items={data.navMain} pathname={pathname} searchParams={null} role={role} />}>
+          <NavMainWithSearchParams items={data.navMain} pathname={pathname} role={role} />
+        </React.Suspense>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-slate-800/80 p-3 bg-[#081024]">

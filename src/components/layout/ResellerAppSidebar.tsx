@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { handleSignOut } from "@/lib/logout"
 import {
@@ -142,7 +142,73 @@ function buildNav(basePath?: string) {
   }));
 }
 
-function NavMain({ items, pathname }: { items: typeof resellerNav; pathname: string }) {
+function isUrlActive(
+  itemUrl: string,
+  pathname: string,
+  searchParams: ReturnType<typeof useSearchParams> | null,
+  allSiblingUrls: string[]
+) {
+  if (!itemUrl || itemUrl === "#" || itemUrl === "/reseller") {
+    return pathname === itemUrl;
+  }
+
+  // Parse path and query params from itemUrl
+  const [itemPath, itemQuery] = itemUrl.split("?");
+
+  if (itemQuery) {
+    if (pathname !== itemPath) return false;
+    if (!searchParams) return false;
+
+    const itemSearchParams = new URLSearchParams(itemQuery);
+    for (const [key, val] of itemSearchParams.entries()) {
+      if (searchParams.get(key) !== val) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    const pathMatches =
+      pathname === itemPath ||
+      (pathname.startsWith(itemPath + "/") &&
+        !allSiblingUrls.some(
+          (other) =>
+            other !== itemUrl &&
+            other.length > itemUrl.length &&
+            (pathname === other || pathname.startsWith(other + "/"))
+        ));
+
+    if (!pathMatches) return false;
+
+    if (searchParams && searchParams.toString().length > 0) {
+      const moreSpecificSiblingMatches = allSiblingUrls.some((siblingUrl) => {
+        if (!siblingUrl.includes("?")) return false;
+        const [sibPath, sibQuery] = siblingUrl.split("?");
+        if (sibPath !== pathname) return false;
+        const sibSearchParams = new URLSearchParams(sibQuery);
+        for (const [key, val] of sibSearchParams.entries()) {
+          if (searchParams.get(key) !== val) return false;
+        }
+        return true;
+      });
+
+      if (moreSpecificSiblingMatches) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
+function NavMain({
+  items,
+  pathname,
+  searchParams
+}: {
+  items: typeof resellerNav;
+  pathname: string;
+  searchParams: ReturnType<typeof useSearchParams> | null;
+}) {
   const { setOpenMobile, isMobile } = useSidebar()
 
   const handleLinkClick = () => {
@@ -153,11 +219,11 @@ function NavMain({ items, pathname }: { items: typeof resellerNav; pathname: str
     <SidebarGroup className="py-2">
       <SidebarMenu className="gap-1">
         {items.map((item) => {
-          const isParentActive = item.items.some(
-            (sub) =>
-              pathname === sub.url ||
-              (sub.url !== "#" && pathname.startsWith(sub.url + "/"))
-          )
+          const siblingUrls = item.items.map((sub: any) => sub.url);
+          const isParentActive =
+            item.items.some((sub: any) =>
+              isUrlActive(sub.url, pathname, searchParams, siblingUrls)
+            ) || ((item as any).url ? isUrlActive((item as any).url, pathname, searchParams, []) : false);
 
           return (
             <Collapsible
@@ -188,16 +254,7 @@ function NavMain({ items, pathname }: { items: typeof resellerNav; pathname: str
                 <CollapsibleContent>
                   <SidebarMenuSub className="ml-4 pl-2 border-l border-slate-800/80 my-1 space-y-1">
                     {item.items.map((sub) => {
-                      const isSubActive =
-                        pathname === sub.url ||
-                        (sub.url !== "#" &&
-                          pathname.startsWith(sub.url + "/") &&
-                          !item.items.some(
-                            (other) =>
-                              other !== sub &&
-                              other.url.length > sub.url.length &&
-                              pathname.startsWith(other.url)
-                          ))
+                      const isSubActive = isUrlActive(sub.url, pathname, searchParams, siblingUrls);
 
                       return (
                         <SidebarMenuSubItem key={sub.title}>
@@ -224,6 +281,17 @@ function NavMain({ items, pathname }: { items: typeof resellerNav; pathname: str
       </SidebarMenu>
     </SidebarGroup>
   )
+}
+
+function NavMainWithSearchParams({
+  items,
+  pathname
+}: {
+  items: typeof resellerNav;
+  pathname: string;
+}) {
+  const searchParams = useSearchParams();
+  return <NavMain items={items} pathname={pathname} searchParams={searchParams} />;
 }
 
 export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<typeof Sidebar> & { basePath?: string }) {
@@ -298,7 +366,9 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
       </SidebarHeader>
 
       <SidebarContent className="gap-0 bg-[#0a152e] scrollbar-thin scrollbar-thumb-slate-800">
-        <NavMain items={navItems} pathname={pathname} />
+        <Suspense fallback={<NavMain items={navItems} pathname={pathname} searchParams={null} />}>
+          <NavMainWithSearchParams items={navItems} pathname={pathname} />
+        </Suspense>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-slate-800/80 p-2.5 bg-[#081024]">
