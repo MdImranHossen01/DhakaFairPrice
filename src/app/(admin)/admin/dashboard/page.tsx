@@ -567,9 +567,12 @@ export default function AdminDashboard() {
         </div>
 
         {/* Pending Orders Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-card border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/admin/orders"
+          className="relative overflow-hidden bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-card border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md shadow-amber-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -589,14 +592,17 @@ export default function AdminDashboard() {
                 </span>
               );
             })()}
-            <Clock className="h-4 w-4 text-amber-500 opacity-70" />
+            <Clock className="h-4 w-4 text-amber-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Pending Payouts Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-rose-500/15 via-red-500/10 to-card border border-rose-500/30 dark:border-rose-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-rose-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/admin/payouts"
+          className="relative overflow-hidden bg-gradient-to-br from-rose-500/15 via-red-500/10 to-card border border-rose-500/30 dark:border-rose-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-rose-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl shadow-md shadow-rose-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-xl shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform">
               <Wallet className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -611,9 +617,9 @@ export default function AdminDashboard() {
               {stats?.pendingPayoutsCount ? `${stats.pendingPayoutsCount} requests` : '0 requests'}{' '}
               <span className="text-muted-foreground font-normal">awaiting release</span>
             </span>
-            <Coins className="h-4 w-4 text-rose-500 opacity-70" />
+            <Coins className="h-4 w-4 text-rose-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* 3. Expense Breakdown & Orders Status Visual Charts */}
