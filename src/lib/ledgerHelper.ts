@@ -380,7 +380,10 @@ export async function cleanOrphanLedgerTransactions() {
     const SupplierBill = (await import('@/models/SupplierBill')).default;
     const mongoose = (await import('mongoose')).default;
 
-    const transactions = await LedgerTransaction.find();
+    // Only clean Mother Shop orphan transactions; NEVER delete reseller tenant ledger records
+    const transactions = await LedgerTransaction.find({
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
     let deletedCount = 0;
 
     // Fetch reference sets in parallel for high performance
@@ -396,7 +399,10 @@ export async function cleanOrphanLedgerTransactions() {
     const validOrderShortIds = new Set(paidOrders.map(o => o._id.toString().slice(-8).toUpperCase()));
     const validLoanIds = new Set(loans.map(l => l.loanId));
     const validSupplierBillInvoices = new Set(supplierBills.map((s: any) => ((s.billNo || s.invoiceNo || '') as string).toUpperCase()));
-    const validPayoutRefs = new Set(payouts.map(p => `PAYOUT-${p._id.toString().slice(-8).toUpperCase()}`));
+    const validPayoutRefs = new Set([
+      ...payouts.map(p => `PAYOUT-${p._id.toString().slice(-8).toUpperCase()}`),
+      ...payouts.map(p => `PAYOUT-REC-${p._id.toString().slice(-8).toUpperCase()}`)
+    ]);
 
     for (const tx of transactions) {
       // 1. Check Client Bill references: INV-xxxxxxx
