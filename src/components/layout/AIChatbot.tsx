@@ -7,6 +7,7 @@ import { Send, X, Bot, User, Loader2, Sparkles, Package, CheckCircle } from 'luc
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ProductCardV1 from '@/components/templates/product-cards/ProductCardV1';
+import { useSettings } from '@/components/SettingsProvider';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -17,6 +18,7 @@ interface Message {
 }
 
 export function AIChatbot() {
+  const settings = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
 
@@ -150,7 +152,7 @@ export function AIChatbot() {
     return parts.length > 0 ? parts : content;
   };
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Assalamu Alaikum! I am your Dhaka Fair Price AI assistant. How can I help you explore our products, track orders, or assist with reseller dropshipping today?' },
+    { role: 'assistant', content: 'Assalamu Alaikum! I am your AI assistant. How can I help you explore our products, track orders, or assist with reseller dropshipping today?' },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [orderingIndex, setOrderingIndex] = useState<number | null>(null);
@@ -314,7 +316,7 @@ export function AIChatbot() {
                   <Bot className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">Dhaka Fair Price AI</h3>
+                  <h3 className="font-bold text-sm">{settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "Store"} AI</h3>
                   <p className="text-[10px] text-primary-foreground/70">Always active for you</p>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-﻿import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -14,12 +14,12 @@ export const sendResetEmail = async (email: string, token: string) => {
   const resetUrl = `${baseUrl}/reset-password?token=${encodedToken}`;
 
   const mailOptions = {
-    from: `"Dhaka Fair Price" <${process.env.EMAIL_USER}>`,
+    from: `${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'} <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Password Reset Request - Dhaka Fair Price',
+    subject: `Password Reset Request - ${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #0d9488; text-align: center;">Dhaka Fair Price</h2>
+        <h2 style="color: #0d9488; text-align: center;">${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}</h2>
         <p>Hello,</p>
         <p>We received a request to reset your password. Click the button below to set a new password. This link will expire in 1 hour.</p>
         <div style="text-align: center; margin: 30px 0;">
@@ -27,7 +27,7 @@ export const sendResetEmail = async (email: string, token: string) => {
         </div>
         <p>If you didn't request this, you can safely ignore this email.</p>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #888;">Dhaka Fair Price - Your Trusted Online Store</p>
+        <p style="font-size: 12px; color: #888;">${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'} - Your Trusted Online Store</p>
       </div>
     `,
   };

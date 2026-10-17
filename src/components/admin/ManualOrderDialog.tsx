@@ -48,7 +48,7 @@ const DEFAULT_STATUSES: StatusOption[] = [
 ];
 
 function generateGuestEmail(phone: string) {
-  const domain = process.env.NEXT_PUBLIC_GUEST_EMAIL_DOMAIN || 'swapnobaz.com';
+  const domain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.NEXT_PUBLIC_GUEST_EMAIL_DOMAIN || 'guest.com';
   return `${phone || Date.now()}@${domain}`;
 }
 

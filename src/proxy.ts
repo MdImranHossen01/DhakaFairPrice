@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 const { auth } = NextAuth(authConfig);
 
 // Root domain — subdomains of this are treated as reseller stores
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
 // Subdomains reserved for the main platform (not reseller stores)
 const RESERVED_SUBDOMAINS = new Set(['www', 'admin', 'api', 'app', 'mail', 'smtp', 'ftp', 'cdn', 'static']);
 
@@ -36,7 +36,7 @@ export const proxy = auth(async (req) => {
   let targetSubdomain = extractSubdomain(hostname);
   const cleanHost = hostname.split(':')[0].toLowerCase();
 
-  // If not a subdomain of dhakafairprice.com, and not localhost/IP, check if it's a custom domain
+  // If not a subdomain of ${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'store.com'}, and not localhost/IP, check if it's a custom domain
   if (cleanHost &&
       !nextUrl.pathname.startsWith('/api/') &&
       !targetSubdomain && 

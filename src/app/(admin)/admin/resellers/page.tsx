@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 
 const ITEMS_PER_PAGE = 10;
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
 
 export default function AdminResellersPage() {
   const searchParams = useSearchParams();
@@ -432,13 +433,13 @@ export default function AdminResellersPage() {
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <a
-                                href={`https://${r.subdomain}.swapnobaz.com`}
+                                href={`https://${r.subdomain}.${ROOT_DOMAIN}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-semibold max-w-full"
-                                title={`${r.subdomain}.swapnobaz.com`}
+                                title={`${r.subdomain}.${ROOT_DOMAIN}`}
                               >
-                                <span className="truncate">{r.subdomain}.swapnobaz.com</span>
+                                <span className="truncate">{r.subdomain}.{ROOT_DOMAIN}</span>
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
                             </div>
@@ -545,7 +546,7 @@ export default function AdminResellersPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="cursor-pointer text-xs"
-                                onClick={() => window.open(`https://${r.subdomain}.swapnobaz.com`, '_blank')}
+                                onClick={() => window.open(`https://${r.subdomain}.${ROOT_DOMAIN}`, '_blank')}
                               >
                                 <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
                                 Visit Storefront
@@ -589,12 +590,12 @@ export default function AdminResellersPage() {
                     <div className="text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <a
-                          href={`https://${r.subdomain}.swapnobaz.com`}
+                          href={`https://${r.subdomain}.${ROOT_DOMAIN}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
                         >
-                          {r.subdomain}.swapnobaz.com
+                          {r.subdomain}.{ROOT_DOMAIN}
                           <ExternalLink className="h-3 w-3" />
                         </a>
                         <Button
@@ -683,7 +684,7 @@ export default function AdminResellersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="cursor-pointer text-xs"
-                            onClick={() => window.open(`https://${r.subdomain}.swapnobaz.com`, '_blank')}
+                            onClick={() => window.open(`https://${r.subdomain}.${ROOT_DOMAIN}`, '_blank')}
                           >
                             <ExternalLink className="mr-2 h-4 w-4 text-muted-foreground" />
                             Visit Storefront
@@ -741,7 +742,7 @@ export default function AdminResellersPage() {
             <div className="space-y-1.5 p-3.5 rounded-lg border bg-muted/20">
               <label className="text-xs font-bold text-foreground">Free Store Subdomain</label>
               <p className="text-[11px] text-muted-foreground">
-                Set unique subdomain name on swapnobaz platform:
+                Set unique subdomain name on {ROOT_DOMAIN} platform:
               </p>
               <div className="flex items-center gap-2 mt-1">
                 <Input
@@ -751,19 +752,19 @@ export default function AdminResellersPage() {
                   className="font-mono text-sm h-9 bg-background"
                 />
                 <span className="text-xs font-bold text-primary whitespace-nowrap bg-primary/10 px-2.5 py-2 rounded-md border border-primary/20">
-                  .swapnobaz.com
+                  .{ROOT_DOMAIN}
                 </span>
               </div>
               {editSubdomain && (
                 <div className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1">
                   <span>Preview Store:</span>
                   <a
-                    href={`https://${editSubdomain}.swapnobaz.com`}
+                    href={`https://${editSubdomain}.${ROOT_DOMAIN}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline font-semibold inline-flex items-center gap-0.5"
                   >
-                    https://{editSubdomain}.swapnobaz.com
+                    https://{editSubdomain}.{ROOT_DOMAIN}
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>

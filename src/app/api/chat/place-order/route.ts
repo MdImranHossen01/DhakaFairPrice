@@ -107,14 +107,14 @@ export async function POST(req: NextRequest) {
       targetUser = await User.findOne({
         $or: [
           { phone: normalizedPhone },
-          { email: `${normalizedPhone}@dhakafairprice.com` },
+          { email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` },
         ]
       });
 
       if (!targetUser) {
         targetUser = await User.create({
           name: cleanName,
-          email: `${normalizedPhone}@dhakafairprice.com`,
+          email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}`,
           phone: normalizedPhone,
           role: 'user',
           addresses: [{
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
         zipCode: '0000',
         country: 'Bangladesh',
       },
-      customerNote: notes || 'Direct Order placed via Dhaka Fair Price AI Assistant',
+      customerNote: notes || `Direct Order placed via ${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'} AI Assistant`,
       systemNote: 'AI Chat Assistant Order Placement',
     });
 

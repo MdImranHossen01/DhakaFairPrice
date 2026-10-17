@@ -47,7 +47,7 @@ export default function BannersPage() {
       text: `You are about to delete the banner"${title}". This action cannot be undone!`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#00D1B2', // Dhaka Fair Price primary color roughly
+      confirmButtonColor: '#00D1B2', // Primary brand color
       cancelButtonColor: '#d33',
       confirmButtonText: 'Yes, delete it!',
       background: '#fff',

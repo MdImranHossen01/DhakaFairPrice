@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       user = await User.findOne({
         $or: [
           { phone: normalizedPhone },
-          { email: `${normalizedPhone}@swapnobaz.com` }
+          { email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` }
         ]
       }).select('+password');
 
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       } else {
         user = await User.create({
           name: name || `Admin ${normalizedPhone.slice(-4)}`,
-          email: `${normalizedPhone}@swapnobaz.com`,
+          email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}`,
           phone: normalizedPhone,
           role: 'admin',
           image: image || undefined,

@@ -328,7 +328,7 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
   const storeHomeUrl = customDomain?.trim()
     ? (customDomain.trim().startsWith("http") ? customDomain.trim() : `https://${customDomain.trim()}`)
     : subdomain?.trim()
-    ? `https://${subdomain.trim()}.swapnobaz.com`
+    ? `https://${subdomain.trim()}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
     : "/"
 
   return (

@@ -133,8 +133,8 @@ function OrdersContent() {
 
   const getResellerBranding = () => {
     return {
-      brandName: reseller?.storeName || settings?.brandName || 'Swapnobaz',
-      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || 'Swapnobaz',
+      brandName: reseller?.storeName || settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store',
+      siteName: reseller?.storeName || settings?.siteName || settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store',
       contact: {
         phone: reseller?.phone || settings?.contact?.phone || '',
         email: reseller?.email || settings?.contact?.email || '',

@@ -17,7 +17,7 @@ function getEffectiveKey(): string {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('ENCRYPTION_KEY is required in production environments to secure sensitive data.');
     }
-    return 'DhakaFairPrice-dev-only-insecure-32';
+    return process.env.ENCRYPTION_KEY || 'Store-dev-only-insecure-32';
   }
   return MASTER_KEY;
 }

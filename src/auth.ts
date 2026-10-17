@@ -66,7 +66,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user = await User.findOne({
             $or: [
               { phone: normalizedPhone },
-              { email: `${normalizedPhone}@dhakafairprice.com` },
+              { email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` },
               { email: `${normalizedPhone}@store.com` }
             ]
           }).select('+password');

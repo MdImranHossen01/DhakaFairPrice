@@ -51,7 +51,7 @@ export function numberToWords(num: number): string {
 }
 
 export async function generateBillPDF(bill: any, settings: any, mode: 'download' | 'print' = 'download') {
-  const brandName = settings?.brandName || "Dhaka Fair Price";
+  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "Store";
   const brandEmail = settings?.contact?.email || "";
   const brandPhone = settings?.contact?.phone || "";
   const brandAddress = settings?.contact?.address || "";

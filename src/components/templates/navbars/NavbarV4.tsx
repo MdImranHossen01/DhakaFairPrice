@@ -83,10 +83,10 @@ export default function NavbarV4() {
       window.location.pathname.startsWith('/store/') ||
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
-       window.location.hostname !== 'swapnobaz.com' &&
-       window.location.hostname !== 'www.swapnobaz.com' &&
-       window.location.hostname !== 'dhakafairprice.com' &&
-       window.location.hostname !== 'www.dhakafairprice.com')
+       (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
+         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+       ) : true))
     ))
   );
   const filteredNavItems = isResellerStore

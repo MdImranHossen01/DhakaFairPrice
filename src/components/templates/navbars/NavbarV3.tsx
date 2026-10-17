@@ -103,10 +103,10 @@ export default function NavbarV3() {
       window.location.pathname.startsWith('/store/') ||
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
-       window.location.hostname !== 'swapnobaz.com' &&
-       window.location.hostname !== 'www.swapnobaz.com' &&
-       window.location.hostname !== 'dhakafairprice.com' &&
-       window.location.hostname !== 'www.dhakafairprice.com')
+       (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
+         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+       ) : true))
     ))
   );
 
@@ -155,7 +155,7 @@ export default function NavbarV3() {
             {/* Center: Logo */}
             <div className="absolute left-1/2 -translate-x-1/2">
               <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">
-                Swapnobaz
+                {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}
               </Link>
             </div>
 

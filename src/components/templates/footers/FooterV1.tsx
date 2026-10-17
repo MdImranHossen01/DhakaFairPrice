@@ -112,10 +112,10 @@ export default function FooterV1() {
       window.location.pathname.startsWith('/store/') ||
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
-       window.location.hostname !== 'swapnobaz.com' &&
-       window.location.hostname !== 'www.swapnobaz.com' &&
-       window.location.hostname !== 'dhakafairprice.com' &&
-       window.location.hostname !== 'www.dhakafairprice.com')
+       (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
+         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+       ) : true))
     ))
   );
 
@@ -191,7 +191,7 @@ export default function FooterV1() {
             <ul className="grid gap-3 text-sm text-muted-foreground">
               <li className="flex items-start justify-center md:justify-start gap-3">
                 <MapPin size={16} className="text-primary mt-0.5 shrink-0" />
-                <span>{settings?.contact?.address || '123 Swapnobaz Avenue'}</span>
+                <span>{settings?.contact?.address || ''}</span>
               </li>
               <li className="flex items-center justify-center md:justify-start gap-3">
                 <Phone size={16} className="text-primary shrink-0" />
@@ -199,7 +199,7 @@ export default function FooterV1() {
               </li>
               <li className="flex items-center justify-center md:justify-start gap-3">
                 <Mail size={16} className="text-primary shrink-0" />
-                <span>{settings?.contact?.email || 'support@swapnobaz.com'}</span>
+                <span>{settings?.contact?.email || (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `support@${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : '')}</span>
               </li>
             </ul>
             {hasSocialLinks && (
@@ -243,7 +243,7 @@ export default function FooterV1() {
 
         <div className="mt-12 flex flex-col items-center justify-between border-t py-6 sm:flex-row text-sm text-muted-foreground gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <p>© {new Date().getFullYear()} {settings?.brandName || 'Swapnobaz'}. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME}. All rights reserved.</p>
           </div>
 
           <div className="flex items-center gap-6">

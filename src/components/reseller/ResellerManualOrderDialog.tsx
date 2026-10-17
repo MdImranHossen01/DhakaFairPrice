@@ -200,7 +200,7 @@ export default function ResellerManualOrderDialog({
           customer: {
             name: customer.name.trim(),
             phone: cleanedPhone,
-            email: customer.email?.trim() || `${cleanedPhone}@swapnobaz.com`,
+            email: customer.email?.trim() || `${cleanedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}`,
             address: {
               street: customer.street.trim(),
               city: customer.city.trim() || 'Dhaka',

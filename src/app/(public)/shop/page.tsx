@@ -8,7 +8,7 @@ import { Metadata } from 'next';
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getCachedSettings();
-  const brandName = settings?.brandName || 'Dhaka Fair Price';
+  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store';
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   const headersList = await headers();
   const hostname = headersList.get('host') || 'localhost';

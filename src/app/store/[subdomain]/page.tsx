@@ -75,8 +75,8 @@ export default async function ResellerStorePage({ params }: Props) {
             এই স্টোরটি শীঘ্রই চালু হবে। অ্যাডমিন অনুমোদনের পর স্টোরটি সক্রিয় হবে।
           </p>
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <a href="https://swapnobaz.com" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              Powered by <span className="font-bold">Swapnobaz</span>
+            <a href={`https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Powered by <span className="font-bold">{process.env.NEXT_PUBLIC_STORE_NAME}</span>
             </a>
           </div>
         </div>
@@ -98,8 +98,8 @@ export default async function ResellerStorePage({ params }: Props) {
             {reseller.suspendReason || 'এই স্টোরটি সাময়িকভাবে স্থগিত করা হয়েছে।'}
           </p>
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <a href="https://swapnobaz.com" className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              Powered by <span className="font-bold">Swapnobaz</span>
+            <a href={`https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+              Powered by <span className="font-bold">{process.env.NEXT_PUBLIC_STORE_NAME}</span>
             </a>
           </div>
         </div>

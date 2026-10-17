@@ -3,7 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 export interface IReseller extends Document {
   userId: mongoose.Types.ObjectId;          // linked User account
   storeName: string;
-  subdomain: string;                         // e.g. "bestshop" → bestshop.dhakafairprice.com
+  subdomain: string;                         // e.g. "bestshop" → bestshop.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'store.com'}
   customDomain?: string;                     // e.g. "bestshop.com"
   logoUrl?: string;
   faviconUrl?: string;

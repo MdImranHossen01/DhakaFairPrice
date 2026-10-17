@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
-  title: 'Frequently Asked Questions (FAQ) | Dhaka Fair Price',
-  description: 'Find answers to commonly asked questions regarding orders, shipping, delivery, payments, returns, and reseller program at Dhaka Fair Price.',
+  title: `Frequently Asked Questions (FAQ) | ${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}`,
+  description: 'Find answers to commonly asked questions regarding orders, shipping, delivery, payments, returns, and reseller program.',
 };
 
 export const revalidate = 60; // Revalidate every 60 seconds

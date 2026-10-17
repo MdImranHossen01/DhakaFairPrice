@@ -27,8 +27,8 @@ import { Button } from '@/components/ui/button';
 import { CounterSection } from './CounterSection';
 
 export const metadata: Metadata = {
-  title: 'Factory Profile | Dhaka Fair Price',
-  description: 'Dhaka Fair Price - State-of-the-art underwear and apparel manufacturing facility in Dhaka, Bangladesh. Specializing in high-capacity OEM & private label production for global brands.',
+  title: `Factory Profile | ${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}`,
+  description: 'State-of-the-art underwear and apparel manufacturing facility in Dhaka, Bangladesh. Specializing in high-capacity OEM & private label production for global brands.',
 };
 
 async function getSettings() {
@@ -37,9 +37,9 @@ async function getSettings() {
     const settings = await GlobalSettings.findOne().lean();
     if (!settings) {
       return {
-        brandName: "Dhaka Fair Price",
+        brandName: process.env.NEXT_PUBLIC_STORE_NAME || "Store",
         contact: {
-          email: "dhakafairprice@gmail.com",
+          email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || process.env.NEXT_PUBLIC_SUPPORT_EMAIL || (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `support@${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : ""),
           phone: "+880 1816-879730",
           address: "Sarkarbari, Helal Market, Uttar Khan, Dhaka, Bangladesh"
         }
@@ -54,8 +54,8 @@ async function getSettings() {
 
 export default async function FactoryProfilePage() {
   const settings = await getSettings();
-  const brandName = settings?.brandName || "Dhaka Fair Price";
-  const contactEmail = settings?.contact?.email || "dhakafairprice@gmail.com";
+  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "Store";
+  const contactEmail = settings?.contact?.email || settings?.contact?.email || process.env.NEXT_PUBLIC_SUPPORT_EMAIL || (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `support@${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : "");
   const contactPhone = settings?.contact?.phone || "+880 1816-879730";
   const factoryAddress = settings?.contact?.address || "Sarkarbari, Helal Market, Uttar Khan, Dhaka, Bangladesh";
 

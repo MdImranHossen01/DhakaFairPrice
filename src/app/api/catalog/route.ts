@@ -29,14 +29,14 @@ const DEFAULT_SPEC = makeBulletDesc(
 // Default catalog data for first-time use
 const DEFAULT_CATALOG = {
   companyInfo: {
-    about: 'Dhaka Fair Price is a leading manufacturer specializing in men\'s underwear with over 10 years of experience in the textile and garment industry. We focus on quality, comfort, and innovation, providing premium innerwear solutions to global brands, wholesalers, and retailers. We offer OEM (Original Equipment Manufacturer) and ODM (Original Design Manufacturer) services.',
+    about: 'Leading manufacturer specializing in premium quality apparel with over 10 years of industry experience, providing high quality products to brands, wholesalers, and retailers.',
     capacity: '5,00,000 pcs/m',
     established: 'Since 2014',
     certifications: 'ISO, BSCI Certified',
     markets: 'EU, USA, Mid-East',
     address: 'Sarkarbari, Helal Market, Uttar Khan, Dhaka, Bangladesh',
     phone: '+880 1816-879730',
-    email: 'dhakafairprice@gmail.com',
+    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `support@${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : ''),
     corporatePresence: 'LinkedIn / Alibaba / Google Business Profile',
   },
   categories: [

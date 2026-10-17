@@ -281,7 +281,7 @@ function SourceProductsContent() {
                         {product.categories?.[0]?.name || 'Uncategorized'}
                       </span>
                       <span className={isAdmin ? 'text-blue-600 font-bold shrink-0' : 'text-purple-600 font-bold shrink-0 truncate max-w-[110px]'}>
-                        {isAdmin ? 'Swapnobaz' : resellerStore}
+                        {isAdmin ? (process.env.NEXT_PUBLIC_STORE_NAME || 'Main Store') : resellerStore}
                       </span>
                     </div>
                     <p className="text-xs md:text-sm font-bold line-clamp-2 leading-snug">{product.name}</p>
@@ -370,7 +370,7 @@ function SourceProductsContent() {
                   <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedProduct.sku || '-'}</p>
                   <Badge className={`text-[9px] mt-1 ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                     {selectedProduct.sourceType === 'admin'
-                      ? 'Main Store (Swapnobaz)'
+                      ? `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`
                       : `Reseller: ${selectedProduct.uploadedBy?.storeName || selectedProduct.sourceStoreName || 'Reseller'}`}
                   </Badge>
                 </div>

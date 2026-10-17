@@ -296,7 +296,7 @@ export default function ResellerDashboard() {
     const rawDomain = data?.reseller?.customDomain?.trim();
     const liveUrl = rawDomain
       ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`)
-      : `https://${data?.reseller?.subdomain}.swapnobaz.com`;
+      : `https://${data?.reseller?.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
     navigator.clipboard.writeText(liveUrl);
     toast.success('Store link copied to clipboard!');
   };
@@ -420,7 +420,7 @@ export default function ResellerDashboard() {
   const { reseller, stats, catalogStats, recentOrders = [] } = data;
   const storeLink = reseller.customDomain?.trim()
     ? (reseller.customDomain.trim().startsWith('http') ? reseller.customDomain.trim() : `https://${reseller.customDomain.trim()}`)
-    : `https://${reseller.subdomain}.swapnobaz.com`;
+    : `https://${reseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
 
   const orderStatusColor: Record<string, string> = {
     'Order Placed': 'bg-blue-500/10 text-blue-600 border-blue-500/20',

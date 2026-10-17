@@ -123,7 +123,7 @@ export default function DailyReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Swapnobaz E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">{process.env.NEXT_PUBLIC_STORE_NAME || 'E-Commerce'}</h2>
         <h3 className="text-lg font-semibold text-slate-700">Daily Sales & Profit Report</h3>
         <p className="text-xs text-slate-500">Period: {data?.monthName} {data?.year}</p>
       </div>

@@ -84,10 +84,10 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
       window.location.pathname.startsWith('/store/') ||
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
-       window.location.hostname !== 'swapnobaz.com' &&
-       window.location.hostname !== 'www.swapnobaz.com' &&
-       window.location.hostname !== 'dhakafairprice.com' &&
-       window.location.hostname !== 'www.dhakafairprice.com')
+       (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
+         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+       ) : true))
     ))
   );
 
@@ -498,7 +498,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[44px] h-[44px] xl:w-[48px] xl:h-[48px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
+                    alt={`${settings.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "Store"} Logo`}
                     fill
                     sizes="48px"
                     className="object-contain"
@@ -879,7 +879,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <Link href="/" className="relative block w-[64px] h-[64px] transition-transform hover:scale-105">
                   <Image
                     src={settings.logoUrl || "/logo.webp"}
-                    alt={`${settings.brandName || "Swapnobaz"} Logo`}
+                    alt={`${settings.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "Store"} Logo`}
                     fill
                     sizes="64px"
                     className="object-contain"
@@ -895,7 +895,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                 <div className="flex items-center justify-between w-full border-b border-border/10 pb-1 gap-4">
                   {/* Logo Brand Name Text Only */}
                   <Link href="/" className="text-lg xl:text-xl uppercase text-foreground transition-colors hover:text-primary font-black tracking-tighter font-logo shrink-0">
-                    {settings.brandName || "SWAPNOBAZ"}
+                    {settings.brandName || process.env.NEXT_PUBLIC_STORE_NAME || "STORE"}
                   </Link>
 
                   {/* Right-side Utilities */}

@@ -54,12 +54,13 @@ export default {
           return url;
         }
 
-        // 4. Allow mother platform domain and tenant subdomains (*.swapnobaz.com, *.dhakafairprice.com)
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
         if (
-          targetHostname === 'swapnobaz.com' ||
-          targetHostname.endsWith('.swapnobaz.com') ||
-          targetHostname === 'dhakafairprice.com' ||
-          targetHostname.endsWith('.dhakafairprice.com')
+          rootDomain && (
+            targetHostname === rootDomain ||
+            targetHostname.endsWith(`.${rootDomain}`) ||
+            targetHostname === `www.${rootDomain}`
+          )
         ) {
           return url;
         }

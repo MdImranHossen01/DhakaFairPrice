@@ -223,7 +223,8 @@ export async function POST(request: NextRequest) {
 
     // 1. Find or create customer User
     const customerPhone = customer.phone.trim();
-    const customerEmail = customer.email?.trim() || `${customerPhone}@swapnobaz.com`;
+    const guestDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com';
+    const customerEmail = customer.email?.trim() || `${customerPhone}@${guestDomain}`;
 
     let customerUser = await User.findOne({
       $or: [

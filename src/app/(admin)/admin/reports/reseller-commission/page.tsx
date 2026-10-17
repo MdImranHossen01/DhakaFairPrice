@@ -135,7 +135,7 @@ export default function ResellerCommissionReportPage() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b pb-4 mb-6">
-        <h2 className="text-2xl font-bold uppercase tracking-wider">Dhaka Fair Price E-Commerce</h2>
+        <h2 className="text-2xl font-bold uppercase tracking-wider">{process.env.NEXT_PUBLIC_STORE_NAME || "E-Commerce"}</h2>
         <h3 className="text-lg font-semibold text-slate-700">Reseller Commission & Payout Statement</h3>
       </div>
 

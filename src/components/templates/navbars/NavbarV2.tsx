@@ -62,10 +62,10 @@ export default function NavbarV2() {
       window.location.pathname.startsWith('/store/') ||
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
-       window.location.hostname !== 'swapnobaz.com' &&
-       window.location.hostname !== 'www.swapnobaz.com' &&
-       window.location.hostname !== 'dhakafairprice.com' &&
-       window.location.hostname !== 'www.dhakafairprice.com')
+       (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
+         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+       ) : true))
     ))
   );
   const filteredNavItems = isResellerStore
@@ -204,8 +204,8 @@ export default function NavbarV2() {
             />
 
             <Link href="/" className={`text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-all flex items-center gap-2 group ${!isHomePage || isScrolled ? 'text-foreground' : 'text-white'}`}>
-              <Image src="/logo.webp" width={40} height={40} alt="Swapnobaz Logo" className="object-contain" />
-              {settings?.brandName || 'Swapnobaz'}
+              <Image src="/logo.webp" width={40} height={40} alt="Logo" className="object-contain" />
+              {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME}
             </Link>
           </div>
 

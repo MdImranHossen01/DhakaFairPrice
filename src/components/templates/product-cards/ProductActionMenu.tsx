@@ -232,7 +232,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                         Main Store Product
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Dhaka Fair Price Official Catalog
+                        Official Catalog
                       </p>
                     </div>
 
@@ -370,7 +370,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                         {isResellerProduct ? (
                           <>Store: <span className="font-bold text-foreground">{resellerStoreName || 'Reseller'}</span></>
                         ) : (
-                          <>উৎস: <span className="font-bold text-foreground">Dhaka Fair Price Official</span></>
+                          <>উৎস: <span className="font-bold text-foreground">Official Store</span></>
                         )}
                       </p>
                     </div>
@@ -459,7 +459,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                   >
                     {isResellerProduct
                       ? `Reseller: ${resellerStoreName || 'Reseller'}`
-                      : 'Main Store (Dhaka Fair Price)'}
+                      : 'Main Store'}
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -510,7 +510,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Customers on your storefront (<Badge variant="outline" className="text-[10px] py-0 px-1 font-mono">subdomain.dhakafairprice.com</Badge>) will buy at this price.
+                  Customers on your storefront (<Badge variant="outline" className="text-[10px] py-0 px-1 font-mono">subdomain.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'store.com'}</Badge>) will buy at this price.
                 </p>
               </div>
 

@@ -214,7 +214,7 @@ export function ResellerSidebar({
             <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Store Link</span>
             <Badge variant="outline" className="text-[9px] px-1 py-0">Live</Badge>
           </div>
-          <p className="text-[11px] font-mono text-muted-foreground truncate">{reseller.subdomain}.swapnobaz.com</p>
+          <p className="text-[11px] font-mono text-muted-foreground truncate">{reseller.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}</p>
           <div className="grid grid-cols-2 gap-1.5 pt-0.5">
             <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={copyStoreLink}>
               <Copy className="h-3 w-3 mr-1" /> Copy

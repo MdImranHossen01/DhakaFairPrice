@@ -35,7 +35,7 @@ export function BlogRecent({ blogs }: BlogRecentProps) {
               Latest from our <span className="text-primary italic">Blog</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl">
-              Discover tips, news, and trends from the Dhaka Fair Price community.
+              Discover tips, news, and trends from our community.
             </p>
           </div>
           <Button asChild variant="default" className="rounded-full font-bold group">

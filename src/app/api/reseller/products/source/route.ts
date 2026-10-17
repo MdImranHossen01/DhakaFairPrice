@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         ...product,
         isSourced: !!sourcedItem,
         sourceType: (!product.uploadedBy) ? 'admin' : 'reseller',
-        sourceStoreName: isFromReseller ? (resellerName || 'Reseller') : 'Main Store (Dhaka Fair Price)',
+        sourceStoreName: isFromReseller ? (resellerName || 'Reseller') : `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`,
         sourcedDetails: sourcedItem
           ? {
               _id: sourcedItem._id,

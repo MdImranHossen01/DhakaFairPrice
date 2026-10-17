@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
               action_source: 'website',
               user_data: {
                 client_ip_address: '127.0.0.1',
-                client_user_agent: 'Dhaka Fair Price Admin Test',
+                client_user_agent: `${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'} Admin Test`,
               },
               custom_data: { test: true },
             },
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
           context: {
             user: {},
             page: { url: baseUrl },
-            user_agent: 'Dhaka Fair Price Admin Test',
+            user_agent: `${process.env.NEXT_PUBLIC_STORE_NAME || 'Store'} Admin Test`,
             ip: '127.0.0.1',
           },
           properties: {
