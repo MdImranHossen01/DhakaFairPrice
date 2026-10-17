@@ -174,14 +174,15 @@ export function ResellerCTA() {
           </div>
 
           {/* Right: Image */}
-          <div className="relative order-1 lg:order-2 flex justify-center">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border border-border/80 bg-muted">
+          <div className="relative order-1 lg:order-2 flex justify-center items-center w-full">
+            <div className="relative w-full max-w-[420px] sm:max-w-[460px] lg:max-w-[480px] aspect-square rounded-2xl overflow-hidden shadow-xl border border-border/80 bg-muted">
               <Image
                 src={hero.heroImage || '/assets/images/sectionbanner/reseller-section.webp'}
                 alt={hero.titleHighlight || 'Reseller Program'}
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 480px"
+                className="object-cover w-full h-full"
+                unoptimized
                 priority
               />
             </div>

@@ -370,14 +370,15 @@ export default function ResellerProgramPage() {
               </div>
 
               {/* Right Hero Image */}
-              <div className="relative flex justify-center">
-                <div className="relative w-full max-w-md lg:max-w-lg xl:max-w-xl aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 bg-purple-950/50 backdrop-blur-sm">
+              <div className="relative flex justify-center items-center w-full">
+                <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[500px] aspect-square rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 bg-purple-950/50 backdrop-blur-sm">
                   <Image
                     src={hero.heroImage || '/assets/images/sectionbanner/reseller-section.webp'}
                     alt="Reseller Program"
                     fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 500px"
+                    className="object-cover w-full h-full"
+                    unoptimized
                     priority
                   />
                 </div>

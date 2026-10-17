@@ -228,9 +228,10 @@ export function EditHeroDialog({ open, onOpenChange, heroData, onSave }: EditHer
               />
               <div className="p-3 bg-slate-800/60 rounded-xl border border-slate-700">
                 <ImageUpload
-                  label="নতুন ব্যানার ইমেজ আপলোড করুন"
+                  label="নতুন ব্যানার ইমেজ আপলোড করুন (1:1 Ratio Square)"
                   value={formData.heroImage}
                   onUpload={(url) => setFormData({ ...formData, heroImage: url })}
+                  aspect="square"
                 />
               </div>
             </div>
