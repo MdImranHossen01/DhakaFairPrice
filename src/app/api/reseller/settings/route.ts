@@ -22,6 +22,24 @@ export async function GET() {
     // Auto-reconcile any Delivered/Paid commissions
     const { reconcileResellerCommissions } = await import('@/lib/resellerCommissionSync');
     await reconcileResellerCommissions(reseller._id);
+
+    // Sync accurate total lifetime earnings based on actual cleared commissions
+    const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+    const earningsAgg = await ResellerWalletTransaction.aggregate([
+      {
+        $match: {
+          resellerId: reseller._id,
+          type: 'commission_earned',
+          status: { $in: ['cleared', 'completed'] }
+        }
+      },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const actualTotalEarnings = earningsAgg[0]?.total || 0;
+    if (reseller.totalEarnings !== actualTotalEarnings) {
+      await Reseller.findByIdAndUpdate(reseller._id, { totalEarnings: actualTotalEarnings });
+    }
+
     reseller = await Reseller.findById(reseller._id);
 
     // Ensure User profile image is synchronized with store logo

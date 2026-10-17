@@ -64,14 +64,7 @@ export async function PATCH(request: NextRequest) {
         return NextResponse.json({ error: 'Transaction not found or already processed' }, { status: 404 });
       }
 
-      if (action === 'approve') {
-        // Update reseller total lifetime earnings
-        await Reseller.findByIdAndUpdate(
-          transaction.resellerId,
-          { $inc: { totalEarnings: Math.abs(transaction.amount) } },
-          { session: sessionConn }
-        );
-      } else if (action === 'reject') {
+      if (action === 'reject') {
         const refundAmount = Math.abs(transaction.amount);
         // Refund the money back to the reseller's wallet balance
         await Reseller.findByIdAndUpdate(
