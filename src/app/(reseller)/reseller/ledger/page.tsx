@@ -31,17 +31,20 @@ import { cleanAccountName } from '@/lib/utils';
 
 function isDebitTransaction(tx: any) {
   const desc = (tx.description || '').toLowerCase();
-  // Deductions: expense, withdrawal, transfer to another account
+  // Deductions: expense, withdrawal, transfer to another account, payout to
   if (
     desc.startsWith('expense') ||
     desc.startsWith('manual withdrawal') ||
     desc.startsWith('transfer to') ||
     desc.startsWith('payment credit for bill') ||
-    desc.startsWith('upfront payment credit')
+    desc.startsWith('upfront payment credit') ||
+    desc.includes('payout to') ||
+    desc.includes('commission payout') ||
+    desc.includes('loan repayment')
   ) {
     return true;
   }
-  // Additions: income, opening balance, deposit, transfer from another account
+  // Additions: income, opening balance, deposit, transfer from another account, payout received
   if (
     desc.startsWith('income') ||
     desc.startsWith('opening balance') ||
@@ -49,12 +52,15 @@ function isDebitTransaction(tx: any) {
     desc.startsWith('transfer from') ||
     desc.startsWith('business loan inflow') ||
     desc.startsWith('payment received') ||
+    desc.startsWith('payout received') ||
+    desc.includes('payout received') ||
     desc.startsWith('cash paid upfront') ||
     desc.startsWith('bill generated')
   ) {
     return false;
   }
-  return tx.type === 'debit';
+  const isAccountLiability = tx.account?.type === 'liability' || tx.account?.code === 'AP' || tx.account?.code === 'AR';
+  return isAccountLiability ? tx.type === 'debit' : tx.type === 'credit';
 }
 
 function ResellerLedgerContent() {

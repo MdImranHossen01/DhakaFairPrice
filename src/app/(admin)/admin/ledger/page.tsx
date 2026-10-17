@@ -46,15 +46,21 @@ import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCar
 function getTransactionTypeInfo(tx: any) {
   const desc = (tx.description || '').toLowerCase();
 
-  // Deductions: expense, withdrawal, transfer to another account, bill payment credit from receivable
+  // Deductions: expense, withdrawal, transfer to another account, bill payment credit from receivable, payout to reseller, loan repayment, supplier payment
   const isDeduction =
     desc.startsWith('expense') ||
     desc.startsWith('manual withdrawal') ||
     desc.startsWith('transfer to') ||
     desc.startsWith('payment credit for bill') ||
-    desc.startsWith('upfront payment credit');
+    desc.startsWith('upfront payment credit') ||
+    desc.includes('payout to') ||
+    desc.includes('commission payout') ||
+    desc.includes('loan repayment') ||
+    desc.startsWith('reseller commission payout') ||
+    desc.startsWith('supplier payment') ||
+    desc.includes('paid to');
 
-  // Additions: income, opening balance, deposit, loan inflow, transfer from another account, bill payment received into cash/bank
+  // Additions: income, opening balance, deposit, loan inflow, transfer from another account, bill payment received into cash/bank, payout received
   const isAddition =
     desc.startsWith('income') ||
     desc.startsWith('opening balance') ||
@@ -62,6 +68,8 @@ function getTransactionTypeInfo(tx: any) {
     desc.startsWith('transfer from') ||
     desc.startsWith('business loan inflow') ||
     desc.startsWith('payment received') ||
+    desc.startsWith('payout received') ||
+    desc.includes('payout received') ||
     desc.startsWith('cash paid upfront') ||
     desc.startsWith('bill generated');
 
@@ -83,8 +91,12 @@ function getTransactionTypeInfo(tx: any) {
     };
   }
 
-  // Fallback for any unknown transaction
-  if (tx.type === 'debit') {
+  // Fallback: for asset accounts (Cash, Bank, MFS), credit in double-entry bookkeeping decreases asset balance (deduction/outflow)
+  // while debit increases asset balance (addition/inflow).
+  const isAccountLiability = tx.account?.type === 'liability' || tx.account?.code === 'AP' || tx.account?.code === 'AR';
+  const isOutflow = isAccountLiability ? tx.type === 'debit' : tx.type === 'credit';
+
+  if (isOutflow) {
     return {
       label: 'Debit (-)',
       sign: '-',
