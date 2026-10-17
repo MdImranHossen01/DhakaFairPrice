@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { use } from 'react';
-import { notFound } from 'next/navigation';
+import { use, useEffect } from 'react';
+import { notFound, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 
@@ -14,6 +14,14 @@ const Fallback = () => (
     </div>
   </div>
 );
+
+const ReportsRedirect = () => {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/reseller-dashboard/reports/daily');
+  }, [router]);
+  return <Fallback />;
+};
 
 // Map slug path → existing reseller page component
 const PAGE_MAP: Record<string, React.ComponentType<any>> = {
@@ -40,6 +48,15 @@ const PAGE_MAP: Record<string, React.ComponentType<any>> = {
   'coupons': dynamic(() => import('@/app/(reseller)/reseller/coupons/page'), { loading: Fallback }),
   'settings': dynamic(() => import('@/app/(reseller)/reseller/settings/page'), { loading: Fallback }),
   'marketing': dynamic(() => import('@/app/(reseller)/reseller/marketing/page'), { loading: Fallback }),
+  'reports': ReportsRedirect,
+  'reports/daily': dynamic(() => import('@/app/(reseller)/reseller/reports/daily/page'), { loading: Fallback }),
+  'reports/monthly': dynamic(() => import('@/app/(reseller)/reseller/reports/monthly/page'), { loading: Fallback }),
+  'reports/order-profit': dynamic(() => import('@/app/(reseller)/reseller/reports/order-profit/page'), { loading: Fallback }),
+  'reports/item-profit': dynamic(() => import('@/app/(reseller)/reseller/reports/item-profit/page'), { loading: Fallback }),
+  'reports/product-sales': dynamic(() => import('@/app/(reseller)/reseller/reports/product-sales/page'), { loading: Fallback }),
+  'reports/brand-sales': dynamic(() => import('@/app/(reseller)/reseller/reports/brand-sales/page'), { loading: Fallback }),
+  'reports/payouts': dynamic(() => import('@/app/(reseller)/reseller/reports/payouts/page'), { loading: Fallback }),
+  'reports/expense': dynamic(() => import('@/app/(reseller)/reseller/reports/expense/page'), { loading: Fallback }),
 };
 
 const DynamicEditProduct = dynamic(() => import('@/app/(reseller)/reseller/products/[id]/edit/page'), { loading: Fallback });
