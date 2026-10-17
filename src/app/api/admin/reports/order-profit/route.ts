@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
 
     const matchQuery: any = {
       status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-      deletedAt: null
+      deletedAt: null,
+      orderSource: { $ne: 'reseller_storefront' },
+      systemNote: { $not: /^Reseller Order/ },
     };
 
     if (from || to) {

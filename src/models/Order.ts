@@ -37,6 +37,8 @@ export interface IOrder extends Document {
   couponDiscountAmount?: number;
   isRewarded?: boolean;
   resellerId?: mongoose.Types.ObjectId;
+  orderSource?: 'mother' | 'reseller_storefront';
+  storefrontResellerId?: mongoose.Types.ObjectId;
   pickupLocation?: {
     hubName?: string;
     contactPerson?: string;
@@ -116,6 +118,8 @@ const OrderSchema: Schema<IOrder> = new Schema(
     couponDiscountAmount: { type: Number, default: 0, min: 0 },
     isRewarded: { type: Boolean, default: false },
     resellerId: { type: Schema.Types.ObjectId, ref: 'Reseller', default: null, index: true },
+    orderSource: { type: String, enum: ['mother', 'reseller_storefront'], default: 'mother', index: true },
+    storefrontResellerId: { type: Schema.Types.ObjectId, ref: 'Reseller', default: null, index: true },
     pickupLocation: {
       hubName: { type: String, default: '' },
       contactPerson: { type: String, default: '' },

@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
           $match: {
             status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
             createdAt: { $gte: startDate, $lte: endDate },
-            deletedAt: null
+            deletedAt: null,
+            orderSource: { $ne: 'reseller_storefront' },
+            systemNote: { $not: /^Reseller Order/ },
           }
         },
         {

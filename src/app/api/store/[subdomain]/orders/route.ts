@@ -247,6 +247,8 @@ export async function POST(
       const [motherOrder] = (await Order.create([{
         user: customerUser?._id,
         shortId,
+        orderSource: 'reseller_storefront',
+        storefrontResellerId: reseller._id,
         items: validatedItems.map(item => ({
           product: item.productId,
           name: item.name,

@@ -60,6 +60,12 @@ export async function GET(req: NextRequest) {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
+    const motherOrderFilter = {
+      deletedAt: null,
+      orderSource: { $ne: 'reseller_storefront' },
+      systemNote: { $not: /^Reseller Order/ }
+    };
+
     // Concurrently fetch all metrics using Promise.all
     const [
       revenueStats,
@@ -88,7 +94,7 @@ export async function GET(req: NextRequest) {
           $match: { 
             status: { $in: ['Paid', 'Confirmed', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
             createdAt: { $gte: startDate, $lte: endDate },
-            deletedAt: null
+            ...motherOrderFilter
           } 
         },
         {
@@ -123,7 +129,7 @@ export async function GET(req: NextRequest) {
           $match: { 
             status: { $in: ['Paid', 'Confirmed', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
             createdAt: { $gte: prevStartDate, $lte: prevEndDate },
-            deletedAt: null
+            ...motherOrderFilter
           } 
         },
         {
@@ -181,7 +187,7 @@ export async function GET(req: NextRequest) {
 
       // 3. Order counts grouped by workflow status
       Order.aggregate([
-        { $match: { deletedAt: null } },
+        { $match: { ...motherOrderFilter } },
         {
           $group: {
             _id: '$status',
@@ -273,7 +279,7 @@ export async function GET(req: NextRequest) {
           $match: {
             status: { $in: ['Paid', 'Confirmed', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
             createdAt: { $gte: startDate, $lte: endDate },
-            deletedAt: null
+            ...motherOrderFilter
           }
         },
         {
@@ -315,7 +321,7 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             createdAt: { $gte: sevenDaysAgo },
-            deletedAt: null
+            ...motherOrderFilter
           }
         },
         {

@@ -498,6 +498,7 @@ export async function POST(req: NextRequest) {
       [
         {
           user: user?._id,
+          orderSource: 'mother',
           items: validatedItems,
           deliveryCharge: serverComputedDeliveryCharge,
           totalAmount: baseTotal,
