@@ -41,9 +41,16 @@ export default function ResellerWalletPage() {
     }
     if (aRes.ok) {
       const d = await aRes.json();
-      // Filter to accounts where payouts can be received (MFS, Bank, Cash - exclude AP/AR)
+      // Filter only to valid payout receiving accounts (MFS, or Bank with an actual account number)
+      // Exclude Cash in Hand, AP, AR, and placeholder Bank accounts without an account number
       const validAccounts = (d.accounts || []).filter((a: any) =>
-        a.type !== 'liability' && a.category !== 'Other' && a.code !== 'AP' && a.code !== 'AR'
+        a.type !== 'liability' &&
+        a.category !== 'Other' &&
+        a.code !== 'AP' &&
+        a.code !== 'AR' &&
+        a.code !== 'CASH' &&
+        a.category !== 'Cash' &&
+        Boolean(a.accountNumber && a.accountNumber.trim())
       );
       setAccounts(validAccounts);
       if (validAccounts.length > 0) {
@@ -208,10 +215,10 @@ export default function ResellerWalletPage() {
                 ) : accounts.length === 0 ? (
                   <div className="p-4 border rounded-lg bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs md:text-sm space-y-2.5">
                     <p className="font-semibold flex items-center gap-1.5">
-                      <AlertCircle className="h-4 w-4 text-amber-600" /> কোনো অ্যাকাউন্ট যোগ করা নেই
+                      <AlertCircle className="h-4 w-4 text-amber-600" /> কোনো Payout রিসিভিং অ্যাকাউন্ট যুক্ত নেই
                     </p>
                     <p className="text-muted-foreground text-xs leading-relaxed">
-                      Payout রিকোয়েস্ট করার জন্য অনুগ্রহ করে প্রথমে আপনার <strong>Ledger & Accounting → All Accounts</strong> পেজ থেকে আপনার বিকাশ (bKash), নগদ (Nagad), রকেট (Rocket) অথবা ব্যাংক অ্যাকাউন্ট যুক্ত করুন।
+                      Payout রিকোয়েস্ট করার জন্য অনুগ্রহ করে আপনার <strong>Ledger & Accounting → All Accounts</strong> পেজ থেকে আপনার বিকাশ (bKash), নগদ (Nagad), রকেট (Rocket) অথবা ব্যাংক অ্যাকাউন্ট (সঠিক অ্যাকাউন্ট নম্বর সহ) যুক্ত করুন। Cash in Hand অ্যাকাউন্টে Payout নেওয়া সম্ভব নয়।
                     </p>
                     <Button asChild size="sm" className="w-full text-xs mt-1">
                       <Link href="/reseller-dashboard/accounts">অ্যাকাউন্ট যুক্ত করতে যান</Link>

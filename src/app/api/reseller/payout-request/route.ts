@@ -47,17 +47,29 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Selected account not found in your connected accounts' }, { status: 400 });
       }
 
+      if (selectedAccount.code === 'CASH' || selectedAccount.category === 'Cash') {
+        return NextResponse.json({
+          error: 'Cash in Hand অ্যাকাউন্টে পে-আউট পাঠানো সম্ভব নয়। অনুগ্রহ করে বিকাশ, নগদ বা ব্যাংক অ্যাকাউন্ট নির্বাচন করুন।'
+        }, { status: 400 });
+      }
+
+      if (!selectedAccount.accountNumber || !selectedAccount.accountNumber.trim()) {
+        return NextResponse.json({
+          error: 'সিলেক্ট করা অ্যাকাউন্টের কোনো অ্যাকাউন্ট নম্বর নেই। অনুগ্রহ করে অ্যাকাউন্ট নম্বর সহ বিকাশ, নগদ বা ব্যাংক অ্যাকাউন্ট নির্বাচন করুন।'
+        }, { status: 400 });
+      }
+
       destinationAccountId = selectedAccount._id;
       method = selectedAccount.category === 'MFS'
         ? (selectedAccount.mfsProvider || selectedAccount.name)
         : (selectedAccount.category === 'Bank' ? (selectedAccount.bankName || selectedAccount.name) : selectedAccount.name);
-      number = selectedAccount.accountNumber || selectedAccount.code;
-      accountDisplayName = `${selectedAccount.name}${selectedAccount.accountNumber ? ` (${selectedAccount.accountNumber})` : ''}`;
+      number = selectedAccount.accountNumber.trim();
+      accountDisplayName = `${selectedAccount.name}${selectedAccount.accountNumber ? ` (${selectedAccount.accountNumber.trim()})` : ''}`;
     }
 
     if (!method || !number) {
       return NextResponse.json({
-        error: 'Please select a valid connected account (bKash, Nagad, Rocket or Bank) from your Accounts page.'
+        error: 'Please select a valid connected account (bKash, Nagad, Rocket or Bank with account number) from your Accounts page.'
       }, { status: 400 });
     }
 
