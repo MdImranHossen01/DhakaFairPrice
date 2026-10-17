@@ -4,6 +4,8 @@ import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 
+import LedgerAccount from '@/models/LedgerAccount';
+
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -12,9 +14,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { resellerId, method, number, amount } = body;
+    const { resellerId, accountId, method: legacyMethod, number: legacyNumber, amount } = body;
 
-    if (!resellerId || !method || !number || !amount || amount <= 0) {
+    if (!resellerId || !amount || amount <= 0) {
       return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 });
     }
 
@@ -28,6 +30,35 @@ export async function POST(request: NextRequest) {
 
     if (reseller.walletBalance < amount) {
       return NextResponse.json({ error: 'Insufficient wallet balance' }, { status: 400 });
+    }
+
+    let destinationAccountId: any = undefined;
+    let method = legacyMethod;
+    let number = legacyNumber;
+    let accountDisplayName = '';
+
+    if (accountId) {
+      const selectedAccount = await LedgerAccount.findOne({
+        _id: accountId,
+        resellerId: reseller._id,
+      });
+
+      if (!selectedAccount) {
+        return NextResponse.json({ error: 'Selected account not found in your connected accounts' }, { status: 400 });
+      }
+
+      destinationAccountId = selectedAccount._id;
+      method = selectedAccount.category === 'MFS'
+        ? (selectedAccount.mfsProvider || selectedAccount.name)
+        : (selectedAccount.category === 'Bank' ? (selectedAccount.bankName || selectedAccount.name) : selectedAccount.name);
+      number = selectedAccount.accountNumber || selectedAccount.code;
+      accountDisplayName = `${selectedAccount.name}${selectedAccount.accountNumber ? ` (${selectedAccount.accountNumber})` : ''}`;
+    }
+
+    if (!method || !number) {
+      return NextResponse.json({
+        error: 'Please select a valid connected account (bKash, Nagad, Rocket or Bank) from your Accounts page.'
+      }, { status: 400 });
     }
 
     const mongoose = (await import('mongoose')).default;
@@ -53,10 +84,11 @@ export async function POST(request: NextRequest) {
         resellerId: reseller._id,
         type: 'payout_released', // Represents money going out of wallet (pending release approval)
         amount: -amount, // Debit
-        description: `Payout request to ${method} (${number})`,
+        description: `Payout request to ${accountDisplayName || `${method} (${number})`}`,
         status: 'pending',
         payoutMethod: method,
         payoutReference: number, // account number
+        destinationAccountId,
       }], { session: sessionConn });
 
       await sessionConn.commitTransaction();

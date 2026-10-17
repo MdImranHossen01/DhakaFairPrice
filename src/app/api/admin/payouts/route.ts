@@ -100,12 +100,16 @@ export async function PATCH(request: NextRequest) {
 
       if (action === 'approve') {
         try {
-          const { logPayoutToLedger } = await import('@/lib/ledgerHelper');
+          const { logPayoutToLedger, logResellerPayoutDepositToAccount } = await import('@/lib/ledgerHelper');
           const reseller = await Reseller.findById(transaction.resellerId);
-          await logPayoutToLedger(
-            { ...transaction.toObject(), payoutReference: payoutReference || transaction.payoutReference },
-            reseller
-          );
+          const payoutPayload = {
+            ...transaction.toObject(),
+            payoutReference: payoutReference || transaction.payoutReference,
+          };
+          // 1. Log Mother Shop payout credit from Cash or Bank
+          await logPayoutToLedger(payoutPayload, reseller);
+          // 2. Deposit payout into Reseller's designated LedgerAccount (bKash/Nagad/Bank)
+          await logResellerPayoutDepositToAccount(payoutPayload);
         } catch (ledgerErr) {
           console.error('[Ledger] Error logging payout to ledger:', ledgerErr);
         }

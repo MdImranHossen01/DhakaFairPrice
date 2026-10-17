@@ -538,3 +538,84 @@ export async function cleanOrphanLedgerTransactions() {
   }
 }
 
+/**
+ * Log payout received into the reseller's selected LedgerAccount and update its balance
+ */
+export async function logResellerPayoutDepositToAccount(payoutTx: any) {
+  try {
+    await connectToDatabase();
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+    const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+
+    let targetAccount = null;
+    if (payoutTx.destinationAccountId) {
+      targetAccount = await LedgerAccount.findOne({
+        _id: payoutTx.destinationAccountId,
+        resellerId: payoutTx.resellerId,
+      });
+    }
+
+    if (!targetAccount && payoutTx.payoutReference) {
+      // Fallback matching by account number or code
+      targetAccount = await LedgerAccount.findOne({
+        resellerId: payoutTx.resellerId,
+        $or: [
+          { accountNumber: payoutTx.payoutReference },
+          { code: payoutTx.payoutReference },
+          { mfsProvider: payoutTx.payoutMethod }
+        ]
+      });
+    }
+
+    if (!targetAccount) {
+      // Fallback to reseller's Bank or CASH account
+      targetAccount = await LedgerAccount.findOne({
+        resellerId: payoutTx.resellerId,
+        code: { $in: ['BANK', 'CASH'] }
+      });
+    }
+
+    if (!targetAccount) {
+      console.warn(`[Ledger] No ledger account found for reseller ${payoutTx.resellerId} to deposit payout.`);
+      return;
+    }
+
+    const amount = Math.abs(payoutTx.amount || 0);
+    const txIdStr = payoutTx._id.toString();
+    const shortId = txIdStr.slice(-8).toUpperCase();
+    const reference = `PAYOUT-REC-${shortId}`;
+
+    const exists = await LedgerTransaction.findOne({ reference, account: targetAccount._id });
+    if (exists) {
+      console.log(`[Ledger] Reseller ledger entry already exists for reference: ${reference}`);
+      return;
+    }
+
+    // For asset accounts, debit increases balance
+    const change = targetAccount.type === 'liability' ? -amount : amount;
+    const balanceAfter = (targetAccount.currentBalance || 0) + change;
+
+    const tx = new LedgerTransaction({
+      account: targetAccount._id,
+      date: payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : new Date(),
+      description: `Payout received from Mother Shop via ${payoutTx.payoutMethod || 'Mobile Banking'}${payoutTx.payoutReference ? ` (${payoutTx.payoutReference})` : ''}`,
+      type: 'debit',
+      amount,
+      reference,
+      balanceAfter,
+    });
+
+    await tx.save();
+
+    targetAccount.currentBalance = balanceAfter;
+    await targetAccount.save();
+
+    // Recalculate running balances for this account
+    await recalculateLedgerBalanceByAccountId(targetAccount._id);
+
+    console.log(`[Ledger] Deposited ৳${amount} into reseller account ${targetAccount.name} (${targetAccount.code}). New balance: ৳${targetAccount.currentBalance}`);
+  } catch (err) {
+    console.error('[Ledger] Error depositing payout to reseller account:', err);
+  }
+}
+
