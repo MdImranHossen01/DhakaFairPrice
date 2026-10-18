@@ -573,9 +573,12 @@ export default function ResellerDashboard() {
       {/* 2. Top KPI Cards (Rich Colorful Gradients Matching Admin Dashboard) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Sales Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-card border border-blue-500/30 dark:border-blue-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-blue-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/reseller/orders"
+          className="relative overflow-hidden bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-card border border-blue-500/30 dark:border-blue-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-blue-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
               <TrendingUp className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -595,14 +598,17 @@ export default function ResellerDashboard() {
                 </span>
               );
             })()}
-            <BarChart3 className="h-4 w-4 text-blue-500 opacity-70" />
+            <BarChart3 className="h-4 w-4 text-blue-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Total Earnings Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-card border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/reseller/reports/payouts"
+          className="relative overflow-hidden bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-card border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
               <Coins className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -622,14 +628,17 @@ export default function ResellerDashboard() {
                 </span>
               );
             })()}
-            <BarChart3 className="h-4 w-4 text-emerald-500 opacity-70" />
+            <BarChart3 className="h-4 w-4 text-emerald-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Pending Orders Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-card border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/reseller/orders"
+          className="relative overflow-hidden bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-card border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md shadow-amber-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-xl shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
               <ShoppingBag className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -649,14 +658,17 @@ export default function ResellerDashboard() {
                 </span>
               );
             })()}
-            <Clock className="h-4 w-4 text-amber-500 opacity-70" />
+            <Clock className="h-4 w-4 text-amber-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Wallet Balance Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-violet-500/15 via-purple-500/10 to-card border border-violet-500/30 dark:border-violet-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-violet-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/reseller/wallet"
+          className="relative overflow-hidden bg-gradient-to-br from-violet-500/15 via-purple-500/10 to-card border border-violet-500/30 dark:border-violet-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-violet-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-xl shadow-md shadow-violet-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-xl shadow-md shadow-violet-500/20 group-hover:scale-105 transition-transform">
               <Wallet className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -671,11 +683,11 @@ export default function ResellerDashboard() {
               ৳{Math.round(reseller?.pendingBalance || 0).toLocaleString()}{' '}
               <span className="text-muted-foreground font-normal">pending commission</span>
             </span>
-            <Link href="/reseller/wallet" className="text-xs font-bold text-violet-600 hover:underline flex items-center">
+            <span className="text-xs font-bold text-violet-600 group-hover:underline flex items-center">
               Withdraw &rarr;
-            </Link>
+            </span>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* 3. Visual Donut Charts (Matching Admin Dashboard Layout) */}
