@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       variants,
       isFeatured,
       isNewArrival,
+      isFlashSale,
       isPublished,
       discountRate,
       price,
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
       isPublished: isPublished !== undefined ? Boolean(isPublished) : true,
       isFeatured: Boolean(isFeatured),
       isNewArrival: Boolean(isNewArrival),
+      isFlashSale: Boolean(isFlashSale),
     });
 
     // Automatically link this product to the creator's reseller storefront catalog
@@ -158,6 +160,7 @@ export async function PATCH(request: NextRequest) {
       variants,
       isFeatured,
       isNewArrival,
+      isFlashSale,
       isPublished,
       discountRate,
       price,
@@ -205,6 +208,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (isFeatured !== undefined) product.isFeatured = Boolean(isFeatured);
     if (isNewArrival !== undefined) product.isNewArrival = Boolean(isNewArrival);
+    if (isFlashSale !== undefined) product.isFlashSale = Boolean(isFlashSale);
     if (isPublished !== undefined) product.isPublished = Boolean(isPublished);
     if (price !== undefined) product.price = Number(price);
     if (salePrice !== undefined) product.salePrice = salePrice !== '' ? Number(salePrice) : undefined;
