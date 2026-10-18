@@ -678,22 +678,10 @@ export default function ResellerDashboard() {
               </h3>
             </div>
           </div>
-          <div className="flex items-center justify-between pt-4 border-t border-violet-500/20 mt-4">
-            <span className="text-xs font-bold flex items-center gap-1 text-violet-600 dark:text-violet-400">
-              ৳{Math.round(reseller?.pendingBalance || 0).toLocaleString()}{' '}
-              <span className="text-muted-foreground font-normal">pending commission</span>
-            </span>
-            <span className="text-xs font-bold text-violet-600 group-hover:underline flex items-center">
-              Withdraw &rarr;
-            </span>
-          </div>
-        </Link>
-      </div>
-
-      {/* 3. Visual Donut Charts (Matching Admin Dashboard Layout) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between pt-4 border-t border-v      {/* 3. Visual Donut Charts (Row 1: 3 Cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Earnings Breakdown Donut Chart */}
-        <Card className="shadow-xs rounded-2xl border">
+        <Card className="shadow-xs rounded-2xl border flex flex-col justify-between">
           <CardHeader className="pb-2 border-b">
             <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
               <Coins className="h-4 w-4 text-primary" />
@@ -702,16 +690,16 @@ export default function ResellerDashboard() {
             <CardDescription className="text-xs">Distribution of store commissions & wallet payouts</CardDescription>
           </CardHeader>
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="w-full sm:w-1/2 h-[160px] relative flex items-center justify-center">
-              <ChartContainer config={earningsChartConfig} className="mx-auto aspect-square h-[155px] w-[155px]">
+            <div className="w-full sm:w-1/2 h-[150px] relative flex items-center justify-center">
+              <ChartContainer config={earningsChartConfig} className="mx-auto aspect-square h-[145px] w-[145px]">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                   <Pie
                     data={earningsBreakdownData.length > 0 ? earningsBreakdownData : [{ type: 'wallet', amount: 1, fill: 'var(--muted)' }]}
                     dataKey="amount"
                     nameKey="type"
-                    innerRadius={42}
-                    outerRadius={62}
+                    innerRadius={38}
+                    outerRadius={56}
                     strokeWidth={3}
                     stroke="var(--background)"
                   />
@@ -755,7 +743,7 @@ export default function ResellerDashboard() {
         </Card>
 
         {/* Orders Status Donut Chart */}
-        <Card className="shadow-xs rounded-2xl border">
+        <Card className="shadow-xs rounded-2xl border flex flex-col justify-between">
           <CardHeader className="pb-2 border-b">
             <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
               <ShoppingBag className="h-4 w-4 text-primary" />
@@ -764,16 +752,16 @@ export default function ResellerDashboard() {
             <CardDescription className="text-xs">Live order workflow tracking</CardDescription>
           </CardHeader>
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="w-full sm:w-1/2 h-[160px] relative flex items-center justify-center">
-              <ChartContainer config={orderStatusChartConfig} className="mx-auto aspect-square h-[155px] w-[155px]">
+            <div className="w-full sm:w-1/2 h-[150px] relative flex items-center justify-center">
+              <ChartContainer config={orderStatusChartConfig} className="mx-auto aspect-square h-[145px] w-[145px]">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                   <Pie
                     data={orderStatusData.length > 0 ? orderStatusData : [{ status: 'pending', count: 1, fill: 'var(--muted)' }]}
                     dataKey="count"
                     nameKey="status"
-                    innerRadius={42}
-                    outerRadius={62}
+                    innerRadius={38}
+                    outerRadius={56}
                     strokeWidth={3}
                     stroke="var(--background)"
                   />
@@ -815,76 +803,71 @@ export default function ResellerDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* 4. Operational Insights & Liquid Accounts Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Liquid Accounts with Visual Donut Chart */}
-        <div className="bg-card rounded-2xl border p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-colors">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600">
-                  <Landmark className="h-4 w-4" />
-                </div>
-                <span className="text-sm font-bold text-foreground">Liquid Accounts</span>
-              </div>
+        {/* Liquid Accounts Donut Chart */}
+        <Card className="shadow-xs rounded-2xl border flex flex-col justify-between">
+          <CardHeader className="pb-2 border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Landmark className="h-4 w-4 text-primary" />
+                Liquid Accounts
+              </CardTitle>
               <Link href="/reseller/accounts" className="text-xs font-semibold text-primary hover:underline">
                 View Details &rarr;
               </Link>
             </div>
-
-            {/* Visual Donut Chart */}
-            <div className="py-2 flex items-center justify-center gap-3">
-              <div className="w-[85px] h-[85px] relative flex items-center justify-center shrink-0">
-                <ChartContainer config={liquidAccountsChartConfig} className="mx-auto aspect-square h-[80px] w-[80px]">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    <Pie
-                      data={liquidAccountsData.some(d => d.balance > 0) ? liquidAccountsData : [{ account: 'Cash', balance: 1, fill: 'var(--muted)' }]}
-                      dataKey="balance"
-                      nameKey="account"
-                      innerRadius={24}
-                      outerRadius={38}
-                      strokeWidth={2}
-                      stroke="var(--background)"
-                    />
-                  </PieChart>
-                </ChartContainer>
-                <Coins className="h-3.5 w-3.5 text-indigo-500 absolute opacity-70" />
-              </div>
-
-              <div className="flex-1 space-y-1.5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <div className="w-2 h-2 rounded-full bg-[var(--chart-2)]" /> Cash
-                  </span>
-                  <span className="font-bold text-foreground">৳{Math.round(stats?.cashBalance || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <div className="w-2 h-2 rounded-full bg-[var(--chart-1)]" /> Bank
-                  </span>
-                  <span className="font-bold text-foreground">৳{Math.round(stats?.bankBalance || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <div className="w-2 h-2 rounded-full bg-[var(--chart-3)]" /> Mobile Wallets
-                  </span>
-                  <span className="font-bold text-foreground">৳{Math.round(stats?.mfsBalance || 0).toLocaleString()}</span>
-                </div>
+            <CardDescription className="text-xs">Current balance in Cash, Bank & Mobile Wallets</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="w-full sm:w-1/2 h-[150px] relative flex items-center justify-center">
+              <ChartContainer config={liquidAccountsChartConfig} className="mx-auto aspect-square h-[145px] w-[145px]">
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                  <Pie
+                    data={liquidAccountsData.some(d => d.balance > 0) ? liquidAccountsData : [{ account: 'Cash', balance: 1, fill: 'var(--muted)' }]}
+                    dataKey="balance"
+                    nameKey="account"
+                    innerRadius={38}
+                    outerRadius={56}
+                    strokeWidth={3}
+                    stroke="var(--background)"
+                  />
+                </PieChart>
+              </ChartContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                <span className="text-xs font-black text-foreground">
+                  ৳{Math.round(stats?.totalLiquidBalance || ((stats?.cashBalance || 0) + (stats?.bankBalance || 0) + (stats?.mfsBalance || 0))).toLocaleString()}
+                </span>
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase">Liquid Funds</span>
               </div>
             </div>
-          </div>
 
-          <div className="pt-2 border-t border-muted/50">
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2 flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-300">
-              <span>Total Liquid Funds:</span>
-              <span>৳{Math.round(stats?.totalLiquidBalance || ((stats?.cashBalance || 0) + (stats?.bankBalance || 0) + (stats?.mfsBalance || 0))).toLocaleString()}</span>
+            <div className="w-full sm:w-1/2 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-2)]" /> Cash
+                </span>
+                <span className="font-bold text-foreground">৳{Math.round(stats?.cashBalance || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-1)]" /> Bank
+                </span>
+                <span className="font-bold text-foreground">৳{Math.round(stats?.bankBalance || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-3)]" /> Mobile Wallets
+                </span>
+                <span className="font-bold text-foreground">৳{Math.round(stats?.mfsBalance || 0).toLocaleString()}</span>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
 
+      {/* 4. Operational Insights (Row 2: 3 Cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Order Fulfillment & Success Rate */}
         <div className="bg-card rounded-2xl border p-5 shadow-xs flex flex-col justify-between hover:border-primary/40 transition-colors">
           <div>
