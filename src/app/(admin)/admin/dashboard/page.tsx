@@ -513,9 +513,12 @@ export default function AdminDashboard() {
       {/* 2. Top KPI Cards (Rich Colorful & Fully Dynamic) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Sales Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-card border border-blue-500/30 dark:border-blue-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-blue-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/admin/orders"
+          className="relative overflow-hidden bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-card border border-blue-500/30 dark:border-blue-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-blue-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
               <TrendingUp className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -535,14 +538,17 @@ export default function AdminDashboard() {
                 </span>
               );
             })()}
-            <BarChart3 className="h-4 w-4 text-blue-500 opacity-70" />
+            <BarChart3 className="h-4 w-4 text-blue-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Total Expenses Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-sky-500/15 via-blue-500/10 to-card border border-sky-500/30 dark:border-sky-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-sky-500/50 transition-all flex flex-col justify-between">
+        <Link
+          href="/admin/expenses-incomes"
+          className="relative overflow-hidden bg-gradient-to-br from-sky-500/15 via-blue-500/10 to-card border border-sky-500/30 dark:border-sky-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-sky-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
           <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+            <div className="p-3.5 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
               <Wallet className="h-6 w-6" />
             </div>
             <div className="text-right">
@@ -562,9 +568,9 @@ export default function AdminDashboard() {
                 </span>
               );
             })()}
-            <BarChart3 className="h-4 w-4 text-sky-500 opacity-70" />
+            <BarChart3 className="h-4 w-4 text-sky-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Pending Orders Card */}
         <Link
