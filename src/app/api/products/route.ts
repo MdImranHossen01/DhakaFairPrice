@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Invalid JSON request body' }, { status: 400 });
     }
 
-    const { name, slug, description, sku, barcode, categories, brand, tags, images, attributes, variants, batches, isFeatured, isNewArrival, isPublished, isShared, discountRate } = body;
+    const { name, slug, description, sku, barcode, categories, brand, tags, images, attributes, variants, batches, isFeatured, isNewArrival, isFlashSale, isPublished, isShared, discountRate } = body;
     const { price, salePrice, purchasePrice, resellerPrice, stock } = body;
 
     // Numeric validation and coercion
@@ -247,6 +247,7 @@ export async function POST(req: NextRequest) {
           variants: coercedVariants,
           isFeatured: isFeatured !== undefined ? isFeatured : false,
           isNewArrival: isNewArrival !== undefined ? isNewArrival : false,
+          isFlashSale: isFlashSale !== undefined ? Boolean(isFlashSale) : false,
           isPublished: isPublished !== undefined ? isPublished : true,
           isShared: isShared !== undefined ? isShared : false,
           isMotherProduct: true,
