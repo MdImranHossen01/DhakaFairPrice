@@ -678,7 +678,19 @@ export default function ResellerDashboard() {
               </h3>
             </div>
           </div>
-          <div className="flex items-center justify-between pt-4 border-t border-v      {/* 3. Visual Donut Charts (Row 1: 3 Cards) */}
+          <div className="flex items-center justify-between pt-4 border-t border-violet-500/20 mt-4">
+            <span className="text-xs font-bold flex items-center gap-1 text-violet-600 dark:text-violet-400">
+              ৳{Math.round(reseller?.pendingBalance || 0).toLocaleString()}{' '}
+              <span className="text-muted-foreground font-normal">pending commission</span>
+            </span>
+            <span className="text-xs font-bold text-violet-600 group-hover:underline flex items-center">
+              Withdraw &rarr;
+            </span>
+          </div>
+        </Link>
+      </div>
+
+      {/* 3. Visual Donut Charts (Row 1: 3 Cards) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Earnings Breakdown Donut Chart */}
         <Card className="shadow-xs rounded-2xl border flex flex-col justify-between">
