@@ -909,7 +909,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                             {/* Color Input */}
                             <div className="space-y-2">
                               <Label className="text-sm font-bold">
-                                Color Name <span className="text-xs font-normal text-muted-foreground">(যদি কালার ভ্যারিয়েন্ট না থাকে তাহলে ফাঁকা রাখুন)</span>
+                                Color Name <span className="text-xs font-normal text-muted-foreground">(Leave blank if no color variant)</span>
                               </Label>
                               <Input 
                                 {...form.register(`variants.${colorIndex}.color` as const)} 

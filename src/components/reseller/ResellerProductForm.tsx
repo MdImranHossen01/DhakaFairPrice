@@ -807,7 +807,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="space-y-2">
                               <Label className="text-sm font-bold">
-                                Color Name <span className="text-xs font-normal text-muted-foreground">(যদি কালার ভ্যারিয়েন্ট না থাকে তাহলে ফাঁকা রাখুন)</span>
+                                Color Name <span className="text-xs font-normal text-muted-foreground">(Leave blank if no color variant)</span>
                               </Label>
                               <Input
                                 {...form.register(`variants.${colorIndex}.color` as const)}
