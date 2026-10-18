@@ -277,26 +277,26 @@ function ProductsContent() {
       </form>
 
       <div className="rounded-xl border bg-background overflow-hidden relative shadow-xs">
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">
+                <TableHead className="w-10">
                   <Checkbox
                     checked={products.length > 0 && products.every(p => selectedIds.includes(p._id))}
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
                 <TableHead className="w-8"></TableHead>
-                <TableHead className="w-[70px]">Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="min-w-[150px]">Total Stock (Cumulative)</TableHead>
-                <TableHead>Views</TableHead>
-                <TableHead>Sales</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-[64px]">Image</TableHead>
+                <TableHead className="min-w-[180px] max-w-[240px]">Name</TableHead>
+                <TableHead className="w-[130px] max-w-[140px]">SKU</TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap">Price</TableHead>
+                <TableHead className="min-w-[140px] max-w-[200px]">Total Stock</TableHead>
+                <TableHead className="w-[70px] text-center">Views</TableHead>
+                <TableHead className="w-[70px] text-center">Sales</TableHead>
+                <TableHead className="w-[90px] text-center">Status</TableHead>
+                <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -326,13 +326,13 @@ function ProductsContent() {
                   return (
                     <React.Fragment key={product._id}>
                       <TableRow className={selectedIds.includes(product._id) ? 'bg-muted/50' : ''}>
-                        <TableCell>
+                        <TableCell className="w-10">
                           <Checkbox
                             checked={selectedIds.includes(product._id)}
                             onCheckedChange={() => toggleSelect(product._id)}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-8">
                           {hasVariants ? (
                             <button
                               onClick={() => setExpandedRow(isExpanded ? null : product._id)}
@@ -342,7 +342,7 @@ function ProductsContent() {
                             </button>
                           ) : null}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-[64px]">
                           <div className="h-12 w-12 overflow-hidden rounded-md border bg-muted">
                             {product.images && product.images.length > 0 ? (
                               <Image src={product.images[0]} alt={product.name} width={48} height={48} className="h-full w-full object-cover" />
@@ -353,18 +353,19 @@ function ProductsContent() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium max-w-[240px]">
-                          <div className="flex flex-col gap-0.5">
+                        <TableCell className="font-medium min-w-[180px] max-w-[240px]">
+                          <div className="flex flex-col gap-0.5 max-w-full">
                             <Link
                               href={`/product/${product.slug}`} target="_blank"
-                              className="hover:text-primary transition-colors hover:underline decoration-primary/30 underline-offset-4 truncate font-bold text-sm"
+                              className="hover:text-primary transition-colors hover:underline decoration-primary/30 underline-offset-4 truncate block font-bold text-sm"
+                              title={product.name}
                             >
                               {product.name}
                             </Link>
                             <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                               {product.brand && (
-                                <span className="text-muted-foreground font-semibold flex items-center gap-0.5">
-                                  Brand: <span className="text-foreground">{typeof product.brand === 'object' ? product.brand.name : product.brand}</span>
+                                <span className="text-muted-foreground font-semibold flex items-center gap-0.5 truncate max-w-[130px]">
+                                  Brand: <span className="text-foreground truncate">{typeof product.brand === 'object' ? product.brand.name : product.brand}</span>
                                 </span>
                               )}
                               {product.uploadedBy ? (
@@ -381,8 +382,12 @@ function ProductsContent() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{product.sku || '-'}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground w-[130px] max-w-[140px]">
+                          <span className="truncate block" title={product.sku || '-'}>
+                            {product.sku || '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-[100px] whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className={product.salePrice ? 'text-xs line-through text-muted-foreground' : ''}>
                               {String.fromCharCode(2547)}{product.price ? Math.round(product.price) : '0'}
@@ -392,8 +397,8 @@ function ProductsContent() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
+                        <TableCell className="min-w-[140px] max-w-[200px]">
+                          <div className="flex flex-col gap-1 max-w-full">
                             <div className="flex items-center gap-1.5">
                               <span className={`font-bold text-sm ${totalStock <= 5 ? 'text-destructive' : 'text-foreground'}`}>
                                 {totalStock} pcs
@@ -405,14 +410,14 @@ function ProductsContent() {
                               )}
                             </div>
                             {hasVariants && (
-                              <div className="flex flex-wrap gap-1 max-w-[260px]">
+                              <div className="flex flex-wrap gap-1 max-w-full">
                                 {product.variants.slice(0, 3).map((v: any, idx: number) => (
-                                  <span key={idx} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                                  <span key={idx} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground truncate max-w-[120px]">
                                     {v.color || ''}{v.color && v.size ? '/' : ''}{v.size || ''}: <b className="text-foreground">{v.stock || 0}</b>
                                   </span>
                                 ))}
                                 {product.variants.length > 3 && (
-                                  <span className="text-[10px] text-primary cursor-pointer font-medium" onClick={() => setExpandedRow(isExpanded ? null : product._id)}>
+                                  <span className="text-[10px] text-primary cursor-pointer font-medium whitespace-nowrap" onClick={() => setExpandedRow(isExpanded ? null : product._id)}>
                                     +{product.variants.length - 3} more...
                                   </span>
                                 )}
@@ -420,20 +425,20 @@ function ProductsContent() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-[70px] text-center whitespace-nowrap">
                           <span className="font-medium text-muted-foreground">{product.views ?? 0}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-[70px] text-center whitespace-nowrap">
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-[90px] text-center whitespace-nowrap">
                           <button onClick={() => togglePublish(product._id, product.isPublished)} className="hover:opacity-80 transition-opacity">
                             <Badge variant={product.isPublished ? 'default' : 'secondary'} className="cursor-pointer">
                               {product.isPublished ? 'Published' : 'Draft'}
                             </Badge>
                           </button>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="w-[80px] text-right whitespace-nowrap">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -518,7 +523,7 @@ function ProductsContent() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-xs leading-snug line-clamp-2 text-foreground">{product.name}</h4>
                       <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-                        <span className="font-mono">SKU: {product.sku || '-'}</span>
+                        <span className="font-mono truncate max-w-[180px]" title={product.sku || '-'}>SKU: {product.sku || '-'}</span>
                         {product.brand && (
                           <span>
                             • {typeof product.brand === 'object' ? product.brand.name : product.brand}

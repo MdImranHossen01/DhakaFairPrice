@@ -646,10 +646,10 @@ function ProductsContent() {
                   />
                 </TableHead>
                 <TableHead className="w-8"></TableHead>
-                <TableHead className="w-[70px]">Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead className="w-[64px]">Image</TableHead>
+                <TableHead className="min-w-[180px] max-w-[240px]">Name</TableHead>
+                <TableHead className="w-[130px] max-w-[140px]">SKU</TableHead>
+                <TableHead className="w-[100px] whitespace-nowrap">Price</TableHead>
                 <TableHead className="min-w-[150px]">Total Stock (Cumulative)</TableHead>
                 <TableHead>Views</TableHead>
                 <TableHead>Sales</TableHead>
@@ -754,7 +754,11 @@ function ProductsContent() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{product.sku}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground w-[130px] max-w-[140px]">
+                          <span className="truncate block" title={product.sku || '-'}>
+                            {product.sku || '-'}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className={product.salePrice ? 'text-xs line-through text-muted-foreground' : ''}>
