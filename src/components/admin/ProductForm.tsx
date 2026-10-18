@@ -880,14 +880,14 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                     className="bg-background hover:bg-primary hover:text-white transition-all border-primary/20"
                     onClick={handleAddColorVariant}
                   >
-                    <Plus className="mr-2 h-4 w-4" /> Add Color Variant
+                    <Plus className="mr-2 h-4 w-4" /> Add Variant
                   </Button>
                 </div>
               </div>
               <CardContent className="p-6">
                 {variantFields.length === 0 ? (
                   <div className="text-center py-10 border-2 border-dashed border-muted rounded-xl text-muted-foreground italic text-sm">
-                    No variations added yet. Click &quot;Add Color Variant&quot; to start.
+                    No variations added yet. Click &quot;Add Variant&quot; to start.
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -900,7 +900,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                             type="button"
                             onClick={() => removeVariant(colorIndex)}
                             className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-1"
-                            title="Delete Color Variant"
+                            title="Delete Variant"
                           >
                             <Trash className="h-5 w-5" />
                           </button>
@@ -908,7 +908,9 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Color Input */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-bold">Color Name</Label>
+                              <Label className="text-sm font-bold">
+                                Color Name <span className="text-xs font-normal text-muted-foreground">(যদি কালার ভ্যারিয়েন্ট না থাকে তাহলে ফাঁকা রাখুন)</span>
+                              </Label>
                               <Input 
                                 {...form.register(`variants.${colorIndex}.color` as const)} 
                                 placeholder="e.g. Yellow" 
