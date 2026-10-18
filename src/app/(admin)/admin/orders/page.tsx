@@ -804,7 +804,9 @@ function OrdersContent() {
               <Button variant="outline" className="h-10 w-full justify-between px-3 font-normal">
                 <span className="truncate">
                   {resellerFilter === 'all' 
-                    ? 'All Resellers' 
+                    ? 'All' 
+                    : resellerFilter === 'main'
+                    ? 'Main Shop'
                     : resellers.find(r => r._id === resellerFilter)?.storeName || 'Unknown Reseller'}
                 </span>
                 <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
@@ -819,7 +821,16 @@ function OrdersContent() {
                   }}
                   className={resellerFilter === 'all' ?"bg-accent font-bold" :""}
                 >
-                  All Resellers
+                  All
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setResellerFilter('main');
+                    setCurrentPage(1);
+                  }}
+                  className={resellerFilter === 'main' ?"bg-accent font-bold" :""}
+                >
+                  Main Shop
                 </DropdownMenuItem>
                 {resellers.map((r) => (
                   <DropdownMenuItem

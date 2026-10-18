@@ -826,7 +826,27 @@ export async function GET(req: NextRequest) {
         query.status = status;
       }
       if (resellerId && resellerId !== 'all') {
-        query.resellerId = resellerId;
+        const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+        if (resellerId === 'main') {
+          const resellerMotherIds = await ResellerOrder.find({ deletedAt: null }).distinct('motherOrderId');
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { resellerId: null },
+              { resellerId: { $exists: false } }
+            ],
+            _id: { $nin: resellerMotherIds }
+          });
+        } else {
+          const matchingMotherIds = await ResellerOrder.find({ resellerId: resellerId, deletedAt: null }).distinct('motherOrderId');
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { resellerId: resellerId },
+              { _id: { $in: matchingMotherIds } }
+            ]
+          });
+        }
       }
       if (commissionStatus && commissionStatus !== 'All') {
         const ResellerOrder = (await import('@/models/ResellerOrder')).default;

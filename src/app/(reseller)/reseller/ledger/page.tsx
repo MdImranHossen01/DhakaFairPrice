@@ -314,8 +314,8 @@ function ResellerLedgerContent() {
                       <TableHead className="w-[110px] whitespace-nowrap">Date</TableHead>
                       <TableHead className="w-[150px] whitespace-nowrap">Account</TableHead>
                       <TableHead className="max-w-[300px]">Description</TableHead>
-                      <TableHead className="w-[110px] whitespace-nowrap">Type</TableHead>
-                      <TableHead className="text-right w-[120px] whitespace-nowrap">Amount (৳)</TableHead>
+                      <TableHead className="text-right w-[120px] whitespace-nowrap text-rose-600 font-bold">Debit (-)</TableHead>
+                      <TableHead className="text-right w-[120px] whitespace-nowrap text-emerald-600 font-bold">Credit (+)</TableHead>
                       <TableHead className="text-right w-[150px] whitespace-nowrap">Running Balance (৳)</TableHead>
                       <TableHead className="text-right w-[80px] whitespace-nowrap">Actions</TableHead>
                     </TableRow>
@@ -343,16 +343,11 @@ function ResellerLedgerContent() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            <Badge
-                              variant="outline"
-                              className={`text-xs font-semibold ${txInfo.color}`}
-                            >
-                              {txInfo.label}
-                            </Badge>
+                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-rose-600">
+                            {txInfo.sign === '-' ? `-৳${Math.round(tx.amount || 0).toLocaleString()}` : '-'}
                           </TableCell>
-                          <TableCell className={`text-right font-semibold whitespace-nowrap text-xs md:text-sm ${txInfo.textColor}`}>
-                            {txInfo.sign}৳{Math.round(tx.amount || 0).toLocaleString()}
+                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-emerald-600">
+                            {txInfo.sign === '+' ? `+৳${Math.round(tx.amount || 0).toLocaleString()}` : '-'}
                           </TableCell>
                           <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">
                             ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
@@ -393,11 +388,23 @@ function ResellerLedgerContent() {
                       <MobileDataRow label="Date" value={tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '-'} />
                       <MobileDataRow label="Account" value={<span className="font-semibold">{cleanAccountName(tx.account?.name)}</span>} />
                       <MobileDataRow
-                        label="Amount"
+                        label="Debit (-)"
                         value={
-                          <span className={`font-bold ${txInfo.textColor}`}>
-                            {txInfo.sign}৳{Math.round(tx.amount || 0).toLocaleString()}
-                          </span>
+                          txInfo.sign === '-' ? (
+                            <span className="font-bold text-rose-600">-৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )
+                        }
+                      />
+                      <MobileDataRow
+                        label="Credit (+)"
+                        value={
+                          txInfo.sign === '+' ? (
+                            <span className="font-bold text-emerald-600">+৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )
                         }
                       />
                       {tx.reference && (
