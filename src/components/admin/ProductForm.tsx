@@ -1006,7 +1006,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                       </div>
                                       <div>
                                         <Label className="text-xs font-medium text-muted-foreground">
-                                          Price (Tk) <span className="text-destructive">*</span>
+                                          Regular Price (Tk) <span className="text-destructive">*</span>
                                         </Label>
                                         <Input
                                           type="number"
@@ -1032,7 +1032,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                         )}
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">{isReseller ? 'Cost (Tk)' : 'Purchase (Tk)'}</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">{isReseller ? 'Reseller Price (Tk)' : 'Purchase Price (Tk)'}</Label>
                                         <Input
                                           type="number"
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.purchasePrice`) ?? ''}
@@ -1048,7 +1048,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">Reseller Price</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">{isReseller ? 'Shared Catalog Price' : 'Reseller Price (Tk)'}</Label>
                                         <Input
                                           type="number"
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.resellerPrice`) ?? ''}
@@ -1112,7 +1112,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                     {/* Row 2: Discount Rate (%), Sale Price */}
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">Disc (%)</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Discount (%)</Label>
                                         <Input
                                           type="number"
                                           placeholder="0"
@@ -1219,7 +1219,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                     name="purchasePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{isReseller ? 'Base / Cost Price (Tk)' : 'Purchase Price (Tk)'}</FormLabel>
+                        <FormLabel>{isReseller ? 'Reseller Price (Tk)' : 'Purchase Price (Tk)'}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -1263,7 +1263,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                         </FormControl>
                         {isReseller && (
                           <FormDescription className="text-xs">
-                            Base cost (৳{form.watch('purchasePrice') || 0}) + {platformCommissionRate}% system platform fee = ৳{field.value || 0}
+                            Reseller price (৳{form.watch('purchasePrice') || 0}) + {platformCommissionRate}% system platform fee = ৳{field.value || 0}
                           </FormDescription>
                         )}
                         <FormMessage />
