@@ -8,6 +8,13 @@ import LedgerTransaction from '@/models/LedgerTransaction';
 export async function seedLedgerAccounts() {
   await connectToDatabase();
 
+  // One-time migration: drop stale single-field unique index on 'code'
+  try {
+    await LedgerAccount.collection.dropIndex('code_1');
+  } catch {
+    // Index doesn't exist or already dropped — safe to ignore
+  }
+
   const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability'; category: 'Cash' | 'Bank' | 'Other' }[] = [
     { name: 'Cash', code: 'CASH', type: 'asset', category: 'Cash' },
     { name: 'Bank', code: 'BANK', type: 'asset', category: 'Bank' },
@@ -16,20 +23,20 @@ export async function seedLedgerAccounts() {
   ];
 
   for (const acc of accounts) {
-    const exists = await LedgerAccount.findOne({ code: acc.code });
-    if (!exists) {
-      await LedgerAccount.create({
-        name: acc.name,
-        code: acc.code,
-        type: acc.type,
-        category: acc.category,
-        openingBalance: 0,
-        currentBalance: 0,
-      });
-    } else if (exists.category !== acc.category) {
-      exists.category = acc.category;
-      await exists.save();
-    }
+    await LedgerAccount.updateOne(
+      { code: acc.code, resellerId: null },
+      {
+        $setOnInsert: {
+          name: acc.name,
+          code: acc.code,
+          type: acc.type,
+          category: acc.category,
+          openingBalance: 0,
+          currentBalance: 0,
+        },
+      },
+      { upsert: true }
+    );
   }
 }
 
@@ -41,6 +48,14 @@ export async function seedResellerLedgerAccounts(resellerId: any) {
   if (!resellerId) return;
   await connectToDatabase();
 
+  // One-time migration: drop stale single-field unique index on 'code'
+  // that conflicts with the correct compound {resellerId, code} index.
+  try {
+    await LedgerAccount.collection.dropIndex('code_1');
+  } catch {
+    // Index doesn't exist or already dropped — safe to ignore
+  }
+
   const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability'; category: 'Cash' | 'Bank' | 'Other'; description: string }[] = [
     { name: 'Bank', code: 'BANK', type: 'asset', category: 'Bank', description: 'Direct account' },
     { name: 'Cash in Hand', code: 'CASH', type: 'asset', category: 'Cash', description: 'Default Store Primary Cash Account' },
@@ -49,25 +64,22 @@ export async function seedResellerLedgerAccounts(resellerId: any) {
   ];
 
   for (const acc of accounts) {
-    const exists = await LedgerAccount.findOne({ resellerId, code: acc.code });
-    if (!exists) {
-      await LedgerAccount.create({
-        name: acc.name,
-        code: acc.code,
-        type: acc.type,
-        category: acc.category,
-        description: acc.description,
-        openingBalance: 0,
-        currentBalance: 0,
-        resellerId,
-      });
-    } else {
-      if (acc.code === 'CASH' && exists.name !== 'Cash in Hand') {
-        exists.name = 'Cash in Hand';
-        exists.category = 'Cash';
-        await exists.save();
-      }
-    }
+    await LedgerAccount.updateOne(
+      { resellerId, code: acc.code },
+      {
+        $setOnInsert: {
+          name: acc.name,
+          code: acc.code,
+          type: acc.type,
+          category: acc.category,
+          description: acc.description,
+          openingBalance: 0,
+          currentBalance: 0,
+          resellerId,
+        },
+      },
+      { upsert: true }
+    );
   }
 }
 
