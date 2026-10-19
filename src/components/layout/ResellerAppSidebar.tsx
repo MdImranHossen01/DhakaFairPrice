@@ -336,29 +336,35 @@ export function ResellerAppSidebar({ basePath, ...props }: React.ComponentProps<
       <SidebarHeader className="border-b border-slate-800/80 h-14 px-3.5 flex flex-row items-center justify-center bg-[#0a152e]">
         <a
           href={storeHomeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 min-w-0 max-w-full hover:opacity-90 transition-opacity mx-auto"
+          className="flex items-center justify-center gap-2.5 min-w-0 max-w-full hover:opacity-90 transition-opacity mx-auto group"
           title={`Visit ${storeName || "Store"} Home Page`}
         >
           {storeLogo ? (
-            <div className="relative h-7 w-auto max-w-[140px] flex items-center justify-center">
-              <Image
-                src={storeLogo}
-                alt={storeName || "Store"}
-                width={140}
-                height={28}
-                className="max-h-7 max-w-[140px] w-auto h-auto object-contain"
-                unoptimized
-              />
+            <div className="flex items-center justify-center gap-2 min-w-0">
+              <div className="relative h-7 w-auto max-w-[120px] flex items-center justify-center shrink-0">
+                <Image
+                  src={storeLogo}
+                  alt={storeName || "Store"}
+                  width={120}
+                  height={28}
+                  className="max-h-7 max-w-[120px] w-auto h-auto object-contain"
+                  unoptimized
+                />
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-slate-200 group-hover:text-white transition-colors group-data-[collapsible=icon]:hidden">
+                Home
+              </span>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2.5 min-w-0">
               <div className="h-7 w-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0 border border-primary/30">
                 <Store className="h-4 w-4" />
               </div>
-              <span className="text-sm font-bold tracking-tight text-white truncate max-w-[160px] group-data-[collapsible=icon]:hidden">
+              <span className="text-sm font-bold tracking-tight text-white truncate max-w-[120px] group-data-[collapsible=icon]:hidden">
                 {storeName || user?.name || "My Store"}
+              </span>
+              <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors group-data-[collapsible=icon]:hidden">
+                Home
               </span>
             </div>
           )}
