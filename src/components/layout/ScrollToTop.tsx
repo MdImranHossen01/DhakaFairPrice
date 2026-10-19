@@ -10,6 +10,7 @@ export function ScrollToTop() {
   const [isVisible, setIsVisible] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null);
   const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
+  const [openRouterApiKey, setOpenRouterApiKey] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -19,6 +20,7 @@ export function ScrollToTop() {
           const data = await res.json();
           setWhatsappNumber(data.socialLinks?.whatsapp || null);
           setGeminiApiKey(data.aiConfig?.geminiApiKey || null);
+          setOpenRouterApiKey(data.aiConfig?.openRouterApiKey || null);
         }
       } catch (err) {
         console.error('Error fetching settings:', err);
@@ -45,10 +47,12 @@ export function ScrollToTop() {
     });
   };
 
+  const isAiBotActive = Boolean(geminiApiKey?.trim() || openRouterApiKey?.trim());
+
   return (
     <div className="fixed bottom-24 right-3 z-50 md:bottom-6 md:right-4 flex flex-col gap-1 items-center">
       <AnimatePresence mode="wait">
-        {geminiApiKey && (
+        {isAiBotActive && (
           <AIChatbot key="ai-chatbot-floating" />
         )}
       </AnimatePresence>

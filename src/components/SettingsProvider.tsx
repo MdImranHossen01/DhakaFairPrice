@@ -23,6 +23,7 @@ interface SettingsContextType {
   };
   aiConfig?: {
     geminiApiKey?: string;
+    openRouterApiKey?: string;
   };
   footerNavigation?: {
     label: string;
