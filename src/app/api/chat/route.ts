@@ -16,11 +16,12 @@ export async function POST(req: NextRequest) {
     const settings = await getCachedSettings();
     const aiConfig = settings?.aiConfig || {};
     
-    const apiKey = aiConfig.geminiApiKey;
+    const apiKey = aiConfig.geminiApiKey || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const openRouterApiKey = (aiConfig as any).openRouterApiKey || '';
 
-    if (!apiKey) {
-      console.error('Gemini API Key is missing');
-      return NextResponse.json({ error: 'AI Service Unavailable. Gemini API Key is not configured.' }, { status: 503 });
+    if (!apiKey && !openRouterApiKey) {
+      console.error('AI Keys (Gemini / OpenRouter) are missing');
+      return NextResponse.json({ error: 'AI Service Unavailable. API Key is not configured.' }, { status: 503 });
     }
 
     const { messages } = await req.json();
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     const { contextString, matchedProducts } = await retrieveRelevantContext(latestMessage, (session?.user as any)?.id, apiKey);
     console.log("RAG Context retrieved, length:", contextString ? contextString.length : 0);
 
-    const response = await getChatResponse(latestMessage, history, contextString, apiKey);
+    const response = await getChatResponse(latestMessage, history, contextString, apiKey, openRouterApiKey);
 
     // Extract product slugs/IDs from LLM response
     const slugMatches = Array.from(response.matchAll(/\/product\/([a-zA-Z0-9_-]+)/g)).map(m => m[1]);

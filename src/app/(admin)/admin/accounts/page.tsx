@@ -25,8 +25,13 @@ import {
   ArrowUpCircle,
   X,
   Save,
+  History,
+  Search,
+  Trash2,
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -49,6 +54,83 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const transferableAccounts = accounts.filter(isTransferableAccount);
+
+  // Account Transaction History Modal State
+  const [historyAccount, setHistoryAccount] = useState<any>(null);
+  const [historyTransactions, setHistoryTransactions] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearchTerm, setHistorySearchTerm] = useState('');
+
+  const handleOpenHistory = async (acc: any) => {
+    setHistoryAccount(acc);
+    setHistorySearchTerm('');
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/admin/ledger/transactions?accountId=${acc._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryTransactions(data || []);
+      } else {
+        toast.error('Failed to load transaction history');
+      }
+    } catch (err) {
+      console.error('Error fetching account history:', err);
+      toast.error('Failed to load transaction history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async (account: any) => {
+    const isDefault = ['CASH', 'BANK', 'AP', 'AR'].includes(account.code);
+    if (isDefault) {
+      await Swal.fire({
+        title: 'Protected System Account',
+        text: `"${account.name}" (${account.code}) is a core system account required for automatic store operations (orders, payouts, bills) and cannot be deleted.`,
+        icon: 'info',
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Understood'
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: `Delete "${account.name}"?`,
+      html: `<div class="text-xs text-left space-y-2">
+        <p class="font-bold text-rose-600">⚠️ Warning: Permanent Data Deletion!</p>
+        <p>Deleting this account will permanently delete:</p>
+        <ul class="list-disc pl-4 space-y-1 text-muted-foreground">
+          <li>All linked <b>Ledger Transactions & Journal entries</b> for this account.</li>
+          <li>All linked <b>Expenses & Incomes</b> recorded under this account.</li>
+          <li>All companion transfer entries will be removed and affected accounts will be automatically recalculated.</li>
+          <li>Dashboard analytics and profit/loss reports will be synced immediately.</li>
+        </ul>
+        <p class="font-semibold text-rose-500 pt-1">This action cannot be undone!</p>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Delete & Sync Everything!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/accounts/${account._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Account and all related records deleted successfully');
+        fetchAccounts();
+      } else {
+        toast.error(data.message || 'Failed to delete account');
+      }
+    } catch (err: any) {
+      console.error('Failed to delete account:', err);
+      toast.error('Failed to delete account');
+    }
+  };
 
   // Quick Transaction Modal State (Add Money / Debit / Transfer)
   const [txModalOpen, setTxModalOpen] = useState(false);
@@ -446,14 +528,28 @@ export default function AccountsPage() {
                                 <span>Transfer Funds</span>
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuItem
+                              onClick={() => handleOpenHistory(acc)}
+                              className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <History className="h-3.5 w-3.5" />
+                              <span>Transaction History</span>
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/admin/ledger?search=${encodeURIComponent(acc.name)}`}
+                                href={`/admin/ledger?accountId=${acc._id}&accountName=${encodeURIComponent(acc.name)}`}
                                 className="flex items-center gap-2 cursor-pointer w-full text-foreground"
                               >
                                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>View Ledger</span>
+                                <span>View in Full Ledger</span>
                               </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteAccount(acc)}
+                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Delete Account</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -528,14 +624,28 @@ export default function AccountsPage() {
                               <span>Transfer Funds</span>
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() => handleOpenHistory(acc)}
+                            className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <History className="h-3.5 w-3.5" />
+                            <span>Transaction History</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link
-                              href={`/admin/ledger?search=${encodeURIComponent(acc.name)}`}
+                              href={`/admin/ledger?accountId=${acc._id}&accountName=${encodeURIComponent(acc.name)}`}
                               className="flex items-center gap-2 cursor-pointer w-full text-foreground"
                             >
                               <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>View Ledger</span>
+                              <span>View in Full Ledger</span>
                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteAccount(acc)}
+                            className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Delete Account</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -894,6 +1004,148 @@ export default function AccountsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      {/* Account Specific Transaction History Modal */}
+      <Dialog open={!!historyAccount} onOpenChange={(open) => { if (!open) setHistoryAccount(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="p-4 md:p-6 pb-3 border-b bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-lg md:text-xl font-bold">
+                  <History className="h-5 w-5 text-indigo-600" />
+                  <span>{historyAccount?.name} — Transaction History</span>
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Account Code: <span className="font-mono font-semibold text-foreground">{historyAccount?.code}</span>
+                  {historyAccount?.accountNumber && ` • A/C: ${historyAccount.accountNumber}`}
+                  {` • Type: ${historyAccount?.category || historyAccount?.type}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-[11px] text-muted-foreground uppercase font-bold">Live Balance</div>
+                  <div className={`text-base md:text-lg font-extrabold ${(historyAccount?.currentBalance ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    ৳{Math.round(historyAccount?.currentBalance || 0).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Search within account transactions */}
+            <div className="pt-2 flex items-center justify-between gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search this account's transactions / ref..."
+                  className="pl-8 h-8 text-xs bg-background"
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                />
+              </div>
+              <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5 shrink-0">
+                <Link href={`/admin/ledger?accountId=${historyAccount?._id}&accountName=${encodeURIComponent(historyAccount?.name || '')}`}>
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>Open Full Ledger</span>
+                </Link>
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+            {historyLoading ? (
+              <div className="flex h-48 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (() => {
+              const filtered = historyTransactions.filter((tx) => {
+                if (!historySearchTerm.trim()) return true;
+                const term = historySearchTerm.toLowerCase();
+                const desc = (tx.description || '').toLowerCase();
+                const ref = (tx.reference || '').toLowerCase();
+                return desc.includes(term) || ref.includes(term);
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="flex h-40 flex-col items-center justify-center text-muted-foreground text-xs text-center">
+                    <FileText className="h-8 w-8 mb-2 stroke-1 opacity-50" />
+                    <p>No transaction records found for this account.</p>
+                  </div>
+                );
+              }
+
+              const getTxBadge = (tx: any) => {
+                const desc = (tx.description || '').toLowerCase();
+                const isDeduction =
+                  desc.startsWith('expense') ||
+                  desc.startsWith('manual withdrawal') ||
+                  desc.startsWith('transfer to') ||
+                  desc.startsWith('payment credit for bill') ||
+                  desc.startsWith('upfront payment credit') ||
+                  desc.includes('payout to') ||
+                  desc.includes('commission payout') ||
+                  desc.includes('loan repayment') ||
+                  desc.startsWith('reseller commission payout') ||
+                  desc.startsWith('supplier payment') ||
+                  desc.includes('paid to');
+                return isDeduction ? { sign: '-', color: 'text-rose-600' } : { sign: '+', color: 'text-emerald-600' };
+              };
+
+              return (
+                <div className="rounded-xl border overflow-hidden">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-muted/50 text-muted-foreground border-b uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Description</th>
+                        <th className="py-2.5 px-3 text-right text-rose-600">Debit (-)</th>
+                        <th className="py-2.5 px-3 text-right text-emerald-600">Credit (+)</th>
+                        <th className="py-2.5 px-3 text-right">Running Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {filtered.map((tx: any) => {
+                        const badge = getTxBadge(tx);
+                        return (
+                          <tr key={tx._id} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground">
+                              {format(new Date(tx.date), 'dd MMM yyyy')}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-medium text-foreground">{tx.description}</div>
+                              {tx.reference && (
+                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono inline-block mt-0.5">
+                                  Ref: {tx.reference}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-rose-600 whitespace-nowrap">
+                              {badge.sign === '-' ? `-৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                              {badge.sign === '+' ? `+৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                              ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
+
+          <DialogFooter className="p-3 border-t bg-muted/10 flex items-center justify-between sm:justify-between">
+            <span className="text-xs text-muted-foreground pl-2">
+              Total {historyTransactions.length} transaction{historyTransactions.length === 1 ? '' : 's'} recorded
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => setHistoryAccount(null)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

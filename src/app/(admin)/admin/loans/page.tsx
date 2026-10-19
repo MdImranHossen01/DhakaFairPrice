@@ -21,11 +21,13 @@ import {
   ArrowUpRight,
   MoreVertical,
   CreditCard,
-  History
+  History,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 import {
   Dialog,
   DialogContent,
@@ -141,6 +143,46 @@ export default function LoansPage() {
       toast.error('Error recording loan');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteLoan = async (loan: any) => {
+    const result = await Swal.fire({
+      title: `Delete Loan "${loan.loanId}"?`,
+      html: `<div class="text-xs text-left space-y-2">
+        <p class="font-bold text-rose-600">⚠️ Warning: Loan Deletion & Ledger Reversal!</p>
+        <p>Deleting this loan will permanently delete:</p>
+        <ul class="list-disc pl-4 space-y-1 text-muted-foreground">
+          <li>The loan disbursement entry and loan record.</li>
+          <li><b>All repayment records</b> (Paid amount: ৳${Math.round(loan.paidAmount || 0).toLocaleString()}).</li>
+          <li>All linked <b>Ledger Transactions</b> will be deleted.</li>
+          <li>Receiving and repayment accounts (Cash, Bank, MFS) will be automatically recalculated and synced!</li>
+          <li>Outstanding liabilities and dashboard reports will be updated immediately.</li>
+        </ul>
+        <p class="font-semibold text-rose-500 pt-1">This action cannot be undone!</p>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Delete & Sync Everything!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/loans/${loan._id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (res.ok) {
+        toast.success(json.message || 'Loan deleted successfully');
+        fetchLoans();
+      } else {
+        toast.error(json.message || 'Failed to delete loan');
+      }
+    } catch (err) {
+      console.error('Delete loan error:', err);
+      toast.error('Failed to delete loan');
     }
   };
 
@@ -321,6 +363,13 @@ export default function LoansPage() {
                             {loan.status === 'Paid' && (!loan.repayments || loan.repayments.length === 0) ? (
                               <div className="px-2 py-1.5 text-[11px] text-muted-foreground font-medium">Fully Paid</div>
                             ) : null}
+                            <DropdownMenuItem
+                              className="cursor-pointer text-xs text-rose-600 focus:text-rose-700 font-semibold gap-2"
+                              onClick={() => handleDeleteLoan(loan)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Delete Loan</span>
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -358,30 +407,40 @@ export default function LoansPage() {
                         <span className="text-muted-foreground">Due: </span>
                         <span className="text-rose-600 text-sm font-black">৳{Math.round(loan.dueAmount || 0).toLocaleString()}</span>
                       </div>
-                      {loan.status === 'Active' && loan.dueAmount > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        {loan.status === 'Active' && loan.dueAmount > 0 ? (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5"
+                            onClick={() => {
+                              setSelectedLoanForRepayment(loan);
+                              setRepaymentOpen(true);
+                            }}
+                          >
+                            <CreditCard className="h-3 w-3 mr-1" /> Pay Loan
+                          </Button>
+                        ) : loan.repayments && loan.repayments.length > 0 ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2"
+                            onClick={() => {
+                              setSelectedLoanForRepayment(loan);
+                              setRepaymentOpen(true);
+                            }}
+                          >
+                            <History className="h-3 w-3 mr-1" /> History
+                          </Button>
+                        ) : null}
                         <Button
-                          size="sm"
-                          className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5"
-                          onClick={() => {
-                            setSelectedLoanForRepayment(loan);
-                            setRepaymentOpen(true);
-                          }}
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                          onClick={() => handleDeleteLoan(loan)}
                         >
-                          <CreditCard className="h-3 w-3 mr-1" /> Pay Loan
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      ) : loan.repayments && loan.repayments.length > 0 ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs px-2"
-                          onClick={() => {
-                            setSelectedLoanForRepayment(loan);
-                            setRepaymentOpen(true);
-                          }}
-                        >
-                          <History className="h-3 w-3 mr-1" /> History
-                        </Button>
-                      ) : null}
+                      </div>
                     </div>
                   }
                 >

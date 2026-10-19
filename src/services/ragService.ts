@@ -30,7 +30,7 @@ export async function retrieveRelevantContext(
   query: string,
   userId?: string,
   apiKey?: string,
-  limitPerModel = 10
+  limitPerModel = 3
 ): Promise<RAGContextResult> {
     // Fast path: Skip expensive embedding generation & database queries for simple greetings
     const isGreeting = /^(hi|hello|hey|assalamu\s*alaikum|salam|হাই|হ্যালো|সালাম|hlw)[\s!.]*$/i.test(query.trim());
@@ -44,9 +44,13 @@ export async function retrieveRelevantContext(
     let queryVector: number[] | null = null;
     if (apiKey) {
       try {
-        queryVector = await getEmbedding(query, apiKey);
-      } catch (err) {
-        console.error("Error generating query embedding for RAG:", err);
+        const embeddingPromise = getEmbedding(query, apiKey);
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("Embedding generation timed out")), 2000)
+        );
+        queryVector = (await Promise.race([embeddingPromise, timeoutPromise])) as number[];
+      } catch (err: any) {
+        console.warn("⚠️ Skipping vector embedding (timed out or failed), using fast keyword retrieval:", err?.message || err);
       }
     }
 

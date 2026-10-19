@@ -28,6 +28,7 @@ const getMaskedSettings = (raw: any, masked: any) => ({
   aiConfig: masked.aiConfig ? {
     ...masked.aiConfig,
     geminiApiKey: masked.aiConfig.geminiApiKey || null,
+    openRouterApiKey: masked.aiConfig.openRouterApiKey || null,
   } : masked.aiConfig
 });
 

@@ -6,10 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building, Plus, Loader2, RefreshCw, ArrowLeft, Phone, Mail, MapPin } from 'lucide-react';
+import { Building, Plus, Loader2, RefreshCw, ArrowLeft, Phone, Mail, MapPin, Trash2, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -81,6 +88,47 @@ export default function LoanProvidersPage() {
     }
   };
 
+  const handleDeleteProvider = async (provider: any) => {
+    const loansCount = provider.totalLoansCount || 0;
+    const result = await Swal.fire({
+      title: `Delete "${provider.name}"?`,
+      html: `<div class="text-xs text-left space-y-2">
+        <p class="font-bold text-rose-600">⚠️ Warning: Complete Provider & Loans Deletion!</p>
+        <p>Deleting this loan provider will permanently delete:</p>
+        <ul class="list-disc pl-4 space-y-1 text-muted-foreground">
+          <li>The loan provider profile.</li>
+          <li><b>All ${loansCount} associated loan(s)</b> and their payment history.</li>
+          <li>All linked <b>Ledger Transactions & Repayment entries</b>.</li>
+          <li>All affected accounts' balances (Cash, Bank, MFS) will be automatically recalculated and synced!</li>
+          <li>All reports, dashboards, and upcoming payables will be updated immediately.</li>
+        </ul>
+        <p class="font-semibold text-rose-500 pt-1">This action cannot be undone!</p>
+      </div>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, Delete & Sync Everything!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/loans/providers/${provider._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Loan provider and all associated records deleted successfully');
+        fetchProviders();
+      } else {
+        toast.error(data.message || 'Failed to delete loan provider');
+      }
+    } catch (err) {
+      console.error('Delete provider error:', err);
+      toast.error('Failed to delete loan provider');
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6">
       {/* Header */}
@@ -128,12 +176,13 @@ export default function LoanProvidersPage() {
                   <th className="p-3 font-bold text-foreground">Total Loans</th>
                   <th className="p-3 font-bold text-foreground">Total Borrowed</th>
                   <th className="p-3 font-bold text-rose-600 text-right">Outstanding Balance</th>
+                  <th className="p-3 font-bold text-foreground text-center w-14">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>Loading providers...</span>
@@ -160,11 +209,30 @@ export default function LoanProvidersPage() {
                       <td className="p-3 font-bold text-right text-rose-600">
                         ৳{Math.round(p.totalDueAmount || 0).toLocaleString()}
                       </td>
+                      <td className="p-3 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-muted/80 rounded-md">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 text-xs font-medium">
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteProvider(p)}
+                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Delete Provider</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-muted-foreground">No loan providers registered yet.</td>
+                    <td colSpan={7} className="p-6 text-center text-muted-foreground">No loan providers registered yet.</td>
                   </tr>
                 )}
               </tbody>

@@ -84,6 +84,7 @@ export interface IGlobalSettings extends Document {
   superAdminNote?: string;
   aiConfig?: {
     geminiApiKey?: string;
+    openRouterApiKey?: string;
   };
   uiTemplates?: {
     layout?: string;
@@ -151,7 +152,8 @@ const GlobalSettingsSchema: Schema<IGlobalSettings> = new Schema(
     googleSearchConsoleId: { type: String },
     superAdminNote: { type: String },
     aiConfig: {
-      geminiApiKey: { type: String }
+      geminiApiKey: { type: String },
+      openRouterApiKey: { type: String }
     },
     uiTemplates: { type: Object, default: {} },
     saasSubscription: {

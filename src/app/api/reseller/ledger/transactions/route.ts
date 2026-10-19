@@ -25,15 +25,24 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
+    const { searchParams } = new URL(req.url);
+    const accountId = searchParams.get('accountId');
+
     const resellerAccounts = await LedgerAccount.find({ resellerId: reseller._id }).select('_id').lean();
     const accountIds = resellerAccounts.map((a: any) => a._id);
 
-    const transactions = await LedgerTransaction.find({
+    const queryFilter: any = {
       $or: [
         { resellerId: reseller._id },
         { account: { $in: accountIds } }
       ]
-    })
+    };
+
+    if (accountId && mongoose.Types.ObjectId.isValid(accountId)) {
+      queryFilter.account = new mongoose.Types.ObjectId(accountId);
+    }
+
+    const transactions = await LedgerTransaction.find(queryFilter)
       .populate('account')
       .sort({ date: -1, createdAt: -1 })
       .lean();

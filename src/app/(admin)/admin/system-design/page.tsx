@@ -324,10 +324,18 @@ export default function SuperConfigPage() {
               </CardTitle>
            </CardHeader>
            <CardContent className="p-6 space-y-6">
-               <div className="space-y-2">
-                <Label htmlFor="gemini-api-key" className="font-bold text-xs">Gemini API Key</Label>
-                <input id="gemini-api-key" type="text" value={settings?.aiConfig?.geminiApiKey || ''} onChange={(e) => setSettings({...settings, aiConfig: {...(settings?.aiConfig || {}), geminiApiKey: e.target.value}})} className="w-full h-12 rounded-xl border px-4 text-sm" />
-              </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                   <Label htmlFor="gemini-api-key" className="font-bold text-xs">Gemini API Key</Label>
+                   <input id="gemini-api-key" type="text" placeholder="AIzaSy... (কমা দিয়ে একাধিক কি যোগ করতে পারেন)" value={settings?.aiConfig?.geminiApiKey || ''} onChange={(e) => setSettings({...settings, aiConfig: {...(settings?.aiConfig || {}), geminiApiKey: e.target.value}})} className="w-full h-12 rounded-xl border px-4 text-sm" />
+                   <p className="text-[11px] text-muted-foreground">গুগল জেমিনির প্রাইমারি এপিআই কি। একাধিক কি দিলে স্বয়ংক্রিয়ভাবে লোড-ব্যালেন্স হবে।</p>
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="openrouter-api-key" className="font-bold text-xs">OpenRouter API Key (Fallback)</Label>
+                   <input id="openrouter-api-key" type="text" placeholder="sk-or-v1-..." value={settings?.aiConfig?.openRouterApiKey || ''} onChange={(e) => setSettings({...settings, aiConfig: {...(settings?.aiConfig || {}), openRouterApiKey: e.target.value}})} className="w-full h-12 rounded-xl border px-4 text-sm" />
+                   <p className="text-[11px] text-muted-foreground">জেমিনির কোটা শেষ বা ওভারলোড হলে স্বয়ংক্রিয়ভাবে OpenRouter থেকে রেসপন্স আনবে।</p>
+                 </div>
+               </div>
            </CardContent>
         </Card>
 

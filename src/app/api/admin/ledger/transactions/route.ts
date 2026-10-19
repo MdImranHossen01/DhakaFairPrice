@@ -20,9 +20,17 @@ export async function GET(req: NextRequest) {
     await backfillPayoutsToLedger();
     await syncBillsToLedger();
 
-    const transactions = await LedgerTransaction.find({
+    const { searchParams } = new URL(req.url);
+    const accountId = searchParams.get('accountId');
+
+    const queryFilter: any = {
       $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-    })
+    };
+    if (accountId) {
+      queryFilter.account = accountId;
+    }
+
+    const transactions = await LedgerTransaction.find(queryFilter)
       .populate('account')
       .sort({ date: -1, createdAt: -1 });
 

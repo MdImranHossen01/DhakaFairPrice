@@ -96,84 +96,114 @@ export const getChatResponse = async (
     message: string,
     history: ChatMessage[],
     context?: string,
-    apiKey?: string
+    apiKey?: string,
+    openRouterApiKey?: string
 ): Promise<string> => {
-    if (!apiKey) {
-        console.error("❌ Google Gemini API Key is missing.");
-        return "I'm sorry, I can't connect to the AI assistant right now. (Server Error: Missing Gemini API Key in configuration).";
+    // 1. Resolve Gemini Key(s)
+    const effectiveGeminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    const selectedGeminiKey = getRandomKey(effectiveGeminiKey);
+
+    // Resolve OpenRouter Key (strictly from database configuration)
+    const effectiveOpenRouterKey = openRouterApiKey || "";
+
+    // Filter history to ensure it starts with 'user' or 'model'
+    let validHistory = history.filter(msg => msg.role === 'user' || msg.role === 'model');
+
+    // Remove the first message if it's from 'model' (often the welcome greeting)
+    if (validHistory.length > 0 && validHistory[0].role === 'model') {
+        validHistory = validHistory.slice(1);
     }
 
-    const selectedKey = getRandomKey(apiKey);
-    if (!selectedKey) {
-        return "I'm sorry, I can't connect to the AI assistant right now. (Server Error: Invalid Gemini API Key).";
-    }
+    // Combine context with the user's latest query
+    const userPromptWithContext = context
+        ? `${context}\n\nUser Question: ${message}`
+        : message;
 
-    try {
-        const ai = new GoogleGenAI({ apiKey: selectedKey });
-        const candidateModels = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-flash-latest",
-            "gemini-3.8-flash",
-            "gemini-3.7-flash"
-        ];
+    // First line of defense: Google Gemini SDK
+    if (selectedGeminiKey) {
+        try {
+            const ai = new GoogleGenAI({ apiKey: selectedGeminiKey });
+            console.log(`🚀 Sending request to Google Gemini SDK (Key ends in: ...${selectedGeminiKey.slice(-4)})...`);
 
-        // Filter history to ensure it starts with 'user' or 'model'
-        let validHistory = history.filter(msg => msg.role === 'user' || msg.role === 'model');
+            const contents = validHistory.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.parts }]
+            }));
 
-        // Remove the first message if it's from 'model' (often the welcome greeting)
-        if (validHistory.length > 0 && validHistory[0].role === 'model') {
-            validHistory = validHistory.slice(1);
-        }
+            contents.push({
+                role: 'user',
+                parts: [{ text: userPromptWithContext }]
+            });
 
-        // Convert to SDK format
-        const contents = validHistory.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.parts }]
-        }));
+            // Fast models with official support
+            const fastModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+            for (const model of fastModels) {
+                try {
+                    const response = await ai.models.generateContent({
+                        model,
+                        contents,
+                        config: {
+                            systemInstruction: SYSTEM_INSTRUCTION,
+                        }
+                    });
 
-        // Combine context with the user's latest query
-        const userPromptWithContext = context
-            ? `${context}\n\nUser Question: ${message}`
-            : message;
-
-        // Add the current new message
-        contents.push({
-            role: 'user',
-            parts: [{ text: userPromptWithContext }]
-        });
-
-        let lastError: any = null;
-
-        for (const model of candidateModels) {
-            try {
-                const response = await ai.models.generateContent({
-                    model,
-                    contents,
-                    config: {
-                        systemInstruction: SYSTEM_INSTRUCTION,
+                    if (response.text) {
+                        return response.text;
                     }
-                });
-
-                if (response.text) {
-                    return response.text;
+                } catch (modelErr: any) {
+                    console.warn(`⚠️ Model ${model} failed, trying next fast model:`, modelErr.message || modelErr);
                 }
-            } catch (err: any) {
-                lastError = err;
-                console.warn(`⚠️ Model ${model} failed, trying fallback:`, err.message || err);
-                // If temporary capacity issue or high demand, proceed to fallback model
-                continue;
             }
+        } catch (sdkError: any) {
+            console.error("❌ Google Gemini SDK failed, attempting OpenRouter fallback:", sdkError.message || sdkError);
         }
-
-        throw lastError || new Error("All Gemini model fallbacks exhausted");
-
-    } catch (error: any) {
-        console.error("❌ Google Gemini SDK Error:", error);
-        if (error.message?.includes('503') || error.message?.includes('high demand') || error.message?.includes('UNAVAILABLE')) {
-            return "সার্ভারে সাময়িক অতিরিক্ত ট্রাফিকের কারণে সংযোগ পেতে কিছুটা বিলম্ব হচ্ছে। অনুগ্রহ করে কয়েক সেকেন্ড পর আবার চেষ্টা করুন।";
-        }
-        return `I'm having trouble thinking right now. Please try again in a moment.`;
+    } else {
+        console.warn("⚠️ Google Gemini API Key is missing or invalid. Attempting OpenRouter fallback...");
     }
+
+    // Second line of defense: OpenRouter Fallback
+    if (effectiveOpenRouterKey) {
+        try {
+            console.log("🚀 Falling back to OpenRouter (google/gemini-2.5-flash)...");
+            const messages = [
+                { role: "system", content: SYSTEM_INSTRUCTION },
+                ...validHistory.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'assistant',
+                    content: msg.parts
+                })),
+                { role: "user", content: userPromptWithContext }
+            ];
+
+            const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${effectiveOpenRouterKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://dhakafairprice.com",
+                    "X-Title": "Store AI Assistant"
+                },
+                body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: messages,
+                    max_tokens: 1500,
+                })
+            });
+
+            if (openRouterRes.ok) {
+                const data = await openRouterRes.json();
+                const text = data.choices?.[0]?.message?.content;
+                if (text) {
+                    console.log("✅ OpenRouter fallback successful!");
+                    return text;
+                }
+            } else {
+                const errorText = await openRouterRes.text();
+                console.error("❌ OpenRouter fallback failed with status:", openRouterRes.status, errorText);
+            }
+        } catch (openRouterErr: any) {
+            console.error("❌ OpenRouter fallback encountered an exception:", openRouterErr.message || openRouterErr);
+        }
+    }
+
+    return "সার্ভারে সাময়িক সংযোগ সমস্যা হচ্ছে বা এপিআই কোটা সাময়িকভাবে শেষ। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।";
 };

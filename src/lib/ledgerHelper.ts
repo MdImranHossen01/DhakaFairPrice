@@ -123,6 +123,57 @@ export async function logLedgerTransaction(
 }
 
 /**
+ * Determine the net balance change of a transaction for an account based on its semantic action
+ */
+export function calculateTransactionChange(tx: any, account: any): number {
+  const desc = (tx.description || '').toLowerCase();
+  const amount = Math.abs(Number(tx.amount) || 0);
+
+  // If it's an Opening Balance journal entry, the opening balance is already accounted for in account.openingBalance
+  if (desc === 'opening balance' || desc.startsWith('opening balance')) {
+    return 0;
+  }
+
+  // Outflow / Deductions: expenses, repayments, transfers out, payouts, payments
+  const isDeduction =
+    desc.startsWith('expense') ||
+    desc.startsWith('manual withdrawal') ||
+    desc.startsWith('transfer to') ||
+    desc.startsWith('payment credit for bill') ||
+    desc.startsWith('upfront payment credit') ||
+    desc.includes('payout to') ||
+    desc.includes('commission payout') ||
+    desc.includes('loan repayment') ||
+    desc.startsWith('reseller commission payout') ||
+    desc.startsWith('supplier payment') ||
+    desc.includes('paid to');
+
+  // Inflow / Additions: income, deposits, loans received, upfront cash, payments received
+  const isAddition =
+    desc.startsWith('income') ||
+    desc.startsWith('manual deposit') ||
+    desc.startsWith('transfer from') ||
+    desc.startsWith('business loan inflow') ||
+    desc.startsWith('payment received') ||
+    desc.startsWith('payout received') ||
+    desc.includes('payout received') ||
+    desc.startsWith('cash paid upfront') ||
+    desc.startsWith('bill generated');
+
+  if (account.type === 'liability' || account.code === 'AP') {
+    if (isDeduction) return -amount;
+    if (isAddition) return amount;
+    return tx.type === 'credit' ? amount : -amount;
+  }
+
+  // Asset accounts (Bank, Cash, MFS, AR)
+  if (isAddition) return amount;
+  if (isDeduction) return -amount;
+
+  return tx.type === 'credit' ? amount : -amount;
+}
+
+/**
  * Recalculate ledger balance for an account
  */
 export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'AR' | 'AP') {
@@ -135,9 +186,7 @@ export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'A
   let runningBalance = account.openingBalance || 0;
 
   for (const tx of transactions) {
-    const change = account.type === 'liability'
-      ? (tx.type === 'credit' ? tx.amount : -tx.amount)
-      : (tx.type === 'debit' ? tx.amount : -tx.amount);
+    const change = calculateTransactionChange(tx, account);
     runningBalance += change;
     tx.balanceAfter = runningBalance;
     await tx.save();
@@ -161,9 +210,7 @@ export async function recalculateLedgerBalanceByAccountId(accountId: any) {
   let runningBalance = account.openingBalance || 0;
 
   for (const tx of transactions) {
-    const change = account.type === 'liability'
-      ? (tx.type === 'credit' ? tx.amount : -tx.amount)
-      : (tx.type === 'debit' ? tx.amount : -tx.amount);
+    const change = calculateTransactionChange(tx, account);
     runningBalance += change;
     tx.balanceAfter = runningBalance;
     await tx.save();

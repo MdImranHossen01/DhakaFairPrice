@@ -104,8 +104,12 @@ function ResellerLedgerContent() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [journalSearchTerm, setJournalSearchTerm] = useState('');
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
+
+  const initialSearch = searchParams.get('search') || searchParams.get('accountName') || '';
+  const initialAccountId = searchParams.get('accountId') || 'all';
+
+  const [journalSearchTerm, setJournalSearchTerm] = useState(initialSearch);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(initialAccountId);
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
 
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1'));
@@ -140,12 +144,36 @@ function ResellerLedgerContent() {
     fetchLedgerData();
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentPage > 1) {
+      params.set('page', currentPage.toString());
+    } else {
+      params.delete('page');
+    }
+    if (journalSearchTerm) {
+      params.set('search', journalSearchTerm);
+    } else {
+      params.delete('search');
+    }
+    if (selectedAccountId && selectedAccountId !== 'all') {
+      params.set('accountId', selectedAccountId);
+    } else {
+      params.delete('accountId');
+    }
+    router.push(`/reseller/ledger?${params.toString()}`);
+  }, [currentPage, journalSearchTerm, selectedAccountId, dateFilter.from, dateFilter.to]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [journalSearchTerm, dateFilter.from, dateFilter.to, selectedAccountId]);
+
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       // Account filter
       if (selectedAccountId !== 'all') {
-        const accId = tx.account?._id || tx.account;
+        const accId = tx.account?._id?.toString() || tx.account?.toString();
         if (accId !== selectedAccountId) return false;
       }
 

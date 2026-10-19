@@ -120,7 +120,11 @@ function AccountsLedgerContent() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [journalSearchTerm, setJournalSearchTerm] = useState('');
+  const initialSearch = searchParams.get('search') || searchParams.get('accountName') || '';
+  const initialAccountId = searchParams.get('accountId') || 'all';
+
+  const [journalSearchTerm, setJournalSearchTerm] = useState(initialSearch);
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>(initialAccountId);
   
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const [currentPage, setCurrentPage] = useState(initialPage);
@@ -150,15 +154,22 @@ function AccountsLedgerContent() {
     } else {
       params.delete('tab');
     }
+    if (journalSearchTerm) {
+      params.set('search', journalSearchTerm);
+    } else {
+      params.delete('search');
+    }
+    if (selectedAccountFilter && selectedAccountFilter !== 'all') {
+      params.set('accountId', selectedAccountFilter);
+    } else {
+      params.delete('accountId');
+    }
     router.push(`/admin/ledger?${params.toString()}`);
-  }, [currentPage, activeTab]);
+  }, [currentPage, activeTab, journalSearchTerm, selectedAccountFilter, dateFilter.from, dateFilter.to]);
 
   useEffect(() => {
     setCurrentPage(1);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('page');
-    router.push(`/admin/ledger?${params.toString()}`);
-  }, [journalSearchTerm, dateFilter.from, dateFilter.to]);
+  }, [journalSearchTerm, dateFilter.from, dateFilter.to, selectedAccountFilter]);
 
   const [accountCode, setAccountCode] = useState<'CASH' | 'BANK'>('CASH');
   const [fromAccountCode, setFromAccountCode] = useState<'CASH' | 'BANK'>('CASH');
@@ -380,11 +391,19 @@ function AccountsLedgerContent() {
   };
 
   const filteredTransactions = transactions.filter((tx) => {
+    // Filter by selected account
+    if (selectedAccountFilter && selectedAccountFilter !== 'all') {
+      const accId = tx.account?._id?.toString() || tx.account?.toString();
+      if (accId !== selectedAccountFilter) {
+        return false;
+      }
+    }
+
     const term = journalSearchTerm.toLowerCase();
     const name = tx.account?.name?.toLowerCase() || '';
     const desc = tx.description?.toLowerCase() || '';
     const ref = tx.reference?.toLowerCase() || '';
-    const matchesSearch = name.includes(term) || desc.includes(term) || ref.includes(term);
+    const matchesSearch = !term || name.includes(term) || desc.includes(term) || ref.includes(term);
 
     let matchesDate = true;
     if (dateFilter.from) {
@@ -421,11 +440,32 @@ function AccountsLedgerContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <CardTitle className="text-sm md:text-base font-bold">Transaction Journal</CardTitle>
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <div className="relative flex-1 sm:w-60 md:w-72">
+              {/* Account Filter Dropdown */}
+              <Select
+                value={selectedAccountFilter}
+                onValueChange={(val) => {
+                  setSelectedAccountFilter(val || 'all');
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs w-[130px] sm:w-[150px] bg-background">
+                  <SelectValue placeholder="All Accounts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Accounts</SelectItem>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc._id} value={acc._id} className="text-xs">
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="relative flex-1 sm:w-56 md:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search description / ref..."
-                  className="pl-8 h-8 text-xs"
+                  className="pl-8 h-8 text-xs bg-background"
                   value={journalSearchTerm}
                   onChange={(e) => setJournalSearchTerm(e.target.value)}
                 />
@@ -445,13 +485,14 @@ function AccountsLedgerContent() {
                   onChange={(e) => setDateFilter(prev => ({ ...prev, to: e.target.value }))}
                 />
               </div>
-              {(dateFilter.from || dateFilter.to || journalSearchTerm) && (
+              {(dateFilter.from || dateFilter.to || journalSearchTerm || (selectedAccountFilter && selectedAccountFilter !== 'all')) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setDateFilter({ from: '', to: '' });
                     setJournalSearchTerm('');
+                    setSelectedAccountFilter('all');
                   }}
                   className="text-xs text-muted-foreground hover:text-primary h-7 px-2"
                 >
