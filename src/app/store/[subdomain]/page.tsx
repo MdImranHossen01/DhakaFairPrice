@@ -234,8 +234,10 @@ export default async function ResellerStorePage({ params }: Props) {
   const storeName = reseller.storeName;
   const logo = reseller.logoUrl;
   const description = reseller.description;
-  const deliveryInside = reseller.deliveryConfig?.insideDhaka ?? 60;
-  const deliveryOutside = reseller.deliveryConfig?.outsideDhaka ?? 120;
+  const GlobalSettings = (await import('@/models/GlobalSettings')).default;
+  const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+  const deliveryInside = globalSettings?.deliveryChargeInsideDhaka ?? 60;
+  const deliveryOutside = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
   const freeDeliveryThreshold = reseller.deliveryConfig?.freeDeliveryThreshold || 0;
 
   const settingsData = {

@@ -193,8 +193,10 @@ export default async function ResellerProductPage({ params }: Props) {
   const navStyle = themeOverrides.navbar || 'v1';
   const footerStyle = themeOverrides.footer || 'v1';
   const cardStyle = themeOverrides.productCard || 'v1';
-  const deliveryInside = reseller.deliveryConfig?.insideDhaka ?? 60;
-  const deliveryOutside = reseller.deliveryConfig?.outsideDhaka ?? 120;
+  const GlobalSettings = (await import('@/models/GlobalSettings')).default;
+  const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+  const deliveryInside = globalSettings?.deliveryChargeInsideDhaka ?? 60;
+  const deliveryOutside = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
   const freeDeliveryThreshold = reseller.deliveryConfig?.freeDeliveryThreshold || 0;
 
   const settingsData = {

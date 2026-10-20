@@ -122,8 +122,10 @@ export async function POST(
     // Recompute subtotal, deliveryCharge, and base total
     const calculatedSubtotal = validatedItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
 
-    const insideCharge = reseller.deliveryConfig?.insideDhaka ?? 60;
-    const outsideCharge = reseller.deliveryConfig?.outsideDhaka ?? 120;
+    const GlobalSettings = (await import('@/models/GlobalSettings')).default;
+    const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+    const insideCharge = globalSettings?.deliveryChargeInsideDhaka ?? 60;
+    const outsideCharge = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
     const freeThreshold = reseller.deliveryConfig?.freeDeliveryThreshold ?? 0;
 
     let calculatedDeliveryCharge = deliveryArea === 'inside' ? insideCharge : outsideCharge;

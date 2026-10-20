@@ -46,11 +46,25 @@ export async function GET() {
       await Reseller.findByIdAndUpdate(reseller._id, { totalEarnings: actualTotalEarnings });
     }
 
-    reseller = await Reseller.findById(reseller._id);
+    reseller = await Reseller.findById(reseller._id).lean() as any;
 
     // Ensure User profile image is synchronized with store logo
     if (reseller?.logoUrl && currentUserId) {
       await User.findByIdAndUpdate(currentUserId, { image: reseller.logoUrl });
+    }
+
+    // Centrally enforce Mother Shop delivery rates for reseller
+    const GlobalSettings = (await import('@/models/GlobalSettings')).default;
+    const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+    const motherInside = globalSettings?.deliveryChargeInsideDhaka ?? 60;
+    const motherOutside = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
+
+    if (reseller) {
+      if (!reseller.deliveryConfig) {
+        reseller.deliveryConfig = {};
+      }
+      reseller.deliveryConfig.insideDhaka = motherInside;
+      reseller.deliveryConfig.outsideDhaka = motherOutside;
     }
 
     return NextResponse.json({ reseller });
@@ -151,8 +165,16 @@ export async function PATCH(request: NextRequest) {
     // SEO + Tracking config (full replace)
     if (seoConfig !== undefined) updatePayload.seoConfig = seoConfig;
 
-    // Delivery config (full replace)
-    if (deliveryConfig !== undefined) updatePayload.deliveryConfig = deliveryConfig;
+    // Delivery config (locked to Mother Shop delivery rates)
+    if (deliveryConfig !== undefined) {
+      const GlobalSettings = (await import('@/models/GlobalSettings')).default;
+      const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+      updatePayload.deliveryConfig = {
+        ...deliveryConfig,
+        insideDhaka: globalSettings?.deliveryChargeInsideDhaka ?? 60,
+        outsideDhaka: globalSettings?.deliveryChargeOutsideDhaka ?? 120,
+      };
+    }
 
     // Payment config (full replace)
     if (paymentConfig !== undefined) updatePayload.paymentConfig = paymentConfig;

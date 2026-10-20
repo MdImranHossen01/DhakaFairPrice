@@ -41,8 +41,8 @@ export default async function ResellerCheckoutPage({ params }: Props) {
 
   const storeInfo = {
     storeName: reseller.storeName,
-    deliveryInside: reseller.deliveryConfig?.insideDhaka ?? 60,
-    deliveryOutside: reseller.deliveryConfig?.outsideDhaka ?? 120,
+    deliveryInside: globalSettings?.deliveryChargeInsideDhaka ?? 60,
+    deliveryOutside: globalSettings?.deliveryChargeOutsideDhaka ?? 120,
     freeDeliveryThreshold,
     loyaltyConfig: reseller.loyaltyConfig || { isEnabled: false, activationThreshold: 5000, rewardPercentage: 5 },
     paymentConfig: reseller.paymentConfig as any,

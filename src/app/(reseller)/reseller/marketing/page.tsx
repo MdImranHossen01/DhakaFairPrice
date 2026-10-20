@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Zap, Award, Wallet, Save } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Zap, Award, Wallet, Save, Lock, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResellerMarketingPage() {
@@ -189,14 +190,29 @@ export default function ResellerMarketingPage() {
                   </Button>
                 </div>
               </div>
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label>Inside Dhaka Delivery (৳)</Label>
-                  <Input type="number" value={payment.insideDhaka} onChange={e => setPayment(p => ({ ...p, insideDhaka: Number(e.target.value) }))} />
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-bold flex items-center gap-1.5 text-foreground">
+                      <Truck className="h-4 w-4 text-primary" /> Delivery Charges (Fixed by Mother Shop)
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      সব ডেলিভারি মাদার শপের কুরিয়ারের মাধ্যমে সম্পন্ন হওয়ায় এই চার্জ কেন্দ্রীয়ভাবে নির্ধারিত এবং অপরিবর্তনযোগ্য।
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/40 font-semibold gap-1 py-1 w-fit">
+                    <Lock className="h-3 w-3" /> Mother Shop Managed
+                  </Badge>
                 </div>
-                <div className="space-y-1">
-                  <Label>Outside Dhaka Delivery (৳)</Label>
-                  <Input type="number" value={payment.outsideDhaka} onChange={e => setPayment(p => ({ ...p, outsideDhaka: Number(e.target.value) }))} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Inside Dhaka Delivery (৳)</Label>
+                    <Input type="number" value={payment.insideDhaka} disabled className="bg-muted font-bold cursor-not-allowed opacity-90" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Outside Dhaka Delivery (৳)</Label>
+                    <Input type="number" value={payment.outsideDhaka} disabled className="bg-muted font-bold cursor-not-allowed opacity-90" />
+                  </div>
                 </div>
               </div>
               <Button onClick={() => save({
