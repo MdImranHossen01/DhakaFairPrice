@@ -111,7 +111,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
   const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (displayStock <= 0) {
       toast.error('Item is currently unavailable');
       return false;
@@ -123,7 +123,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
       return false;
     }
 
-    const res = addItem({
+    const res = await addItem({
       productId: product._id,
       name: product.name,
       price: displaySalePrice || displayPrice,
@@ -172,7 +172,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
   };
 
   const handleBuyNow = async () => {
-    const success = handleAddToCart();
+    const success = await handleAddToCart();
     if (success) {
       router.push('/checkout');
     }

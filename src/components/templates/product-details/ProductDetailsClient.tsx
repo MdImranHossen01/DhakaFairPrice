@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/dialog';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -60,6 +61,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
   const dispatch = useAppDispatch();
   const { data: session } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
+  const cartItems = useAppSelector((state) => state.cart.items);
   const isInWishlist = wishlist.includes(product?._id);
   const router = useRouter();
   const userRole = (session?.user as any)?.role;
@@ -211,7 +213,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
   const displaySku = hasVariants ? (currentVariant?.sku ?? '') : product.sku;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (uniqueColors.length > 0 && !effectiveColor) {
       toast.error('Please select a color');
       return false;
@@ -232,7 +234,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
       toast.info(`Adjusted quantity to ${stock} (available stock)`);
     }
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: displaySalePrice || displayPrice,
@@ -240,34 +242,43 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
       quantity: finalQuantity,
       image: activeVariant?.images?.[0] || activeVariant?.image || (product.variants && product.variants.length > 0 ? (product.variants[0]?.images?.[0] || product.variants[0]?.image) : product.images?.[0]),
       color: effectiveColor || undefined,
-      size: effectiveSize || undefined
-    }));
-
-    // Track AddToCart
-    const addToCartPayload = {
-      content_name: product.name,
-      content_category: product.categories?.[0]?.name || 'Uncategorized',
-      content_ids: [product._id],
-      content_type: 'product',
-      value: (displaySalePrice || displayPrice) * finalQuantity,
-      currency: 'BDT',
-      quantity: finalQuantity
-    };
-    const trackingUser = {
-      em: session?.user?.email || undefined,
-      ph: (session?.user as any)?.phone || undefined,
-      fn: session?.user?.name || undefined
+      size: effectiveSize || undefined,
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
     };
 
-    fbEvent('AddToCart', addToCartPayload, trackingUser);
-    ttEvent('AddToCart', addToCartPayload, trackingUser);
+    const added = await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        // Track AddToCart
+        const addToCartPayload = {
+          content_name: product.name,
+          content_category: product.categories?.[0]?.name || 'Uncategorized',
+          content_ids: [product._id],
+          content_type: 'product',
+          value: (displaySalePrice || displayPrice) * finalQuantity,
+          currency: 'BDT',
+          quantity: finalQuantity
+        };
+        const trackingUser = {
+          em: session?.user?.email || undefined,
+          ph: (session?.user as any)?.phone || undefined,
+          fn: session?.user?.name || undefined
+        };
 
-    toast.success(`Added ${finalQuantity} ${product.name} to cart`);
-    return true;
+        fbEvent('AddToCart', addToCartPayload, trackingUser);
+        ttEvent('AddToCart', addToCartPayload, trackingUser);
+
+        toast.success(`Added ${finalQuantity} ${product.name} to cart`);
+      }
+    });
+
+    return added;
   };
 
-  const handleBuyNow = () => {
-    const success = handleAddToCart();
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
     if (success) {
       router.push('/checkout');
     }

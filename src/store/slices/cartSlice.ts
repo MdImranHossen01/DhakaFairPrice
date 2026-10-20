@@ -10,6 +10,7 @@ interface CartItem {
   color?: string;
   size?: string;
   uploadedBy?: string | null;
+  sellerName?: string;
 }
 
 interface CartState {
@@ -118,10 +119,19 @@ const cartSlice = createSlice({
     },
     setHydrated(state) {
       state.isHydrated = true;
+    },
+    keepOnlySeller(state, action: PayloadAction<string>) {
+      const targetSeller = action.payload;
+      state.items = state.items.filter(item => {
+        const itemSeller = item.uploadedBy ? String(item.uploadedBy) : 'mother';
+        return itemSeller === targetSeller;
+      });
+      state.totalQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0);
+      state.totalAmount = Math.round(state.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100) / 100;
     }
   },
 });
 
-export const { addToCart, removeFromCart, clearCart, hydrateCart, syncItems, setHydrated } = cartSlice.actions;
+export const { addToCart, removeFromCart, clearCart, hydrateCart, syncItems, setHydrated, keepOnlySeller } = cartSlice.actions;
 export default cartSlice.reducer;
 

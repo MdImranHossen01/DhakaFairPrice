@@ -15,6 +15,7 @@ import { addToCart } from '@/store/slices/cartSlice';
 import { toggleWishlist } from '@/store/slices/wishlistSlice';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 import { QuickViewModal } from './QuickViewModal';
 import { ProductActionMenu } from './ProductActionMenu';
 import {
@@ -40,12 +41,14 @@ interface ProductCardProps {
     ratings?: number;
     numReviews?: number;
     sku?: string;
+    uploadedBy?: any;
   };
   isFlashSale?: boolean;
 }
 
 export default function ProductCardV3({ product: initialProduct, isFlashSale }: ProductCardProps) {
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector((state) => state.cart.items);
   const { data: session, status } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
   const isInWishlist = wishlist.includes(initialProduct._id);
@@ -91,16 +94,25 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
     }
   };
 
-  const executeAddToCart = () => {
-    dispatch(addToCart({
+  const executeAddToCart = async () => {
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: product.salePrice ?? product.price,
       basePrice: product.price,
       quantity: 1,
-      image: product.images?.[0]
-    }));
-    toast.success(`${product.name} added to cart`);
+      image: product.images?.[0],
+      uploadedBy: (initialProduct as any).uploadedBy ? String((initialProduct as any).uploadedBy) : null,
+    };
+
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        toast.success(`${product.name} added to cart`);
+      }
+    });
   };
 
   const handleFavorite = async (e: React.MouseEvent) => {

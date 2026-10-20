@@ -13,8 +13,8 @@ interface AddToCartButtonProps {
 export function AddToCartButton({ product, className }: AddToCartButtonProps) {
   const { addItem } = useCart();
 
-  const handleAddToCart = () => {
-    const res = addItem({
+  const handleAddToCart = async () => {
+    const res = await addItem({
       productId: product._id || product.id,
       name: product.name,
       price: product.salePrice ?? product.price,
@@ -24,7 +24,7 @@ export function AddToCartButton({ product, className }: AddToCartButtonProps) {
     });
     if (res.success) {
       toast.success(`${product.name} added to cart`);
-    } else {
+    } else if (res.error) {
       toast.error(res.error);
     }
   };

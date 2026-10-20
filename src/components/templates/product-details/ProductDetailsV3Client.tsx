@@ -21,6 +21,7 @@ import {
 import Swal from 'sweetalert2';
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 
 interface ProductDetailsV3ClientProps {
   product: any;
@@ -31,6 +32,7 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
   const { data: session } = useSession();
   const dispatch = useAppDispatch();
   const wishlist = useAppSelector((state) => state.wishlist.items);
+  const cartItems = useAppSelector((state) => state.cart.items);
   const isInWishlist = wishlist.includes(product._id);
   const isAdmin = (session?.user as any)?.role === 'admin';
 
@@ -102,19 +104,27 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
     ? Math.max(0, Math.round(((displayPrice - displaySalePrice) / displayPrice) * 100))
     : 0;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (displayStock <= 0) return toast.error('Selection Unavailable');
-    dispatch(addToCart({
-      productId: product._id,
+    const itemToAdd = {
+       productId: product._id,
       name: product.name,
       price: displaySalePrice || displayPrice,
       basePrice: displayPrice,
       quantity: quantity,
       image: activeVariant?.image || (product.variants && product.variants.length > 0 ? product.variants[0]?.image : product.images?.[0]),
       color: effectiveColor || undefined,
-      size: effectiveSize || undefined
-    }));
-    toast.success(`${product.name} initialized in cart`);
+      size: effectiveSize || undefined,
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
+    };
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        toast.success(`${product.name} initialized in cart`);
+      }
+    });
   };
 
   const handleFavorite = async () => {

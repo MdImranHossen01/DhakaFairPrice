@@ -16,6 +16,7 @@ import { QuickViewModal } from './QuickViewModal';
 import { ProductActionMenu } from './ProductActionMenu';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 import {
   Tooltip,
   TooltipContent,
@@ -40,6 +41,7 @@ interface ProductCardProps {
     ratings?: number;
     numReviews?: number;
     sku?: string;
+    uploadedBy?: any;
   };
   isFlashSale?: boolean;
   priority?: boolean;
@@ -48,6 +50,7 @@ interface ProductCardProps {
 
 export default function ProductCardV6({ product: initialProduct, isFlashSale, priority, layout }: ProductCardProps) {
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector((state) => state.cart.items);
   const router = useRouter();
   const { data: session, status } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
@@ -79,39 +82,47 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
 
   const [showQuickViewModal, setShowQuickViewModal] = useState(false);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (hasVariants) {
       setShowQuickViewModal(true);
     } else {
-      dispatch(addToCart({
+      const itemToAdd = {
         productId: product._id,
         name: product.name,
         price: product.salePrice ?? product.price,
         basePrice: product.price,
         quantity: 1,
-        image: product.images?.[0]
-      }));
-
-      // Track AddToCart
-      const addToCartPayload = {
-        content_name: product.name,
-        content_category: 'Beauty',
-        content_ids: [product._id],
-        content_type: 'product',
-        value: product.salePrice || product.price,
-        currency: 'BDT',
-        quantity: 1
+        image: product.images?.[0],
+        uploadedBy: (initialProduct as any).uploadedBy ? String((initialProduct as any).uploadedBy) : null,
       };
-      const trackingUser = {
-        em: session?.user?.email || undefined,
-        ph: (session?.user as any)?.phone || undefined,
-        fn: session?.user?.name || undefined
-      };
-      fbEvent('AddToCart', addToCartPayload, trackingUser);
-      ttEvent('AddToCart', addToCartPayload, trackingUser);
 
-      toast.success(`${product.name} added to cart`);
+      await validateAndAddToCart({
+        cartItems,
+        newItem: itemToAdd,
+        dispatch,
+        onSuccess: () => {
+          // Track AddToCart
+          const addToCartPayload = {
+            content_name: product.name,
+            content_category: 'Beauty',
+            content_ids: [product._id],
+            content_type: 'product',
+            value: product.salePrice || product.price,
+            currency: 'BDT',
+            quantity: 1
+          };
+          const trackingUser = {
+            em: session?.user?.email || undefined,
+            ph: (session?.user as any)?.phone || undefined,
+            fn: session?.user?.name || undefined
+          };
+          fbEvent('AddToCart', addToCartPayload, trackingUser);
+          ttEvent('AddToCart', addToCartPayload, trackingUser);
+
+          toast.success(`${product.name} added to cart`);
+        }
+      });
     }
   };
 

@@ -31,6 +31,7 @@ import {
 import Image from 'next/image';
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -42,6 +43,7 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
   const dispatch = useAppDispatch();
   const { data: session } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
+  const cartItems = useAppSelector((state) => state.cart.items);
   const isInWishlist = wishlist.includes(product?._id);
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === 'admin';
@@ -114,9 +116,9 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
   const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (displayStock <= 0) return toast.error('Unavailable');
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: displaySalePrice || displayPrice,
@@ -124,9 +126,17 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
       quantity: quantity,
       image: displayImage || activeVariant?.image || (product.variants && product.variants.length > 0 ? product.variants[0]?.image : product.images?.[0]),
       color: effectiveColor || undefined,
-      size: effectiveSize || undefined
-    }));
-    toast.success(`Exclusive piece added to bag`);
+      size: effectiveSize || undefined,
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
+    };
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        toast.success(`Exclusive piece added to bag`);
+      }
+    });
   };
 
   const handleFavorite = async () => {

@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { ShoppingCart, Heart, X, Plus, Minus } from 'lucide-react';
 import { RatingStars } from '@/components/ui/rating-stars';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToCart } from '@/store/slices/cartSlice';
 import { toast } from 'sonner';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -27,6 +28,7 @@ interface QuickViewModalProps {
 
 export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps) {
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector((state) => state.cart.items);
   const { data: session } = useSession();
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -142,10 +144,10 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
 
   const router = useRouter();
 
-  const handleAddToCart = (e: React.MouseEvent, redirect: boolean = false) => {
+  const handleAddToCart = async (e: React.MouseEvent, redirect: boolean = false) => {
     e.preventDefault();
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
@@ -153,34 +155,42 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
       quantity: quantity,
       image: activeImage,
       color: selectedColor || undefined,
-      size: selectedSize || undefined
-    }));
-
-    // Track AddToCart
-    const addToCartPayload = {
-      content_name: product.name,
-      content_category: product.categories?.[0]?.name || 'Uncategorized',
-      content_ids: [product._id],
-      content_type: 'product',
-      value: (displaySalePrice ?? displayPrice) * quantity,
-      currency: 'BDT',
-      quantity: quantity
+      size: selectedSize || undefined,
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
     };
-    const trackingUser = {
-      em: session?.user?.email || undefined,
-      ph: (session?.user as any)?.phone || undefined,
-      fn: session?.user?.name || undefined
-    };
-    fbEvent('AddToCart', addToCartPayload, trackingUser);
-    ttEvent('AddToCart', addToCartPayload, trackingUser);
 
-    if (redirect) {
-      router.push('/checkout');
-    } else {
-      toast.success(`${product.name} added to cart`);
-    }
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        // Track AddToCart
+        const addToCartPayload = {
+          content_name: product.name,
+          content_category: product.categories?.[0]?.name || 'Uncategorized',
+          content_ids: [product._id],
+          content_type: 'product',
+          value: (displaySalePrice ?? displayPrice) * quantity,
+          currency: 'BDT',
+          quantity: quantity
+        };
+        const trackingUser = {
+          em: session?.user?.email || undefined,
+          ph: (session?.user as any)?.phone || undefined,
+          fn: session?.user?.name || undefined
+        };
+        fbEvent('AddToCart', addToCartPayload, trackingUser);
+        ttEvent('AddToCart', addToCartPayload, trackingUser);
 
-    onClose();
+        if (redirect) {
+          router.push('/checkout');
+        } else {
+          toast.success(`${product.name} added to cart`);
+        }
+
+        onClose();
+      }
+    });
   };
 
   const discountPercentage = displayPrice && displaySalePrice

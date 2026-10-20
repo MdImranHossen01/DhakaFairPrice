@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 import { QuickViewModal } from './QuickViewModal';
 import { ProductActionMenu } from './ProductActionMenu';
 import {
@@ -41,6 +42,7 @@ interface ProductCardProps {
     ratings?: number;
     numReviews?: number;
     sku?: string;
+    uploadedBy?: any;
   };
   isFlashSale?: boolean;
   priority?: boolean;
@@ -50,6 +52,7 @@ interface ProductCardProps {
 export default function ProductCardV1({ product: initialProduct, isFlashSale, priority }: ProductCardProps) {
   const dispatch = useAppDispatch();
   const { data: session, status } = useSession();
+  const cartItems = useAppSelector((state) => state.cart.items);
   const wishlist = useAppSelector((state) => state.wishlist.items);
   const isInWishlist = wishlist.includes(initialProduct._id);
   const router = useRouter();
@@ -94,33 +97,41 @@ export default function ProductCardV1({ product: initialProduct, isFlashSale, pr
     }
   };
 
-  const executeAddToCart = () => {
+  const executeAddToCart = async () => {
     const displayPrice = product.price;
     const displaySalePrice = product.salePrice;
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
       basePrice: displayPrice,
       quantity: 1,
-      image: product.images?.[0]
-    }));
-
-    // Track AddToCart
-    const addToCartPayload = {
-      content_name: product.name,
-      content_category: product.categories?.[0]?.name || 'Uncategorized',
-      content_ids: [product._id],
-      content_type: 'product',
-      value: displaySalePrice ?? displayPrice,
-      currency: 'BDT',
-      quantity: 1
+      image: product.images?.[0],
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
     };
-    fbEvent('AddToCart', addToCartPayload);
-    ttEvent('AddToCart', addToCartPayload);
 
-    toast.success(`${product.name} added to cart`);
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        // Track AddToCart
+        const addToCartPayload = {
+          content_name: product.name,
+          content_category: product.categories?.[0]?.name || 'Uncategorized',
+          content_ids: [product._id],
+          content_type: 'product',
+          value: displaySalePrice ?? displayPrice,
+          currency: 'BDT',
+          quantity: 1
+        };
+        fbEvent('AddToCart', addToCartPayload);
+        ttEvent('AddToCart', addToCartPayload);
+
+        toast.success(`${product.name} added to cart`);
+      }
+    });
   };
 
   const handleFavorite = async (e: React.MouseEvent) => {

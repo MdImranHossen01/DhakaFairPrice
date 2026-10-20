@@ -208,11 +208,19 @@ export async function POST(req: NextRequest) {
 
       const uniqueItems = Object.values(groupedItems);
 
-      // 2b. Pre-check loop (ensure all items exist and have combined stock before any deductions)
+      // 2b. Pre-check loop (ensure all items exist, belong to the same seller, and have combined stock before any deductions)
+      const sellerIds = new Set<string>();
       for (const item of uniqueItems) {
         const product = await Product.findOne({ _id: item.product, isPublished: true }).session(session);
         if (!product) {
           throw new StockError(`Product not found: ${item.name}`);
+        }
+
+        const sId = product.uploadedBy ? product.uploadedBy.toString() : 'mother';
+        sellerIds.add(sId);
+
+        if (sellerIds.size > 1) {
+          throw new StockError('ভিন্ন ভিন্ন বিক্রেতার পণ্য একসাথে অর্ডার করা সম্ভব নয়। প্রতিটি শপের পণ্য ভিন্ন লোকেশন থেকে পাঠানো হয়, তাই অনুগ্রহ করে আলাদাভাবে অর্ডার সম্পন্ন করুন।');
         }
 
         if (item.color || item.size) {

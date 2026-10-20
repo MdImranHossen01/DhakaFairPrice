@@ -10,9 +10,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToCart } from '@/store/slices/cartSlice';
 import { toast } from 'sonner';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 import Image from 'next/image';
 
 interface QuickAddModalProps {
@@ -23,6 +24,7 @@ interface QuickAddModalProps {
 
 export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) {
   const dispatch = useAppDispatch();
+  const cartItems = useAppSelector((state) => state.cart.items);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
@@ -74,7 +76,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
     }
   }, [selectedColor, selectedSize, availableSizes]);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (uniqueColors.length > 0 && !selectedColor) {
       toast.error('Please select a color');
@@ -88,7 +90,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
     const displayPrice = activeVariant?.price || product.price;
     const displaySalePrice = activeVariant?.salePrice || product.salePrice;
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
@@ -96,10 +98,19 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
       quantity: 1,
       image: activeVariant?.image || product.images?.[0],
       color: selectedColor || undefined,
-      size: selectedSize || undefined
-    }));
-    toast.success(`${product.name} added to cart`);
-    onClose();
+      size: selectedSize || undefined,
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
+    };
+
+    await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        toast.success(`${product.name} added to cart`);
+        onClose();
+      }
+    });
   };
 
   return (

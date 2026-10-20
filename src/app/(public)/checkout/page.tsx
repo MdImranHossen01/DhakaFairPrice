@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addToCart, removeFromCart, clearCart, syncItems } from '@/store/slices/cartSlice';
+import { addToCart, removeFromCart, clearCart, syncItems, keepOnlySeller } from '@/store/slices/cartSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -22,8 +22,9 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, CreditCard, Truck, ShoppingBag, CheckCircle2, Plus, Minus, X, Globe, ArrowRight, PartyPopper, XCircle } from 'lucide-react';
+import { Loader2, CreditCard, Truck, ShoppingBag, CheckCircle2, Plus, Minus, X, Globe, ArrowRight, PartyPopper, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fbEvent } from '@/lib/fpixel';
@@ -237,6 +238,11 @@ function CheckoutContent() {
   const [syncData, setSyncData] = useState<any>(null);
   const [isPendingOrderBlocked, setIsPendingOrderBlocked] = useState(false);
 
+  const handleKeepOnlySeller = (targetSellerId: string) => {
+    dispatch(keepOnlySeller(targetSellerId));
+    toast.success('শুধুমাত্র নির্বাচিত শপের পণ্যগুলো কার্টে রাখা হয়েছে');
+  };
+
   const hasTrackedInitiate = useRef(false);
   // Track InitiateCheckout
   useEffect(() => {
@@ -355,6 +361,16 @@ function CheckoutContent() {
   const submissionSucceededRef = useRef(false);
 
   const onSubmit = async (values: CheckoutValues) => {
+    if (syncData?.hasMultipleSellers) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'ভিন্ন ভিন্ন শপের পণ্য!',
+        text: 'আপনার কার্টে একাধিক শপের পণ্য রয়েছে। প্রতিটি শপের পণ্য আলাদা লোকেশন থেকে পাঠানো হয়, তাই একসাথে অর্ডার করা সম্ভব নয়। অনুগ্রহ করে একটি নির্দিষ্ট শপের পণ্য রেখে বাকিগুলো আলাদাভাবে অর্ডার সম্পন্ন করুন।',
+        confirmButtonText: 'ঠিক আছে',
+        confirmButtonColor: '#f97316'
+      });
+      return;
+    }
     setLoading(true);
     try {
       const cleanedPhone = normalizePhoneNumber(values.phone) || values.phone;
@@ -472,7 +488,17 @@ function CheckoutContent() {
         }
       } else {
         const error = await response.json();
-        toast.error(error.message || 'Failed to place order');
+        if (error.message?.includes('ভিন্ন ভিন্ন বিক্রেতার পণ্য')) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'ভিন্ন ভিন্ন শপের পণ্য!',
+            text: error.message,
+            confirmButtonText: 'ঠিক আছে',
+            confirmButtonColor: '#f97316'
+          });
+        } else {
+          toast.error(error.message || 'Failed to place order');
+        }
       }
     } catch (error) {
       toast.error('An error occurred while placing your order');
@@ -622,8 +648,44 @@ function CheckoutContent() {
               <CardDescription>যে পণ্যগুলো আপনি কিনতে যাচ্ছেন।</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Multiple Sellers Warning Alert */}
+              {syncData?.hasMultipleSellers && (
+                <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-xs sm:text-sm">ভিন্ন ভিন্ন শপের পণ্য একসাথে অর্ডার করা সম্ভব নয়</h4>
+                      <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300/90 mt-0.5 leading-relaxed">
+                        আপনার কার্টে একাধিক বিক্রেতা/শপের পণ্য রয়েছে। প্রতিটি শপের পণ্য ভিন্ন লোকেশন থেকে পাঠানো হয়, তাই একসাথে ডেলিভারি করা যাবে না। অনুগ্রহ করে একটি নির্দিষ্ট শপের পণ্য রেখে বাকিগুলো আলাদাভাবে অর্ডার করুন।
+                      </p>
+                    </div>
+                  </div>
+
+                  {syncData.sellerGroups && syncData.sellerGroups.length > 1 && (
+                    <div className="pt-2 border-t border-amber-200 dark:border-amber-800/60 flex flex-wrap gap-1.5 items-center">
+                      <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200">শুধুমাত্র নির্দিষ্ট শপের পণ্য রাখুন:</span>
+                      {syncData.sellerGroups.map((g: any) => (
+                        <Button
+                          key={g.sellerId}
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[11px] px-2.5 py-0 border-amber-400 bg-white dark:bg-amber-900/60 hover:bg-amber-100 text-amber-900 dark:text-amber-100 font-bold"
+                          onClick={() => handleKeepOnlySeller(g.sellerId)}
+                        >
+                          🏪 {g.sellerName} ({g.items.length})
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="max-h-[500px] overflow-y-auto space-y-4 pr-2 -mr-2">
-                {items.map((item, index) => (
+                {items.map((item, index) => {
+                  const matchedValidItem = syncData?.validItems?.find((v: any) => v.productId === item.productId);
+                  const itemSellerName = matchedValidItem?.sellerName || item.sellerName;
+                  return (
                   <div key={`${item.productId}-${item.color || 'no-color'}-${item.size || 'no-size'}-${index}`} className="flex gap-4 items-start relative group">
                     <div className="h-16 w-16 rounded-md border bg-muted flex-shrink-0 relative overflow-hidden">
                       {item.image && (
@@ -646,6 +708,11 @@ function CheckoutContent() {
                             <p className="text-[10px] text-muted-foreground font-medium">
                               {[item.color, item.size].filter(Boolean).join(' / ')}
                             </p>
+                          )}
+                          {itemSellerName && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground w-fit mt-1">
+                              🏪 {itemSellerName}
+                            </span>
                           )}
                         </div>
                         <button
@@ -701,7 +768,8 @@ function CheckoutContent() {
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
               <Separator />
               <div className="flex justify-between items-center pt-2">
@@ -1056,20 +1124,24 @@ function CheckoutContent() {
                 <CardFooter className="pt-2 border-t flex flex-col gap-3">
                   <Button
                     type="submit"
-                    className={`w-full h-14 rounded-full font-black uppercase tracking-widest text-sm transition-all ${isFormValid && !syncData?.hasInsufficientStock && !isPendingOrderBlocked
+                    className={`w-full h-14 rounded-full font-black uppercase tracking-widest text-sm transition-all ${isFormValid && !syncData?.hasInsufficientStock && !isPendingOrderBlocked && !syncData?.hasMultipleSellers
                       ? 'bg-primary shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95'
                       : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
                       }`}
-                    disabled={loading || !isFormValid || syncData?.hasInsufficientStock || isPendingOrderBlocked}
+                    disabled={loading || !isFormValid || syncData?.hasInsufficientStock || isPendingOrderBlocked || syncData?.hasMultipleSellers}
                   >
                     {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
-                    {isPendingOrderBlocked ? 'পেন্ডিং অর্ডার রয়েছে' : syncData?.hasInsufficientStock ? 'পর্যাপ্ত স্টক নেই' : 'অর্ডার নিশ্চিত করুন'}
+                    {isPendingOrderBlocked ? 'পেন্ডিং অর্ডার রয়েছে' : syncData?.hasInsufficientStock ? 'পর্যাপ্ত স্টক নেই' : syncData?.hasMultipleSellers ? 'ভিন্ন শপের পণ্য রয়েছে' : 'অর্ডার নিশ্চিত করুন'}
                   </Button>
-                  {!isFormValid && (
+                  {syncData?.hasMultipleSellers ? (
+                    <p className="text-[11px] font-bold text-destructive text-center w-full">
+                      ⚠️ ভিন্ন শপের পণ্য একসাথে অর্ডার করা যাবে না। একটি শপের পণ্য রেখে বাকিগুলো রিমুভ করুন।
+                    </p>
+                  ) : !isFormValid ? (
                     <p className="text-[10px] font-bold text-muted-foreground text-center w-full uppercase tracking-widest">
                       অর্ডার সম্পন্ন করতে ডেলিভারি তথ্য পূরণ করুন
                     </p>
-                  )}
+                  ) : null}
                 </CardFooter>
               </Card>
             </form>

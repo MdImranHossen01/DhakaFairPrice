@@ -17,6 +17,7 @@ import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
+import { validateAndAddToCart } from '@/lib/cart-seller';
 
 interface ProductDetailsV2ClientProps {
   product: any;
@@ -26,6 +27,7 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
   const dispatch = useAppDispatch();
   const { data: session, status } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
+  const cartItems = useAppSelector((state) => state.cart.items);
   const isInWishlist = wishlist.includes(product?._id);
   const router = useRouter();
 
@@ -158,13 +160,13 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
     return '/placeholder.png';
   }, [allImages, selectedImage]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (displayStock <= 0) {
       toast.error('Product is out of stock');
       return false;
     }
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: displaySalePrice ?? displayPrice,
@@ -173,32 +175,41 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
       image: activeImage,
       color: selectedColor || undefined,
       size: selectedSize || undefined,
-    }));
-
-    // FB & TikTok Tracking
-    const trackingPayload = {
-      content_name: product.name,
-      content_category: product.categories?.[0]?.name || 'Apparel',
-      content_ids: [product._id],
-      content_type: 'product',
-      value: (displaySalePrice ?? displayPrice) * quantity,
-      currency: 'BDT',
-      quantity
+      uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
     };
-    const trackingUser = {
-      em: session?.user?.email || undefined,
-      ph: (session?.user as any)?.phone || undefined,
-      fn: session?.user?.name || undefined
-    };
-    fbEvent('AddToCart', trackingPayload, trackingUser);
-    ttEvent('AddToCart', trackingPayload, trackingUser);
 
-    toast.success(`${quantity} ${quantity > 1 ? 'items' : 'item'} added to bag`);
-    return true;
+    const added = await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        // FB & TikTok Tracking
+        const trackingPayload = {
+          content_name: product.name,
+          content_category: product.categories?.[0]?.name || 'Apparel',
+          content_ids: [product._id],
+          content_type: 'product',
+          value: (displaySalePrice ?? displayPrice) * quantity,
+          currency: 'BDT',
+          quantity
+        };
+        const trackingUser = {
+          em: session?.user?.email || undefined,
+          ph: (session?.user as any)?.phone || undefined,
+          fn: session?.user?.name || undefined
+        };
+        fbEvent('AddToCart', trackingPayload, trackingUser);
+        ttEvent('AddToCart', trackingPayload, trackingUser);
+
+        toast.success(`${quantity} ${quantity > 1 ? 'items' : 'item'} added to bag`);
+      }
+    });
+
+    return added;
   };
 
-  const handleBuyNow = () => {
-    const success = handleAddToCart();
+  const handleBuyNow = async () => {
+    const success = await handleAddToCart();
     if (success) {
       router.push('/checkout');
     }

@@ -55,6 +55,7 @@ export async function POST(
     const validatedItems = [];
     let totalCommission = 0;
     const uploaderItemsMap = new Map<string, any[]>();
+    const supplierIds = new Set<string>();
 
     for (const item of items) {
       const qty = parseInt(item.quantity, 10);
@@ -72,6 +73,13 @@ export async function POST(
 
       const productDoc = rp.productId as any;
       const uploaderId = productDoc?.uploadedBy ? productDoc.uploadedBy.toString() : null;
+      supplierIds.add(uploaderId || 'mother');
+
+      if (supplierIds.size > 1) {
+        return NextResponse.json({
+          error: 'ভিন্ন ভিন্ন বিক্রেতার পণ্য একসাথে অর্ডার করা সম্ভব নয়। প্রতিটি শপের পণ্য আলাদা লোকেশন থেকে পাঠানো হয়, তাই অনুগ্রহ করে আলাদাভাবে অর্ডার সম্পন্ন করুন।'
+        }, { status: 400 });
+      }
 
       const validatedItem = {
         resellerProductId: rp._id,

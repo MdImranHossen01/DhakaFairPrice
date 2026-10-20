@@ -19,6 +19,7 @@ import { Suspense } from 'react';
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ShareDialog from '@/components/storefront/ShareDialog';
+import Swal from 'sweetalert2';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -158,7 +159,7 @@ export default function ResellerProductDetailsClient({
     setZoomPos({ x: x - lensWidth / 2, y: y - lensHeight / 2, percentageX, percentageY });
   };
 
-  const addToResellerCart = (buyNow = false) => {
+  const addToResellerCart = async (buyNow = false) => {
     if (uniqueColors.length > 0 && !selectedColor) {
       toast.error('দয়া করে একটি রং নির্বাচন করুন');
       return;
@@ -179,6 +180,29 @@ export default function ResellerProductDetailsClient({
       const existing = JSON.parse(localStorage.getItem(cartKey) || '[]');
       const finalQty = Math.min(stock, quantity);
 
+      // Check if existing cart has items from a different supplier/uploader
+      const currentUploader = product.uploadedBy ? String(product.uploadedBy) : 'mother';
+      const existingUploader = existing[0]?.uploadedBy ? String(existing[0].uploadedBy) : (existing.length > 0 ? 'mother' : null);
+
+      if (existing.length > 0 && existingUploader && existingUploader !== currentUploader) {
+        const result = await Swal.fire({
+          title: 'ভিন্ন শপের পণ্য!',
+          text: 'আপনার কার্টে ইতোমধ্যে অন্য একটি শপের পণ্য রয়েছে। প্রতিটি শপের পণ্য আলাদা লোকেশন থেকে পাঠানো হয়, তাই একসাথে অর্ডার করা সম্ভব নয়। আপনি কি আগের কার্ট মুছে শুধুমাত্র এই পণ্যটি যোগ করতে চান?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'হ্যাঁ, কার্ট ক্লিয়ার করে যোগ করুন',
+          cancelButtonText: 'না, বাতিল করুন',
+          confirmButtonColor: '#f97316',
+          cancelButtonColor: '#6b7280',
+        });
+
+        if (!result.isConfirmed) {
+          setIsAddingToCart(false);
+          return;
+        }
+        existing.length = 0;
+      }
+
       const existingIdx = existing.findIndex((i: any) =>
         i.resellerProductId === product._id &&
         (i.color || null) === (selectedColor || null) &&
@@ -195,6 +219,7 @@ export default function ResellerProductDetailsClient({
         color: selectedColor || undefined,
         size: selectedSize || undefined,
         quantity: finalQty,
+        uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
       };
 
       if (existingIdx >= 0) {

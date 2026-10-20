@@ -89,7 +89,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
     }
   }, [selectedColor, selectedSize, availableSizes]);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (uniqueColors.length > 0 && !selectedColor) {
       toast.error('Please select a color');
@@ -103,7 +103,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
     const displayPrice = activeVariant?.price || product.price;
     const displaySalePrice = activeVariant?.salePrice || product.salePrice;
 
-    const res = addItem({
+    const res = await addItem({
       productId: product._id,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
@@ -131,7 +131,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
 
       toast.success(`${product.name} added to cart`);
       onClose();
-    } else {
+    } else if (res.error) {
       toast.error(res.error);
     }
   };

@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/dialog';
 import {
   Loader2, ShoppingBag, CheckCircle2, Truck, CreditCard,
-  Plus, Minus, X, ArrowRight, PartyPopper, XCircle, Award
+  Plus, Minus, X, ArrowRight, PartyPopper, XCircle, Award, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 import { normalizePhoneNumber } from '@/lib/utils';
 import { resellerFbEvent, resellerTtEvent, waitForResellerPixel } from '@/lib/reseller-pixel';
 
@@ -50,6 +51,8 @@ interface CartItem {
   quantity: number;
   color?: string;
   size?: string;
+  uploadedBy?: string | null;
+  sellerName?: string;
 }
 
 interface Props {
@@ -217,6 +220,25 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const walletAmountToUse = (useWallet && walletBalance > 0) ? Math.min(walletBalance, totalAfterCoupon) : 0;
   const finalTotal = Math.max(0, totalAfterCoupon - walletAmountToUse);
 
+  // Seller isolation calculations
+  const sellerOrigins = Array.from(new Set(cart.map(i => (i as any).uploadedBy ? String((i as any).uploadedBy) : 'mother')));
+  const hasMultipleSellers = sellerOrigins.length > 1;
+
+  const keepOnlySeller = (targetSellerId: string) => {
+    const updated = cart.filter(item => {
+      const sId = (item as any).uploadedBy ? String((item as any).uploadedBy) : 'mother';
+      return sId === targetSellerId;
+    });
+    setCart(updated);
+    try {
+      localStorage.setItem(`rscart_${subdomain}`, JSON.stringify(updated));
+      window.dispatchEvent(new Event('reseller-cart-updated'));
+      toast.success('কার্ট ফিল্টার করা হয়েছে');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // Calculate potential reward
   let potentialReward = 0;
   if (loyaltyConfig.isEnabled) {
@@ -334,6 +356,16 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
 
   const onSubmit = async (values: CheckoutValues) => {
     if (cart.length === 0) return toast.error('কার্টে কোনো পণ্য নেই');
+    if (hasMultipleSellers) {
+      Swal.fire({
+        title: 'ভিন্ন শপের পণ্য!',
+        text: 'আপনার কার্টে একাধিক শপ বা বিক্রেতার পণ্য রয়েছে। প্রতিটি শপের পণ্য আলাদা ডেলিভারি লোকেশন থেকে পাঠানো হয়, তাই একসাথে অর্ডার সম্পন্ন করা সম্ভব নয়। অনুগ্রহ করে আলাদাভাবে অর্ডার করুন।',
+        icon: 'warning',
+        confirmButtonText: 'ঠিক আছে',
+        confirmButtonColor: '#f97316'
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const normalizedPhone = normalizePhoneNumber(values.phone) || values.phone;
@@ -453,6 +485,37 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-6 md:py-10">
+      {hasMultipleSellers && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border-2 border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-amber-900 text-sm">ভিন্ন ভিন্ন বিক্রেতার পণ্য কার্টে রয়েছে</h4>
+              <p className="text-xs text-amber-800 text-muted-foreground mt-0.5">
+                আপনার কার্টে একাধিক শপ বা বিক্রেতার পণ্য রয়েছে। প্রতিটি শপের পণ্য আলাদা ডেলিভারি লোকেশন থেকে পাঠানো হয়, তাই একসাথে অর্ডার সম্পন্ন করা যাবে না। অনুগ্রহ করে আলাদাভাবে অর্ডার করুন।
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {sellerOrigins.map((sId) => {
+              const count = cart.filter(i => ((i as any).uploadedBy ? String((i as any).uploadedBy) : 'mother') === sId).length;
+              const label = sId === 'mother' ? 'Mother Shop' : 'Reseller Shop';
+              return (
+                <Button
+                  key={sId}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs border-amber-500/40 hover:bg-amber-500/20 text-amber-950 font-semibold"
+                  onClick={() => keepOnlySeller(sId)}
+                >
+                  🏪 শুধুমাত্র {label} ({count}) রাখুন
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-start">
         {/* Left Column: Cart Items (Desktop Sticky) */}
         <div className="block lg:sticky lg:top-24 self-start space-y-4">
@@ -847,12 +910,17 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                   <Button
                     type="submit"
                     className="w-full text-base py-6 font-bold"
-                    disabled={submitting}
+                    disabled={submitting || hasMultipleSellers}
                   >
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         অর্ডার প্রসেস হচ্ছে...
+                      </>
+                    ) : hasMultipleSellers ? (
+                      <>
+                        <AlertTriangle className="mr-2 h-5 w-5 text-amber-300" />
+                        ভিন্ন শপের পণ্য রয়েছে — আলাদা অর্ডার করুন
                       </>
                     ) : (
                       <>
