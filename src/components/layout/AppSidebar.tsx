@@ -420,6 +420,85 @@ function isUrlActive(
   }
 }
 
+function NavMainCollapsibleItem({
+  item,
+  pathname,
+  searchParams,
+  handleLinkClick,
+}: {
+  item: any;
+  pathname: string;
+  searchParams: ReturnType<typeof useSearchParams> | null;
+  handleLinkClick: () => void;
+}) {
+  const siblingUrls = item.items.map((subItem: any) => subItem.url);
+  const isParentActive =
+    item.items.some((subItem: any) =>
+      isUrlActive(subItem.url, pathname, searchParams, siblingUrls)
+    ) || isUrlActive(item.url, pathname, searchParams, []);
+
+  const [isOpen, setIsOpen] = React.useState(isParentActive);
+
+  React.useEffect(() => {
+    if (isParentActive) {
+      setIsOpen(true);
+    }
+  }, [isParentActive]);
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="group/collapsible"
+    >
+      <SidebarMenuItem>
+        <CollapsibleTrigger
+          render={
+            <SidebarMenuButton
+              tooltip={item.title}
+              isActive={isParentActive}
+              className={`h-10 rounded-xl px-3 transition-all duration-200 ${
+                isParentActive
+                  ? "!bg-primary !text-white font-bold shadow-md shadow-primary/30 data-active:!bg-primary data-active:!text-white data-[active=true]:!bg-primary data-[active=true]:!text-white"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+              }`}
+            />
+          }
+        >
+          {item.icon && <item.icon className={`h-5 w-5 shrink-0 ${isParentActive ? "!text-white" : "text-slate-300"}`} />}
+          <span className={`text-sm font-medium tracking-tight ml-1.5 ${isParentActive ? "!text-white font-bold" : "text-slate-200"}`}>
+            {item.title}
+          </span>
+          <ChevronRight className={`ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 group-data-open/collapsible:rotate-90 group-[[data-state=open]]/collapsible:rotate-90 ${isParentActive ? "!text-white opacity-90" : "text-slate-400 opacity-70"}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub className="ml-4 pl-2 border-l border-slate-800/80 my-1 space-y-1">
+            {item.items.map((subItem: any) => {
+              const isSubActive = isUrlActive(subItem.url, pathname, searchParams, siblingUrls);
+
+              return (
+                <SidebarMenuSubItem key={subItem.title}>
+                  <SidebarMenuSubButton
+                    render={<Link href={subItem.url} onClick={handleLinkClick} />}
+                    isActive={isSubActive}
+                    className={`h-8 rounded-lg px-3 text-xs transition-all duration-150 ${
+                      isSubActive
+                        ? "!bg-primary !text-white font-bold shadow-sm data-active:!bg-primary data-active:!text-white"
+                        : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <span className={isSubActive ? "!text-white font-bold" : ""}>{subItem.title}</span>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
+
 function NavMain({
   items,
   pathname,
@@ -476,66 +555,15 @@ function NavMain({
   return (
     <SidebarGroup className="py-2">
       <SidebarMenu className="gap-1">
-        {filteredItems.map((item) => {
-          const siblingUrls = item.items.map((subItem: any) => subItem.url);
-          const isParentActive =
-            item.items.some((subItem: any) =>
-              isUrlActive(subItem.url, pathname, searchParams, siblingUrls)
-            ) || isUrlActive(item.url, pathname, searchParams, []);
-
-          return (
-            <Collapsible
-              key={item.title}
-              defaultOpen={isParentActive}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem>
-                <CollapsibleTrigger
-                  render={
-                    <SidebarMenuButton
-                      tooltip={item.title}
-                      isActive={isParentActive}
-                      className={`h-10 rounded-xl px-3 transition-all duration-200 ${
-                        isParentActive
-                          ? "!bg-primary !text-white font-bold shadow-md shadow-primary/30 data-active:!bg-primary data-active:!text-white data-[active=true]:!bg-primary data-[active=true]:!text-white"
-                          : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-                      }`}
-                    />
-                  }
-                >
-                  {item.icon && <item.icon className={`h-5 w-5 shrink-0 ${isParentActive ? "!text-white" : "text-slate-300"}`} />}
-                  <span className={`text-sm font-medium tracking-tight ml-1.5 ${isParentActive ? "!text-white font-bold" : "text-slate-200"}`}>
-                    {item.title}
-                  </span>
-                  <ChevronRight className={`ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 group-data-open/collapsible:rotate-90 group-[[data-state=open]]/collapsible:rotate-90 ${isParentActive ? "!text-white opacity-90" : "text-slate-400 opacity-70"}`} />
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub className="ml-4 pl-2 border-l border-slate-800/80 my-1 space-y-1">
-                    {item.items.map((subItem) => {
-                      const isSubActive = isUrlActive(subItem.url, pathname, searchParams, siblingUrls);
-
-                      return (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton
-                            render={<Link href={subItem.url} onClick={handleLinkClick} />}
-                            isActive={isSubActive}
-                            className={`h-8 rounded-lg px-3 text-xs transition-all duration-150 ${
-                              isSubActive
-                                ? "!bg-primary !text-white font-bold shadow-sm data-active:!bg-primary data-active:!text-white"
-                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                            }`}
-                          >
-                            <span className={isSubActive ? "!text-white font-bold" : ""}>{subItem.title}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      )
-                    })}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
-          )
-        })}
+        {filteredItems.map((item) => (
+          <NavMainCollapsibleItem
+            key={item.title}
+            item={item}
+            pathname={pathname}
+            searchParams={searchParams}
+            handleLinkClick={handleLinkClick}
+          />
+        ))}
       </SidebarMenu>
     </SidebarGroup>
   )

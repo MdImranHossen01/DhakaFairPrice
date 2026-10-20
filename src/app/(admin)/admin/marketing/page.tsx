@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { Loader2, Truck, CreditCard, BarChart3, Settings2, Zap, ShieldCheck, CheckCircle2, XCircle, AlertCircle, RefreshCcw, ExternalLink, Globe, X, Wallet, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
@@ -785,7 +786,7 @@ export default function MarketingSettingsPage() {
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                     <div className="space-y-3">
-                      <FormLabel className="text-sm font-semibold">Upload Bangla QR Image</FormLabel>
+                      <Label className="text-sm font-semibold">Upload Bangla QR Image</Label>
                       <FormField
                         control={form.control}
                         name="manualPaymentConfig.banglaQr.qrCode"
