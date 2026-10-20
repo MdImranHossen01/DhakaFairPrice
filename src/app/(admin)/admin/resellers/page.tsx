@@ -98,7 +98,7 @@ export default function AdminResellersPage() {
   const handleConfirmActivation = async () => {
     if (!targetReseller) return;
     if (!isNoExpiry && !expiryDate) {
-      toast.error('অনুগ্রহ করে এক্সপায়ার তারিখ সিলেক্ট করুন অথবা আনলিমিটেড বেছে নিন');
+      toast.error('Please select an expiration date or choose Lifetime access');
       return;
     }
 
@@ -117,14 +117,14 @@ export default function AdminResellersPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(`"${targetReseller.storeName}" স্টোর সক্রিয় এবং মেয়াদ নির্ধারণ করা হয়েছে!`);
+        toast.success(`Store "${targetReseller.storeName}" has been successfully activated and expiry date updated!`);
         setActivationDialogOpen(false);
         fetchResellers();
       } else {
-        toast.error(data.error || 'সংরক্ষণে সমস্যা হয়েছে');
+        toast.error(data.error || 'Failed to save changes');
       }
     } catch {
-      toast.error('নেটওয়ার্ক সমস্যা। আবার চেষ্টা করুন।');
+      toast.error('Network error. Please try again.');
     } finally {
       setSavingActivation(false);
     }
@@ -569,9 +569,9 @@ export default function AdminResellersPage() {
                                   const isUrgent = diffDays <= 5;
                                   return (
                                     <span className={isUrgent ? 'text-amber-600 font-semibold block' : 'text-muted-foreground block'}>
-                                      মেয়াদ: {exp.toLocaleDateString()}
+                                      Expires: {exp.toLocaleDateString()}
                                       <span className="block text-[10px] opacity-85">
-                                        {diffDays > 0 ? `(${diffDays} দিন বাকি)` : '(আজ শেষ)'}
+                                        {diffDays > 0 ? `(${diffDays} days left)` : '(Expires today)'}
                                       </span>
                                     </span>
                                   );
@@ -580,12 +580,12 @@ export default function AdminResellersPage() {
                             )}
                             {r.status === 'expired' && (
                               <div className="text-[10px] text-rose-600 font-semibold leading-tight">
-                                {r.expiresAt ? `মেয়াদ শেষ: ${new Date(r.expiresAt).toLocaleDateString()}` : 'মেয়াদ উত্তীর্ণ'}
+                                {r.expiresAt ? `Expired on: ${new Date(r.expiresAt).toLocaleDateString()}` : 'Expired'}
                               </div>
                             )}
                             {r.status === 'active' && !r.expiresAt && (
                               <div className="text-[10px] text-emerald-600/80">
-                                আনলিমিটেড মেয়াদ
+                                Lifetime Access
                               </div>
                             )}
                           </div>
@@ -711,12 +711,12 @@ export default function AdminResellersPage() {
                         </Badge>
                         {r.status === 'active' && r.expiresAt && (
                           <span className="text-[10px] text-muted-foreground">
-                            মেয়াদ: {new Date(r.expiresAt).toLocaleDateString()}
+                            Expires: {new Date(r.expiresAt).toLocaleDateString()}
                           </span>
                         )}
                         {r.status === 'expired' && (
                           <span className="text-[10px] text-rose-600 font-bold">
-                            {r.expiresAt ? `মেয়াদ শেষ: ${new Date(r.expiresAt).toLocaleDateString()}` : 'মেয়াদ শেষ'}
+                            {r.expiresAt ? `Expired on: ${new Date(r.expiresAt).toLocaleDateString()}` : 'Expired'}
                           </span>
                         )}
                       </div>
@@ -1138,10 +1138,10 @@ export default function AdminResellersPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              {targetReseller?.status === 'active' ? 'সাবস্ক্রিপশন মেয়াদ বৃদ্ধি / পরিবর্তন' : 'রিসেলার সক্রিয় ও মেয়াদ নির্ধারণ'}
+              {targetReseller?.status === 'active' ? 'Extend / Update Subscription Expiry' : 'Activate Store & Set Expiry Date'}
             </DialogTitle>
             <DialogDescription>
-              <span className="font-semibold text-foreground">{targetReseller?.storeName}</span> স্টোরের জন্য এক্সপায়ার ডেট সেট করুন। নির্ধারিত মেয়াদ পার হলে স্টোরটি স্বয়ংক্রিয়ভাবে Expired (Inactive) হয়ে যাবে।
+              Set the expiration date for <span className="font-semibold text-foreground">{targetReseller?.storeName}</span>. Once expired, the storefront will automatically become inactive.
             </DialogDescription>
           </DialogHeader>
 
@@ -1161,7 +1161,7 @@ export default function AdminResellersPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-primary" />
-                দ্রুত মেয়াদ সিলেক্ট করুন (Quick Presets)
+                Quick Presets
               </label>
               <div className="grid grid-cols-3 gap-2">
                 <Button
@@ -1171,7 +1171,7 @@ export default function AdminResellersPage() {
                   className="text-xs h-8"
                   onClick={() => setQuickExpiry(30)}
                 >
-                  +১ মাস (৩০ দিন)
+                  +1 Month (30 Days)
                 </Button>
                 <Button
                   type="button"
@@ -1180,7 +1180,7 @@ export default function AdminResellersPage() {
                   className="text-xs h-8"
                   onClick={() => setQuickExpiry(90)}
                 >
-                  +৩ মাস (৯০ দিন)
+                  +3 Months (90 Days)
                 </Button>
                 <Button
                   type="button"
@@ -1189,7 +1189,7 @@ export default function AdminResellersPage() {
                   className="text-xs h-8"
                   onClick={() => setQuickExpiry(180)}
                 >
-                  +৬ মাস (১৮০ দিন)
+                  +6 Months (180 Days)
                 </Button>
                 <Button
                   type="button"
@@ -1198,7 +1198,7 @@ export default function AdminResellersPage() {
                   className="text-xs h-8"
                   onClick={() => setQuickExpiry(365)}
                 >
-                  +১ বছর (৩৬৫ দিন)
+                  +1 Year (365 Days)
                 </Button>
                 <Button
                   type="button"
@@ -1207,7 +1207,7 @@ export default function AdminResellersPage() {
                   className="text-xs h-8"
                   onClick={() => setQuickExpiry(730)}
                 >
-                  +২ বছর
+                  +2 Years
                 </Button>
                 <Button
                   type="button"
@@ -1219,7 +1219,7 @@ export default function AdminResellersPage() {
                     setExpiryDate('');
                   }}
                 >
-                  আনলিমিটেড মেয়াদ
+                  Lifetime Access
                 </Button>
               </div>
             </div>
@@ -1229,7 +1229,7 @@ export default function AdminResellersPage() {
               <div className="space-y-1.5 pt-1">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5 text-primary" />
-                  নির্দিষ্ট এক্সপায়ার তারিখ (Expiry Date)
+                  Specific Expiry Date
                 </label>
                 <Input
                   type="date"
@@ -1243,13 +1243,13 @@ export default function AdminResellersPage() {
                 />
                 {expiryDate && (
                   <p className="text-[11px] text-muted-foreground">
-                    সিলেক্টেড মেয়াদ: <strong className="text-primary">{new Date(expiryDate).toLocaleDateString()}</strong> পর্যন্ত স্টোর সক্রিয় থাকবে।
+                    Selected Expiry: Active until <strong className="text-primary">{new Date(expiryDate).toLocaleDateString()}</strong>
                   </p>
                 )}
               </div>
             ) : (
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
-                ✔ এই স্টোরটির কোনো এক্সপায়ার ডেট থাকবে না (স্থায়ীভাবে সক্রিয় থাকবে)।
+                ✔ This store will have no expiry date (Lifetime active).
               </div>
             )}
           </div>
@@ -1261,7 +1261,7 @@ export default function AdminResellersPage() {
               onClick={() => setActivationDialogOpen(false)}
               disabled={savingActivation}
             >
-              বাতিল
+              Cancel
             </Button>
             <Button
               size="sm"
@@ -1270,7 +1270,7 @@ export default function AdminResellersPage() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
             >
               {savingActivation && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              {targetReseller?.status === 'active' ? 'মেয়াদ আপডেট করুন' : 'সক্রিয় করুন ও সেভ করুন'}
+              {targetReseller?.status === 'active' ? 'Update Expiry' : 'Activate & Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
