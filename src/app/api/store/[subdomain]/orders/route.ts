@@ -399,6 +399,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         orderId: order._id,
+        motherOrderId: motherOrder._id,
         shortId: order.shortId,
         totalAmount: calculatedFinalTotal,
         couponDiscountAmount,

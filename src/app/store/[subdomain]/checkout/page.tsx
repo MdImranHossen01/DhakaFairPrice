@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
@@ -87,11 +88,17 @@ export default async function ResellerCheckoutPage({ params }: Props) {
         />
         <NavbarSelector style={navStyle} />
         <main className="flex-1">
-          <ResellerCheckout
-            subdomain={subdomain}
-            storeInfo={storeInfo}
-            resellerId={reseller._id.toString()}
-          />
+          <Suspense fallback={
+            <div className="container min-h-[60vh] flex items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          }>
+            <ResellerCheckout
+              subdomain={subdomain}
+              storeInfo={storeInfo}
+              resellerId={reseller._id.toString()}
+            />
+          </Suspense>
         </main>
         <FooterSelector style={footerStyle} />
       </div>

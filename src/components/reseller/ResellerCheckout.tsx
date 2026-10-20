@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -84,11 +85,33 @@ interface Props {
 }
 
 export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
+  const searchParams = useSearchParams();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showFailModal, setShowFailModal] = useState(false);
   const [orderId, setOrderId] = useState('');
+
+  // Handle SSLCommerz redirect back — show modal based on ?order= param
+  useEffect(() => {
+    const orderStatus = searchParams?.get('order');
+    const paramOrderId = searchParams?.get('id');
+    if (orderStatus === 'success') {
+      if (paramOrderId) setOrderId(paramOrderId);
+      setShowSuccessModal(true);
+      try {
+        localStorage.removeItem(`rscart_${subdomain}`);
+        window.dispatchEvent(new Event('reseller-cart-updated'));
+      } catch (e) {
+        console.error('Error clearing cart on success:', e);
+      }
+      setCart([]);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (orderStatus === 'failed') {
+      setShowFailModal(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams, subdomain]);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -499,14 +522,51 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           const stripeData = await stripeRes.json();
           if (stripeRes.ok && stripeData.url) {
             localStorage.removeItem(`rscart_${subdomain}`);
+            window.dispatchEvent(new Event('reseller-cart-updated'));
             setCart([]);
             window.location.href = stripeData.url;
             return;
           } else {
             toast.error(stripeData.error || 'স্ট্রাইপ পেমেন্ট শুরু করতে ব্যর্থ হয়েছে');
           }
+        } else if (values.paymentMethod === 'sslcommerz') {
+          try {
+            const initRes = await fetch('/api/payment/init', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: data.motherOrderId || data.orderId,
+                resellerOrderId: data.orderId,
+                subdomain,
+                isResellerStore: true,
+              }),
+            });
+
+            if (initRes.ok) {
+              const initData = await initRes.json();
+              if (initData.url) {
+                localStorage.removeItem(`rscart_${subdomain}`);
+                window.dispatchEvent(new Event('reseller-cart-updated'));
+                setCart([]);
+                window.location.href = initData.url;
+                return;
+              }
+            }
+            const initError = await initRes.json().catch(() => ({}));
+            toast.error(initError.message || 'SSLCommerz পেমেন্ট গেটওয়ে লোড করা যায়নি');
+          } catch (initErr) {
+            console.error('SSLCommerz init error:', initErr);
+            toast.error('অনলাইন পেমেন্ট শুরু করতে সমস্যা হয়েছে');
+          }
+          // Fallback if gateway fails: clear cart and show pending order confirmation
+          localStorage.removeItem(`rscart_${subdomain}`);
+          window.dispatchEvent(new Event('reseller-cart-updated'));
+          setCart([]);
+          setOrderId(orderShortId);
+          setShowSuccessModal(true);
         } else {
           localStorage.removeItem(`rscart_${subdomain}`);
+          window.dispatchEvent(new Event('reseller-cart-updated'));
           setCart([]);
           setOrderId(orderShortId);
           setShowSuccessModal(true);
@@ -522,6 +582,26 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
       setSubmitting(false);
     }
   };
+
+  if (cart.length === 0 && showSuccessModal) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center max-w-lg">
+        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <PartyPopper className="h-10 w-10 text-green-600 dark:text-green-400" />
+        </div>
+        <h2 className="text-2xl font-black mb-2 text-foreground">অর্ডার সফলভাবে গৃহীত হয়েছে!</h2>
+        <p className="text-muted-foreground text-sm mb-6">আপনার অর্ডারের জন্য ধন্যবাদ। আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।</p>
+        {orderId && (
+          <div className="bg-muted/60 p-4 rounded-xl font-mono font-bold text-foreground text-lg mb-6 border">
+            অর্ডার আইডি: #{orderId}
+          </div>
+        )}
+        <Button asChild className="w-full rounded-full h-11 font-bold">
+          <Link href="/">আরও শপিং করুন</Link>
+        </Button>
+      </div>
+    );
+  }
 
   if (cart.length === 0 && !showSuccessModal) {
     return (

@@ -7,27 +7,40 @@ import { auth } from '@/auth';
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !session.user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { orderId } = await req.json();
-    if (!orderId) {
+    const body = await req.json();
+    const { orderId, resellerOrderId, isResellerStore } = body || {};
+    
+    if (!orderId && !resellerOrderId) {
       return NextResponse.json({ message: 'Order ID is required' }, { status: 400 });
     }
 
     await connectToDatabase();
-    const order = await Order.findOne({ _id: orderId });
+    let order = orderId ? await Order.findOne({ _id: orderId }) : null;
+    if (!order && resellerOrderId) {
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      const ro = await ResellerOrder.findById(resellerOrderId);
+      if (ro?.motherOrderId) {
+        order = await Order.findById(ro.motherOrderId);
+      }
+    }
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
 
     // Verify order ownership (Authorization)
-    if (!order.user || order.user.toString() !== (session.user as any).id) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    // Reseller storefront orders / guest checkouts do not require a mother NextAuth session
+    const isStorefrontOrder = Boolean(isResellerStore || order.orderSource === 'reseller_storefront' || order.storefrontResellerId || order.resellerId);
+    if (!isStorefrontOrder) {
+      if (!session || !session.user) {
+        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      }
+      if (order.user && order.user.toString() !== (session.user as any).id) {
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+      }
     }
 
+    const transactionId = order.transactionId || `TRANS-${order._id}-${Date.now()}`;
     const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
     const forwardedProto = req.headers.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
     let baseUrl = (forwardedHost && !forwardedHost.includes('0.0.0.0'))
@@ -40,10 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Incomplete shipping or contact information' }, { status: 400 });
     }
 
-    const customerEmail = session.user.email;
-    if (!customerEmail) {
-      return NextResponse.json({ message: 'User email is required for payment' }, { status: 400 });
-    }
+    const customerEmail = session?.user?.email || (order as any).customerEmail || (shippingAddress.phone ? `${shippingAddress.phone.replace(/[^0-9]/g, '')}@dhakafairprice.com` : 'customer@dhakafairprice.com');
 
     const data = {
       total_amount: order.totalAmount,

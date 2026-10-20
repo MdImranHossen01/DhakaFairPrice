@@ -59,6 +59,23 @@ export async function POST(req: NextRequest) {
         } catch (ledgerErr) {
           console.error('Error logging payment to ledger on success:', ledgerErr);
         }
+
+        // Update corresponding ResellerOrder if applicable
+        try {
+          const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+          await ResellerOrder.findOneAndUpdate(
+            { motherOrderId: order._id },
+            { 
+              $set: { 
+                paymentStatus: 'Paid', 
+                status: 'Confirmed', 
+                transactionId: data.tran_id?.toString() 
+              } 
+            }
+          );
+        } catch (roErr) {
+          console.error('Error updating ResellerOrder on payment success:', roErr);
+        }
       } else {
         // If findOneAndUpdate returns null, it means isSalesCounted was already true 
         // OR the order ID is invalid. Check if order exists for redirection.
