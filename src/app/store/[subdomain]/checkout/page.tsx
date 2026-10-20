@@ -45,7 +45,7 @@ export default async function ResellerCheckoutPage({ params }: Props) {
     deliveryOutside: globalSettings?.deliveryChargeOutsideDhaka ?? 120,
     freeDeliveryThreshold,
     loyaltyConfig: reseller.loyaltyConfig || { isEnabled: false, activationThreshold: 5000, rewardPercentage: 5 },
-    paymentConfig: reseller.paymentConfig as any,
+    paymentConfig: (globalSettings?.manualPaymentConfig || {}) as any,
     stripeActive,
     // Pass pixel IDs so ResellerCheckout can fire Purchase events
     metaPixelId: reseller.seoConfig?.metaPixelId,

@@ -68,8 +68,10 @@ interface Props {
       rewardPercentage: number;
     };
     paymentConfig?: {
-      bkash?: { number: string; active: boolean };
-      nagad?: { number: string; active: boolean };
+      bkash?: { number: string; active: boolean; qrCode?: string };
+      nagad?: { number: string; active: boolean; qrCode?: string };
+      rocket?: { number: string; active: boolean; qrCode?: string };
+      banglaQr?: { qrCode?: string; active: boolean };
       instructions?: string;
     };
     stripeActive?: boolean;
@@ -860,25 +862,36 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                                 <p className="text-xs font-normal text-muted-foreground mt-1">পণ্য পাওয়ার পর টাকা দিন।</p>
                               </FormLabel>
                             </FormItem>
-                            {storeInfo.paymentConfig?.bkash?.active && (
+                            {storeInfo.paymentConfig?.bkash?.active && storeInfo.paymentConfig?.bkash?.number && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
                                   <RadioGroupItem value="bkash" />
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
                                   bKash — {storeInfo.paymentConfig.bkash.number}
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">বিকাশে পেমেন্ট করুন।</p>
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">বিকাশে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
                                 </FormLabel>
                               </FormItem>
                             )}
-                            {storeInfo.paymentConfig?.nagad?.active && (
+                            {storeInfo.paymentConfig?.nagad?.active && storeInfo.paymentConfig?.nagad?.number && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
                                   <RadioGroupItem value="nagad" />
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
                                   Nagad — {storeInfo.paymentConfig.nagad.number}
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">নগদে পেমেন্ট করুন।</p>
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">নগদে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                            {storeInfo.paymentConfig?.rocket?.active && storeInfo.paymentConfig?.rocket?.number && (
+                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <FormControl>
+                                  <RadioGroupItem value="rocket" />
+                                </FormControl>
+                                <FormLabel className="font-bold flex-1 cursor-pointer">
+                                  Rocket — {storeInfo.paymentConfig.rocket.number}
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">রকেটে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
                                 </FormLabel>
                               </FormItem>
                             )}
@@ -899,9 +912,9 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                       </FormItem>
                     )}
                   />
-                  {storeInfo.paymentConfig?.instructions && (paymentMethod === 'bkash' || paymentMethod === 'nagad') && (
+                  {storeInfo.paymentConfig?.instructions && (paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'rocket') && (
                     <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      {storeInfo.paymentConfig.instructions}
+                      <strong className="text-foreground">পেমেন্ট নির্দেশনা:</strong> {storeInfo.paymentConfig.instructions}
                     </div>
                   )}
                 </CardContent>

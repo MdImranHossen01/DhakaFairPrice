@@ -67,7 +67,10 @@ export async function GET() {
       reseller.deliveryConfig.outsideDhaka = motherOutside;
     }
 
-    return NextResponse.json({ reseller });
+    return NextResponse.json({
+      reseller,
+      motherPaymentConfig: globalSettings?.manualPaymentConfig || {},
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }

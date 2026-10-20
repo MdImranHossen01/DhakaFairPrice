@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Zap, Award, Wallet, Save, Lock, Truck } from 'lucide-react';
+import { Loader2, Zap, Award, Wallet, Save, Lock, Truck, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResellerMarketingPage() {
   const [reseller, setReseller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [motherPayment, setMotherPayment] = useState<any>(null);
 
   // Tracking form state
   const [tracking, setTracking] = useState({
@@ -42,6 +43,7 @@ export default function ResellerMarketingPage() {
       const d = await res.json();
       const r = d.reseller;
       setReseller(r);
+      setMotherPayment(d.motherPaymentConfig || null);
       setTracking({
         metaPixelId: r.seoConfig?.metaPixelId || '',
         facebookAccessToken: r.seoConfig?.facebookAccessToken || '',
@@ -164,32 +166,77 @@ export default function ResellerMarketingPage() {
           </Card>
         </TabsContent>
 
-        {/* PAYMENT TAB */}
+        {/* PAYMENT & DELIVERY TAB */}
         <TabsContent value="payment" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-primary" /> Manual Payment & Delivery
-              </CardTitle>
-              <CardDescription>Configure bKash, Nagad numbers and delivery charges for your store</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <Label className="font-semibold">bKash</Label>
-                <div className="flex items-center gap-3">
-                  <Input value={payment.bkashNumber} onChange={e => setPayment(p => ({ ...p, bkashNumber: e.target.value }))} placeholder="01XXXXXXXXX" className="flex-1" />
-                  <Button size="sm" variant={payment.bkashActive ? 'default' : 'outline'} onClick={() => setPayment(p => ({ ...p, bkashActive: !p.bkashActive }))}>
-                    {payment.bkashActive ? 'Active' : 'Off'}
-                  </Button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" /> Payment & Delivery Policy
+                  </CardTitle>
+                  <CardDescription>
+                    গ্রাহকদের পেমেন্ট ও ডেলিভারি সংক্রান্ত নীতি ও মাদার শপের কেন্দ্রীয় কনফিগারেশন
+                  </CardDescription>
                 </div>
-                <Label className="font-semibold">Nagad</Label>
-                <div className="flex items-center gap-3">
-                  <Input value={payment.nagadNumber} onChange={e => setPayment(p => ({ ...p, nagadNumber: e.target.value }))} placeholder="01XXXXXXXXX" className="flex-1" />
-                  <Button size="sm" variant={payment.nagadActive ? 'default' : 'outline'} onClick={() => setPayment(p => ({ ...p, nagadActive: !p.nagadActive }))}>
-                    {payment.nagadActive ? 'Active' : 'Off'}
-                  </Button>
+                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/40 font-semibold gap-1 py-1 w-fit">
+                  <Lock className="h-3 w-3" /> Mother Shop Managed
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Payment Policy & Official Accounts */}
+              <div className="rounded-xl border p-4 bg-muted/20 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h4 className="text-sm font-bold text-foreground">সেন্ট্রাল পেমেন্ট কালেকশন (Centralized Payment)</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      অর্ডার করার সময় গ্রাহক ম্যানুয়াল পেমেন্ট (bKash / Nagad / Rocket) নির্বাচন করলে সরাসরি মাদার শপের অফিসিয়াল ভেরিফাইড একাউন্টেই পেমেন্ট গৃহীত হয়। রিসেলারকে আলাদা করে কোনো ব্যক্তিগত একাউন্ট নাম্বার যুক্ত করতে হবে না। প্রতিটি ডেলিভারি সফল হলে আপনার কমিশন স্বয়ংক্রিয়ভাবে আপনার ওয়ালেটে জমা হবে।
+                    </p>
+                  </div>
+                </div>
+
+                {/* Active Gateways Display */}
+                <div className="pt-3 border-t space-y-2.5">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    মাদার শপ থেকে কনফিগারকৃত অ্যাক্টিভ পেমেন্ট গেটওয়ে:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {motherPayment?.bkash?.active && motherPayment?.bkash?.number ? (
+                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
+                        <span className="text-[11px] font-semibold text-muted-foreground">bKash (মাদার শপ)</span>
+                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.bkash.number}</span>
+                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
+                      </div>
+                    ) : null}
+                    {motherPayment?.nagad?.active && motherPayment?.nagad?.number ? (
+                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Nagad (মাদার শপ)</span>
+                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.nagad.number}</span>
+                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
+                      </div>
+                    ) : null}
+                    {motherPayment?.rocket?.active && motherPayment?.rocket?.number ? (
+                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Rocket (মাদার শপ)</span>
+                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.rocket.number}</span>
+                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
+                      </div>
+                    ) : null}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
+                      <span className="text-[11px] font-semibold text-muted-foreground">Cash on Delivery (COD)</span>
+                      <span className="font-bold text-sm text-foreground">ক্যাশ অন ডেলিভারি</span>
+                      <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Always Active</Badge>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Delivery Charges Section */}
               <div className="border-t pt-4 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
@@ -197,12 +244,9 @@ export default function ResellerMarketingPage() {
                       <Truck className="h-4 w-4 text-primary" /> Delivery Charges (Fixed by Mother Shop)
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                      সব ডেলিভারি মাদার শপের কুরিয়ারের মাধ্যমে সম্পন্ন হওয়ায় এই চার্জ কেন্দ্রীয়ভাবে নির্ধারিত এবং অপরিবর্তনযোগ্য।
+                      সব ডেলিভারি মাদার শপের কেন্দ্রীয় হাব ও কুরিয়ার সার্ভিসের মাধ্যমে সম্পন্ন হওয়ায় এই চার্জ কেন্দ্রীয়ভাবে নির্ধারিত এবং অপরিবর্তনযোগ্য।
                     </p>
                   </div>
-                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/40 font-semibold gap-1 py-1 w-fit">
-                    <Lock className="h-3 w-3" /> Mother Shop Managed
-                  </Badge>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -215,13 +259,6 @@ export default function ResellerMarketingPage() {
                   </div>
                 </div>
               </div>
-              <Button onClick={() => save({
-                paymentConfig: { bkash: { number: payment.bkashNumber, active: payment.bkashActive }, nagad: { number: payment.nagadNumber, active: payment.nagadActive }, rocket: { number: payment.rocketNumber, active: payment.rocketActive }, instructions: payment.paymentInstructions },
-                deliveryConfig: { insideDhaka: payment.insideDhaka, outsideDhaka: payment.outsideDhaka },
-              })} disabled={saving}>
-                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Save className="mr-2 h-4 w-4" /> Save Changes
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
