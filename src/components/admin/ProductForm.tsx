@@ -357,10 +357,11 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
   useEffect(() => {
     async function fetchData() {
       try {
-        const [catsRes, brandsRes, settingsRes] = await Promise.all([
+        const [catsRes, brandsRes, settingsRes, resellerSettingsRes] = await Promise.all([
           fetch('/api/categories'),
           fetch('/api/brands?all=true'),
-          fetch('/api/settings')
+          fetch('/api/settings'),
+          isReseller ? fetch('/api/reseller/settings') : Promise.resolve(null)
         ]);
         if (catsRes.ok) {
           const data = await catsRes.json();
@@ -376,12 +377,21 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
             setPlatformCommissionRate(Number(settingsData.platformCommissionRate));
           }
         }
+        if (isReseller && resellerSettingsRes && resellerSettingsRes.ok) {
+          const resData = await resellerSettingsRes.json();
+          const rFee = resData?.reseller?.systemFeePercent !== undefined 
+            ? resData.reseller.systemFeePercent 
+            : resData?.reseller?.commissionRate;
+          if (rFee !== undefined && rFee !== null && !isNaN(Number(rFee))) {
+            setPlatformCommissionRate(Number(rFee));
+          }
+        }
       } catch (error) {
         console.error('Error fetching categories/brands/settings:', error);
       }
     }
     fetchData();
-  }, []);
+  }, [isReseller]);
 
   const nameValue = form.watch('name');
   useEffect(() => {

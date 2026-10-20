@@ -11,6 +11,7 @@ export interface IReseller extends Document {
   marqueeText?: string;
   status: 'pending' | 'active' | 'suspended' | 'expired' | 'rejected';
   commissionRate: number;                    // % profit share for reseller (e.g. 10 = 10%)
+  systemFeePercent?: number;                 // % platform system fee added to reseller product (e.g. 0, 5, 10, 15)
   walletBalance: number;                     // cleared wallet balance
   pendingBalance: number;                    // uncleared (in-transit) balance
   contact?: {
@@ -116,6 +117,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
       default: 'pending',
     },
     commissionRate: { type: Number, default: 10, min: 0, max: 100 },
+    systemFeePercent: { type: Number, default: 10, min: 0, max: 100 },
     walletBalance: { type: Number, default: 0, min: 0 },
     pendingBalance: { type: Number, default: 0, min: 0 },
     contact: { type: Object, default: {} },

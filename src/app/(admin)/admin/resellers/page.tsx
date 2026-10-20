@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock, Percent } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,9 +71,57 @@ export default function AdminResellersPage() {
   const [expiryDate, setExpiryDate] = useState<string>('');
   const [isNoExpiry, setIsNoExpiry] = useState<boolean>(false);
   const [savingActivation, setSavingActivation] = useState(false);
+  const [activationFee, setActivationFee] = useState<number>(10);
+
+  // Fee Management Dialog state
+  const [feeDialogOpen, setFeeDialogOpen] = useState(false);
+  const [selectedFeeReseller, setSelectedFeeReseller] = useState<any>(null);
+  const [systemFeePercent, setSystemFeePercent] = useState<number>(10);
+  const [savingFee, setSavingFee] = useState(false);
+
+  const openFeeModal = (reseller: any) => {
+    setSelectedFeeReseller(reseller);
+    const fee = reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 10);
+    setSystemFeePercent(fee);
+    setFeeDialogOpen(true);
+  };
+
+  const handleSaveFee = async () => {
+    if (!selectedFeeReseller) return;
+    const rate = Number(systemFeePercent);
+    if (isNaN(rate) || rate < 0 || rate > 100) {
+      toast.error('System fee must be a number between 0% and 100%');
+      return;
+    }
+    setSavingFee(true);
+    try {
+      const res = await fetch('/api/admin/resellers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resellerId: selectedFeeReseller._id,
+          systemFeePercent: rate,
+          commissionRate: rate,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`System fee for "${selectedFeeReseller.storeName}" set to ${rate}%!`);
+        setFeeDialogOpen(false);
+        fetchResellers();
+      } else {
+        toast.error(data.error || 'Failed to update system fee');
+      }
+    } catch {
+      toast.error('Network error updating system fee');
+    } finally {
+      setSavingFee(false);
+    }
+  };
 
   const openActivationModal = (reseller: any) => {
     setTargetReseller(reseller);
+    setActivationFee(reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 10));
     if (reseller.expiresAt) {
       const d = new Date(reseller.expiresAt);
       setExpiryDate(d.toISOString().split('T')[0]);
@@ -112,6 +160,8 @@ export default function AdminResellersPage() {
           resellerId: targetReseller._id,
           status: 'active',
           expiresAt: finalExpiry,
+          systemFeePercent: Number(activationFee),
+          commissionRate: Number(activationFee),
         }),
       });
 
@@ -497,7 +547,12 @@ export default function AdminResellersPage() {
                         </TableCell>
                         <TableCell className="w-[17%] min-w-[140px] align-top py-3 whitespace-normal">
                           <div className="space-y-1 whitespace-normal">
-                            <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
+                              <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 bg-indigo-50/80 text-indigo-700 border-indigo-200/80 shrink-0">
+                                Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10)}%
+                              </Badge>
+                            </div>
                             {r.description && (
                               <p className="text-xs text-muted-foreground font-normal whitespace-normal break-words leading-relaxed line-clamp-2" title={r.description}>
                                 {r.description}
@@ -654,6 +709,13 @@ export default function AdminResellersPage() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
+                                className="cursor-pointer text-xs font-semibold text-indigo-600 focus:text-indigo-700"
+                                onClick={() => openFeeModal(r)}
+                              >
+                                <Percent className="mr-2 h-4 w-4 text-indigo-600" />
+                                Set System Fee (%)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 className="cursor-pointer text-xs"
                                 onClick={() => openDomainModal(r)}
                               >
@@ -697,7 +759,12 @@ export default function AdminResellersPage() {
                   <div key={r._id} className="p-3 bg-card border rounded-lg shadow-sm space-y-2.5">
                     <div className="flex items-start justify-between gap-2 border-b pb-2">
                       <div>
-                        <h4 className="font-bold text-sm text-foreground">{r.storeName}</h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-bold text-sm text-foreground">{r.storeName}</h4>
+                          <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 bg-indigo-50/80 text-indigo-700 border-indigo-200/80 shrink-0">
+                            Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10)}%
+                          </Badge>
+                        </div>
                         <p className="text-[11px] text-muted-foreground">{r.userId?.name || 'Unknown'} • {r.contact?.phone || r.userId?.email}</p>
                         {r.createdAt && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -828,6 +895,13 @@ export default function AdminResellersPage() {
                               Activate Store (Set Expiry)
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            className="cursor-pointer text-xs font-semibold text-indigo-600 focus:text-indigo-700"
+                            onClick={() => openFeeModal(r)}
+                          >
+                            <Percent className="mr-2 h-4 w-4 text-indigo-600" />
+                            Set System Fee (%)
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="cursor-pointer text-xs"
                             onClick={() => openDomainModal(r)}
@@ -1252,6 +1326,30 @@ export default function AdminResellersPage() {
                 ✔ This store will have no expiry date (Lifetime active).
               </div>
             )}
+            {/* System Fee Selection in Activation Dialog */}
+            <div className="space-y-1.5 pt-2 border-t">
+              <label className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Percent className="h-3.5 w-3.5 text-indigo-600" />
+                  System Platform Fee (%)
+                </span>
+                <span className="text-xs font-bold text-indigo-600">{activationFee}%</span>
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[0, 5, 10, 15, 20].map((rate) => (
+                  <Button
+                    key={rate}
+                    type="button"
+                    variant={activationFee === rate ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs h-7 px-1 font-bold"
+                    onClick={() => setActivationFee(rate)}
+                  >
+                    {rate}%
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t">
@@ -1271,6 +1369,100 @@ export default function AdminResellersPage() {
             >
               {savingActivation && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               {targetReseller?.status === 'active' ? 'Update Expiry' : 'Activate & Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reseller System Fee Dialog */}
+      <Dialog open={feeDialogOpen} onOpenChange={setFeeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5 text-indigo-600" />
+              Configure System Platform Fee (%)
+            </DialogTitle>
+            <DialogDescription>
+              Set the platform fee percentage added to product reseller prices for <span className="font-semibold text-foreground">{selectedFeeReseller?.storeName}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="p-3 bg-muted/30 rounded-xl border flex items-center justify-between text-xs">
+              <div>
+                <p className="font-bold text-foreground">{selectedFeeReseller?.storeName}</p>
+                <p className="text-muted-foreground text-[11px]">{selectedFeeReseller?.subdomain}.{ROOT_DOMAIN}</p>
+              </div>
+              <Badge variant="secondary" className="text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Current Fee: {selectedFeeReseller?.systemFeePercent !== undefined ? selectedFeeReseller.systemFeePercent : (selectedFeeReseller?.commissionRate ?? 10)}%
+              </Badge>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                Quick Presets
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[0, 5, 10, 15, 20].map((rate) => (
+                  <Button
+                    key={rate}
+                    type="button"
+                    variant={systemFeePercent === rate ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs h-8 px-2 font-bold"
+                    onClick={() => setSystemFeePercent(rate)}
+                  >
+                    {rate}% {rate === 0 ? '(Free)' : rate === 10 ? '(Default)' : ''}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Percent className="h-3.5 w-3.5 text-indigo-600" />
+                Custom Fee Percentage (%)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.5"
+                value={systemFeePercent}
+                onChange={(e) => setSystemFeePercent(e.target.value === '' ? '' as any : Number(e.target.value))}
+                placeholder="e.g. 10"
+                className="h-10 text-sm font-bold"
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                When this reseller adds products, the system fee will be calculated as: 
+                <strong className="text-foreground ml-1">
+                  Reseller Price + {systemFeePercent || 0}% Fee = Shared Catalog Price
+                </strong>
+                . E.g., ৳100 reseller price + {systemFeePercent || 0}% fee = ৳{Math.round(100 * (1 + (Number(systemFeePercent) || 0) / 100))}.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFeeDialogOpen(false)}
+              disabled={savingFee}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveFee}
+              disabled={savingFee}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            >
+              {savingFee && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Save System Fee
             </Button>
           </DialogFooter>
         </DialogContent>

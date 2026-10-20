@@ -70,8 +70,9 @@ export async function POST(request: NextRequest) {
     const baseSlug = slug ? slugify(slug) : slugify(name || 'product');
     const uniqueSlug = await generateUniqueSlug(Product, baseSlug);
 
+    const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = settings?.platformCommissionRate ?? 10;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
 
     // Automatically calculate resellerPrice (Base purchase price + System Commission %)
     let computedResellerPrice = parsedResellerPrice;
@@ -157,8 +158,9 @@ export async function PATCH(request: NextRequest) {
       }
     });
 
+    const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = settings?.platformCommissionRate ?? 10;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
 
     if (updateData.purchasePrice !== undefined) {
       const pPrice = Number(updateData.purchasePrice) || 0;

@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { resellerId, status, commissionRate, suspendReason, subdomain, customDomain, storeName, expiresAt } = body;
+    const { resellerId, status, commissionRate, suspendReason, subdomain, customDomain, storeName, expiresAt, systemFeePercent } = body;
 
     if (!resellerId) {
       return NextResponse.json({ error: 'resellerId is required' }, { status: 400 });
@@ -63,12 +63,14 @@ export async function PATCH(request: NextRequest) {
         updatePayload.suspendReason = suspendReason || 'Application rejected by administrator';
       }
     }
-    if (commissionRate !== undefined) {
-      const rate = Number(commissionRate);
+    const rawFee = systemFeePercent !== undefined ? systemFeePercent : commissionRate;
+    if (rawFee !== undefined) {
+      const rate = Number(rawFee);
       if (isNaN(rate) || !isFinite(rate) || rate < 0 || rate > 100) {
-        return NextResponse.json({ error: 'Commission rate must be a valid number between 0 and 100.' }, { status: 400 });
+        return NextResponse.json({ error: 'System fee rate must be a valid number between 0 and 100.' }, { status: 400 });
       }
       updatePayload.commissionRate = rate;
+      updatePayload.systemFeePercent = rate;
     }
     if (storeName !== undefined) {
       updatePayload.storeName = storeName.trim();
