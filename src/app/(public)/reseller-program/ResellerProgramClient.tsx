@@ -29,7 +29,6 @@ import { EditPricingHeaderDialog } from '@/components/reseller-program/EditPrici
 import { EditPackageDialog } from '@/components/reseller-program/EditPackageDialog';
 import { EditWhyChooseUsDialog } from '@/components/reseller-program/EditWhyChooseUsDialog';
 import { EditWorkflowDialog } from '@/components/reseller-program/EditWorkflowDialog';
-import { EditComparisonTableDialog } from '@/components/reseller-program/EditComparisonTableDialog';
 import { EditFaqDialog } from '@/components/reseller-program/EditFaqDialog';
 import { EditImportantInfoDialog } from '@/components/reseller-program/EditImportantInfoDialog';
 
@@ -67,7 +66,6 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
   const [editingPackage, setEditingPackage] = useState<IResellerPackage | null>(null);
   const [whyChooseDialogOpen, setWhyChooseDialogOpen] = useState<boolean>(false);
   const [workflowDialogOpen, setWorkflowDialogOpen] = useState<boolean>(false);
-  const [comparisonDialogOpen, setComparisonDialogOpen] = useState<boolean>(false);
   const [faqDialogOpen, setFaqDialogOpen] = useState<boolean>(false);
   const [activeFaqIndex, setActiveFaqIndex] = useState<number | null>(null);
   const [importantInfoDialogOpen, setImportantInfoDialogOpen] = useState<boolean>(false);
@@ -310,7 +308,7 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
     }
   };
 
-  const { hero, pricingHeader, packages, whyChooseUs, workflow, comparisonTable, faqs, importantInfo } =
+  const { hero, pricingHeader, packages, whyChooseUs, workflow, faqs, importantInfo } =
     pageData;
 
   const showEditControls = isAdminOrSuperAdmin && isEditMode;
@@ -546,11 +544,19 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
             )}
 
             {/* Pricing Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+            <div
+              className={`items-stretch ${
+                packages?.length === 1
+                  ? 'flex justify-center max-w-xl md:max-w-2xl mx-auto w-full'
+                  : packages?.length === 2
+                  ? 'grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto'
+                  : 'grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8'
+              }`}
+            >
               {packages?.map((pkg) => (
                 <div
                   key={pkg.id}
-                  className={`rounded-3xl bg-white text-slate-900 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300 relative ${
+                  className={`w-full rounded-3xl bg-white text-slate-900 flex flex-col justify-between overflow-hidden shadow-2xl transition-all duration-300 relative ${
                     pkg.popular
                       ? 'ring-4 ring-purple-400 md:-translate-y-2'
                       : 'border border-white/20'
@@ -656,7 +662,13 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                         মূল সুবিধাসমূহ
                       </p>
-                      <ul className="space-y-2.5 text-xs text-slate-700">
+                      <ul
+                        className={`text-xs text-slate-700 ${
+                          packages?.length === 1
+                            ? 'grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-x-8 sm:gap-y-3'
+                            : 'space-y-2.5'
+                        }`}
+                      >
                         {pkg.features?.map((feat, idx) => (
                           <li
                             key={idx}
@@ -777,87 +789,6 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
           </div>
         </section>
 
-        {/* ── 6. Detailed Comparison Table ── */}
-        <section className="py-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            
-            <div className="text-center space-y-2 mb-10 relative">
-              {showEditControls && (
-                <div className="flex justify-end mb-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => setComparisonDialogOpen(true)}
-                    className="bg-purple-600/90 hover:bg-purple-700 text-white font-bold text-xs shadow-lg flex items-center gap-1.5 border border-purple-400/40"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    <span>তুলনা টেবিল এডিট করুন</span>
-                  </Button>
-                </div>
-              )}
-
-              <h2 className="text-2xl sm:text-4xl font-black">{comparisonTable.title}</h2>
-              <p className="text-xs sm:text-sm text-purple-200/70">
-                {comparisonTable.subtitle}
-              </p>
-            </div>
-
-            {/* Comparison Table Card */}
-            <div className="rounded-3xl overflow-hidden border border-white/15 bg-white text-slate-900 shadow-2xl overflow-x-auto">
-              <table className="w-full text-left text-xs sm:text-sm border-collapse">
-                <thead>
-                  <tr className="bg-purple-900 text-white font-bold text-xs sm:text-base border-b border-purple-950">
-                    <th className="p-4 sm:p-5 w-2/5">ফিচার</th>
-                    <th className="p-4 sm:p-5 text-center w-1/5">🌱 STARTER</th>
-                    <th className="p-4 sm:p-5 text-center w-1/5">🚀 BUSINESS</th>
-                    <th className="p-4 sm:p-5 text-center w-1/5">👑 PROFESSIONAL</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {comparisonTable.categories?.map((cat, catIdx) => (
-                    <React.Fragment key={catIdx}>
-                      {/* Category Header */}
-                      <tr className="bg-purple-50/80 font-bold text-purple-950">
-                        <td colSpan={4} className="p-3.5 px-6 text-xs sm:text-sm">
-                          {cat.name}
-                        </td>
-                      </tr>
-
-                      {/* Rows */}
-                      {cat.rows?.map((row, rowIdx) => {
-                        const renderVal = (v: any) => {
-                          if (v === true) {
-                            return <Check className="h-4 w-4 text-emerald-600 mx-auto" />;
-                          }
-                          if (v === false) {
-                            return <span className="text-slate-300 font-bold">—</span>;
-                          }
-                          return <span>{v}</span>;
-                        };
-
-                        return (
-                          <tr key={rowIdx}>
-                            <td className="p-3.5 px-6 text-slate-600">{row.feature}</td>
-                            <td className="p-3.5 text-center text-slate-700 font-medium">
-                              {renderVal(row.starter)}
-                            </td>
-                            <td className="p-3.5 text-center text-slate-700 font-medium">
-                              {renderVal(row.business)}
-                            </td>
-                            <td className="p-3.5 text-center text-slate-700 font-medium">
-                              {renderVal(row.professional)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-          </div>
-        </section>
 
         {/* ── 7. FAQ Accordion ── */}
         <section className="py-16 px-4">
@@ -1046,16 +977,6 @@ export default function ResellerProgramClient({ initialData }: ResellerProgramCl
         onSave={(updated) => {
           updatePageData((prev) => ({ ...prev, workflow: updated }));
           saveSectionToServer({ workflow: updated }, 'কাজের ধাপ সংরক্ষিত হয়েছে!');
-        }}
-      />
-
-      <EditComparisonTableDialog
-        open={comparisonDialogOpen}
-        onOpenChange={setComparisonDialogOpen}
-        data={comparisonTable}
-        onSave={(updated) => {
-          updatePageData((prev) => ({ ...prev, comparisonTable: updated }));
-          saveSectionToServer({ comparisonTable: updated }, 'তুলনামূলক টেবিল সংরক্ষিত হয়েছে!');
         }}
       />
 
