@@ -365,11 +365,12 @@ function UsersContent() {
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        variant={user.role === 'admin' || user.role === 'manager' ? 'default' : 'outline'}
+                        variant={user.role === 'admin' || user.role === 'manager' || user.role === 'moderator' ? 'default' : 'outline'}
                         className={`
                           capitalize px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wider
-                          ${user.role === 'admin' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                          ${user.role === 'admin' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
                           ${user.role === 'manager' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+                          ${user.role === 'moderator' ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}
                         `}
                       >
                         {user.role}
@@ -417,6 +418,15 @@ function UsersContent() {
                                 className="cursor-pointer text-primary font-bold text-xs"
                               >
                                 <UserCog className="mr-2 h-3.5 w-3.5" /> Make Manager
+                              </DropdownMenuItem>
+                            )}
+
+                            {user.role !== 'moderator' && (
+                              <DropdownMenuItem 
+                                onClick={() => handleUpdateRole(user._id, 'moderator')}
+                                className="cursor-pointer text-purple-600 font-bold text-xs"
+                              >
+                                <UserCog className="mr-2 h-3.5 w-3.5 text-purple-600" /> Make Moderator
                               </DropdownMenuItem>
                             )}
 
@@ -472,8 +482,8 @@ function UsersContent() {
                 }
                 badge={
                   <Badge 
-                    variant={user.role === 'admin' || user.role === 'manager' ? 'default' : 'outline'}
-                    className={`text-[10px] px-2 py-0 font-bold ${user.role === 'admin' ? 'bg-blue-600' : user.role === 'manager' ? 'bg-emerald-600' : ''}`}
+                    variant={user.role === 'admin' || user.role === 'manager' || user.role === 'moderator' ? 'default' : 'outline'}
+                    className={`text-[10px] px-2 py-0 font-bold ${user.role === 'admin' ? 'bg-blue-600 text-white' : user.role === 'manager' ? 'bg-emerald-600 text-white' : user.role === 'moderator' ? 'bg-purple-600 text-white' : ''}`}
                   >
                     {user.role}
                   </Badge>
@@ -498,6 +508,11 @@ function UsersContent() {
                         {user.role !== 'manager' && (
                           <DropdownMenuItem onClick={() => handleUpdateRole(user._id, 'manager')} className="text-primary font-bold text-xs">
                             <UserCog className="mr-1.5 h-3.5 w-3.5" /> Make Manager
+                          </DropdownMenuItem>
+                        )}
+                        {user.role !== 'moderator' && (
+                          <DropdownMenuItem onClick={() => handleUpdateRole(user._id, 'moderator')} className="text-purple-600 font-bold text-xs">
+                            <UserCog className="mr-1.5 h-3.5 w-3.5 text-purple-600" /> Make Moderator
                           </DropdownMenuItem>
                         )}
                         {user.role !== 'user' && (
