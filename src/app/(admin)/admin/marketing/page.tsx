@@ -909,7 +909,7 @@ export default function MarketingSettingsPage() {
 
                         {form.watch('manualPaymentConfig.banglaQr.qrCode') ? (
                           <Image
-                            src={form.watch('manualPaymentConfig.banglaQr.qrCode')}
+                            src={form.watch('manualPaymentConfig.banglaQr.qrCode') || '/assets/placeholder-qr.png'}
                             alt="Bangla QR"
                             width={180}
                             height={180}
