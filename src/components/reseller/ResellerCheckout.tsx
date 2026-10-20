@@ -923,9 +923,16 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                                   <RadioGroupItem value="sslcommerz" />
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  Online Payment (SSLCommerz)
+                                  <div className="flex items-center justify-between">
+                                    <span>Online Payment (SSLCommerz)</span>
+                                    <Badge variant="secondary" className="text-[10px]">Recommended</Badge>
+                                  </div>
                                   <p className="text-xs font-normal text-muted-foreground mt-1">কার্ড, নেট ব্যাংকিং বা এমএফএস দিয়ে তাৎক্ষণিক পেমেন্ট করুন।</p>
-                                  <Badge variant="secondary" className="mt-2 text-[10px] block w-fit">Recommended</Badge>
+                                  {field.value === 'sslcommerz' && (
+                                    <p className="text-[11px] text-primary font-medium mt-2 bg-primary/10 p-2.5 rounded-lg border border-primary/20">
+                                      ℹ️ ডেলিভারি তথ্য পূরণ করে নিচের বাটনে ক্লিক করলেই সরাসরি SSLCommerz-এর নিরাপদ পেমেন্ট পেজে নিয়ে যাওয়া হবে, যেখান থেকে কার্ড/বিকাশ/নগদ দিয়ে পেমেন্ট সম্পন্ন করতে পারবেন।
+                                    </p>
+                                  )}
                                 </FormLabel>
                               </FormItem>
                             )}
@@ -978,7 +985,13 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                           >
                             <div className="h-10 w-10 flex items-center justify-center">
                               {method === 'banglaQr' ? (
-                                <Globe className="h-8 w-8 text-primary" />
+                                <Image
+                                  src="/qrlogo.jpg"
+                                  alt="Bangla QR"
+                                  width={40}
+                                  height={40}
+                                  className="h-full w-auto object-contain rounded"
+                                />
                               ) : (
                                 <Image
                                   src={`/assets/${method}logo.webp`}
@@ -1026,7 +1039,9 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                       </>
                     ) : (
                       <>
-                        অর্ডার সম্পন্ন করুন — ৳{Math.round(finalTotal)}
+                        {paymentMethod === 'sslcommerz'
+                          ? `পেমেন্ট করুন (SSLCommerz) — ৳${Math.round(finalTotal)}`
+                          : `অর্ডার সম্পন্ন করুন — ৳${Math.round(finalTotal)}`}
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </>
                     )}
@@ -1099,7 +1114,13 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
                 {selectedMethod?.id === 'banglaQr' ? (
-                  <Globe className="h-6 w-6 text-primary" />
+                  <Image
+                    src="/qrlogo.jpg"
+                    alt="Bangla QR"
+                    width={32}
+                    height={32}
+                    className="h-full w-auto object-contain rounded"
+                  />
                 ) : (
                   <Image
                     src={`/assets/${selectedMethod?.id}logo.webp`}

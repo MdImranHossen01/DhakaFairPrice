@@ -1039,9 +1039,16 @@ function CheckoutContent() {
                                   <RadioGroupItem value="Online" />
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  Online Payment (SSLCommerz)
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">Pay securely via Credit Card, bKash, or Rocket.</p>
-                                  <Badge variant="secondary" className="mt-2 text-[10px]">Recommended</Badge>
+                                  <div className="flex items-center justify-between">
+                                    <span>Online Payment (SSLCommerz)</span>
+                                    <Badge variant="secondary" className="text-[10px]">Recommended</Badge>
+                                  </div>
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">Pay securely via Credit Card, Debit Card, bKash, or Nagad.</p>
+                                  {field.value === 'Online' && (
+                                    <p className="text-[11px] text-primary font-medium mt-2 bg-primary/10 p-2.5 rounded-lg border border-primary/20">
+                                      ℹ️ ডেলিভারি তথ্য পূরণ করে নিচের বাটনে ক্লিক করলেই সরাসরি SSLCommerz-এর নিরাপদ পেমেন্ট পেজে নিয়ে যাওয়া হবে, যেখান থেকে কার্ড/বিকাশ/নগদ দিয়ে পেমেন্ট সম্পন্ন করতে পারবেন।
+                                    </p>
+                                  )}
                                 </FormLabel>
                               </FormItem>
                             )}
@@ -1086,7 +1093,7 @@ function CheckoutContent() {
                           >
                             <div className="h-10 w-10 flex items-center justify-center">
                               {method === 'banglaQr' ? (
-                                <Globe className="h-8 w-8 text-primary" />
+                                <Image src="/qrlogo.jpg" alt="Bangla QR" width={40} height={40} className="h-full w-auto object-contain rounded" />
                               ) : (
                                 <Image src={`/assets/${method}logo.webp`} alt={method || "Payment MFS Logo"} width={40} height={40} className="h-full w-auto object-contain" />
                               )}
@@ -1140,8 +1147,20 @@ function CheckoutContent() {
                       }`}
                     disabled={loading || !isFormValid || syncData?.hasInsufficientStock || isPendingOrderBlocked || syncData?.hasMultipleSellers}
                   >
-                    {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
-                    {isPendingOrderBlocked ? 'পেন্ডিং অর্ডার রয়েছে' : syncData?.hasInsufficientStock ? 'পর্যাপ্ত স্টক নেই' : syncData?.hasMultipleSellers ? 'ভিন্ন শপের পণ্য রয়েছে' : 'অর্ডার নিশ্চিত করুন'}
+                    {loading ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-5 w-5" />
+                    )}
+                    {isPendingOrderBlocked
+                      ? 'পেন্ডিং অর্ডার রয়েছে'
+                      : syncData?.hasInsufficientStock
+                      ? 'পর্যাপ্ত স্টক নেই'
+                      : syncData?.hasMultipleSellers
+                      ? 'ভিন্ন শপের পণ্য রয়েছে'
+                      : form.watch('paymentMethod') === 'Online'
+                      ? `পেমেন্ট করুন (SSLCommerz) — ৳${Math.round(totalAmount + (deliveryCharge || 0) - couponDiscount - (useWallet ? walletAmountToUse : 0))}`
+                      : 'অর্ডার নিশ্চিত করুন'}
                   </Button>
                   {syncData?.hasMultipleSellers ? (
                     <p className="text-[11px] font-bold text-destructive text-center w-full">
@@ -1166,7 +1185,7 @@ function CheckoutContent() {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
                 {selectedMethod?.id === 'banglaQr' ? (
-                  <Globe className="h-6 w-6 text-primary" />
+                  <Image src="/qrlogo.jpg" alt="Bangla QR" width={32} height={32} className="h-full w-auto object-contain rounded" />
                 ) : (
                   <Image src={`/assets/${selectedMethod?.id}logo.webp`} alt={selectedMethod?.id || "Payment Method Logo"} width={40} height={40} className="h-full w-auto object-contain" />
                 )}

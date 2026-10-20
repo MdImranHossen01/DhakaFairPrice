@@ -865,7 +865,7 @@ export default function OrderForm({ content, settings }: { content: any; setting
                           >
                             <div className="h-10 w-10 flex items-center justify-center">
                               {method === 'banglaQr' ? (
-                                <Globe className="h-8 w-8 text-primary" />
+                                <Image src="/qrlogo.jpg" alt="Bangla QR" width={40} height={40} className="h-full w-auto object-contain rounded" />
                               ) : (
                                 <Image src={`/assets/${method}logo.webp`} alt={method} width={40} height={40} className="h-full w-auto object-contain" />
                               )}
@@ -940,7 +940,7 @@ export default function OrderForm({ content, settings }: { content: any; setting
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
                 {selectedMethod?.id === 'banglaQr' ? (
-                  <Globe className="h-6 w-6 text-primary" />
+                  <Image src="/qrlogo.jpg" alt="Bangla QR" width={32} height={32} className="h-full w-auto object-contain rounded" />
                 ) : (
                   <Image src={`/assets/${selectedMethod?.id}logo.webp`} alt={selectedMethod?.id} width={40} height={40} className="h-full w-auto object-contain" />
                 )}

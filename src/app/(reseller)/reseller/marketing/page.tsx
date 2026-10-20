@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -312,7 +313,7 @@ export default function ResellerMarketingPage() {
                     <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                          <QrCode className="h-3.5 w-3.5 text-primary" /> Bangla QR (Universal Pay)
+                          <Image src="/qrlogo.jpg" alt="Bangla QR" width={16} height={16} className="h-3.5 w-3.5 object-contain rounded" /> Bangla QR (Universal Pay)
                         </span>
                         <Badge
                           variant="secondary"

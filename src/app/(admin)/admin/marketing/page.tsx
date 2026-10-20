@@ -528,8 +528,8 @@ export default function MarketingSettingsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-                                <Globe className="h-4 w-4" />
+                              <div className="h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center font-bold">
+                                <Image src="/qrlogo.jpg" alt="Bangla QR" width={32} height={32} className="h-full w-full object-contain" />
                               </div>
                               <span className="font-bold text-sm">Bangla QR</span>
                             </div>
@@ -815,7 +815,7 @@ export default function MarketingSettingsPage() {
               <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-primary" /> Bangla QR (Universal Pay)
+                    <Image src="/qrlogo.jpg" alt="Bangla QR" width={22} height={22} className="h-5 w-5 object-contain rounded inline-block" /> Bangla QR (Universal Pay)
                   </CardTitle>
                   <CardDescription>
                     Accept payment from any bank app via Bangla QR (কাস্টমার যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে কিউআর স্ক্যান করে পে করতে পারবে)
@@ -906,7 +906,7 @@ export default function MarketingSettingsPage() {
                   <DialogHeader className="py-4 px-6 bg-gradient-to-br from-primary to-primary/80 text-white relative shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
-                        <Globe className="h-6 w-6 text-primary" />
+                        <Image src="/qrlogo.jpg" alt="Bangla QR" width={32} height={32} className="h-full w-auto object-contain rounded" />
                       </div>
                       <div className="text-left">
                         <div className="flex items-center gap-2">
@@ -997,34 +997,7 @@ export default function MarketingSettingsPage() {
                 </DialogContent>
               </Dialog>
 
-              {/* Payment Instructions Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-bold">Payment Instructions (ম্যানুয়াল পেমেন্ট নির্দেশনা)</CardTitle>
-                  <CardDescription>
-                    চেকআউট পেজে ম্যানুয়াল পেমেন্ট বা বাংলা কিউআর নির্বাচন করলে গ্রাহককে যে নির্দেশনা প্রদর্শন করতে চান
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6 pt-0">
-                  <FormField
-                    control={form.control}
-                    name="manualPaymentConfig.instructions"
-                    render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormControl>
-                          <textarea
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            className="w-full h-24 rounded-xl border p-4 text-sm resize-none bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            placeholder="যেমন: অনুগ্রহ করে উপরোক্ত নম্বরে সেন্ড মানি করে ট্রানজেকশন আইডি প্রদান করুন।"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
+
             </TabsContent>
 
             {/* 3. Courier Tab */}
