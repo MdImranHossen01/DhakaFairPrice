@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ url: response.GatewayPageURL });
     } else {
-      console.error('SSLCommerz Initialization Failed. Session User:', session.user.id, 'Order ID:', orderId, 'Status:', response?.status);
+      console.error('SSLCommerz Initialization Failed. Session User:', session?.user?.id, 'Order ID:', order._id, 'Status:', response?.status);
       return NextResponse.json({
         message: 'Failed to initialize payment gateway'
       }, { status: 500 });
