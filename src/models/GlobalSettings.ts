@@ -60,15 +60,19 @@ export interface IGlobalSettings extends Document {
   };
   paymentConfig?: {
     activeMethod?: 'sslcommerz' | 'stripe' | 'none';
+    activeMethods?: string[];
+    cashOnDelivery?: boolean;
     sslcommerz?: {
       storeId?: string;
       storePassword?: string;
       isSandbox?: boolean;
+      active?: boolean;
     };
     stripe?: {
       secretKey?: string;
       publishableKey?: string;
       webhookSecret?: string;
+      active?: boolean;
     };
   };
   manualPaymentConfig?: {

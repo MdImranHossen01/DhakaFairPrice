@@ -70,6 +70,14 @@ export async function GET() {
     return NextResponse.json({
       reseller,
       motherPaymentConfig: globalSettings?.manualPaymentConfig || {},
+      motherPaymentGateway: {
+        cashOnDelivery: globalSettings?.paymentConfig?.cashOnDelivery !== false,
+        sslcommerz: {
+          active: Boolean(globalSettings?.paymentConfig?.sslcommerz?.active || globalSettings?.paymentConfig?.activeMethod === 'sslcommerz'),
+          sandboxMode: globalSettings?.paymentConfig?.sslcommerz?.sandboxMode ?? true,
+        },
+        activeMethods: globalSettings?.paymentConfig?.activeMethods || [],
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

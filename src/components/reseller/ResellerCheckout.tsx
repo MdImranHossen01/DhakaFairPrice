@@ -74,6 +74,8 @@ interface Props {
       banglaQr?: { qrCode?: string; active: boolean };
       instructions?: string;
     };
+    cashOnDeliveryActive?: boolean;
+    sslcommerzActive?: boolean;
     stripeActive?: boolean;
     metaPixelId?: string;
     tiktokPixelId?: string;
@@ -109,6 +111,22 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const watchedPhone = form.watch('phone');
   const watchedFullName = form.watch('fullName');
   const watchedStreet = form.watch('street');
+
+  useEffect(() => {
+    if (storeInfo.cashOnDeliveryActive === false && form.getValues('paymentMethod') === 'COD') {
+      if (storeInfo.sslcommerzActive) {
+        form.setValue('paymentMethod', 'sslcommerz');
+      } else if (storeInfo.paymentConfig?.bkash?.active && storeInfo.paymentConfig?.bkash?.number) {
+        form.setValue('paymentMethod', 'bkash');
+      } else if (storeInfo.paymentConfig?.nagad?.active && storeInfo.paymentConfig?.nagad?.number) {
+        form.setValue('paymentMethod', 'nagad');
+      } else if (storeInfo.paymentConfig?.rocket?.active && storeInfo.paymentConfig?.rocket?.number) {
+        form.setValue('paymentMethod', 'rocket');
+      } else if (storeInfo.paymentConfig?.banglaQr?.active && storeInfo.paymentConfig?.banglaQr?.qrCode) {
+        form.setValue('paymentMethod', 'bangla_qr');
+      }
+    }
+  }, [storeInfo]);
 
   useEffect(() => {
     const cartKey = `rscart_${subdomain}`;
@@ -853,15 +871,29 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                             value={field.value}
                             className="flex flex-col space-y-2"
                           >
-                            <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                              <FormControl>
-                                <RadioGroupItem value="COD" />
-                              </FormControl>
-                              <FormLabel className="font-bold flex-1 cursor-pointer">
-                                Cash on Delivery (COD)
-                                <p className="text-xs font-normal text-muted-foreground mt-1">পণ্য পাওয়ার পর টাকা দিন।</p>
-                              </FormLabel>
-                            </FormItem>
+                            {storeInfo.cashOnDeliveryActive !== false && (
+                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <FormControl>
+                                  <RadioGroupItem value="COD" />
+                                </FormControl>
+                                <FormLabel className="font-bold flex-1 cursor-pointer">
+                                  Cash on Delivery (COD)
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">পণ্য পাওয়ার পর টাকা দিন।</p>
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                            {storeInfo.sslcommerzActive && (
+                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <FormControl>
+                                  <RadioGroupItem value="sslcommerz" />
+                                </FormControl>
+                                <FormLabel className="font-bold flex-1 cursor-pointer">
+                                  Online Payment (SSLCommerz)
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">কার্ড, নেট ব্যাংকিং বা এমএফএস দিয়ে তাৎক্ষণিক পেমেন্ট করুন।</p>
+                                  <Badge variant="secondary" className="mt-2 text-[10px] block w-fit">Recommended</Badge>
+                                </FormLabel>
+                              </FormItem>
+                            )}
                             {storeInfo.paymentConfig?.bkash?.active && storeInfo.paymentConfig?.bkash?.number && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
@@ -895,6 +927,17 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                                 </FormLabel>
                               </FormItem>
                             )}
+                            {storeInfo.paymentConfig?.banglaQr?.active && storeInfo.paymentConfig?.banglaQr?.qrCode && (
+                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <FormControl>
+                                  <RadioGroupItem value="bangla_qr" />
+                                </FormControl>
+                                <FormLabel className="font-bold flex-1 cursor-pointer">
+                                  Bangla QR (Universal Pay)
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে কিউআর স্ক্যান করে পেমেন্ট করুন।</p>
+                                </FormLabel>
+                              </FormItem>
+                            )}
                             {storeInfo.stripeActive && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
@@ -912,7 +955,18 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                       </FormItem>
                     )}
                   />
-                  {storeInfo.paymentConfig?.instructions && (paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'rocket') && (
+                  {paymentMethod === 'bangla_qr' && storeInfo.paymentConfig?.banglaQr?.qrCode && (
+                    <div className="rounded-lg border bg-card p-4 flex flex-col items-center gap-2 text-center animate-in fade-in">
+                      <p className="text-xs font-bold text-foreground">নিচের বাংলা কিউআর (Bangla QR) স্ক্যান করে পেমেন্ট করুন</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={storeInfo.paymentConfig.banglaQr.qrCode}
+                        alt="Bangla QR"
+                        className="h-44 w-44 object-contain rounded-md border p-1 bg-white"
+                      />
+                    </div>
+                  )}
+                  {storeInfo.paymentConfig?.instructions && (paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'rocket' || paymentMethod === 'bangla_qr') && (
                     <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
                       <strong className="text-foreground">পেমেন্ট নির্দেশনা:</strong> {storeInfo.paymentConfig.instructions}
                     </div>

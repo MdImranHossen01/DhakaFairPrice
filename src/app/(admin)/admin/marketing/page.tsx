@@ -18,7 +18,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Truck, CreditCard, BarChart3, Settings2, Zap, ShieldCheck, CheckCircle2, XCircle, AlertCircle, RefreshCcw, ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ImageUpload } from '@/components/ui/image-upload';
+import { Loader2, Truck, CreditCard, BarChart3, Settings2, Zap, ShieldCheck, CheckCircle2, XCircle, AlertCircle, RefreshCcw, ExternalLink, Globe, X, Wallet, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -26,7 +28,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from"@/components/ui/select";
+} from "@/components/ui/select";
 
 const marketingSettingsSchema = z.object({
   subscriptionConfig: z.object({
@@ -37,10 +39,13 @@ const marketingSettingsSchema = z.object({
   deliveryChargeOutsideDhaka: z.number().min(0, 'Charge cannot be negative').optional(),
   paymentConfig: z.object({
     activeMethod: z.string().default('none'),
+    activeMethods: z.array(z.string()).optional(),
+    cashOnDelivery: z.boolean().default(true),
     sslcommerz: z.object({
       storeId: z.string().nullish().transform(val => val ?? ''),
       storePassword: z.string().nullish().transform(val => val ?? ''),
       isSandbox: z.boolean().default(true),
+      active: z.boolean().default(false),
     }).nullable().optional(),
   }).optional(),
   manualPaymentConfig: z.object({
@@ -123,10 +128,13 @@ export default function MarketingSettingsPage() {
       deliveryChargeOutsideDhaka: 120,
       paymentConfig: {
         activeMethod: 'none',
+        cashOnDelivery: true,
+        activeMethods: ['cod'],
         sslcommerz: {
           storeId: '',
           storePassword: '',
           isSandbox: true,
+          active: false,
         },
       },
       manualPaymentConfig: {
@@ -174,10 +182,13 @@ export default function MarketingSettingsPage() {
                 deliveryChargeOutsideDhaka: result.data.deliveryChargeOutsideDhaka ?? 120,
                 paymentConfig: {
                   activeMethod: result.data.paymentConfig?.activeMethod || 'none',
+                  activeMethods: result.data.paymentConfig?.activeMethods || (result.data.paymentConfig?.cashOnDelivery !== false ? ['cod'] : []),
+                  cashOnDelivery: result.data.paymentConfig?.cashOnDelivery ?? true,
                   sslcommerz: {
                     storeId: result.data.paymentConfig?.sslcommerz?.storeId || '',
                     storePassword: result.data.paymentConfig?.sslcommerz?.storePassword || '',
                     isSandbox: result.data.paymentConfig?.sslcommerz?.isSandbox ?? true,
+                    active: result.data.paymentConfig?.sslcommerz?.active ?? (result.data.paymentConfig?.activeMethod === 'sslcommerz'),
                   },
                 },
                 manualPaymentConfig: {
@@ -282,6 +293,20 @@ export default function MarketingSettingsPage() {
   const onSubmit = async (values: MarketingSettingsFormValues) => {
     setSubmitting(true);
     try {
+      // Sync payment methods
+      const isSslActive = Boolean(values.paymentConfig?.sslcommerz?.active);
+      if (values.paymentConfig) {
+        values.paymentConfig.activeMethod = isSslActive ? 'sslcommerz' : 'none';
+        const activeMethods: string[] = [];
+        if (values.paymentConfig.cashOnDelivery) activeMethods.push('cod');
+        if (isSslActive) activeMethods.push('sslcommerz');
+        if (values.manualPaymentConfig?.bkash?.active) activeMethods.push('bkash');
+        if (values.manualPaymentConfig?.nagad?.active) activeMethods.push('nagad');
+        if (values.manualPaymentConfig?.rocket?.active) activeMethods.push('rocket');
+        if (values.manualPaymentConfig?.banglaQr?.active) activeMethods.push('banglaQr');
+        values.paymentConfig.activeMethods = activeMethods;
+      }
+
       const response = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -392,59 +417,238 @@ export default function MarketingSettingsPage() {
               </Card>
             </TabsContent>
 
-            {/* 2. Payment Tab */}
-            <TabsContent value="payment" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-primary" /> Payment Gateway (SSLCommerz)
-                  </CardTitle>
-                  <CardDescription>Configure SSLCommerz active payment gateway settings.</CardDescription>
+            {/* 2. Payment Gateway Tab */}
+            <TabsContent value="payment" className="space-y-6">
+              {/* Master Active Payment Methods Card */}
+              <Card className="border-2 border-primary/20 shadow-sm overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 text-primary" /> Active Payment Methods (Multiple Selectable)
+                      </CardTitle>
+                      <CardDescription>
+                        চেকআউট পেজে কাস্টমারদের জন্য কোন কোন পেমেন্ট মেথড সক্রিয় থাকবে তা সিলেক্ট করুন (এক বা একাধিক সিলেক্ট করা যাবে)।
+                      </CardDescription>
+                    </div>
+                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 font-semibold gap-1 py-1 w-fit">
+                      <CheckCircle2 className="h-3 w-3" /> Multi-Gateway Support
+                    </Badge>
+                  </div>
                 </CardHeader>
-                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1 space-y-4">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* 1. Cash on Delivery (COD) */}
                     <FormField
                       control={form.control}
-                      name="paymentConfig.activeMethod"
+                      name="paymentConfig.cashOnDelivery"
                       render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel className="font-bold">Active Payment Method</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-12 rounded-xl">
-                                <SelectValue placeholder="Select active method" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">None (Cash on Delivery Only)</SelectItem>
-                              <SelectItem value="sslcommerz">SSLCommerz</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="paymentConfig.sslcommerz.isSandbox"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2 pt-4 space-y-0">
-                          <FormControl>
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                <Truck className="h-4 w-4" />
+                              </div>
+                              <span className="font-bold text-sm">Cash on Delivery</span>
+                            </div>
                             <input
                               type="checkbox"
                               checked={field.value ?? true}
                               onChange={(e) => field.onChange(e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
                             />
-                          </FormControl>
-                          <FormLabel className="font-bold text-sm cursor-pointer">Enable Sandbox Mode</FormLabel>
-                        </FormItem>
+                          </div>
+                          <p className="text-xs text-muted-foreground">পণ্য হাতে পেয়ে মূল্য পরিশোধ (ডিফল্ট অ্যাক্টিভ)</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
+                      )}
+                    />
+
+                    {/* 2. SSLCommerz */}
+                    <FormField
+                      control={form.control}
+                      name="paymentConfig.sslcommerz.active"
+                      render={({ field }) => (
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                                <CreditCard className="h-4 w-4" />
+                              </div>
+                              <span className="font-bold text-sm">SSLCommerz</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? false}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">কার্ড, বিকাশ, নগদ অনলাইন গেটওয়ে</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
+                      )}
+                    />
+
+                    {/* 3. Manual bKash */}
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.bkash.active"
+                      render={({ field }) => (
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <Image src="/assets/bkashlogo.webp" alt="bKash" width={28} height={28} className="h-7 w-7 object-contain" />
+                              <span className="font-bold text-sm">Manual bKash</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? false}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">বিকাশ পার্সোনাল/মার্চেন্ট ম্যানুয়াল সেন্ড মানি</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
+                      )}
+                    />
+
+                    {/* 4. Manual Nagad */}
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.nagad.active"
+                      render={({ field }) => (
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <Image src="/assets/nagadlogo.webp" alt="Nagad" width={28} height={28} className="h-7 w-7 object-contain" />
+                              <span className="font-bold text-sm">Manual Nagad</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? false}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">নগদ পার্সোনাল/মার্চেন্ট ম্যানুয়াল সেন্ড মানি</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
+                      )}
+                    />
+
+                    {/* 5. Manual Rocket */}
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.rocket.active"
+                      render={({ field }) => (
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <Image src="/assets/rocketlogo.webp" alt="Rocket" width={28} height={28} className="h-7 w-7 object-contain" />
+                              <span className="font-bold text-sm">Manual Rocket</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? false}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">রকেট পার্সোনাল/মার্চেন্ট ম্যানুয়াল সেন্ড মানি</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
+                      )}
+                    />
+
+                    {/* 6. Bangla QR */}
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.banglaQr.active"
+                      render={({ field }) => (
+                        <div
+                          onClick={() => field.onChange(!field.value)}
+                          className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            field.value ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                                <Globe className="h-4 w-4" />
+                              </div>
+                              <span className="font-bold text-sm">Bangla QR</span>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? false}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">সার্বজনীন বাংলা কিউআর পেমেন্ট</p>
+                          <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
+                            {field.value ? '● Active' : 'Off'}
+                          </Badge>
+                        </div>
                       )}
                     />
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-2xl border">
-                    <div className="md:col-span-2 font-black text-xs uppercase opacity-50 mb-2">SSLCommerz Credentials</div>
+              {/* SSLCommerz Credentials Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" /> SSLCommerz Credentials
+                  </CardTitle>
+                  <CardDescription>Configure SSLCommerz Store ID and Password for automated online transactions</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="paymentConfig.sslcommerz.storeId"
@@ -452,7 +656,7 @@ export default function MarketingSettingsPage() {
                         <FormItem className="space-y-2">
                           <FormLabel className="font-bold text-xs">Store ID</FormLabel>
                           <FormControl>
-                            <Input placeholder="Store ID" {...field} className="h-10 rounded-lg border px-3 text-xs" />
+                            <Input placeholder="Store ID" {...field} className="h-10 rounded-lg border px-3 text-sm" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -465,7 +669,100 @@ export default function MarketingSettingsPage() {
                         <FormItem className="space-y-2">
                           <FormLabel className="font-bold text-xs">Store Password</FormLabel>
                           <FormControl>
-                            <Input type="text" placeholder="Enter Password" {...field} className="h-10 rounded-lg border px-3 text-xs" />
+                            <Input type="text" placeholder="Enter Password" {...field} className="h-10 rounded-lg border px-3 text-sm" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <FormField
+                      control={form.control}
+                      name="paymentConfig.sslcommerz.isSandbox"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0 p-4 border rounded-xl w-full bg-muted/20">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              checked={field.value ?? true}
+                              onChange={(e) => field.onChange(e.target.checked)}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                          </FormControl>
+                          <div className="space-y-0.5">
+                            <FormLabel className="font-bold text-sm cursor-pointer">Enable Sandbox Mode</FormLabel>
+                            <p className="text-xs text-muted-foreground">টেস্টিংয়ের জন্য স্যান্ডবক্স মোড অন রাখুন</p>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Manual Mobile Banking Numbers Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" /> Manual Payment Numbers (Mobile Banking)
+                  </CardTitle>
+                  <CardDescription>গ্রাহক যে একাউন্ট নাম্বারে টাকা পাঠাবে তা নিচে প্রদান করুন</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* bKash */}
+                  <div className="space-y-3 p-4 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-2">
+                      <Image src="/assets/bkashlogo.webp" alt="bKash" width={24} height={24} className="h-6 w-6 object-contain" />
+                      <span className="font-bold text-sm">bKash Number</span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.bkash.number"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormControl>
+                            <Input placeholder="01XXXXXXXXX" {...field} className="h-10 rounded-lg border px-3 text-sm" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Nagad */}
+                  <div className="space-y-3 p-4 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-2">
+                      <Image src="/assets/nagadlogo.webp" alt="Nagad" width={24} height={24} className="h-6 w-6 object-contain" />
+                      <span className="font-bold text-sm">Nagad Number</span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.nagad.number"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormControl>
+                            <Input placeholder="01XXXXXXXXX" {...field} className="h-10 rounded-lg border px-3 text-sm" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Rocket */}
+                  <div className="space-y-3 p-4 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-2">
+                      <Image src="/assets/rocketlogo.webp" alt="Rocket" width={24} height={24} className="h-6 w-6 object-contain" />
+                      <span className="font-bold text-sm">Rocket Number</span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="manualPaymentConfig.rocket.number"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormControl>
+                            <Input placeholder="01XXXXXXXXX" {...field} className="h-10 rounded-lg border px-3 text-sm" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -475,56 +772,82 @@ export default function MarketingSettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              {/* Bangla QR (Universal Pay) Card */}
+              <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-primary" /> Manual Payment (Mobile Banking)
+                    <Globe className="h-5 w-5 text-primary" /> Bangla QR (Universal Pay)
                   </CardTitle>
-                  <CardDescription>Configure manual mobile banking account details.</CardDescription>
+                  <CardDescription>
+                    Accept payment from any bank app via Bangla QR (কাস্টমার যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে কিউআর স্ক্যান করে পে করতে পারবে)
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="p-6 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {(['bkash', 'nagad', 'rocket'] as const).map((method) => (
-                      <div key={method} className="space-y-4 p-4 rounded-2xl border bg-muted/10">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Image src={`/assets/${method}logo.webp`} alt={method} width={24} height={24} className="h-6 w-6 object-contain" />
-                            <span className="font-bold capitalize">{method}</span>
-                          </div>
-                          <FormField
-                            control={form.control}
-                            name={`manualPaymentConfig.${method}.active`}
-                            render={({ field }) => (
-                              <FormItem className="space-y-0">
-                                <FormControl>
-                                  <input
-                                    type="checkbox"
-                                    checked={field.value ?? false}
-                                    onChange={(e) => field.onChange(e.target.checked)}
-                                    className="h-4 w-4"
-                                  />
-                                </FormControl>
-                              </FormItem>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div className="space-y-3">
+                      <FormLabel className="text-sm font-semibold">Upload Bangla QR Image</FormLabel>
+                      <FormField
+                        control={form.control}
+                        name="manualPaymentConfig.banglaQr.qrCode"
+                        render={({ field }) => (
+                          <div className="flex items-center gap-4">
+                            {field.value && (
+                              <div className="h-20 w-20 rounded-xl border bg-white p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
+                                <Image src={field.value} alt="Bangla QR" width={80} height={80} className="max-h-full max-w-full object-contain" />
+                                <button
+                                  type="button"
+                                  onClick={() => field.onChange('')}
+                                  className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
+                                >
+                                  <X className="h-5 w-5" />
+                                </button>
+                              </div>
                             )}
-                          />
-                        </div>
-                        <FormField
-                          control={form.control}
-                          name={`manualPaymentConfig.${method}.number`}
-                          render={({ field }) => (
-                            <FormItem className="space-y-2">
-                              <FormLabel className="text-[10px] uppercase opacity-60">Number</FormLabel>
-                              <FormControl>
-                                <Input placeholder="017XXXXXXXX" {...field} className="h-10 rounded-lg border px-3 text-sm" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    ))}
+                            <div className="flex-1">
+                              <ImageUpload
+                                onUpload={(url) => field.onChange(url)}
+                                className="h-20 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary transition-all bg-card"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      />
+                    </div>
+                    <div className="p-4 bg-card rounded-2xl border border-primary/10">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        <strong>Tip:</strong> আপনার ব্যাংক বা মোবাইল ফাইন্যান্সিয়াল অ্যাপ (যেমন: Citytouch, bKash Merchant, ইত্যাদি) থেকে ডাউনলোডকৃত বাংলা কিউআর কোডের ছবিটি এখানে আপলোড করুন।
+                      </p>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
 
+              {/* Payment Instructions Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-bold">Payment Instructions (ম্যানুয়াল পেমেন্ট নির্দেশনা)</CardTitle>
+                  <CardDescription>
+                    চেকআউট পেজে ম্যানুয়াল পেমেন্ট বা বাংলা কিউআর নির্বাচন করলে গ্রাহককে যে নির্দেশনা প্রদর্শন করতে চান
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 pt-0">
+                  <FormField
+                    control={form.control}
+                    name="manualPaymentConfig.instructions"
+                    render={({ field }) => (
+                      <FormItem className="space-y-2">
+                        <FormControl>
+                          <textarea
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            className="w-full h-24 rounded-xl border p-4 text-sm resize-none bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            placeholder="যেমন: অনুগ্রহ করে উপরোক্ত নম্বরে সেন্ড মানি করে ট্রানজেকশন আইডি প্রদান করুন।"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

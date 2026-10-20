@@ -142,7 +142,22 @@ function CheckoutContent() {
             });
           }
         }
-        if (settingsRes.ok) setSettings(await settingsRes.json());
+        if (settingsRes.ok) {
+          const sData = await settingsRes.json();
+          setSettings(sData);
+          if (sData?.paymentConfig?.cashOnDelivery === false && form.getValues('paymentMethod') === 'COD') {
+            if (sData?.paymentConfig?.sslcommerz?.active || sData?.paymentConfig?.activeMethod === 'sslcommerz') {
+              form.setValue('paymentMethod', 'Online');
+            } else if (
+              sData?.manualPaymentConfig?.bkash?.active ||
+              sData?.manualPaymentConfig?.nagad?.active ||
+              sData?.manualPaymentConfig?.rocket?.active ||
+              sData?.manualPaymentConfig?.banglaQr?.active
+            ) {
+              form.setValue('paymentMethod', 'Manual');
+            }
+          }
+        }
 
         // --- CART SYNC LOGIC ---
         // Verify all items in cart still exist, have correct variants, and have sufficient stock
@@ -1007,16 +1022,18 @@ function CheckoutContent() {
                             value={field.value}
                             className="flex flex-col space-y-2"
                           >
-                            <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                              <FormControl>
-                                <RadioGroupItem value="COD" />
-                              </FormControl>
-                              <FormLabel className="font-bold flex-1 cursor-pointer">
-                                Cash on Delivery (COD)
-                                <p className="text-xs font-normal text-muted-foreground mt-1">Pay when you receive the product.</p>
-                              </FormLabel>
-                            </FormItem>
-                            {settings?.paymentConfig?.activeMethod === 'sslcommerz' && (
+                            {settings?.paymentConfig?.cashOnDelivery !== false && (
+                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                                <FormControl>
+                                  <RadioGroupItem value="COD" />
+                                </FormControl>
+                                <FormLabel className="font-bold flex-1 cursor-pointer">
+                                  Cash on Delivery (COD)
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">Pay when you receive the product.</p>
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                            {(settings?.paymentConfig?.sslcommerz?.active || settings?.paymentConfig?.activeMethod === 'sslcommerz') && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
                                   <RadioGroupItem value="Online" />

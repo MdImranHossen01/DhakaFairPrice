@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Zap, Award, Wallet, Save, Lock, Truck, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Loader2, Zap, Award, Wallet, Save, Lock, Truck, ShieldCheck, CheckCircle2, QrCode, CreditCard, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResellerMarketingPage() {
@@ -15,6 +15,7 @@ export default function ResellerMarketingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [motherPayment, setMotherPayment] = useState<any>(null);
+  const [motherGateway, setMotherGateway] = useState<any>(null);
 
   // Tracking form state
   const [tracking, setTracking] = useState({
@@ -44,6 +45,7 @@ export default function ResellerMarketingPage() {
       const r = d.reseller;
       setReseller(r);
       setMotherPayment(d.motherPaymentConfig || null);
+      setMotherGateway(d.motherPaymentGateway || null);
       setTracking({
         metaPixelId: r.seoConfig?.metaPixelId || '',
         facebookAccessToken: r.seoConfig?.facebookAccessToken || '',
@@ -200,39 +202,152 @@ export default function ResellerMarketingPage() {
                 </div>
 
                 {/* Active Gateways Display */}
-                <div className="pt-3 border-t space-y-2.5">
+                <div className="pt-3 border-t space-y-3">
                   <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                    মাদার শপ থেকে কনফিগারকৃত অ্যাক্টিভ পেমেন্ট গেটওয়ে:
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                    মাদার শপ থেকে কনফিগারকৃত পেমেন্ট মেথড (Read Only):
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {motherPayment?.bkash?.active && motherPayment?.bkash?.number ? (
-                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
-                        <span className="text-[11px] font-semibold text-muted-foreground">bKash (মাদার শপ)</span>
-                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.bkash.number}</span>
-                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Cash on Delivery */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                          <Banknote className="h-3.5 w-3.5 text-primary" /> Cash on Delivery (COD)
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className={motherGateway?.cashOnDelivery !== false
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherGateway?.cashOnDelivery !== false ? 'Active' : 'Inactive'}
+                        </Badge>
                       </div>
-                    ) : null}
-                    {motherPayment?.nagad?.active && motherPayment?.nagad?.number ? (
-                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
-                        <span className="text-[11px] font-semibold text-muted-foreground">Nagad (মাদার শপ)</span>
-                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.nagad.number}</span>
-                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
-                      </div>
-                    ) : null}
-                    {motherPayment?.rocket?.active && motherPayment?.rocket?.number ? (
-                      <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
-                        <span className="text-[11px] font-semibold text-muted-foreground">Rocket (মাদার শপ)</span>
-                        <span className="font-mono font-bold text-sm text-foreground">{motherPayment.rocket.number}</span>
-                        <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Active</Badge>
-                      </div>
-                    ) : null}
-                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-1 shadow-sm">
-                      <span className="text-[11px] font-semibold text-muted-foreground">Cash on Delivery (COD)</span>
                       <span className="font-bold text-sm text-foreground">ক্যাশ অন ডেলিভারি</span>
-                      <Badge variant="secondary" className="text-[10px] w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Always Active</Badge>
+                      <p className="text-[10px] text-muted-foreground">পণ্য হাতে পাওয়ার পর পেমেন্ট</p>
+                    </div>
+
+                    {/* SSLCommerz Gateway */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                          <CreditCard className="h-3.5 w-3.5 text-primary" /> SSLCommerz Gateway
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className={motherGateway?.sslcommerz?.active
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherGateway?.sslcommerz?.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <span className="font-bold text-sm text-foreground">অনলাইন পেমেন্ট গেটওয়ে</span>
+                      <p className="text-[10px] text-muted-foreground">কার্ড / নেট ব্যাংকিং / অটো পেমেন্ট</p>
+                    </div>
+
+                    {/* bKash */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground">bKash (মাদার শপ)</span>
+                        <Badge
+                          variant="secondary"
+                          className={motherPayment?.bkash?.active && motherPayment?.bkash?.number
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherPayment?.bkash?.active && motherPayment?.bkash?.number ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {motherPayment?.bkash?.number || 'Not Configured'}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">ম্যানুয়াল সেন্ড মানি / ক্যাশ ইন</p>
+                    </div>
+
+                    {/* Nagad */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Nagad (মাদার শপ)</span>
+                        <Badge
+                          variant="secondary"
+                          className={motherPayment?.nagad?.active && motherPayment?.nagad?.number
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherPayment?.nagad?.active && motherPayment?.nagad?.number ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {motherPayment?.nagad?.number || 'Not Configured'}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">ম্যানুয়াল সেন্ড মানি / ক্যাশ ইন</p>
+                    </div>
+
+                    {/* Rocket */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Rocket (মাদার শপ)</span>
+                        <Badge
+                          variant="secondary"
+                          className={motherPayment?.rocket?.active && motherPayment?.rocket?.number
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherPayment?.rocket?.active && motherPayment?.rocket?.number ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {motherPayment?.rocket?.number || 'Not Configured'}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">ম্যানুয়াল সেন্ড মানি / ক্যাশ ইন</p>
+                    </div>
+
+                    {/* Bangla QR */}
+                    <div className="border rounded-lg p-3 bg-card flex flex-col justify-between gap-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                          <QrCode className="h-3.5 w-3.5 text-primary" /> Bangla QR (Universal Pay)
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className={motherPayment?.banglaQr?.active && motherPayment?.banglaQr?.qrCode
+                            ? "text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : "text-[10px] bg-muted text-muted-foreground"
+                          }
+                        >
+                          {motherPayment?.banglaQr?.active && motherPayment?.banglaQr?.qrCode ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      {motherPayment?.banglaQr?.qrCode ? (
+                        <div className="flex items-center gap-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={motherPayment.banglaQr.qrCode}
+                            alt="Bangla QR Preview"
+                            className="h-10 w-10 rounded border object-contain bg-white p-0.5"
+                          />
+                          <span className="text-xs font-semibold text-foreground">QR কোড সক্রিয় রয়েছে</span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-xs text-muted-foreground">QR নট কনফিগারড</span>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে স্ক্যান</p>
                     </div>
                   </div>
+
+                  {/* Payment Instructions if present */}
+                  {motherPayment?.instructions && (
+                    <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+                      <span className="font-bold text-foreground">মাদার শপের পেমেন্ট নির্দেশনা:</span>
+                      <p className="whitespace-pre-line">{motherPayment.instructions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -36,6 +36,8 @@ export default async function ResellerCheckoutPage({ params }: Props) {
   const GlobalSettings = (await import('@/models/GlobalSettings')).default;
   const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
   const stripeActive = globalSettings?.paymentConfig?.activeMethod === 'stripe';
+  const sslcommerzActive = Boolean(globalSettings?.paymentConfig?.sslcommerz?.active || globalSettings?.paymentConfig?.activeMethod === 'sslcommerz');
+  const cashOnDeliveryActive = globalSettings?.paymentConfig?.cashOnDelivery !== false;
 
   const freeDeliveryThreshold = reseller.deliveryConfig?.freeDeliveryThreshold || 0;
 
@@ -46,6 +48,8 @@ export default async function ResellerCheckoutPage({ params }: Props) {
     freeDeliveryThreshold,
     loyaltyConfig: reseller.loyaltyConfig || { isEnabled: false, activationThreshold: 5000, rewardPercentage: 5 },
     paymentConfig: (globalSettings?.manualPaymentConfig || {}) as any,
+    cashOnDeliveryActive,
+    sslcommerzActive,
     stripeActive,
     // Pass pixel IDs so ResellerCheckout can fire Purchase events
     metaPixelId: reseller.seoConfig?.metaPixelId,
