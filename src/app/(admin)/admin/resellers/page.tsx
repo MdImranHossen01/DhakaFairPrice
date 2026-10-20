@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +64,71 @@ export default function AdminResellersPage() {
   const [savingCourier, setSavingCourier] = useState(false);
   const [creatingPathaoStore, setCreatingPathaoStore] = useState(false);
   const [creatingRedxStore, setCreatingRedxStore] = useState(false);
+
+  // Activation & Expiry Dialog state
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [targetReseller, setTargetReseller] = useState<any>(null);
+  const [expiryDate, setExpiryDate] = useState<string>('');
+  const [isNoExpiry, setIsNoExpiry] = useState<boolean>(false);
+  const [savingActivation, setSavingActivation] = useState(false);
+
+  const openActivationModal = (reseller: any) => {
+    setTargetReseller(reseller);
+    if (reseller.expiresAt) {
+      const d = new Date(reseller.expiresAt);
+      setExpiryDate(d.toISOString().split('T')[0]);
+      setIsNoExpiry(false);
+    } else {
+      // Default to +30 days
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setExpiryDate(d.toISOString().split('T')[0]);
+      setIsNoExpiry(false);
+    }
+    setActivationDialogOpen(true);
+  };
+
+  const setQuickExpiry = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setExpiryDate(d.toISOString().split('T')[0]);
+    setIsNoExpiry(false);
+  };
+
+  const handleConfirmActivation = async () => {
+    if (!targetReseller) return;
+    if (!isNoExpiry && !expiryDate) {
+      toast.error('অনুগ্রহ করে এক্সপায়ার তারিখ সিলেক্ট করুন অথবা আনলিমিটেড বেছে নিন');
+      return;
+    }
+
+    setSavingActivation(true);
+    try {
+      const finalExpiry = isNoExpiry ? null : new Date(expiryDate).toISOString();
+      const res = await fetch('/api/admin/resellers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resellerId: targetReseller._id,
+          status: 'active',
+          expiresAt: finalExpiry,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`"${targetReseller.storeName}" স্টোর সক্রিয় এবং মেয়াদ নির্ধারণ করা হয়েছে!`);
+        setActivationDialogOpen(false);
+        fetchResellers();
+      } else {
+        toast.error(data.error || 'সংরক্ষণে সমস্যা হয়েছে');
+      }
+    } catch {
+      toast.error('নেটওয়ার্ক সমস্যা। আবার চেষ্টা করুন।');
+    } finally {
+      setSavingActivation(false);
+    }
+  };
 
   const handleCreatePathaoStore = async () => {
     if (!selectedCourierReseller) return;
@@ -222,6 +287,13 @@ export default function AdminResellersPage() {
   };
 
   const handleStatusChange = async (resellerId: string, status: 'active' | 'suspended' | 'rejected', name: string) => {
+    if (status === 'active') {
+      const r = resellers.find(item => item._id === resellerId);
+      if (r) {
+        openActivationModal(r);
+        return;
+      }
+    }
     const actionVerb = status === 'active' ? 'approve' : status === 'rejected' ? 'reject' : 'suspend';
     const actionText = status === 'active' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Suspended';
     const confirmResult = await Swal.fire({
@@ -288,6 +360,7 @@ export default function AdminResellersPage() {
   const statusBadgeColor: Record<string, string> = {
     active: 'bg-green-500/10 text-green-600 border-green-500/20',
     pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+    expired: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
     suspended: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
     rejected: 'bg-red-500/10 text-red-600 border-red-500/20',
   };
@@ -312,6 +385,7 @@ export default function AdminResellersPage() {
     all: resellers.length,
     pending: resellers.filter(r => r.status === 'pending').length,
     active: resellers.filter(r => r.status === 'active').length,
+    expired: resellers.filter(r => r.status === 'expired').length,
     suspended: resellers.filter(r => r.status === 'suspended').length,
     rejected: resellers.filter(r => r.status === 'rejected').length,
   };
@@ -336,7 +410,7 @@ export default function AdminResellersPage() {
 
       {/* Status Filter Tabs */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        {(['all', 'pending', 'active', 'suspended', 'rejected'] as const).map(s => (
+        {(['all', 'pending', 'active', 'expired', 'suspended', 'rejected'] as const).map(s => (
           <button
             key={s}
             onClick={() => {
@@ -349,6 +423,8 @@ export default function AdminResellersPage() {
                   ? 'bg-yellow-500 text-white border-yellow-500'
                   : s === 'active'
                   ? 'bg-green-600 text-white border-green-600'
+                  : s === 'expired'
+                  ? 'bg-rose-600 text-white border-rose-600'
                   : s === 'suspended'
                   ? 'bg-orange-600 text-white border-orange-600'
                   : s === 'rejected'
@@ -357,7 +433,7 @@ export default function AdminResellersPage() {
                 : 'bg-card text-muted-foreground border-border hover:bg-muted/40'
             }`}
           >
-            {s === 'all' ? 'All' : s === 'pending' ? 'Pending' : s === 'active' ? 'Active' : s === 'suspended' ? 'Suspended' : 'Rejected'}
+            {s === 'all' ? 'All' : s === 'pending' ? 'Pending' : s === 'active' ? 'Active' : s === 'expired' ? 'Expired' : s === 'suspended' ? 'Suspended' : 'Rejected'}
             <span className="ml-1.5 opacity-70">({counts[s]})</span>
           </button>
         ))}
@@ -396,20 +472,20 @@ export default function AdminResellersPage() {
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[11%] min-w-[95px]">Date</TableHead>
-                      <TableHead className="w-[18%] min-w-[150px]">Store Name</TableHead>
-                      <TableHead className="w-[20%] min-w-[160px]">Domain & Subdomain</TableHead>
-                      <TableHead className="w-[15%] min-w-[130px]">Owner</TableHead>
-                      <TableHead className="w-[8%] min-w-[65px] text-center">Total Orders</TableHead>
-                      <TableHead className="w-[9%] min-w-[80px]">Revenue</TableHead>
-                      <TableHead className="w-[10%] min-w-[90px]">Status</TableHead>
+                      <TableHead className="w-[10%] min-w-[85px]">Date</TableHead>
+                      <TableHead className="w-[17%] min-w-[140px]">Store Name</TableHead>
+                      <TableHead className="w-[19%] min-w-[150px]">Domain & Subdomain</TableHead>
+                      <TableHead className="w-[14%] min-w-[120px]">Owner</TableHead>
+                      <TableHead className="w-[7%] min-w-[60px] text-center">Orders</TableHead>
+                      <TableHead className="w-[8%] min-w-[75px]">Revenue</TableHead>
+                      <TableHead className="w-[13%] min-w-[110px]">Status & Expiry</TableHead>
                       <TableHead className="text-right w-[70px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedResellers.map(r => (
                       <TableRow key={r._id}>
-                        <TableCell className="w-[11%] min-w-[95px] align-top py-3 text-xs">
+                        <TableCell className="w-[10%] min-w-[85px] align-top py-3 text-xs">
                           <div className="font-semibold text-foreground">
                             {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '-'}
                           </div>
@@ -419,7 +495,7 @@ export default function AdminResellersPage() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="w-[18%] min-w-[150px] align-top py-3 whitespace-normal">
+                        <TableCell className="w-[17%] min-w-[140px] align-top py-3 whitespace-normal">
                           <div className="space-y-1 whitespace-normal">
                             <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
                             {r.description && (
@@ -429,7 +505,7 @@ export default function AdminResellersPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="w-[20%] min-w-[160px] align-top py-3">
+                        <TableCell className="w-[19%] min-w-[150px] align-top py-3">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <a
@@ -472,18 +548,47 @@ export default function AdminResellersPage() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[15%] min-w-[130px] align-top py-3">
+                        <TableCell className="w-[14%] min-w-[120px] align-top py-3">
                           <div>
                             <p className="text-sm font-medium truncate" title={r.userId?.name || 'Unknown'}>{r.userId?.name || 'Unknown'}</p>
                             <p className="text-xs text-muted-foreground truncate" title={r.contact?.phone || r.userId?.email}>{r.contact?.phone || r.userId?.email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="w-[8%] min-w-[65px] text-center align-top py-3">{r.totalOrders || 0}</TableCell>
-                        <TableCell className="w-[9%] min-w-[80px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
-                        <TableCell className="w-[10%] min-w-[90px] align-top py-3">
-                          <Badge variant="outline" className={`text-xs whitespace-nowrap ${statusBadgeColor[r.status] || ''}`}>
-                            {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
-                          </Badge>
+                        <TableCell className="w-[7%] min-w-[60px] text-center align-top py-3">{r.totalOrders || 0}</TableCell>
+                        <TableCell className="w-[8%] min-w-[75px] align-top py-3 font-semibold">৳{(r.totalRevenue || 0).toLocaleString()}</TableCell>
+                        <TableCell className="w-[13%] min-w-[110px] align-top py-3">
+                          <div className="space-y-1">
+                            <Badge variant="outline" className={`text-xs whitespace-nowrap ${statusBadgeColor[r.status] || ''}`}>
+                              {r.status === 'active' ? '● Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'expired' ? '⌛ Expired' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
+                            </Badge>
+                            {r.status === 'active' && r.expiresAt && (
+                              <div className="text-[11px] leading-tight">
+                                {(() => {
+                                  const exp = new Date(r.expiresAt);
+                                  const diffDays = Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                  const isUrgent = diffDays <= 5;
+                                  return (
+                                    <span className={isUrgent ? 'text-amber-600 font-semibold block' : 'text-muted-foreground block'}>
+                                      মেয়াদ: {exp.toLocaleDateString()}
+                                      <span className="block text-[10px] opacity-85">
+                                        {diffDays > 0 ? `(${diffDays} দিন বাকি)` : '(আজ শেষ)'}
+                                      </span>
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {r.status === 'expired' && (
+                              <div className="text-[10px] text-rose-600 font-semibold leading-tight">
+                                {r.expiresAt ? `মেয়াদ শেষ: ${new Date(r.expiresAt).toLocaleDateString()}` : 'মেয়াদ উত্তীর্ণ'}
+                              </div>
+                            )}
+                            {r.status === 'active' && !r.expiresAt && (
+                              <div className="text-[10px] text-emerald-600/80">
+                                আনলিমিটেড মেয়াদ
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right w-[70px] align-top py-3">
                           <DropdownMenu>
@@ -493,15 +598,15 @@ export default function AdminResellersPage() {
                                 <span className="sr-only">Actions</span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuContent align="end" className="w-52">
                               {r.status === 'pending' && (
                                 <>
                                   <DropdownMenuItem
                                     className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                                    onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                    onClick={() => openActivationModal(r)}
                                   >
                                     <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                                    Approve Store
+                                    Approve Store (Set Expiry)
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="cursor-pointer font-bold text-rose-600 focus:text-rose-700 text-xs"
@@ -513,21 +618,39 @@ export default function AdminResellersPage() {
                                 </>
                               )}
                               {r.status === 'active' && (
+                                <>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer font-semibold text-primary focus:text-primary text-xs"
+                                    onClick={() => openActivationModal(r)}
+                                  >
+                                    <Calendar className="mr-2 h-4 w-4 text-primary" />
+                                    Extend / Edit Expiry Date
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
+                                    onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                                  >
+                                    <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
+                                    Suspend Store
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {r.status === 'expired' && (
                                 <DropdownMenuItem
-                                  className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
-                                  onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                                  className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                                  onClick={() => openActivationModal(r)}
                                 >
-                                  <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
-                                  Suspend Store
+                                  <RefreshCw className="mr-2 h-4 w-4 text-emerald-600" />
+                                  Renew / Re-activate Store
                                 </DropdownMenuItem>
                               )}
                               {(r.status === 'suspended' || r.status === 'rejected') && (
                                 <DropdownMenuItem
                                   className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                                  onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                  onClick={() => openActivationModal(r)}
                                 >
                                   <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                                  Activate Store
+                                  Activate Store (Set Expiry)
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -582,9 +705,21 @@ export default function AdminResellersPage() {
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadgeColor[r.status] || ''}`}>
-                        {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${statusBadgeColor[r.status] || ''}`}>
+                          {r.status === 'active' ? 'Active' : r.status === 'pending' ? 'Pending Approval' : r.status === 'expired' ? 'Expired' : r.status === 'rejected' ? 'Rejected' : 'Suspended'}
+                        </Badge>
+                        {r.status === 'active' && r.expiresAt && (
+                          <span className="text-[10px] text-muted-foreground">
+                            মেয়াদ: {new Date(r.expiresAt).toLocaleDateString()}
+                          </span>
+                        )}
+                        {r.status === 'expired' && (
+                          <span className="text-[10px] text-rose-600 font-bold">
+                            {r.expiresAt ? `মেয়াদ শেষ: ${new Date(r.expiresAt).toLocaleDateString()}` : 'মেয়াদ শেষ'}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-xs space-y-1.5">
@@ -638,15 +773,15 @@ export default function AdminResellersPage() {
                             Actions
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-52">
                           {r.status === 'pending' && (
                             <>
                               <DropdownMenuItem
                                 className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                                onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                                onClick={() => openActivationModal(r)}
                               >
                                 <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                                Approve Store
+                                Approve Store (Set Expiry)
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="cursor-pointer font-bold text-rose-600 focus:text-rose-700 text-xs"
@@ -658,21 +793,39 @@ export default function AdminResellersPage() {
                             </>
                           )}
                           {r.status === 'active' && (
+                            <>
+                              <DropdownMenuItem
+                                className="cursor-pointer font-semibold text-primary focus:text-primary text-xs"
+                                onClick={() => openActivationModal(r)}
+                              >
+                                <Calendar className="mr-2 h-4 w-4 text-primary" />
+                                Extend / Edit Expiry Date
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
+                                onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                              >
+                                <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
+                                Suspend Store
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {r.status === 'expired' && (
                             <DropdownMenuItem
-                              className="cursor-pointer font-semibold text-rose-600 focus:text-rose-700 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'suspended', r.storeName)}
+                              className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
+                              onClick={() => openActivationModal(r)}
                             >
-                              <ShieldAlert className="mr-2 h-4 w-4 text-rose-600" />
-                              Suspend Store
+                              <RefreshCw className="mr-2 h-4 w-4 text-emerald-600" />
+                              Renew / Re-activate Store
                             </DropdownMenuItem>
                           )}
                           {(r.status === 'suspended' || r.status === 'rejected') && (
                             <DropdownMenuItem
                               className="cursor-pointer font-bold text-emerald-600 focus:text-emerald-700 text-xs"
-                              onClick={() => handleStatusChange(r._id, 'active', r.storeName)}
+                              onClick={() => openActivationModal(r)}
                             >
                               <Check className="mr-2 h-4 w-4 text-emerald-600" />
-                              Activate Store
+                              Activate Store (Set Expiry)
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
@@ -975,6 +1128,149 @@ export default function AdminResellersPage() {
             >
               {savingCourier && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Save Courier Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Reseller Activation & Expiry Configuration Dialog */}
+      <Dialog open={activationDialogOpen} onOpenChange={setActivationDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              {targetReseller?.status === 'active' ? 'সাবস্ক্রিপশন মেয়াদ বৃদ্ধি / পরিবর্তন' : 'রিসেলার সক্রিয় ও মেয়াদ নির্ধারণ'}
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-foreground">{targetReseller?.storeName}</span> স্টোরের জন্য এক্সপায়ার ডেট সেট করুন। নির্ধারিত মেয়াদ পার হলে স্টোরটি স্বয়ংক্রিয়ভাবে Expired (Inactive) হয়ে যাবে।
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* Store Info Summary */}
+            <div className="p-3 bg-muted/30 rounded-xl border flex items-center justify-between text-xs">
+              <div>
+                <p className="font-bold text-foreground">{targetReseller?.storeName}</p>
+                <p className="text-muted-foreground text-[11px]">{targetReseller?.subdomain}.{ROOT_DOMAIN}</p>
+              </div>
+              <Badge variant="outline" className={`text-[10px] ${statusBadgeColor[targetReseller?.status] || ''}`}>
+                {targetReseller?.status === 'active' ? 'Active' : targetReseller?.status === 'pending' ? 'Pending' : targetReseller?.status === 'expired' ? 'Expired' : 'Suspended'}
+              </Badge>
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                দ্রুত মেয়াদ সিলেক্ট করুন (Quick Presets)
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setQuickExpiry(30)}
+                >
+                  +১ মাস (৩০ দিন)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setQuickExpiry(90)}
+                >
+                  +৩ মাস (৯০ দিন)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setQuickExpiry(180)}
+                >
+                  +৬ মাস (১৮০ দিন)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setQuickExpiry(365)}
+                >
+                  +১ বছর (৩৬৫ দিন)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => setQuickExpiry(730)}
+                >
+                  +২ বছর
+                </Button>
+                <Button
+                  type="button"
+                  variant={isNoExpiry ? "default" : "outline"}
+                  size="sm"
+                  className="text-xs h-8"
+                  onClick={() => {
+                    setIsNoExpiry(true);
+                    setExpiryDate('');
+                  }}
+                >
+                  আনলিমিটেড মেয়াদ
+                </Button>
+              </div>
+            </div>
+
+            {/* Date Input */}
+            {!isNoExpiry ? (
+              <div className="space-y-1.5 pt-1">
+                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                  নির্দিষ্ট এক্সপায়ার তারিখ (Expiry Date)
+                </label>
+                <Input
+                  type="date"
+                  value={expiryDate}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => {
+                    setExpiryDate(e.target.value);
+                    setIsNoExpiry(false);
+                  }}
+                  className="h-10 text-sm font-medium"
+                />
+                {expiryDate && (
+                  <p className="text-[11px] text-muted-foreground">
+                    সিলেক্টেড মেয়াদ: <strong className="text-primary">{new Date(expiryDate).toLocaleDateString()}</strong> পর্যন্ত স্টোর সক্রিয় থাকবে।
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                ✔ এই স্টোরটির কোনো এক্সপায়ার ডেট থাকবে না (স্থায়ীভাবে সক্রিয় থাকবে)।
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActivationDialogOpen(false)}
+              disabled={savingActivation}
+            >
+              বাতিল
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmActivation}
+              disabled={savingActivation}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {savingActivation && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {targetReseller?.status === 'active' ? 'মেয়াদ আপডেট করুন' : 'সক্রিয় করুন ও সেভ করুন'}
             </Button>
           </DialogFooter>
         </DialogContent>

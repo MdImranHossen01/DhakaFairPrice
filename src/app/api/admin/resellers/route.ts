@@ -11,6 +11,18 @@ export async function GET(request: NextRequest) {
   }
 
   await dbConnect();
+
+  // Automatically update active resellers whose expiresAt has passed to 'expired'
+  await Reseller.updateMany(
+    {
+      status: 'active',
+      expiresAt: { $ne: null, $lte: new Date() },
+    },
+    {
+      $set: { status: 'expired' },
+    }
+  );
+
   const resellers = await Reseller.find().populate('userId', 'name email').sort({ createdAt: -1 }).lean();
 
   return NextResponse.json({ resellers });
@@ -24,7 +36,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { resellerId, status, commissionRate, suspendReason, subdomain, customDomain, storeName } = body;
+    const { resellerId, status, commissionRate, suspendReason, subdomain, customDomain, storeName, expiresAt } = body;
 
     if (!resellerId) {
       return NextResponse.json({ error: 'resellerId is required' }, { status: 400 });
@@ -33,10 +45,16 @@ export async function PATCH(request: NextRequest) {
     await dbConnect();
 
     const updatePayload: any = {};
+    if (expiresAt !== undefined) {
+      updatePayload.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    }
     if (status) {
       updatePayload.status = status;
       if (status === 'active') {
         updatePayload.approvedAt = new Date();
+        if (expiresAt !== undefined) {
+          updatePayload.expiresAt = expiresAt ? new Date(expiresAt) : null;
+        }
       } else if (status === 'suspended') {
         updatePayload.suspendedAt = new Date();
         updatePayload.suspendReason = suspendReason || '';

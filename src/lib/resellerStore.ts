@@ -17,6 +17,11 @@ export async function getResellerBySubdomain(subdomain: string) {
 
   if (!reseller) return null;
 
+  if (reseller.expiresAt && new Date(reseller.expiresAt) <= new Date()) {
+    await Reseller.findByIdAndUpdate(reseller._id, { $set: { status: 'expired' } });
+    return null;
+  }
+
   // Load Mother settings to fill in any gaps
   const motherSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean();
 

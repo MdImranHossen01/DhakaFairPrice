@@ -88,6 +88,7 @@ export interface IReseller extends Document {
   approvedAt?: Date;
   suspendedAt?: Date;
   suspendReason?: string;
+  expiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,7 +112,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
     marqueeText: { type: String },
     status: {
       type: String,
-      enum: ['pending', 'active', 'suspended', 'expired'],
+      enum: ['pending', 'active', 'suspended', 'expired', 'rejected'],
       default: 'pending',
     },
     commissionRate: { type: Number, default: 10, min: 0, max: 100 },
@@ -172,6 +173,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
     approvedAt: { type: Date },
     suspendedAt: { type: Date },
     suspendReason: { type: String },
+    expiresAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -188,6 +190,7 @@ ResellerSchema.pre('updateOne', function(this: any, next: any) {
 
 ResellerSchema.index({ customDomain: 1 }, { sparse: true });
 ResellerSchema.index({ status: 1 });
+ResellerSchema.index({ expiresAt: 1 });
 
 const Reseller: Model<IReseller> =
   mongoose.models.Reseller || mongoose.model<IReseller>('Reseller', ResellerSchema);

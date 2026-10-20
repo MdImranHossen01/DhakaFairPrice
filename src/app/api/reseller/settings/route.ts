@@ -19,6 +19,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Reseller not found' }, { status: 404 });
     }
 
+    // Check if active subscription has expired
+    if (reseller.status === 'active' && reseller.expiresAt && new Date(reseller.expiresAt) <= new Date()) {
+      reseller.status = 'expired';
+      await Reseller.findByIdAndUpdate(reseller._id, { $set: { status: 'expired' } });
+    }
+
     // Auto-reconcile any Delivered/Paid commissions
     const { reconcileResellerCommissions } = await import('@/lib/resellerCommissionSync');
     await reconcileResellerCommissions(reseller._id);
