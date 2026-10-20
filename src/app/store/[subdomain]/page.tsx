@@ -138,7 +138,7 @@ export default async function ResellerStorePage({ params }: Props) {
     .limit(200)
     .lean();
 
-  const products = (rawProducts || []).map((rp: any) => {
+  const allProducts = (rawProducts || []).map((rp: any) => {
     const parent = rp.productId || {};
     const finalPrice = typeof rp.retailPrice === 'number' && !isNaN(rp.retailPrice)
       ? rp.retailPrice
@@ -147,15 +147,20 @@ export default async function ResellerStorePage({ params }: Props) {
       ? parent.price
       : (typeof rp.motherPrice === 'number' && rp.motherPrice > 0 ? rp.motherPrice : finalPrice);
 
+    // isOwnProduct: uploaded directly by this reseller
+    const isOwnProduct = parent.uploadedBy &&
+      parent.uploadedBy.toString() === reseller._id.toString();
+
     return {
       _id: rp._id.toString(),
       productId: parent._id ? parent._id.toString() : rp.productId?.toString(),
       name: rp.name || parent.name || 'Product',
       slug: rp.slug || parent.slug,
       price: regularPrice,
-      salePrice: finalPrice,
+      salePrice: finalPrice !== regularPrice ? finalPrice : undefined,
       retailPrice: rp.retailPrice,
       uploadedBy: parent.uploadedBy,
+      isOwnProduct,
       images: rp.images?.length > 0 ? rp.images : parent.images || [],
       description: parent.description,
       categories: parent.categories || [],
@@ -172,6 +177,19 @@ export default async function ResellerStorePage({ params }: Props) {
       createdAt: rp.createdAt || parent.createdAt,
     };
   });
+
+  // Deduplicate by slug: prefer reseller's own product over mother catalog entry
+  const slugMap = new Map<string, typeof allProducts[number]>();
+  for (const p of allProducts) {
+    const key = p.slug || p._id;
+    const existing = slugMap.get(key);
+    if (!existing) {
+      slugMap.set(key, p);
+    } else if (p.isOwnProduct && !existing.isOwnProduct) {
+      slugMap.set(key, p);
+    }
+  }
+  const products = Array.from(slugMap.values());
 
   // Extract unique categories from reseller's products
   const categoryMap = new Map<string, any>();

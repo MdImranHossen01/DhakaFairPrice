@@ -316,7 +316,7 @@ export default function SectionSettingsEditor({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase opacity-50">Regular Price</Label>
+                    <Label className="text-[10px] font-bold uppercase opacity-50">Price</Label>
                     <Input 
                       type="number"
                       value={section.content?.price ?? 0} 
@@ -325,7 +325,7 @@ export default function SectionSettingsEditor({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase opacity-50">Sale Price</Label>
+                    <Label className="text-[10px] font-bold uppercase opacity-50">Discounted Price</Label>
                     <Input 
                       type="number"
                       value={section.content?.salePrice ?? 0} 

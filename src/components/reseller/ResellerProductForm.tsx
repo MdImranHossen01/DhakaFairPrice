@@ -126,12 +126,12 @@ const productSchema = z.object({
         path: ['price'],
       });
     }
-    // Validate: salePrice must not exceed regular price
+    // Validate: salePrice must not exceed price
     const salePriceVal = data.salePrice === '' || data.salePrice === undefined ? undefined : Number(data.salePrice);
     if (salePriceVal !== undefined && priceVal > 0 && salePriceVal > priceVal) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Sale price cannot exceed regular price',
+        message: 'Discounted price cannot exceed price',
         path: ['salePrice'],
       });
     }
@@ -165,7 +165,7 @@ const productSchema = z.object({
         if (sizeSalePrice !== undefined && sizePrice > 0 && sizeSalePrice > sizePrice) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'Sale price cannot exceed regular price',
+            message: 'Discounted price cannot exceed price',
             path: ['variants', vIdx, 'sizes', sIdx, 'salePrice'],
           });
         }
@@ -917,7 +917,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                       </div>
                                       <div>
                                         <Label className="text-xs font-medium text-muted-foreground">
-                                          Selling Price <span className="text-destructive">*</span>
+                                          Price (Tk) <span className="text-destructive">*</span>
                                         </Label>
                                         <Input
                                           type="number"
@@ -930,9 +930,12 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                             const disc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`) || 0;
                                             const currentSale = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`);
                                             const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
-                                            if (disc > 0 && prc > 0) {
+                                            if (prc <= 0) {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, undefined);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
+                                            } else if (disc > 0) {
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, Math.round(prc * (1 - disc / 100)));
-                                            } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                                            } else if (currentSaleNum !== undefined && currentSaleNum > prc) {
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, prc);
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
                                             }
@@ -997,9 +1000,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         <Label className="text-xs font-medium text-muted-foreground">Discount (%)</Label>
                                         <Input
                                           type="number"
-                                          placeholder="0"
+                                          placeholder={!(Number(form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.price`)) > 0) ? '-' : '0'}
+                                          disabled={!(Number(form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.price`)) > 0)}
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`) ?? ''}
-                                          className="h-9 mt-1"
+                                          className="h-9 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                           onChange={(e) => {
                                             const disc = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
                                             form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, disc);
@@ -1013,12 +1017,13 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                         />
                                       </div>
                                       <div>
-                                        <Label className="text-xs font-medium text-muted-foreground">Offer Price</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Discounted Price (Tk)</Label>
                                         <Input
                                           type="number"
-                                          placeholder="Optional"
+                                          placeholder={!(Number(form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.price`)) > 0) ? 'Enter price first' : 'Optional'}
+                                          disabled={!(Number(form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.price`)) > 0)}
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`) ?? ''}
-                                          className="h-9 mt-1"
+                                          className="h-9 mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                           onChange={(e) => {
                                             const rawVal = e.target.value;
                                             const prc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.price`) || 0;
@@ -1029,7 +1034,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                             }
                                             let sale = parseFloat(rawVal) || 0;
                                             if (prc > 0 && sale > prc) {
-                                              // Clamp: sale price cannot exceed regular price
+                                              // Clamp: discounted price cannot exceed price
                                               sale = prc;
                                             }
                                             form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, sale);
@@ -1079,7 +1084,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Regular Price (Tk)
+                          Price (Tk)
                           {variantFields.length > 0
                             ? <span className="ml-1 text-xs font-normal text-muted-foreground">(Optional)</span>
                             : <span className="ml-1 text-xs font-normal text-destructive">*</span>
@@ -1091,16 +1096,19 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                             placeholder="0.00"
                             {...field}
                             value={field.value ?? ''}
-                            onChange={(e) => {
+                           onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                               field.onChange(value);
                               const prc = value === '' ? 0 : Number(value);
                               const discount = form.getValues('discountRate') || 0;
                               const currentSale = form.getValues('salePrice');
                               const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
-                              if (discount > 0 && prc > 0) {
+                              if (prc <= 0) {
+                                form.setValue('salePrice', undefined);
+                                form.setValue('discountRate', 0);
+                              } else if (discount > 0) {
                                 form.setValue('salePrice', Math.round(prc * (1 - discount / 100)));
-                              } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                              } else if (currentSaleNum !== undefined && currentSaleNum > prc) {
                                 form.setValue('salePrice', prc);
                                 form.setValue('discountRate', 0);
                               }
@@ -1142,7 +1150,9 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="0"
+                            placeholder={!(Number(form.watch('price')) > 0) ? '-' : '0'}
+                            disabled={!(Number(form.watch('price')) > 0)}
+                            className="disabled:opacity-50 disabled:cursor-not-allowed"
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => {
@@ -1167,11 +1177,13 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     name="salePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sale / Offer Price (Tk)</FormLabel>
+                        <FormLabel>Discounted Price (Tk)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="0.00"
+                            placeholder={!(Number(form.watch('price')) > 0) ? 'Enter price first' : '0.00'}
+                            disabled={!(Number(form.watch('price')) > 0)}
+                            className="disabled:opacity-50 disabled:cursor-not-allowed"
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => {
@@ -1184,7 +1196,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                               }
                               let sale = parseFloat(rawVal) || 0;
                               if (price > 0 && sale > price) {
-                                // Clamp: sale price cannot exceed regular price
+                                // Clamp: discounted price cannot exceed price
                                 sale = price;
                               }
                               field.onChange(sale);

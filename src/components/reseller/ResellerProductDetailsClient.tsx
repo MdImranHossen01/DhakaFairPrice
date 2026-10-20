@@ -130,8 +130,13 @@ export default function ResellerProductDetailsClient({
   const hasVariants = (uniqueColors.length > 0 || uniqueSizes.length > 0);
   const currentVariant = activeVariant || (product.variants?.[0] ?? null);
 
-  const displayPrice = hasVariants ? (currentVariant?.price ?? product.retailPrice ?? product.price ?? 0) : (product.retailPrice ?? product.price ?? 0);
-  const displaySalePrice = hasVariants ? (currentVariant?.salePrice ?? undefined) : undefined;
+  // For non-variant products: price = regular (mother) price, salePrice = reseller's selling price
+  const displayPrice = hasVariants
+    ? (currentVariant?.price ?? product.retailPrice ?? product.price ?? 0)
+    : (product.price ?? product.retailPrice ?? 0);
+  const displaySalePrice = hasVariants
+    ? (currentVariant?.salePrice ?? undefined)
+    : (product.salePrice != null && product.salePrice !== product.price ? product.salePrice : undefined);
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const discount = (displayPrice > 0 && displaySalePrice && displaySalePrice < displayPrice)

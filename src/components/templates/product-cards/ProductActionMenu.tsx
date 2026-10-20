@@ -87,10 +87,11 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
       : product.uploadedBy?.toString();
 
   const isOwnProduct = Boolean(
-    uploadedById && (uploadedById === resellerId || uploadedById === currentUserId)
+    product.isOwnProduct ||
+    (uploadedById && (uploadedById === resellerId || uploadedById === currentUserId))
   );
 
-  const isResellerProduct = Boolean(uploadedById);
+  const isResellerProduct = Boolean(uploadedById || product.isOwnProduct);
 
   const initialStoreName =
     (typeof product.uploadedBy === 'object' && product.uploadedBy !== null
