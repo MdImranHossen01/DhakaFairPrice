@@ -21,7 +21,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { Loader2, Truck, CreditCard, BarChart3, Settings2, Zap, ShieldCheck, CheckCircle2, XCircle, AlertCircle, RefreshCcw, ExternalLink, Globe, X, Wallet, Banknote } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Loader2, Truck, CreditCard, BarChart3, Settings2, Zap, ShieldCheck, CheckCircle2, XCircle, AlertCircle, RefreshCcw, ExternalLink, Globe, X, Wallet, Banknote, Eye, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -117,6 +124,7 @@ export default function MarketingSettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState<TrackingStatus>(null);
   const [trackingStatusLoading, setTrackingStatusLoading] = useState(false);
+  const [showQrPreviewModal, setShowQrPreviewModal] = useState(false);
 
   const form = useForm<MarketingSettingsFormValues>({
     resolver: zodResolver(marketingSettingsSchema) as any,
@@ -791,37 +799,173 @@ export default function MarketingSettingsPage() {
                         control={form.control}
                         name="manualPaymentConfig.banglaQr.qrCode"
                         render={({ field }) => (
-                          <div className="flex items-center gap-4">
-                            {field.value && (
-                              <div className="h-20 w-20 rounded-xl border bg-white p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
-                                <Image src={field.value} alt="Bangla QR" width={80} height={80} className="max-h-full max-w-full object-contain" />
-                                <button
-                                  type="button"
-                                  onClick={() => field.onChange('')}
-                                  className="absolute inset-0 bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"
-                                >
-                                  <X className="h-5 w-5" />
-                                </button>
+                          <div>
+                            {field.value ? (
+                              <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-background rounded-2xl border border-primary/20 shadow-sm">
+                                <div className="relative group shrink-0">
+                                  <div className="h-28 w-28 rounded-xl border bg-white p-2 flex items-center justify-center overflow-hidden shadow-sm">
+                                    <Image
+                                      src={field.value}
+                                      alt="Bangla QR"
+                                      width={112}
+                                      height={112}
+                                      className="max-h-full max-w-full object-contain"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex-1 space-y-2 text-center sm:text-left">
+                                  <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs font-bold gap-1">
+                                      <CheckCircle2 className="h-3.5 w-3.5" /> QR Code Uploaded
+                                    </Badge>
+                                    <Badge variant="outline" className="text-[10px] font-semibold">
+                                      Universal Pay Active
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    কাস্টমার চেকআউট পেজে এই কিউআর স্ক্যান করে পেমেন্ট সম্পন্ন করতে পারবেন।
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start pt-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowQrPreviewModal(true)}
+                                      className="h-8 text-xs font-bold gap-1.5 rounded-lg border-primary/20 hover:bg-primary/5"
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-primary" /> Preview Customer Modal
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => field.onChange('')}
+                                      className="h-8 text-xs font-bold gap-1.5 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                                    >
+                                      <X className="h-3.5 w-3.5" /> Remove / Change
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                            )}
-                            <div className="flex-1">
+                            ) : (
                               <ImageUpload
                                 onUpload={(url) => field.onChange(url)}
-                                className="h-20 rounded-xl border-2 border-dashed border-primary/20 hover:border-primary transition-all bg-card"
+                                className="h-24 rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary transition-all bg-card"
                               />
-                            </div>
+                            )}
                           </div>
                         )}
                       />
                     </div>
-                    <div className="p-4 bg-card rounded-2xl border border-primary/10">
+                    <div className="p-4 bg-card rounded-2xl border border-primary/10 space-y-2">
+                      <div className="flex items-center gap-2 font-bold text-xs text-primary">
+                        <Globe className="h-4 w-4" />
+                        <span>Bangla QR Universal Interoperability</span>
+                      </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        <strong>Tip:</strong> আপনার ব্যাংক বা মোবাইল ফাইন্যান্সিয়াল অ্যাপ (যেমন: Citytouch, bKash Merchant, ইত্যাদি) থেকে ডাউনলোডকৃত বাংলা কিউআর কোডের ছবিটি এখানে আপলোড করুন।
+                        আপনার ব্যাংক বা মোবাইল ফাইন্যান্সিয়াল অ্যাপ (যেমন: Citytouch, bKash Merchant, EBL SKYBANKING ইত্যাদি) থেকে ডাউনলোডকৃত বাংলা কিউআর কোডের ছবিটি আপলোড করুন। যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে গ্রাহক সরাসরি স্ক্যান করতে পারবেন।
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Smart Bangla QR Customer Preview Modal */}
+              <Dialog open={showQrPreviewModal} onOpenChange={setShowQrPreviewModal}>
+                <DialogContent className="sm:max-w-[430px] rounded-3xl p-0 overflow-hidden border-none shadow-2xl flex flex-col max-h-[92vh]">
+                  <DialogHeader className="py-4 px-6 bg-gradient-to-br from-primary to-primary/80 text-white relative shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
+                        <Globe className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <DialogTitle className="text-base md:text-lg font-black uppercase tracking-tight">
+                            Pay via Bangla QR
+                          </DialogTitle>
+                          <Badge className="bg-white/20 text-white border-none text-[9px] font-bold px-1.5 py-0">
+                            Live Preview
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-white/80 font-medium">কাস্টমার ভিউ প্রিভিউ (চেকআউট পেজে যেভাবে দেখাবে)</p>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 max-h-[65vh]">
+                    {/* Smart QR Card */}
+                    <div className="relative bg-gradient-to-b from-primary/10 via-primary/5 to-transparent rounded-3xl p-5 border-2 border-primary/20 flex flex-col items-center text-center shadow-inner">
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary">Interoperable Universal QR</span>
+                      </div>
+
+                      {/* QR Frame with stylish scanner corners */}
+                      <div className="relative p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border-2 border-primary/20">
+                        <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary rounded-tl" />
+                        <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary rounded-tr" />
+                        <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary rounded-bl" />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary rounded-br" />
+
+                        {form.watch('manualPaymentConfig.banglaQr.qrCode') ? (
+                          <Image
+                            src={form.watch('manualPaymentConfig.banglaQr.qrCode')}
+                            alt="Bangla QR"
+                            width={180}
+                            height={180}
+                            className="h-44 w-44 object-contain rounded-lg"
+                          />
+                        ) : (
+                          <div className="h-44 w-44 flex flex-col items-center justify-center text-muted-foreground bg-muted/30 rounded-lg">
+                            <QrCode className="h-16 w-16 opacity-30 mb-2" />
+                            <p className="text-[10px] font-medium">কোনো কিউআর আপলোড করা হয়নি</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Supported apps pill */}
+                      <div className="mt-3.5 flex flex-wrap items-center justify-center gap-1 max-w-[320px]">
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">bKash</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Nagad</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Rocket</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Citytouch</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Cellfin</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">যেকোনো ব্যাংক অ্যাপ</Badge>
+                      </div>
+
+                      <div className="mt-3 py-1 px-4 bg-primary/10 rounded-full border border-primary/20">
+                        <span className="text-xs font-black text-primary">নমুনা মোট অ্যামাউন্ট: ৳২,৫০০</span>
+                      </div>
+                    </div>
+
+                    {/* Instruction Panel */}
+                    <div className="bg-slate-50 dark:bg-zinc-950 rounded-2xl p-4 border border-slate-200 dark:border-zinc-800 space-y-2">
+                      <p className="text-[11px] font-black text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        পেমেন্ট নির্দেশিকা (পড়ুন):
+                      </p>
+                      <div className="space-y-1.5 text-[10px] leading-relaxed text-slate-600 dark:text-zinc-400 font-medium">
+                        <p>১. আপনার ব্যাংক (Citytouch, EBL, ইত্যাদি) বা MFS (বিকাশ, নগদ, রকেট) অ্যাপ ওপেন করুন।</p>
+                        <p>২. অ্যাপের <strong>"QR Pay"</strong> বা <strong>"Scan QR"</strong> অপশন সিলেক্ট করে ওপরের কোডটি স্ক্যান করুন।</p>
+                        <p>৩. মোট পেমেন্ট অ্যামাউন্ট নিশ্চিত করে সেন্ড/পে সম্পন্ন করুন।</p>
+                        <p>৪. সফলভাবে পেমেন্টের পর নিচের ঘরে <strong>TrxID</strong> বা <strong>মোবাইল নম্বর</strong> প্রদান করে কনফার্ম করুন।</p>
+                      </div>
+                    </div>
+
+                    {/* Sample Verification Fields */}
+                    <div className="space-y-2 pt-1 opacity-75 pointer-events-none">
+                      <Label className="text-[10px] font-black uppercase opacity-60">ট্রানজেকশন আইডি (TrxID)</Label>
+                      <Input placeholder="যেমন: 8N7A6D5C" disabled className="h-9 rounded-lg text-xs bg-background" />
+                    </div>
+                  </div>
+
+                  <DialogFooter className="p-4 bg-muted/20 border-t flex flex-row justify-end">
+                    <Button onClick={() => setShowQrPreviewModal(false)} className="rounded-full h-9 px-6 font-bold text-xs">
+                      বন্ধ করুন
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Payment Instructions Card */}
               <Card>

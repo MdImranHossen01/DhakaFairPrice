@@ -1121,66 +1121,110 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           {/* Scrollable Modal Body */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-h-[60vh] pr-2">
             {/* Payment Info */}
-            <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 space-y-3">
-              {selectedMethod?.id !== 'banglaQr' && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-50">Send Money To</span>
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-bold text-[9px] py-0.5 px-1.5">
-                      Personal Number
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 mt-1">
-                    <p className="text-lg font-black tracking-widest text-slate-900 dark:text-zinc-50 bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-primary/10 flex-1 text-center select-all">
-                      {selectedMethod?.number}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 rounded-lg text-[10px] font-bold border hover:bg-primary hover:text-white transition-all shrink-0"
-                      onClick={() => {
-                        if (selectedMethod?.number) {
-                          navigator.clipboard.writeText(selectedMethod.number);
-                          toast.success('Number copied to clipboard!');
-                        }
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {(selectedMethod?.qrCode || selectedMethod?.id === 'banglaQr') && (
-                <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-primary/10">
-                  <p className="text-[9px] font-bold uppercase opacity-40">Scan QR Code to Pay</p>
-                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-primary/10">
-                    <Image
-                      src={selectedMethod?.qrCode || '/assets/placeholder-qr.png'}
-                      alt="QR"
-                      width={128}
-                      height={128}
-                      className="h-32 w-32 object-contain"
-                    />
-                  </div>
+            {selectedMethod?.id === 'banglaQr' ? (
+              <div className="relative bg-gradient-to-b from-primary/10 via-primary/5 to-transparent rounded-3xl p-4 border-2 border-primary/20 flex flex-col items-center text-center shadow-inner">
+                <div className="flex items-center gap-1.5 mb-2.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-primary">Interoperable Universal QR</span>
                 </div>
-              )}
-            </div>
+
+                {/* QR Frame with stylish scanner corners */}
+                <div className="relative p-2.5 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border-2 border-primary/20">
+                  <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary rounded-tl" />
+                  <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary rounded-tr" />
+                  <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary rounded-bl" />
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary rounded-br" />
+
+                  <Image
+                    src={selectedMethod?.qrCode || '/assets/placeholder-qr.png'}
+                    alt="Bangla QR"
+                    width={180}
+                    height={180}
+                    className="h-44 w-44 object-contain rounded-lg"
+                  />
+                </div>
+
+                {/* Supported apps badges */}
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-1 max-w-[320px]">
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">bKash</Badge>
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Nagad</Badge>
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Rocket</Badge>
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Citytouch</Badge>
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">Cellfin</Badge>
+                  <Badge variant="outline" className="text-[9px] font-bold bg-white/70 dark:bg-zinc-800 border-primary/20">যেকোনো ব্যাংক</Badge>
+                </div>
+
+                <div className="mt-2.5 py-1 px-4 bg-primary/10 rounded-full border border-primary/20">
+                  <span className="text-xs font-black text-primary">
+                    মোট প্রদেয়: ৳{Math.round(finalTotal)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-black uppercase tracking-widest opacity-50">Send Money To</span>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-bold text-[9px] py-0.5 px-1.5">
+                    Personal Number
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-3 mt-1">
+                  <p className="text-lg font-black tracking-widest text-slate-900 dark:text-zinc-50 bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-primary/10 flex-1 text-center select-all">
+                    {selectedMethod?.number}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg text-[10px] font-bold border hover:bg-primary hover:text-white transition-all shrink-0"
+                    onClick={() => {
+                      if (selectedMethod?.number) {
+                        navigator.clipboard.writeText(selectedMethod.number);
+                        toast.success('Number copied to clipboard!');
+                      }
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+
+                {selectedMethod?.qrCode && (
+                  <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-primary/10">
+                    <p className="text-[9px] font-bold uppercase opacity-40">Scan QR Code to Pay</p>
+                    <div className="p-1.5 bg-white rounded-lg shadow-sm border border-primary/10">
+                      <Image
+                        src={selectedMethod?.qrCode || '/assets/placeholder-qr.png'}
+                        alt="QR"
+                        width={128}
+                        height={128}
+                        className="h-32 w-32 object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Instruction Panel */}
             <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-3 border border-slate-200 dark:border-zinc-800 space-y-1.5">
               <p className="text-[10px] font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider">পেমেন্ট নির্দেশিকা (পড়ুন):</p>
               <div className="max-h-24 overflow-y-auto pr-1 space-y-1 text-[9px] leading-relaxed text-slate-600 dark:text-zinc-400 font-medium">
-                <p>
-                  ১. আপনার <strong>{selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'}</strong> অ্যাপে যান অথবা USSD ডায়াল করে <strong>"Send Money"</strong> অপশন সিলেক্ট করুন।
-                </p>
-                {selectedMethod?.id !== 'banglaQr' ? (
-                  <p>২. উপরে দেওয়া <strong>Personal</strong> নম্বরটি কপি করে প্রাপক হিসেবে দিন।</p>
+                {selectedMethod?.id === 'banglaQr' ? (
+                  <>
+                    <p>১. আপনার ব্যাংক (Citytouch, EBL, ইত্যাদি) বা MFS (বিকাশ, নগদ, রকেট) অ্যাপ ওপেন করুন।</p>
+                    <p>২. অ্যাপের <strong>"QR Pay"</strong> বা <strong>"Scan QR"</strong> অপশন সিলেক্ট করে ওপরের কোডটি স্ক্যান করুন।</p>
+                    <p>৩. মোট পেমেন্ট অ্যামাউন্ট <strong>৳{Math.round(finalTotal)}</strong> নিশ্চিত করে সেন্ড/পে সম্পন্ন করুন।</p>
+                    <p>৪. সফলভাবে পেমেন্টের পর নিচের ঘরে <strong>TrxID</strong> বা <strong>মোবাইল নম্বর</strong> প্রদান করুন।</p>
+                  </>
                 ) : (
-                  <p>২. উপরে দেওয়া <strong>Bangla QR</strong> কোডটি আপনার ব্যাংক বা পেমেন্ট অ্যাপ দিয়ে স্ক্যান করুন।</p>
+                  <>
+                    <p>
+                      ১. আপনার <strong>{selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'}</strong> অ্যাপে যান অথবা USSD ডায়াল করে <strong>"Send Money"</strong> অপশন সিলেক্ট করুন।
+                    </p>
+                    <p>২. উপরে দেওয়া <strong>Personal</strong> নম্বরটি কপি করে প্রাপক হিসেবে দিন।</p>
+                    <p>৩. মোট পেমেন্ট অ্যামাউন্ট <strong>৳{Math.round(finalTotal)}</strong> সেন্ড মানি করুন।</p>
+                    <p>৪. সফলভাবে টাকা পাঠানোর পর নিচের ট্যাব থেকে <strong>মোবাইল নম্বর</strong> অথবা <strong>TrxID</strong> যেকোনো একটি তথ্য দিয়ে পেমেন্ট নিশ্চিত করুন।</p>
+                  </>
                 )}
-                <p>৩. মোট পেমেন্ট অ্যামাউন্ট <strong>৳{Math.round(finalTotal)}</strong> সেন্ড মানি করুন।</p>
-                <p>৪. সফলভাবে টাকা পাঠানোর পর নিচের ট্যাব থেকে <strong>মোবাইল নম্বর</strong> অথবা <strong>TrxID</strong> যেকোনো একটি তথ্য দিয়ে পেমেন্ট নিশ্চিত করুন।</p>
               </div>
             </div>
 
