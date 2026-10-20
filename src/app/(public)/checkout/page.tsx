@@ -663,8 +663,8 @@ function CheckoutContent() {
 
                   {syncData.sellerGroups && syncData.sellerGroups.length > 1 && (
                     <div className="pt-2 border-t border-amber-200 dark:border-amber-800/60 flex flex-wrap gap-1.5 items-center">
-                      <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200">শুধুমাত্র নির্দিষ্ট শপের পণ্য রাখুন:</span>
-                      {syncData.sellerGroups.map((g: any) => (
+                      <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200">শুধুমাত্র নির্দিষ্ট প্যাকেজের পণ্য রাখুন:</span>
+                      {syncData.sellerGroups.map((g: any, gIdx: number) => (
                         <Button
                           key={g.sellerId}
                           type="button"
@@ -673,7 +673,7 @@ function CheckoutContent() {
                           className="h-6 text-[11px] px-2.5 py-0 border-amber-400 bg-white dark:bg-amber-900/60 hover:bg-amber-100 text-amber-900 dark:text-amber-100 font-bold"
                           onClick={() => handleKeepOnlySeller(g.sellerId)}
                         >
-                          🏪 {g.sellerName} ({g.items.length})
+                          প্যাকেজ {gIdx + 1} ({g.items.length}টি পণ্য)
                         </Button>
                       ))}
                     </div>
@@ -683,8 +683,6 @@ function CheckoutContent() {
 
               <div className="max-h-[500px] overflow-y-auto space-y-4 pr-2 -mr-2">
                 {items.map((item, index) => {
-                  const matchedValidItem = syncData?.validItems?.find((v: any) => v.productId === item.productId);
-                  const itemSellerName = matchedValidItem?.sellerName || item.sellerName;
                   return (
                   <div key={`${item.productId}-${item.color || 'no-color'}-${item.size || 'no-size'}-${index}`} className="flex gap-4 items-start relative group">
                     <div className="h-16 w-16 rounded-md border bg-muted flex-shrink-0 relative overflow-hidden">
@@ -708,11 +706,6 @@ function CheckoutContent() {
                             <p className="text-[10px] text-muted-foreground font-medium">
                               {[item.color, item.size].filter(Boolean).join(' / ')}
                             </p>
-                          )}
-                          {itemSellerName && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground w-fit mt-1">
-                              🏪 {itemSellerName}
-                            </span>
                           )}
                         </div>
                         <button

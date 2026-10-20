@@ -497,9 +497,8 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            {sellerOrigins.map((sId) => {
+            {sellerOrigins.map((sId, sIdx) => {
               const count = cart.filter(i => ((i as any).uploadedBy ? String((i as any).uploadedBy) : 'mother') === sId).length;
-              const label = sId === 'mother' ? 'Mother Shop' : 'Reseller Shop';
               return (
                 <Button
                   key={sId}
@@ -509,7 +508,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                   className="text-xs border-amber-500/40 hover:bg-amber-500/20 text-amber-950 font-semibold"
                   onClick={() => keepOnlySeller(sId)}
                 >
-                  🏪 শুধুমাত্র {label} ({count}) রাখুন
+                  শুধুমাত্র প্যাকেজ {sIdx + 1} ({count}টি পণ্য) রাখুন
                 </Button>
               );
             })}
