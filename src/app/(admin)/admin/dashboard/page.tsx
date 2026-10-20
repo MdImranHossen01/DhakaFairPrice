@@ -39,6 +39,8 @@ import {
   AlertCircle,
   BarChart3,
   Coins,
+  Store,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -510,8 +512,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. Top KPI Cards (Rich Colorful & Fully Dynamic) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Top KPI Cards (2 rows of 3 cards = 6 cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Total Sales Card */}
         <Link
           href="/admin/orders"
@@ -624,6 +626,56 @@ export default function AdminDashboard() {
               <span className="text-muted-foreground font-normal">awaiting release</span>
             </span>
             <Coins className="h-4 w-4 text-rose-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </Link>
+
+        {/* Total Reseller Wallet Amount Card */}
+        <Link
+          href="/admin/resellers"
+          className="relative overflow-hidden bg-gradient-to-br from-purple-500/15 via-indigo-500/10 to-card border border-purple-500/30 dark:border-purple-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-purple-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-3.5 bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-xl shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+              <Landmark className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400">Reseller Wallet Total</p>
+              <h3 className="text-2xl font-black text-foreground mt-1">
+                ৳{Math.round(stats?.resellerWalletTotal || 0).toLocaleString()}
+              </h3>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-purple-500/20 mt-4">
+            <span className="text-xs font-bold flex items-center gap-1 text-purple-600 dark:text-purple-400">
+              {stats?.activeResellers || 0} active stores{' '}
+              <span className="text-muted-foreground font-normal">wallet balance</span>
+            </span>
+            <Store className="h-4 w-4 text-purple-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </Link>
+
+        {/* Pending Resellers Registration Card */}
+        <Link
+          href="/admin/resellers?status=pending"
+          className="relative overflow-hidden bg-gradient-to-br from-teal-500/15 via-emerald-500/10 to-card border border-teal-500/30 dark:border-teal-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-teal-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-3.5 bg-gradient-to-br from-teal-500 to-emerald-600 text-white rounded-xl shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+              <UserCheck className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">Pending Resellers</p>
+              <h3 className="text-2xl font-black text-foreground mt-1">
+                {stats?.pendingResellers || 0}
+              </h3>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-teal-500/20 mt-4">
+            <span className="text-xs font-bold flex items-center gap-1 text-teal-600 dark:text-teal-400">
+              {stats?.pendingResellers ? `${stats.pendingResellers} registration(s)` : '0 requests'}{' '}
+              <span className="text-muted-foreground font-normal">awaiting approval</span>
+            </span>
+            <Clock className="h-4 w-4 text-teal-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </Link>
       </div>
