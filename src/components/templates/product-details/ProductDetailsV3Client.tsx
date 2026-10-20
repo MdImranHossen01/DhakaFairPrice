@@ -96,6 +96,10 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
   const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
+  const discount = (displayPrice && displayPrice > 0 && displaySalePrice && displaySalePrice < displayPrice)
+    ? Math.max(0, Math.round(((displayPrice - displaySalePrice) / displayPrice) * 100))
+    : 0;
+
   const handleAddToCart = () => {
     if (displayStock <= 0) return toast.error('Selection Unavailable');
     dispatch(addToCart({
@@ -228,12 +232,17 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
               <div className="flex items-center gap-6 pt-4">
                 <div className="flex flex-col">
                   <span className="text-[8px] font-mono text-muted-foreground uppercase mb-1">Base_Val</span>
-                  <span className="text-4xl font-black">৳{displaySalePrice || displayPrice}</span>
+                  <span className="text-4xl font-black">৳{Math.round(displaySalePrice || displayPrice)}</span>
                 </div>
-                {displaySalePrice && (
+                {displaySalePrice && displaySalePrice !== displayPrice && (
                   <div className="flex flex-col">
                     <span className="text-[8px] font-mono text-muted-foreground uppercase mb-1">Prev_Val</span>
-                    <span className="text-2xl font-bold text-muted-foreground line-through opacity-30">৳{displayPrice}</span>
+                    <span className="text-2xl font-bold text-muted-foreground line-through opacity-30">৳{Math.round(displayPrice)}</span>
+                  </div>
+                )}
+                {discount > 0 && (
+                  <div className="flex items-center">
+                    <span className="text-[10px] font-mono font-bold text-destructive bg-destructive/10 px-2.5 py-1 rounded">-{discount}% OFF</span>
                   </div>
                 )}
               </div>

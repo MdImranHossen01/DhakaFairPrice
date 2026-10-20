@@ -231,6 +231,10 @@ export async function DELETE(request: NextRequest) {
 
     const deleted = await Product.findOneAndDelete({ _id: id, uploadedBy: resellerId });
     if (!deleted) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
+    // Also delete any associated ResellerProduct records to avoid orphaned entries
+    await ResellerProduct.deleteMany({ productId: id });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

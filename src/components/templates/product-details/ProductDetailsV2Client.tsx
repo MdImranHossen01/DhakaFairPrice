@@ -77,6 +77,10 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
   const displaySalePrice = hasVariants ? currentVariant?.salePrice : product?.salePrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product?.stock ?? 0);
 
+  const discount = (displayPrice && displayPrice > 0 && displaySalePrice && displaySalePrice < displayPrice)
+    ? Math.max(0, Math.round(((displayPrice - displaySalePrice) / displayPrice) * 100))
+    : 0;
+
   const allImages = useMemo(() => {
     if (activeVariant) {
       const activeImages = [
@@ -388,10 +392,13 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
 
           {/* Price */}
           <div className="flex items-center gap-2 pt-2">
-            {displaySalePrice ? (
+            {displaySalePrice && displaySalePrice !== displayPrice ? (
               <>
                 <span className="text-base sm:text-lg font-medium text-foreground">Tk {Math.round(displaySalePrice).toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground line-through font-normal">Tk {Math.round(displayPrice ?? 0).toLocaleString()}</span>
+                {discount > 0 && (
+                  <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold px-2 py-0.5 rounded">-{discount}% OFF</span>
+                )}
               </>
             ) : (
               <span className="text-base sm:text-lg font-medium text-foreground">Tk {Math.round(displayPrice ?? 0).toLocaleString()}</span>

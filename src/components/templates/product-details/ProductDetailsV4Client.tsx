@@ -257,8 +257,8 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
 
           <div className="flex items-center gap-6">
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-black">{CURRENCY_SYMBOL}{displaySalePrice || displayPrice}</span>
-              {displaySalePrice && <span className="text-xl text-muted-foreground line-through opacity-40 font-medium">{CURRENCY_SYMBOL}{displayPrice}</span>}
+              <span className="text-4xl font-black">{CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}</span>
+              {displaySalePrice && displaySalePrice !== displayPrice && <span className="text-xl text-muted-foreground line-through opacity-40 font-medium">{CURRENCY_SYMBOL}{Math.round(displayPrice)}</span>}
             </div>
             {discount > 0 && <Badge variant="outline" className="rounded-full border-primary text-primary px-4 py-1 font-black text-[10px] uppercase tracking-widest">Saving {discount}%</Badge>}
           </div>

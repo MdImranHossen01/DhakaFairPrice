@@ -138,6 +138,7 @@ export default async function ResellerProductPage({ params }: Props) {
     ratings: parent.ratings || 0,
     numReviews: parent.numReviews || 0,
     variants: parent.variants || [],
+    sku: parent.sku || productDoc.sku || '',
     attributes: parent.attributes || [],
     createdAt: productDoc.createdAt || parent.createdAt,
   };
