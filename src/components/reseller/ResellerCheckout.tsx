@@ -723,55 +723,69 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
               </CardTitle>
               <CardDescription>যে পণ্যগুলো আপনি কিনতে যাচ্ছেন।</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
               {cart.map((item, idx) => (
-                <div key={idx} className="flex gap-3 py-2 border-b last:border-0 items-center">
-                  <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                <div key={`${item.productId}-${item.color || ''}-${item.size || ''}-${idx}`} className="flex gap-4 items-start relative group py-2 border-b last:border-0">
+                  <div className="h-16 w-16 rounded-md border bg-muted flex-shrink-0 relative overflow-hidden">
                     {item.image ? (
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        width={64}
+                        height={64}
+                        priority={idx === 0}
+                        loading={idx === 0 ? "eager" : "lazy"}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">ছবি নেই</div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.name}</p>
-                    {(item.color || item.size) && (
-                      <p className="text-xs text-muted-foreground">
-                        {[item.color, item.size].filter(Boolean).join(' / ')}
-                      </p>
-                    )}
-                    <p className="text-sm font-bold text-primary mt-0.5">৳{item.price}</p>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex justify-between items-start gap-2 w-full min-w-0">
+                      <div className="flex flex-col pr-4 min-w-0 flex-1">
+                        <p className="text-sm font-bold truncate" title={item.name}>{item.name}</p>
+                        {(item.color || item.size) && (
+                          <p className="text-[10px] text-muted-foreground font-medium">
+                            {[item.color, item.size].filter(Boolean).join(' / ')}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item)}
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1 -mt-1 -mr-1"
+                        aria-label={`Remove ${item.name} from cart`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center border rounded-full bg-muted/50 scale-90 -ml-2">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item, -1)}
+                          className="h-7 w-7 flex items-center justify-center hover:bg-muted rounded-full transition-colors"
+                          aria-label={`Decrease quantity of ${item.name}`}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-6 text-center text-xs font-bold">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item, 1)}
+                          className="h-7 w-7 flex items-center justify-center hover:bg-muted rounded-full transition-colors"
+                          aria-label={`Increase quantity of ${item.name}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-primary">৳{Math.round(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 border rounded-lg p-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateQuantity(item, -1)}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="text-xs font-bold w-5 text-center">{item.quantity}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => updateQuantity(item, 1)}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => removeItem(item)}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
               ))}
             </CardContent>
