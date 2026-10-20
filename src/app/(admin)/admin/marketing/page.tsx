@@ -515,10 +515,10 @@ export default function MarketingSettingsPage() {
                       )}
                     />
 
-                    {/* 3. Manual bKash */}
+                    {/* 3. Bangla QR */}
                     <FormField
                       control={form.control}
-                      name="manualPaymentConfig.bkash.active"
+                      name="manualPaymentConfig.banglaQr.active"
                       render={({ field }) => (
                         <div
                           onClick={() => field.onChange(!field.value)}
@@ -528,8 +528,10 @@ export default function MarketingSettingsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                              <Image src="/assets/bkashlogo.webp" alt="bKash" width={28} height={28} className="h-7 w-7 object-contain" />
-                              <span className="font-bold text-sm">Manual bKash</span>
+                              <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                                <Globe className="h-4 w-4" />
+                              </div>
+                              <span className="font-bold text-sm">Bangla QR</span>
                             </div>
                             <input
                               type="checkbox"
@@ -539,7 +541,7 @@ export default function MarketingSettingsPage() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground">বিকাশ পার্সোনাল/মার্চেন্ট ম্যানুয়াল সেন্ড মানি</p>
+                          <p className="text-xs text-muted-foreground">সার্বজনীন বাংলা কিউআর পেমেন্ট</p>
                           <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
                             {field.value ? '● Active' : 'Off'}
                           </Badge>
@@ -611,10 +613,10 @@ export default function MarketingSettingsPage() {
                       )}
                     />
 
-                    {/* 6. Bangla QR */}
+                    {/* 6. Manual bKash */}
                     <FormField
                       control={form.control}
-                      name="manualPaymentConfig.banglaQr.active"
+                      name="manualPaymentConfig.bkash.active"
                       render={({ field }) => (
                         <div
                           onClick={() => field.onChange(!field.value)}
@@ -624,10 +626,8 @@ export default function MarketingSettingsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-                                <Globe className="h-4 w-4" />
-                              </div>
-                              <span className="font-bold text-sm">Bangla QR</span>
+                              <Image src="/assets/bkashlogo.webp" alt="bKash" width={28} height={28} className="h-7 w-7 object-contain" />
+                              <span className="font-bold text-sm">Manual bKash</span>
                             </div>
                             <input
                               type="checkbox"
@@ -637,7 +637,7 @@ export default function MarketingSettingsPage() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground">সার্বজনীন বাংলা কিউআর পেমেন্ট</p>
+                          <p className="text-xs text-muted-foreground">বিকাশ পার্সোনাল/মার্চেন্ট ম্যানুয়াল সেন্ড মানি</p>
                           <Badge variant="secondary" className={`text-[10px] w-fit ${field.value ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : ''}`}>
                             {field.value ? '● Active' : 'Off'}
                           </Badge>
