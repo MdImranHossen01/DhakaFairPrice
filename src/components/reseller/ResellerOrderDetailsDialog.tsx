@@ -639,13 +639,13 @@ export default function ResellerOrderDetailsDialog({
                       </div>
                     )}
 
-                    {order.paymentMethod === 'Manual' && order.manualPaymentDetails && (
+                    {order.manualPaymentDetails && (order.paymentMethod === 'Manual' || order.manualPaymentDetails.senderNumber || order.manualPaymentDetails.transactionId) && (
                       <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/20 space-y-2">
                          <p className="text-[10px] font-black uppercase text-primary tracking-widest">Manual Verification</p>
                          <div className="grid grid-cols-2 gap-2 text-[11px]">
                             <div>
                                <span className="text-muted-foreground block">Method:</span>
-                               <span className="font-bold uppercase">{order.manualPaymentDetails.methodName}</span>
+                               <span className="font-bold uppercase">{order.manualPaymentDetails.methodName || order.paymentMethod}</span>
                             </div>
                             <div>
                                <span className="text-muted-foreground block">Sender No:</span>

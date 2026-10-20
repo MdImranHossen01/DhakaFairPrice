@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Loader2, ShoppingBag, CheckCircle2, Truck, CreditCard,
-  Plus, Minus, X, ArrowRight, PartyPopper, XCircle, Award, AlertTriangle
+  Plus, Minus, X, ArrowRight, PartyPopper, XCircle, Award, AlertTriangle, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -96,6 +96,15 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
+  // Manual Payment Verification Modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<any>(null);
+  const [manualDetails, setManualDetails] = useState({
+    senderNumber: '',
+    transactionId: '',
+  });
+  const [paymentDetailTab, setPaymentDetailTab] = useState<'phone' | 'trx'>('phone');
+
   // Loyalty & Wallet state
   const [customerProfile, setCustomerProfile] = useState<any>(null);
   const [useWallet, setUseWallet] = useState(false);
@@ -112,21 +121,30 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const watchedFullName = form.watch('fullName');
   const watchedStreet = form.watch('street');
 
+  const hasManualPayment = Boolean(
+    storeInfo.paymentConfig?.bkash?.active ||
+    storeInfo.paymentConfig?.nagad?.active ||
+    storeInfo.paymentConfig?.rocket?.active ||
+    storeInfo.paymentConfig?.banglaQr?.active
+  );
+
   useEffect(() => {
     if (storeInfo.cashOnDeliveryActive === false && form.getValues('paymentMethod') === 'COD') {
       if (storeInfo.sslcommerzActive) {
         form.setValue('paymentMethod', 'sslcommerz');
-      } else if (storeInfo.paymentConfig?.bkash?.active && storeInfo.paymentConfig?.bkash?.number) {
-        form.setValue('paymentMethod', 'bkash');
-      } else if (storeInfo.paymentConfig?.nagad?.active && storeInfo.paymentConfig?.nagad?.number) {
-        form.setValue('paymentMethod', 'nagad');
-      } else if (storeInfo.paymentConfig?.rocket?.active && storeInfo.paymentConfig?.rocket?.number) {
-        form.setValue('paymentMethod', 'rocket');
-      } else if (storeInfo.paymentConfig?.banglaQr?.active && storeInfo.paymentConfig?.banglaQr?.qrCode) {
-        form.setValue('paymentMethod', 'bangla_qr');
+      } else if (hasManualPayment) {
+        form.setValue('paymentMethod', 'Manual');
       }
     }
-  }, [storeInfo]);
+  }, [storeInfo, hasManualPayment]);
+
+  // Reset manual payment details if payment method changes away from Manual
+  useEffect(() => {
+    if (paymentMethod !== 'Manual') {
+      setSelectedMethod(null);
+      setManualDetails({ senderNumber: '', transactionId: '' });
+    }
+  }, [paymentMethod]);
 
   useEffect(() => {
     const cartKey = `rscart_${subdomain}`;
@@ -386,6 +404,18 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
       });
       return;
     }
+    if (values.paymentMethod === 'Manual') {
+      if (!selectedMethod?.id) {
+        toast.error('দয়া করে পেমেন্ট মেথড নির্বাচন করুন এবং ভেরিফিকেশন তথ্য দিন');
+        setShowPaymentModal(true);
+        return;
+      }
+      if (!manualDetails.senderNumber.trim() && !manualDetails.transactionId.trim()) {
+        toast.error('দয়া করে আপনার প্রেরক নম্বর বা TrxID দিন');
+        setShowPaymentModal(true);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const normalizedPhone = normalizePhoneNumber(values.phone) || values.phone;
@@ -409,6 +439,11 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           walletAmountUsed: walletAmountToUse,
           totalAmount: finalTotal,
           paymentMethod: values.paymentMethod,
+          manualPaymentDetails: values.paymentMethod === 'Manual' ? {
+            methodName: selectedMethod?.id,
+            senderNumber: manualDetails.senderNumber,
+            transactionId: manualDetails.transactionId,
+          } : undefined,
           notes: values.notes,
         }),
       });
@@ -878,7 +913,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
                                   Cash on Delivery (COD)
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">পণ্য পাওয়ার পর টাকা দিন।</p>
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">পণ্য পাওয়ার পর টাকা দিন।</p>
                                 </FormLabel>
                               </FormItem>
                             )}
@@ -894,47 +929,14 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                                 </FormLabel>
                               </FormItem>
                             )}
-                            {storeInfo.paymentConfig?.bkash?.active && storeInfo.paymentConfig?.bkash?.number && (
+                            {hasManualPayment && (
                               <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
                                 <FormControl>
-                                  <RadioGroupItem value="bkash" />
+                                  <RadioGroupItem value="Manual" />
                                 </FormControl>
                                 <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  bKash — {storeInfo.paymentConfig.bkash.number}
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">বিকাশে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                            {storeInfo.paymentConfig?.nagad?.active && storeInfo.paymentConfig?.nagad?.number && (
-                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                                <FormControl>
-                                  <RadioGroupItem value="nagad" />
-                                </FormControl>
-                                <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  Nagad — {storeInfo.paymentConfig.nagad.number}
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">নগদে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                            {storeInfo.paymentConfig?.rocket?.active && storeInfo.paymentConfig?.rocket?.number && (
-                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                                <FormControl>
-                                  <RadioGroupItem value="rocket" />
-                                </FormControl>
-                                <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  Rocket — {storeInfo.paymentConfig.rocket.number}
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">রকেটে পেমেন্ট করুন (মাদার শপ অফিসিয়াল একাউন্ট)।</p>
-                                </FormLabel>
-                              </FormItem>
-                            )}
-                            {storeInfo.paymentConfig?.banglaQr?.active && storeInfo.paymentConfig?.banglaQr?.qrCode && (
-                              <FormItem className="flex items-center space-x-3 space-y-0 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                                <FormControl>
-                                  <RadioGroupItem value="bangla_qr" />
-                                </FormControl>
-                                <FormLabel className="font-bold flex-1 cursor-pointer">
-                                  Bangla QR (Universal Pay)
-                                  <p className="text-xs font-normal text-muted-foreground mt-1">যেকোনো ব্যাংক বা এমএফএস অ্যাপ থেকে কিউআর স্ক্যান করে পেমেন্ট করুন।</p>
+                                  Manual Payment (MFS / Bangla QR)
+                                  <p className="text-xs font-normal text-muted-foreground mt-1">ম্যানুয়ালি টাকা পাঠিয়ে অথবা কিউআর স্ক্যান করে পেমেন্ট ভেরিফাই করুন।</p>
                                 </FormLabel>
                               </FormItem>
                             )}
@@ -955,21 +957,55 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                       </FormItem>
                     )}
                   />
-                  {paymentMethod === 'bangla_qr' && storeInfo.paymentConfig?.banglaQr?.qrCode && (
-                    <div className="rounded-lg border bg-card p-4 flex flex-col items-center gap-2 text-center animate-in fade-in">
-                      <p className="text-xs font-bold text-foreground">নিচের বাংলা কিউআর (Bangla QR) স্ক্যান করে পেমেন্ট করুন</p>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={storeInfo.paymentConfig.banglaQr.qrCode}
-                        alt="Bangla QR"
-                        className="h-44 w-44 object-contain rounded-md border p-1 bg-white"
-                      />
+
+                  {/* Manual Payment Option Selection (Cards) - Exact same as Mother Shop */}
+                  {paymentMethod === 'Manual' && storeInfo.paymentConfig && (
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 animate-in fade-in slide-in-from-top duration-300">
+                      {['bkash', 'nagad', 'rocket', 'banglaQr'].map((method) => {
+                        const config = (storeInfo.paymentConfig as any)?.[method];
+                        if (!config?.active) return null;
+                        const isSelected = selectedMethod?.id === method;
+                        return (
+                          <div
+                            key={method}
+                            onClick={() => {
+                              setSelectedMethod({ id: method, ...config });
+                              setShowPaymentModal(true);
+                            }}
+                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col items-center gap-2 hover:bg-muted/50 ${
+                              isSelected ? 'border-primary bg-primary/5' : 'border-muted'
+                            }`}
+                          >
+                            <div className="h-10 w-10 flex items-center justify-center">
+                              {method === 'banglaQr' ? (
+                                <Globe className="h-8 w-8 text-primary" />
+                              ) : (
+                                <Image
+                                  src={`/assets/${method}logo.webp`}
+                                  alt={method || "Payment MFS Logo"}
+                                  width={40}
+                                  height={40}
+                                  className="h-full w-auto object-contain"
+                                />
+                              )}
+                            </div>
+                            <p className="text-[10px] font-bold uppercase">{method === 'banglaQr' ? 'Bangla QR' : method}</p>
+                            {isSelected && (
+                              <div className="text-[8px] font-bold text-primary flex items-center gap-1 mt-1">
+                                <CheckCircle2 className="h-2 w-2" /> Details Added
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                  {storeInfo.paymentConfig?.instructions && (paymentMethod === 'bkash' || paymentMethod === 'nagad' || paymentMethod === 'rocket' || paymentMethod === 'bangla_qr') && (
-                    <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      <strong className="text-foreground">পেমেন্ট নির্দেশনা:</strong> {storeInfo.paymentConfig.instructions}
-                    </div>
+
+                  {/* Validation Message for Manual Payment */}
+                  {paymentMethod === 'Manual' && !selectedMethod?.id && (
+                    <p className="text-[10px] text-destructive font-bold text-center mt-2 animate-pulse">
+                      দয়া করে একটি মেথড সিলেক্ট করে পেমেন্ট ভেরিফিকেশন তথ্য দিন!
+                    </p>
                   )}
                 </CardContent>
                 <CardFooter className="pt-2 border-t flex flex-col gap-3">
@@ -1051,6 +1087,189 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           <DialogFooter className="sm:justify-center">
             <Button variant="outline" onClick={() => setShowFailModal(false)}>
               আবার চেষ্টা করুন
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Payment Verification Modal - Identical to Mother Shop */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-[425px] rounded-3xl p-0 overflow-hidden border-none shadow-2xl flex flex-col max-h-[90vh]">
+          <DialogHeader className="py-4 px-6 bg-gradient-to-br from-primary to-primary/80 text-white relative shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white rounded-xl p-1.5 shadow-md shrink-0 flex items-center justify-center">
+                {selectedMethod?.id === 'banglaQr' ? (
+                  <Globe className="h-6 w-6 text-primary" />
+                ) : (
+                  <Image
+                    src={`/assets/${selectedMethod?.id}logo.webp`}
+                    alt={selectedMethod?.id || "Payment Method Logo"}
+                    width={40}
+                    height={40}
+                    className="h-full w-auto object-contain"
+                  />
+                )}
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-base md:text-lg font-black uppercase tracking-tight">
+                  {selectedMethod?.id === 'banglaQr' ? 'Pay via Bangla QR' : `Pay via ${selectedMethod?.id}`}
+                </DialogTitle>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Scrollable Modal Body */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-h-[60vh] pr-2">
+            {/* Payment Info */}
+            <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 space-y-3">
+              {selectedMethod?.id !== 'banglaQr' && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest opacity-50">Send Money To</span>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-bold text-[9px] py-0.5 px-1.5">
+                      Personal Number
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-1">
+                    <p className="text-lg font-black tracking-widest text-slate-900 dark:text-zinc-50 bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-primary/10 flex-1 text-center select-all">
+                      {selectedMethod?.number}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 rounded-lg text-[10px] font-bold border hover:bg-primary hover:text-white transition-all shrink-0"
+                      onClick={() => {
+                        if (selectedMethod?.number) {
+                          navigator.clipboard.writeText(selectedMethod.number);
+                          toast.success('Number copied to clipboard!');
+                        }
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {(selectedMethod?.qrCode || selectedMethod?.id === 'banglaQr') && (
+                <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-primary/10">
+                  <p className="text-[9px] font-bold uppercase opacity-40">Scan QR Code to Pay</p>
+                  <div className="p-1.5 bg-white rounded-lg shadow-sm border border-primary/10">
+                    <Image
+                      src={selectedMethod?.qrCode || '/assets/placeholder-qr.png'}
+                      alt="QR"
+                      width={128}
+                      height={128}
+                      className="h-32 w-32 object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Instruction Panel */}
+            <div className="bg-slate-50 dark:bg-zinc-950 rounded-xl p-3 border border-slate-200 dark:border-zinc-800 space-y-1.5">
+              <p className="text-[10px] font-black text-slate-700 dark:text-zinc-300 uppercase tracking-wider">পেমেন্ট নির্দেশিকা (পড়ুন):</p>
+              <div className="max-h-24 overflow-y-auto pr-1 space-y-1 text-[9px] leading-relaxed text-slate-600 dark:text-zinc-400 font-medium">
+                <p>
+                  ১. আপনার <strong>{selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'}</strong> অ্যাপে যান অথবা USSD ডায়াল করে <strong>"Send Money"</strong> অপশন সিলেক্ট করুন।
+                </p>
+                {selectedMethod?.id !== 'banglaQr' ? (
+                  <p>২. উপরে দেওয়া <strong>Personal</strong> নম্বরটি কপি করে প্রাপক হিসেবে দিন।</p>
+                ) : (
+                  <p>২. উপরে দেওয়া <strong>Bangla QR</strong> কোডটি আপনার ব্যাংক বা পেমেন্ট অ্যাপ দিয়ে স্ক্যান করুন।</p>
+                )}
+                <p>৩. মোট পেমেন্ট অ্যামাউন্ট <strong>৳{Math.round(finalTotal)}</strong> সেন্ড মানি করুন।</p>
+                <p>৪. সফলভাবে টাকা পাঠানোর পর নিচের ট্যাব থেকে <strong>মোবাইল নম্বর</strong> অথবা <strong>TrxID</strong> যেকোনো একটি তথ্য দিয়ে পেমেন্ট নিশ্চিত করুন।</p>
+              </div>
+            </div>
+
+            {/* Selection Tabs */}
+            <div className="flex border-b border-slate-200 dark:border-zinc-800 mt-2">
+              <button
+                type="button"
+                onClick={() => setPaymentDetailTab('phone')}
+                className={`flex-1 pb-1.5 text-[11px] font-bold text-center border-b-2 transition-all ${
+                  paymentDetailTab === 'phone'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                {selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'} নম্বর দিয়ে
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentDetailTab('trx')}
+                className={`flex-1 pb-1.5 text-[11px] font-bold text-center border-b-2 transition-all ${
+                  paymentDetailTab === 'trx'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                ট্রানজেকশন আইডি (TrxID) দিয়ে
+              </button>
+            </div>
+
+            {/* Verification Field based on active tab */}
+            <div className="space-y-3 pt-1">
+              {paymentDetailTab === 'phone' ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase opacity-60">
+                    আপনার {selectedMethod?.id === 'bkash' ? 'বিকাশ' : selectedMethod?.id === 'nagad' ? 'নগদ' : selectedMethod?.id === 'rocket' ? 'রকেট' : 'মোবাইল'} নম্বর
+                  </Label>
+                  <Input
+                    placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন (যেমন: 017XXXXXXXX)"
+                    value={manualDetails.senderNumber}
+                    onChange={(e) => setManualDetails({ ...manualDetails, senderNumber: e.target.value })}
+                    className="h-10 rounded-lg text-xs focus:ring-primary/20 bg-background"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase opacity-60">ট্রানজেকশন আইডি (TrxID)</Label>
+                  <Input
+                    placeholder="যেমন: 8N7A6D5C"
+                    value={manualDetails.transactionId}
+                    onChange={(e) => setManualDetails({ ...manualDetails, transactionId: e.target.value.toUpperCase() })}
+                    className="h-10 rounded-lg text-xs focus:ring-primary/20 bg-background"
+                  />
+                </div>
+              )}
+            </div>
+
+            {storeInfo.paymentConfig?.instructions && (
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-[9px] leading-relaxed text-muted-foreground italic">
+                  <strong>নির্দেশনা:</strong> {storeInfo.paymentConfig.instructions}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="p-4 bg-muted/20 border-t flex flex-row gap-3 shrink-0">
+            <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="rounded-full h-10 flex-1 font-bold text-xs bg-background">
+              বাতিল করুন
+            </Button>
+            <Button
+              disabled={
+                paymentDetailTab === 'phone'
+                  ? !manualDetails.senderNumber.trim()
+                  : !manualDetails.transactionId.trim()
+              }
+              onClick={async () => {
+                const isValid = await form.trigger();
+                if (isValid) {
+                  setShowPaymentModal(false);
+                  toast.success(`${selectedMethod?.id.toUpperCase()} details saved!`);
+                  await form.handleSubmit(onSubmit)();
+                } else {
+                  setShowPaymentModal(false);
+                  toast.error('দয়া করে ডেলিভারি তথ্য সম্পূর্ণ করুন!');
+                }
+              }}
+              className="rounded-full h-10 flex-1 font-black uppercase tracking-widest text-xs shadow-md shadow-primary/10"
+            >
+              পেমেন্ট নিশ্চিত করুন
             </Button>
           </DialogFooter>
         </DialogContent>

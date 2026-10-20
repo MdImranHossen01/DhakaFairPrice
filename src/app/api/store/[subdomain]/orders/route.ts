@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { customer, items, paymentMethod, notes, deliveryArea, couponCode, useWallet } = body;
+    const { customer, items, paymentMethod, notes, deliveryArea, couponCode, useWallet, manualPaymentDetails } = body;
 
     if (!customer?.name || !customer?.phone || !customer?.address?.street) {
       return NextResponse.json({ error: 'Customer details incomplete' }, { status: 400 });
@@ -287,6 +287,7 @@ export async function POST(
         },
         paymentMethod: paymentMethod || 'COD',
         paymentStatus: 'Pending',
+        manualPaymentDetails: manualPaymentDetails || undefined,
         status: 'Order Placed',
         resellerId: reseller._id,
         customerNote: notes || '',
@@ -307,6 +308,7 @@ export async function POST(
         totalAmount: calculatedFinalTotal,
         paymentMethod: paymentMethod || 'COD',
         paymentStatus: 'Pending',
+        manualPaymentDetails: manualPaymentDetails || undefined,
         status: 'Order Placed',
         resellerCommission: totalCommission,
         commissionStatus: 'pending',
@@ -357,6 +359,7 @@ export async function POST(
           totalAmount: uploaderCommission,
           paymentMethod: paymentMethod || 'COD',
           paymentStatus: 'Pending',
+          manualPaymentDetails: manualPaymentDetails || undefined,
           status: 'Order Placed',
           resellerCommission: uploaderCommission,
           commissionStatus: 'pending',
