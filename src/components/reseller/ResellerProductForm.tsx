@@ -126,6 +126,15 @@ const productSchema = z.object({
         path: ['price'],
       });
     }
+    // Validate: salePrice must not exceed regular price
+    const salePriceVal = data.salePrice === '' || data.salePrice === undefined ? undefined : Number(data.salePrice);
+    if (salePriceVal !== undefined && priceVal > 0 && salePriceVal > priceVal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Sale price cannot exceed regular price',
+        path: ['salePrice'],
+      });
+    }
     if (!data.sku || data.sku.trim().length < 3) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -149,6 +158,15 @@ const productSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Price is required for each variant size',
             path: ['variants', vIdx, 'sizes', sIdx, 'price'],
+          });
+        }
+        // Validate: variant salePrice must not exceed variant price
+        const sizeSalePrice = size.salePrice === '' || size.salePrice === undefined ? undefined : Number(size.salePrice);
+        if (sizeSalePrice !== undefined && sizePrice > 0 && sizeSalePrice > sizePrice) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Sale price cannot exceed regular price',
+            path: ['variants', vIdx, 'sizes', sIdx, 'salePrice'],
           });
         }
         if (!size.sku || size.sku.trim().length < 3) {
@@ -452,7 +470,13 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
       images: finalImages,
       price: values.price === '' ? 0 : Number(values.price),
       purchasePrice: values.purchasePrice === '' ? undefined : Number(values.purchasePrice),
-      salePrice: values.salePrice === '' ? undefined : Number(values.salePrice),
+      salePrice: (() => {
+        const sp = values.salePrice === '' ? undefined : Number(values.salePrice);
+        const p = values.price === '' ? 0 : Number(values.price);
+        // salePrice must be strictly less than price; if equal or greater, treat as no discount
+        if (sp !== undefined && p > 0 && sp >= p) return undefined;
+        return sp;
+      })(),
       discountRate: values.discountRate === '' || isNaN(Number(values.discountRate)) ? undefined : Number(values.discountRate),
       stock: values.stock === '' ? 0 : Number(values.stock),
       variants: flatVariants,
@@ -902,9 +926,15 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                           onChange={(e) => {
                                             const val = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                                             form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.price`, val, { shouldValidate: form.formState.isSubmitted });
+                                            const prc = val === '' ? 0 : Number(val);
                                             const disc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`) || 0;
-                                            if (disc > 0 && val !== '') {
-                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, Math.round(val * (1 - disc / 100)));
+                                            const currentSale = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`);
+                                            const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
+                                            if (disc > 0 && prc > 0) {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, Math.round(prc * (1 - disc / 100)));
+                                            } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, prc);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
                                             }
                                           }}
                                         />
@@ -990,13 +1020,23 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`) ?? ''}
                                           className="h-9 mt-1"
                                           onChange={(e) => {
-                                            const sale = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
-                                            form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, sale);
+                                            const rawVal = e.target.value;
                                             const prc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.price`) || 0;
-                                            if (prc > 0 && sale !== undefined && sale > 0 && sale < prc) {
+                                            if (rawVal === '') {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, undefined);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
+                                              return;
+                                            }
+                                            let sale = parseFloat(rawVal) || 0;
+                                            if (prc > 0 && sale > prc) {
+                                              // Clamp: sale price cannot exceed regular price
+                                              sale = prc;
+                                            }
+                                            form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, sale);
+                                            if (prc > 0 && sale > 0 && sale < prc) {
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, Math.round((1 - sale / prc) * 100));
                                             } else {
-                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, undefined);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
                                             }
                                           }}
                                         />
@@ -1054,11 +1094,15 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                             onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                               field.onChange(value);
-                              const prc = value === '' ? 0 : value;
+                              const prc = value === '' ? 0 : Number(value);
                               const discount = form.getValues('discountRate') || 0;
+                              const currentSale = form.getValues('salePrice');
+                              const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
                               if (discount > 0 && prc > 0) {
-                                const newSale = prc * (1 - discount / 100);
-                                form.setValue('salePrice', Math.round(newSale));
+                                form.setValue('salePrice', Math.round(prc * (1 - discount / 100)));
+                              } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                                form.setValue('salePrice', prc);
+                                form.setValue('discountRate', 0);
                               }
                             }}
                           />
@@ -1131,14 +1175,23 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                             {...field}
                             value={field.value || ''}
                             onChange={(e) => {
-                              const sale = parseFloat(e.target.value) || 0;
-                              field.onChange(sale);
+                              const rawVal = e.target.value;
                               const price = form.getValues('price') || 0;
+                              if (rawVal === '') {
+                                field.onChange('');
+                                form.setValue('discountRate', 0);
+                                return;
+                              }
+                              let sale = parseFloat(rawVal) || 0;
+                              if (price > 0 && sale > price) {
+                                // Clamp: sale price cannot exceed regular price
+                                sale = price;
+                              }
+                              field.onChange(sale);
                               if (price > 0 && sale > 0 && sale < price) {
-                                const newDiscount = Math.round((1 - sale / price) * 100);
-                                form.setValue('discountRate', newDiscount);
+                                form.setValue('discountRate', Math.round((1 - sale / price) * 100));
                               } else {
-                                form.setValue('discountRate', undefined);
+                                form.setValue('discountRate', 0);
                               }
                             }}
                           />

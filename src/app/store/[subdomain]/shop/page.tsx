@@ -73,14 +73,19 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
     const finalPrice = typeof rp.retailPrice === 'number' && !isNaN(rp.retailPrice) 
       ? rp.retailPrice 
       : (typeof parent.price === 'number' ? parent.price : 0);
+    const regularPrice = typeof parent.price === 'number' && parent.price > 0
+      ? parent.price
+      : (typeof rp.motherPrice === 'number' && rp.motherPrice > 0 ? rp.motherPrice : finalPrice);
+
     return {
       _id: rp._id.toString(),
       productId: parent._id ? parent._id.toString() : rp.productId?.toString(),
       name: rp.name || parent.name || 'Product',
       slug: rp.slug || parent.slug,
-      price: finalPrice,
+      price: regularPrice,
       salePrice: finalPrice,
       retailPrice: rp.retailPrice,
+      uploadedBy: parent.uploadedBy,
       images: rp.images?.length > 0 ? rp.images : parent.images || [],
       description: parent.description,
       categories: parent.categories || [],

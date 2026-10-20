@@ -278,7 +278,7 @@ export default function ProductCardV2({ product: initialProduct, isFlashSale }: 
           <span className="text-xl font-black text-[#00a870]">
             ৳{Math.round(product.salePrice ?? product.price ?? 0)}
           </span>
-          {product.salePrice != null && product.salePrice < product.price && (
+          {product.salePrice != null && product.price != null && product.salePrice !== product.price && (
             <span className="text-sm text-muted-foreground line-through decoration-primary/20">
               ৳{Math.round(product.price ?? 0)}
             </span>

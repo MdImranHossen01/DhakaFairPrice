@@ -147,6 +147,15 @@ const productSchema = z.object({
         path: ['price'],
       });
     }
+    // Validate: salePrice must not exceed regular price
+    const salePriceVal = data.salePrice === '' || data.salePrice === undefined ? undefined : Number(data.salePrice);
+    if (salePriceVal !== undefined && priceVal > 0 && salePriceVal > priceVal) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Sale price cannot exceed regular price',
+        path: ['salePrice'],
+      });
+    }
     // No variants: main SKU is mandatory
     if (!data.sku || data.sku.trim().length < 2) {
       ctx.addIssue({
@@ -173,6 +182,15 @@ const productSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Price is required for each variant size',
             path: ['variants', vIdx, 'sizes', sIdx, 'price'],
+          });
+        }
+        // Validate: variant salePrice must not exceed variant price
+        const sizeSalePrice = size.salePrice === '' || size.salePrice === undefined ? undefined : Number(size.salePrice);
+        if (sizeSalePrice !== undefined && sizePrice > 0 && sizeSalePrice > sizePrice) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Sale price cannot exceed regular price',
+            path: ['variants', vIdx, 'sizes', sIdx, 'salePrice'],
           });
         }
         if (!size.sku || size.sku.trim().length < 2) {
@@ -349,7 +367,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
         form.setValue(`variants.${cIdx}.sizes.${sIdx}.sku`, newSku, { shouldValidate: true, shouldDirty: true });
       });
     });
-    toast.success('সমস্ত ভ্যারিয়েশনের SKU স্বয়ংক্রিয়ভাবে তৈরি হয়েছে');
+    toast.success('All variant SKUs have been auto-generated');
   };
 
   const [platformCommissionRate, setPlatformCommissionRate] = useState<number>(10);
@@ -431,7 +449,11 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     }
 
     let derivedSalePrice = values.salePrice === '' ? undefined : Number(values.salePrice);
-    if (derivedSalePrice === undefined && firstVariant?.salePrice) {
+    // Ensure salePrice does not exceed price; if equal or missing, treat as no discount
+    if (derivedSalePrice !== undefined && derivedSalePrice >= derivedPrice) {
+      derivedSalePrice = undefined;
+    }
+    if (derivedSalePrice === undefined && firstVariant?.salePrice && Number(firstVariant.salePrice) < Number(firstVariant.price)) {
       derivedSalePrice = Number(firstVariant.salePrice);
     }
 
@@ -1029,9 +1051,15 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                           onChange={(e) => {
                                             const val = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                                             form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.price`, val, { shouldValidate: form.formState.isSubmitted });
+                                            const prc = val === '' ? 0 : Number(val);
                                             const disc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`) || 0;
-                                            if (disc > 0 && val !== '') {
-                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, Math.round(val * (1 - disc / 100)));
+                                            const currentSale = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`);
+                                            const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
+                                            if (disc > 0 && prc > 0) {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, Math.round(prc * (1 - disc / 100)));
+                                            } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, prc);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
                                             }
                                           }}
                                         />
@@ -1148,13 +1176,23 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                                           value={form.watch(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`) ?? ''}
                                           className="h-9 mt-1"
                                           onChange={(e) => {
-                                            const sale = e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0);
-                                            form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, sale);
+                                            const rawVal = e.target.value;
                                             const prc = form.getValues(`variants.${colorIndex}.sizes.${sizeIndex}.price`) || 0;
-                                            if (prc > 0 && sale !== undefined && sale > 0 && sale < prc) {
+                                            if (rawVal === '') {
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, undefined);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
+                                              return;
+                                            }
+                                            let sale = parseFloat(rawVal) || 0;
+                                            if (prc > 0 && sale > prc) {
+                                              // Clamp: sale price cannot exceed regular price
+                                              sale = prc;
+                                            }
+                                            form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.salePrice`, sale);
+                                            if (prc > 0 && sale > 0 && sale < prc) {
                                               form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, Math.round((1 - sale / prc) * 100));
                                             } else {
-                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, undefined);
+                                              form.setValue(`variants.${colorIndex}.sizes.${sizeIndex}.discountRate`, 0);
                                             }
                                           }}
                                         />
@@ -1210,12 +1248,17 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                             onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                               field.onChange(value);
-                              // Sync sale price if discount exists
-                              const prc = value === '' ? 0 : value;
+                              const prc = value === '' ? 0 : Number(value);
                               const discount = form.getValues('discountRate') || 0;
+                              const currentSale = form.getValues('salePrice');
+                              const currentSaleNum = currentSale === '' || currentSale === undefined ? undefined : Number(currentSale);
                               if (discount > 0 && prc > 0) {
-                                const newSale = prc * (1 - discount / 100);
-                                form.setValue('salePrice', Math.round(newSale));
+                                // Recalculate sale price based on discount
+                                form.setValue('salePrice', Math.round(prc * (1 - discount / 100)));
+                              } else if (currentSaleNum !== undefined && prc > 0 && currentSaleNum > prc) {
+                                // Clamp sale price if it now exceeds the new regular price
+                                form.setValue('salePrice', prc);
+                                form.setValue('discountRate', 0);
                               }
                             }}
                           />
@@ -1322,14 +1365,23 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                             {...field} 
                             value={field.value || ''}
                             onChange={(e) => {
-                              const sale = parseFloat(e.target.value) || 0;
-                              field.onChange(sale);
+                              const rawVal = e.target.value;
                               const price = form.getValues('price') || 0;
+                              if (rawVal === '') {
+                                field.onChange('');
+                                form.setValue('discountRate', 0);
+                                return;
+                              }
+                              let sale = parseFloat(rawVal) || 0;
+                              if (price > 0 && sale > price) {
+                                // Clamp: sale price cannot exceed regular price
+                                sale = price;
+                              }
+                              field.onChange(sale);
                               if (price > 0 && sale > 0 && sale < price) {
-                                const newDiscount = Math.round((1 - sale / price) * 100);
-                                form.setValue('discountRate', newDiscount);
+                                form.setValue('discountRate', Math.round((1 - sale / price) * 100));
                               } else {
-                                form.setValue('discountRate', undefined);
+                                form.setValue('discountRate', 0);
                               }
                             }}
                           />

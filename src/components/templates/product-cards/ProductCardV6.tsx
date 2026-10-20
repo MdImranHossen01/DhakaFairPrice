@@ -274,7 +274,7 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
             {product.name}
           </Link>
           <div className="flex items-center justify-center gap-2 mt-2">
-            {product.salePrice && product.salePrice < product.price ? (
+            {product.salePrice && product.price && product.salePrice !== product.price ? (
               <>
                 <span className={`text-foreground font-black text-sm ${layout === 'v3' ? 'lg:text-[14px]' : 'sm:text-[16px]'}`}>৳{Math.round(product.salePrice ?? 0)}</span>
                 <span className={`text-muted-foreground line-through text-[11px] ${layout === 'v3' ? 'lg:text-[11px]' : 'sm:text-[13px]'} font-normal`}>৳{Math.round(product.price ?? 0)}</span>

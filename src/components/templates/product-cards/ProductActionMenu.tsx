@@ -312,7 +312,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                     <div className="px-2.5 py-1.5 text-xs bg-green-500/10 rounded-lg mb-1">
                       <p className="font-bold text-green-700 dark:text-green-300 flex items-center gap-1.5">
                         <Store className="h-3.5 w-3.5 text-green-600" />
-                        আমার নিজস্ব প্রোডাক্ট
+                        My Store Product
                       </p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Uploaded by your store
@@ -322,7 +322,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/reseller/products/${product._id || product.slug}/edit`);
+                        router.push(`/reseller/products/${product.productId || product._id || product.slug}/edit`);
                       }}
                       className="cursor-pointer font-medium"
                     >
@@ -357,12 +357,12 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                         {isResellerProduct ? (
                           <>
                             <Users className="h-3.5 w-3.5 text-purple-600" />
-                            অন্য Reseller-এর প্রোডাক্ট
+                            Partner Reseller Product
                           </>
                         ) : (
                           <>
                             <Store className="h-3.5 w-3.5 text-blue-600" />
-                            Main Store প্রোডাক্ট
+                            Mother Catalog Product
                           </>
                         )}
                       </p>
@@ -370,7 +370,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                         {isResellerProduct ? (
                           <>Store: <span className="font-bold text-foreground">{resellerStoreName || 'Reseller'}</span></>
                         ) : (
-                          <>উৎস: <span className="font-bold text-foreground">Official Store</span></>
+                          <>Source: <span className="font-bold text-foreground">Official Mother Store</span></>
                         )}
                       </p>
                     </div>

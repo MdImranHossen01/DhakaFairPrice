@@ -114,14 +114,19 @@ export default async function ResellerProductPage({ params }: Props) {
   }
 
   // Format product to match the shape expected by ResellerProductDetailsClient
+  const regularPrice = typeof parent.price === 'number' && parent.price > 0
+    ? parent.price
+    : (typeof productDoc.motherPrice === 'number' && productDoc.motherPrice > 0 ? productDoc.motherPrice : productDoc.retailPrice);
+
   const product = {
     _id: productDoc._id.toString(),
     productId: parent._id ? parent._id.toString() : productDoc.productId?.toString(),
     name: productDoc.name || parent.name || 'Product',
     slug: productDoc.slug || parent.slug,
     retailPrice: productDoc.retailPrice,
-    price: productDoc.retailPrice,
-    salePrice: undefined as number | undefined,
+    price: regularPrice,
+    salePrice: productDoc.retailPrice,
+    uploadedBy: parent.uploadedBy,
     images: productDoc.images?.length > 0 ? productDoc.images : parent.images || [],
     description: parent.description,
     categories: parent.categories || [],
