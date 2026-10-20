@@ -707,6 +707,36 @@ export default function MarketingSettingsPage() {
                       )}
                     />
                   </div>
+
+                  {/* Sandbox Test Credentials Helper */}
+                  <div className="md:col-span-3 mt-1 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400 mb-2">
+                      <Zap className="h-4 w-4" />
+                      <span>SSLCommerz Sandbox Test Credentials (টেস্টিং তথ্য)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-background/80 border space-y-0.5">
+                        <span className="font-bold text-primary block">VISA Card</span>
+                        <code className="text-[10px] bg-muted px-1 py-0.5 rounded select-all font-mono block">4111 1111 1111 1111</code>
+                        <span className="text-[10px] text-muted-foreground block">Exp: 12/28 | CVV: 111</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-background/80 border space-y-0.5">
+                        <span className="font-bold text-primary block">MasterCard</span>
+                        <code className="text-[10px] bg-muted px-1 py-0.5 rounded select-all font-mono block">5111 1111 1111 1111</code>
+                        <span className="text-[10px] text-muted-foreground block">Exp: 12/28 | CVV: 111</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-background/80 border space-y-0.5">
+                        <span className="font-bold text-primary block">Amex Card</span>
+                        <code className="text-[10px] bg-muted px-1 py-0.5 rounded select-all font-mono block">3711 1111 1111 111</code>
+                        <span className="text-[10px] text-muted-foreground block">Exp: 12/28 | CVV: 111</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-background/80 border space-y-0.5">
+                        <span className="font-bold text-primary block">bKash / Nagad / Rocket</span>
+                        <span className="text-[10px] text-muted-foreground block">নম্বর: যেকোনো মোবাইল নম্বর</span>
+                        <span className="text-[10px] text-muted-foreground block">OTP: 111111 বা 123456 | PIN: 1234</span>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
