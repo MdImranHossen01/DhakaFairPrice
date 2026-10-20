@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Swal from 'sweetalert2';
 import { generateHtml } from '@/lib/server-html';
+import ShareDialog from '@/components/storefront/ShareDialog';
 
 interface ProductDetailsV3ClientProps {
   product: any;
@@ -38,6 +39,7 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
   const defaultVariant = product.variants && product.variants.length > 0 ? product.variants[0] : null;
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultVariant?.color || null);
   const [selectedSize, setSelectedSize] = useState<string | null>(defaultVariant?.size || null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const uniqueColors = useMemo(() =>
     Array.from(new Set((product.variants || []).map((v: any) => v.color).filter(Boolean))) as any[],
@@ -325,10 +327,7 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                 <Button variant="outline" className="flex-1 h-14 rounded-2xl border-2 font-mono font-black text-[10px] uppercase tracking-widest gap-2" onClick={handleFavorite}>
                   <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : ''}`} /> Save_Collection
                 </Button>
-                <Button variant="outline" className="h-14 w-14 rounded-2xl border-2" onClick={() => {
-                  if (navigator.share) navigator.share({ title: product.name, url: window.location.href });
-                  else { navigator.clipboard.writeText(window.location.href); toast.success('Link Manifested'); }
-                }}>
+                <Button variant="outline" className="h-14 w-14 rounded-2xl border-2" onClick={() => setIsShareOpen(true)}>
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -353,6 +352,13 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareDialog
+        isOpen={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        title={product.name}
+      />
     </div>
   );
 }

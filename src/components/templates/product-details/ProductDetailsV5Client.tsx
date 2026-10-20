@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import Image from 'next/image';
 import { generateHtml } from '@/lib/server-html';
+import ShareDialog from '@/components/storefront/ShareDialog';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -52,6 +53,7 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const uniqueColors = useMemo(() =>
     Array.from(new Set((product.variants || []).map((v: any) => v.color))).filter(Boolean) as string[],
@@ -315,22 +317,8 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
                 <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-primary text-primary' : ''}`} /> Atelier_Save
               </button>
               <button
-                onClick={async () => {
-                  const shareData = { title: product.name, url: window.location.href };
-                  try {
-                    if (navigator.share) {
-                      await navigator.share(shareData);
-                    } else {
-                      await navigator.clipboard.writeText(window.location.href);
-                      toast.success('Link Manifested');
-                    }
-                  } catch (err: any) {
-                    if (err.name !== 'AbortError') {
-                      toast.error('Sharing failed');
-                    }
-                  }
-                }}
-                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 hover:text-primary transition-all"
+                onClick={() => setIsShareOpen(true)}
+                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 hover:text-primary transition-all cursor-pointer"
               >
                 <Share2 className="h-4 w-4" /> Atelier_Share
               </button>
@@ -384,6 +372,13 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share Modal */}
+      <ShareDialog
+        isOpen={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        title={product?.name || ''}
+      />
     </div>
   );
 }

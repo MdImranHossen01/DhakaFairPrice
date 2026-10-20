@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ShareDialog from '@/components/storefront/ShareDialog';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -44,6 +45,7 @@ export default function ResellerProductDetailsClient({
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('description');
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const uniqueColors = useMemo(() =>
     Array.from(new Set((product.variants || []).map((v: any) => v.color))).filter(Boolean) as string[],
@@ -324,14 +326,7 @@ export default function ResellerProductDetailsClient({
             </div>
             <Separator orientation="vertical" className="h-4" />
             <button
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: product.name, url: window.location.href });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast.success('লিংক কপি হয়েছে!');
-                }
-              }}
+              onClick={() => setIsShareOpen(true)}
               className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
             >
               <Share2 className="h-4 w-4" />
@@ -566,6 +561,13 @@ export default function ResellerProductDetailsClient({
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Share Modal */}
+      <ShareDialog
+        isOpen={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        title={product.name}
+      />
     </div>
   );
 }
