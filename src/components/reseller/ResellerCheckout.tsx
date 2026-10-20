@@ -7,6 +7,8 @@ import * as z from 'zod';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { addToCart as reduxAddToCart, removeFromCart as reduxRemoveFromCart, clearCart as reduxClearCart } from '@/store/slices/cartSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -86,6 +88,9 @@ interface Props {
 
 export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const searchParams = useSearchParams();
+  const dispatch = useAppDispatch();
+  const reduxCartItems = useAppSelector((state) => state.cart.items);
+  const isReduxHydrated = useAppSelector((state) => state.cart.isHydrated);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -102,6 +107,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
       try {
         localStorage.removeItem(`rscart_${subdomain}`);
         window.dispatchEvent(new Event('reseller-cart-updated'));
+        dispatch(reduxClearCart());
       } catch (e) {
         console.error('Error clearing cart on success:', e);
       }
@@ -111,7 +117,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
       setShowFailModal(true);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [searchParams, subdomain]);
+  }, [searchParams, subdomain, dispatch]);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -173,10 +179,49 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
     const cartKey = `rscart_${subdomain}`;
     const loadCart = () => {
       try {
+        let loadedItems: CartItem[] = [];
         const raw = localStorage.getItem(cartKey);
-        const data = raw ? JSON.parse(raw) : [];
-        if (Array.isArray(data)) setCart(data);
-        else setCart([]);
+        const localData = raw ? JSON.parse(raw) : [];
+
+        if (Array.isArray(localData) && localData.length > 0) {
+          loadedItems = localData;
+        } else if (reduxCartItems && reduxCartItems.length > 0) {
+          loadedItems = reduxCartItems.map((item: any) => ({
+            productId: item.productId,
+            resellerProductId: item.resellerProductId || item.productId,
+            name: item.name,
+            price: item.price,
+            originalPrice: item.basePrice || item.price,
+            image: item.image || '',
+            quantity: item.quantity,
+            color: item.color,
+            size: item.size,
+            uploadedBy: item.uploadedBy,
+            sellerName: item.sellerName,
+          }));
+        } else if (typeof window !== 'undefined') {
+          // Check standard Redux localStorage persistence
+          const rawRedux = localStorage.getItem('cart');
+          if (rawRedux) {
+            const parsed = JSON.parse(rawRedux);
+            if (Array.isArray(parsed?.items) && parsed.items.length > 0) {
+              loadedItems = parsed.items.map((item: any) => ({
+                productId: item.productId,
+                resellerProductId: item.resellerProductId || item.productId,
+                name: item.name,
+                price: item.price,
+                originalPrice: item.basePrice || item.price,
+                image: item.image || '',
+                quantity: item.quantity,
+                color: item.color,
+                size: item.size,
+                uploadedBy: item.uploadedBy,
+                sellerName: item.sellerName,
+              }));
+            }
+          }
+        }
+        setCart(loadedItems);
       } catch {
         setCart([]);
       }
@@ -184,7 +229,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
     loadCart();
     window.addEventListener('reseller-cart-updated', loadCart);
     return () => window.removeEventListener('reseller-cart-updated', loadCart);
-  }, [subdomain]);
+  }, [subdomain, reduxCartItems, isReduxHydrated]);
 
   // Fetch customer loyalty and profile when phone number is entered
   useEffect(() => {
@@ -350,17 +395,28 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   };
 
   const updateQuantity = (item: CartItem, delta: number) => {
+    const targetId = item.resellerProductId || item.productId;
     const cartKey = `rscart_${subdomain}`;
     const existing = [...cart];
     const idx = existing.findIndex(
-      i => i.resellerProductId === item.resellerProductId && i.color === item.color && i.size === item.size
+      i => (i.resellerProductId || i.productId) === targetId && i.color === item.color && i.size === item.size
     );
     if (idx < 0) return;
     const newQty = existing[idx].quantity + delta;
     if (newQty <= 0) {
       existing.splice(idx, 1);
+      dispatch(reduxRemoveFromCart({ productId: item.productId, color: item.color, size: item.size }));
     } else {
       existing[idx] = { ...existing[idx], quantity: newQty };
+      dispatch(reduxAddToCart({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: delta,
+        image: item.image,
+        color: item.color,
+        size: item.size,
+      }));
     }
     setCart(existing);
     localStorage.setItem(cartKey, JSON.stringify(existing));
@@ -368,13 +424,15 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   };
 
   const removeItem = (item: CartItem) => {
+    const targetId = item.resellerProductId || item.productId;
     const cartKey = `rscart_${subdomain}`;
     const updated = cart.filter(
-      i => !(i.resellerProductId === item.resellerProductId && i.color === item.color && i.size === item.size)
+      i => !((i.resellerProductId || i.productId) === targetId && i.color === item.color && i.size === item.size)
     );
     setCart(updated);
     localStorage.setItem(cartKey, JSON.stringify(updated));
     window.dispatchEvent(new Event('reseller-cart-updated'));
+    dispatch(reduxRemoveFromCart({ productId: item.productId, color: item.color, size: item.size }));
     toast.info(`${item.name} সরানো হয়েছে`);
   };
 
@@ -523,6 +581,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           if (stripeRes.ok && stripeData.url) {
             localStorage.removeItem(`rscart_${subdomain}`);
             window.dispatchEvent(new Event('reseller-cart-updated'));
+            dispatch(reduxClearCart());
             setCart([]);
             window.location.href = stripeData.url;
             return;
@@ -547,6 +606,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
               if (initData.url) {
                 localStorage.removeItem(`rscart_${subdomain}`);
                 window.dispatchEvent(new Event('reseller-cart-updated'));
+                dispatch(reduxClearCart());
                 setCart([]);
                 window.location.href = initData.url;
                 return;
@@ -561,12 +621,14 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           // Fallback if gateway fails: clear cart and show pending order confirmation
           localStorage.removeItem(`rscart_${subdomain}`);
           window.dispatchEvent(new Event('reseller-cart-updated'));
+          dispatch(reduxClearCart());
           setCart([]);
           setOrderId(orderShortId);
           setShowSuccessModal(true);
         } else {
           localStorage.removeItem(`rscart_${subdomain}`);
           window.dispatchEvent(new Event('reseller-cart-updated'));
+          dispatch(reduxClearCart());
           setCart([]);
           setOrderId(orderShortId);
           setShowSuccessModal(true);

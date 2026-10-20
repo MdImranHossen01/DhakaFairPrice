@@ -41,15 +41,24 @@ export async function POST(
     }
 
     // Fetch all ResellerProducts in a single query with populated productId
-    const resellerProductIds = items.map((i: any) => i.resellerProductId).filter(Boolean);
+    const rawIds = items.map((i: any) => i.resellerProductId || i.productId).filter(Boolean);
     const rps = await ResellerProduct.find({
-      _id: { $in: resellerProductIds },
-      resellerId: reseller._id,
+      $or: [
+        { _id: { $in: rawIds }, resellerId: reseller._id },
+        { productId: { $in: rawIds }, resellerId: reseller._id }
+      ],
       isPublished: true,
       isAvailableOnMother: true,
     }).populate('productId');
 
-    const rpMap = new Map(rps.map(rp => [rp._id.toString(), rp]));
+    const rpMap = new Map<string, any>();
+    rps.forEach(rp => {
+      rpMap.set(rp._id.toString(), rp);
+      if (rp.productId) {
+        const pId = (rp.productId as any)._id ? (rp.productId as any)._id.toString() : rp.productId.toString();
+        rpMap.set(pId, rp);
+      }
+    });
 
     // Validate each item against ResellerProduct and calculate commission
     const validatedItems = [];
@@ -61,7 +70,8 @@ export async function POST(
       const qty = parseInt(item.quantity, 10);
       if (isNaN(qty) || qty <= 0 || !Number.isInteger(qty)) continue;
 
-      const rp = rpMap.get(String(item.resellerProductId));
+      const targetId = String(item.resellerProductId || item.productId);
+      const rp = rpMap.get(targetId);
       if (!rp) continue;
 
       if (rp.stock < qty) {
