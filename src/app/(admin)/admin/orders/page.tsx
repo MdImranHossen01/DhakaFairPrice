@@ -631,10 +631,12 @@ function OrdersContent() {
     }
   };
 
-  const handleSendToRedx = async (orderId: string) => {
+  const handleSendToRedx = async (ids: string[]) => {
+    if (ids.length === 0) return;
+
     const result = await Swal.fire({
       title: 'Send to RedX?',
-      text: 'Are you sure you want to send this order to RedX Courier?',
+      text: `Are you sure you want to send ${ids.length} order(s) to RedX Courier?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#dc2626',
@@ -643,22 +645,32 @@ function OrdersContent() {
 
     if (!result.isConfirmed) return;
 
+    setBulkActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/orders/${orderId}/book-courier`, {
+      const res = await fetch('/api/admin/courier/redx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'redx' }),
+        body: JSON.stringify({ orderIds: ids }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Order sent to RedX successfully');
+        const hasFailures = data.results && data.results.some((r: any) => !r.success);
+        if (hasFailures) {
+          const firstFail = data.results.find((r: any) => !r.success);
+          toast.error(`${data.message || 'Partial booking'}. Reason: ${firstFail?.message || 'Unknown error'}`);
+        } else {
+          toast.success(data.message || 'Orders sent to RedX successfully');
+        }
+        if (ids.length > 1) setSelectedIds([]);
         fetchOrders();
       } else {
         toast.error(data.message || 'RedX submission failed');
       }
     } catch (error) {
       toast.error('Error sending to RedX');
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -1050,7 +1062,25 @@ function OrdersContent() {
                 className="bg-orange-500 text-white hover:bg-orange-600 border-none"
                 onClick={() => handleSendToSteadfast(selectedIds)}
               >
-                <Truck className="mr-2 h-3 w-3" /> Send to Steadfast
+                <Truck className="mr-2 h-3 w-3" /> Steadfast
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-rose-600 text-white hover:bg-rose-700 border-none"
+                onClick={() => handleSendToPathao(selectedIds)}
+              >
+                <Truck className="mr-2 h-3 w-3" /> Pathao
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-red-600 text-white hover:bg-red-700 border-none"
+                onClick={() => handleSendToRedx(selectedIds)}
+              >
+                <Truck className="mr-2 h-3 w-3" /> RedX
               </Button>
 
               <DropdownMenu>
@@ -1353,6 +1383,12 @@ function OrdersContent() {
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleSendToSteadfast([order._id])} disabled={!!order.shippingDetails?.consignmentId}>
                                 <Truck className="mr-2 h-4 w-4 text-orange-500" /> Send to Steadfast
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendToPathao([order._id])} disabled={!!order.shippingDetails?.consignmentId}>
+                                <Truck className="mr-2 h-4 w-4 text-rose-500" /> Send to Pathao
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSendToRedx([order._id])} disabled={!!order.shippingDetails?.consignmentId}>
+                                <Truck className="mr-2 h-4 w-4 text-red-600" /> Send to RedX
                               </DropdownMenuItem>
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />

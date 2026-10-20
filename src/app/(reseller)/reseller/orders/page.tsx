@@ -253,14 +253,15 @@ function OrdersContent() {
     }
   };
 
-  const handleBookCourier = async (order: any) => {
+  const handleBookCourier = async (order: any, courier: 'steadfast' | 'pathao' | 'redx' = 'steadfast') => {
+    const courierLabel = courier === 'steadfast' ? 'Steadfast' : courier === 'pathao' ? 'Pathao' : 'RedX';
     const result = await Swal.fire({
-      title: 'Book Courier?',
-      text: `Hand over order #${order.shortId || order._id.slice(-8)} to Courier?`,
+      title: `Send to ${courierLabel}?`,
+      text: `Hand over order #${order.shortId || order._id.slice(-8)} to ${courierLabel} Courier?`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#2563eb',
-      confirmButtonText: 'Yes, send now!'
+      confirmButtonColor: courier === 'steadfast' ? '#f97316' : courier === 'pathao' ? '#e11d48' : '#dc2626',
+      confirmButtonText: `Yes, send to ${courierLabel}!`
     });
 
     if (!result.isConfirmed) return;
@@ -269,15 +270,15 @@ function OrdersContent() {
       const res = await fetch(`/api/reseller/orders/${order._id}/book-courier`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({ courier })
       });
 
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || `Courier booked successfully!`);
+        toast.success(data.message || `${courierLabel} booked successfully!`);
         fetchOrders();
       } else {
-        toast.error(data.message || 'Courier booking failed');
+        toast.error(data.message || `${courierLabel} booking failed`);
       }
     } catch (e) {
       toast.error('Network error');
@@ -754,8 +755,14 @@ function OrdersContent() {
                                   <DropdownMenuItem onClick={() => handlePrintStickers(order)}>
                                     <Printer className="mr-2 h-4 w-4 text-primary" /> Print Sticker Invoice
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleBookCourier(order)} disabled={!!order.shippingDetails?.consignmentId}>
-                                    <Truck className="mr-2 h-4 w-4 text-orange-500" /> Book Courier
+                                  <DropdownMenuItem onClick={() => handleBookCourier(order, 'steadfast')} disabled={!!order.shippingDetails?.consignmentId}>
+                                    <Truck className="mr-2 h-4 w-4 text-orange-500" /> Send to Steadfast
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleBookCourier(order, 'pathao')} disabled={!!order.shippingDetails?.consignmentId}>
+                                    <Truck className="mr-2 h-4 w-4 text-rose-500" /> Send to Pathao
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleBookCourier(order, 'redx')} disabled={!!order.shippingDetails?.consignmentId}>
+                                    <Truck className="mr-2 h-4 w-4 text-red-600" /> Send to RedX
                                   </DropdownMenuItem>
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
@@ -894,8 +901,14 @@ function OrdersContent() {
                               <DropdownMenuItem onClick={() => handlePrintStickers(order)}>
                                 <Printer className="mr-2 h-4 w-4 text-primary" /> Print Sticker Invoice
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleBookCourier(order)} disabled={!!order.shippingDetails?.consignmentId}>
-                                <Truck className="mr-2 h-4 w-4 text-orange-500" /> Book Courier
+                              <DropdownMenuItem onClick={() => handleBookCourier(order, 'steadfast')} disabled={!!order.shippingDetails?.consignmentId}>
+                                <Truck className="mr-2 h-4 w-4 text-orange-500" /> Send to Steadfast
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBookCourier(order, 'pathao')} disabled={!!order.shippingDetails?.consignmentId}>
+                                <Truck className="mr-2 h-4 w-4 text-rose-500" /> Send to Pathao
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleBookCourier(order, 'redx')} disabled={!!order.shippingDetails?.consignmentId}>
+                                <Truck className="mr-2 h-4 w-4 text-red-600" /> Send to RedX
                               </DropdownMenuItem>
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
