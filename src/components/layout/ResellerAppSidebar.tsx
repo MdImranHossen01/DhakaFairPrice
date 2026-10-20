@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
@@ -218,9 +219,9 @@ function ResellerNavCollapsibleItem({
       isUrlActive(sub.url, pathname, searchParams, siblingUrls)
     ) || ((item as any).url ? isUrlActive((item as any).url, pathname, searchParams, []) : false);
 
-  const [isOpen, setIsOpen] = React.useState(isParentActive);
+  const [isOpen, setIsOpen] = useState(isParentActive);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isParentActive) {
       setIsOpen(true);
     }
