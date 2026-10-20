@@ -68,12 +68,47 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Redirect to checkout page with success state (modal will show)
-      const origin = req.nextUrl.origin;
+      // Determine valid origin to prevent redirecting to internal binding address (0.0.0.0)
+      const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      const forwardedProto = req.headers.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
+      
+      let origin = (forwardedHost && !forwardedHost.includes('0.0.0.0'))
+        ? `${forwardedProto}://${forwardedHost}`
+        : (req.nextUrl.origin && !req.nextUrl.origin.includes('0.0.0.0'))
+          ? req.nextUrl.origin
+          : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXTAUTH_URL || 'https://www.dhakafairprice.com');
+      
+      origin = origin.replace(/\/$/, '');
+
+      // If order belongs to a reseller storefront, redirect back to reseller's domain
+      const targetOrder = order || await Order.findById(orderId);
+      if (targetOrder?.resellerId || targetOrder?.storefrontResellerId) {
+        try {
+          const Reseller = (await import('@/models/Reseller')).default;
+          const reseller = await Reseller.findById(targetOrder.storefrontResellerId || targetOrder.resellerId).select('customDomain subdomain').lean() as any;
+          if (reseller?.customDomain) {
+            origin = `https://${reseller.customDomain}`;
+          } else if (reseller?.subdomain) {
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+            origin = `https://${reseller.subdomain}.${rootDomain}`;
+          }
+        } catch (resellerErr) {
+          console.error('Error resolving reseller domain for payment redirect:', resellerErr);
+        }
+      }
+
       return NextResponse.redirect(`${origin}/checkout?order=success&id=${orderId}`, 303);
     } else {
       console.error('SSLCommerz Validation Failed:', response);
-      const origin = req.nextUrl.origin;
+      const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+      const forwardedProto = req.headers.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
+      let origin = (forwardedHost && !forwardedHost.includes('0.0.0.0'))
+        ? `${forwardedProto}://${forwardedHost}`
+        : (req.nextUrl.origin && !req.nextUrl.origin.includes('0.0.0.0'))
+          ? req.nextUrl.origin
+          : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXTAUTH_URL || 'https://www.dhakafairprice.com');
+      origin = origin.replace(/\/$/, '');
+
       return NextResponse.redirect(`${origin}/checkout?order=failed&id=${orderId}`, 303);
     }
   } catch (error) {

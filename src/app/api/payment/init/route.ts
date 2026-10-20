@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Order from '@/models/Order';
 import { initPayment } from '@/lib/sslcommerz';
@@ -28,8 +28,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
-    const transactionId = order.transactionId || `TRANS-${orderId}-${Date.now()}`;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const forwardedProto = req.headers.get('x-forwarded-proto') || (forwardedHost?.includes('localhost') ? 'http' : 'https');
+    let baseUrl = (forwardedHost && !forwardedHost.includes('0.0.0.0'))
+      ? `${forwardedProto}://${forwardedHost}`
+      : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXTAUTH_URL || 'https://www.dhakafairprice.com');
+    baseUrl = baseUrl.replace(/\/$/, '');
 
     const { shippingAddress } = order;
     if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.street || !shippingAddress.city || !shippingAddress.phone) {
