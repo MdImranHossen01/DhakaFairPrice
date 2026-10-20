@@ -177,6 +177,29 @@ export async function PUT(
       }
     }
 
+    const unsetFields: Record<string, 1> = {};
+    if (
+      body.salePrice === null || 
+      body.salePrice === '' || 
+      (existingProduct.uploadedBy && (body.salePrice === null || body.salePrice === undefined || (safeUpdate.price && existingProduct.salePrice && existingProduct.salePrice >= safeUpdate.price)))
+    ) {
+      if (!body.salePrice || Number(body.salePrice) <= 0 || (safeUpdate.price && Number(body.salePrice) >= safeUpdate.price)) {
+        unsetFields.salePrice = 1;
+        delete safeUpdate.salePrice;
+      }
+    }
+    if (body.discountRate === null || body.discountRate === '' || unsetFields.salePrice) {
+      if (!body.discountRate || unsetFields.salePrice) {
+        unsetFields.discountRate = 1;
+        delete safeUpdate.discountRate;
+      }
+    }
+
+    const baseUpdateOps: any = { $set: safeUpdate };
+    if (Object.keys(unsetFields).length > 0) {
+      baseUpdateOps.$unset = unsetFields;
+    }
+
     if (safeUpdate.slug) {
       const maxRetries = 3;
       let attempt = 0;
@@ -197,7 +220,7 @@ export async function PUT(
         try {
           const updatedProduct = await Product.findOneAndUpdate(
             query,
-            { $set: { ...safeUpdate, slug: uniqueSlug } },
+            { ...baseUpdateOps, $set: { ...safeUpdate, slug: uniqueSlug } },
             { new: true, runValidators: true }
           );
 
@@ -232,7 +255,7 @@ export async function PUT(
 
     const updatedProduct = await Product.findOneAndUpdate(
       query,
-      { $set: safeUpdate },
+      baseUpdateOps,
       { returnDocument: 'after', runValidators: true }
     );
 

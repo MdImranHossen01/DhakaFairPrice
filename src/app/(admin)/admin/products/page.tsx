@@ -161,6 +161,8 @@ function ProductsContent() {
         body: JSON.stringify({
           isMotherProduct: true,
           price: priceNum,
+          salePrice: null,
+          discountRate: null,
         }),
       });
 
