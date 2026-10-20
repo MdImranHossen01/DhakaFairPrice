@@ -461,13 +461,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Compute reseller commission, system platform fee, and sales profit
-    const platformCommissionRate = settings?.platformCommissionRate ?? 10;
+    const defaultPlatformCommissionRate = settings?.platformCommissionRate ?? 10;
+    const uploaderResellerIds = Array.from(uploaderItemsMap.keys());
+    const uploaderFeeMap = new Map<string, number>();
+    if (uploaderResellerIds.length > 0) {
+      const ResellerModel = (await import('@/models/Reseller')).default;
+      const uploaderResellers = await ResellerModel.find({ _id: { $in: uploaderResellerIds } })
+        .select('_id systemFeePercent commissionRate')
+        .lean();
+      uploaderResellers.forEach((r: any) => {
+        const fee = r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? defaultPlatformCommissionRate);
+        uploaderFeeMap.set(r._id.toString(), fee);
+      });
+    }
+
     let orderResellerCommission = 0;
     let orderSystemFee = 0;
     let orderSalesProfit = 0;
 
     const resellerProductIds = new Set<string>();
-    for (const [, fItems] of uploaderItemsMap.entries()) {
+    for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
+      const uploaderFeeRate = uploaderFeeMap.get(uploaderId) ?? defaultPlatformCommissionRate;
       for (const it of fItems) {
         resellerProductIds.add(it.productId.toString());
         const qty = it.quantity;
@@ -475,8 +489,8 @@ export async function POST(req: NextRequest) {
         const retail = Number(it.retailPrice) || 0;
 
         const rComm = baseCost * qty;
-        const sFee = Math.round(baseCost * (platformCommissionRate / 100)) * qty;
-        const sProfit = Math.max(0, retail - baseCost - Math.round(baseCost * (platformCommissionRate / 100))) * qty;
+        const sFee = Math.round(baseCost * (uploaderFeeRate / 100)) * qty;
+        const sProfit = Math.max(0, retail - baseCost - sFee) * qty;
 
         orderResellerCommission += rComm;
         orderSystemFee += sFee;
@@ -543,6 +557,7 @@ export async function POST(req: NextRequest) {
 
       let fIndex = 1;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
+        const uploaderFeeRate = uploaderFeeMap.get(uploaderId) ?? defaultPlatformCommissionRate;
         const uploaderSubtotal = fItems.reduce((sum: number, it: any) => sum + it.retailPrice * it.quantity, 0);
         // Base product cost payable to reseller supplier:
         const uploaderCommission = fItems.reduce(
@@ -551,14 +566,14 @@ export async function POST(req: NextRequest) {
         );
         // System platform fee:
         const uploaderSystemFee = fItems.reduce(
-          (sum: number, it: any) => sum + Math.round((Number(it.purchasePrice) || 0) * (platformCommissionRate / 100)) * it.quantity,
+          (sum: number, it: any) => sum + Math.round((Number(it.purchasePrice) || 0) * (uploaderFeeRate / 100)) * it.quantity,
           0
         );
         // Mother Shop sales profit:
         const uploaderSalesProfit = fItems.reduce(
           (sum: number, it: any) => {
             const base = Number(it.purchasePrice) || 0;
-            const fee = Math.round(base * (platformCommissionRate / 100));
+            const fee = Math.round(base * (uploaderFeeRate / 100));
             return sum + Math.max(0, it.retailPrice - base - fee) * it.quantity;
           },
           0

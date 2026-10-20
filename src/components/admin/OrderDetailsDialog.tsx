@@ -759,7 +759,7 @@ export default function OrderDetailsDialog({
                     <span className="text-[10px] text-muted-foreground font-medium">Reseller Payout</span>
                     <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
                     {order.systemFee > 0 && (
-                      <span className="text-[11px] text-primary font-mono mt-0.5">System Fee (10%): +৳{Math.round(order.systemFee)}</span>
+                      <span className="text-[11px] text-primary font-mono mt-0.5">System Fee: +৳{Math.round(order.systemFee)}</span>
                     )}
                     {order.salesProfit > 0 && (
                       <span className="text-[11px] text-emerald-600 font-semibold font-mono">Sales Profit: +৳{Math.round(order.salesProfit)}</span>

@@ -86,7 +86,8 @@ export async function GET(req: NextRequest) {
           pendingBalance: r.pendingBalance || 0,
           totalOrders: orderCountMap.get(r._id.toString()) ?? (r.totalOrders || 0),
           totalEarnings: earningsMap.get(r._id.toString()) || (r.totalEarnings || 0),
-          commissionRate: r.commissionRate ?? 10,
+          commissionRate: r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10),
+          systemFeePercent: r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10),
           status: r.status
         })),
         pendingPayouts
