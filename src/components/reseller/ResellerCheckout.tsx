@@ -330,6 +330,18 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const sellerOrigins = Array.from(new Set(cart.map(i => (i as any).uploadedBy ? String((i as any).uploadedBy) : 'mother')));
   const hasMultipleSellers = sellerOrigins.length > 1;
 
+  // Validation check for mandatory customer information to enable/disable the order button
+  const isPhoneValid = /^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/.test(watchedPhone || '');
+  const isAddressValid = (watchedStreet || '').trim().length >= 5;
+  const isNameValid = (watchedFullName || '').trim().length >= 2;
+  const isFormValid = !!(
+    isNameValid &&
+    isPhoneValid &&
+    isAddressValid &&
+    deliveryArea &&
+    (paymentMethod !== 'Manual' || (selectedMethod?.id && (manualDetails.senderNumber || manualDetails.transactionId)))
+  );
+
   const keepOnlySeller = (targetSellerId: string) => {
     const updated = cart.filter(item => {
       const sId = (item as any).uploadedBy ? String((item as any).uploadedBy) : 'mother';
@@ -1177,28 +1189,42 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                 <CardFooter className="pt-2 border-t flex flex-col gap-3">
                   <Button
                     type="submit"
-                    className="w-full text-base py-6 font-bold"
-                    disabled={submitting || hasMultipleSellers}
+                    className={`w-full h-14 rounded-full font-black uppercase tracking-widest text-sm transition-all ${
+                      isFormValid && !hasMultipleSellers
+                        ? 'bg-primary text-primary-foreground shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95'
+                        : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
+                    }`}
+                    disabled={submitting || !isFormValid || hasMultipleSellers}
                   >
                     {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        অর্ডার প্রসেস হচ্ছে...
-                      </>
-                    ) : hasMultipleSellers ? (
-                      <>
-                        <AlertTriangle className="mr-2 h-5 w-5 text-amber-300" />
-                        ভিন্ন শপের পণ্য রয়েছে — আলাদা অর্ডার করুন
-                      </>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     ) : (
-                      <>
-                        {paymentMethod === 'sslcommerz'
-                          ? `পেমেন্ট করুন (SSLCommerz) — ৳${Math.round(finalTotal)}`
-                          : `অর্ডার সম্পন্ন করুন — ৳${Math.round(finalTotal)}`}
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                      </>
+                      <CheckCircle2 className="mr-2 h-5 w-5" />
+                    )}
+                    {submitting ? (
+                      'অর্ডার প্রসেস হচ্ছে...'
+                    ) : hasMultipleSellers ? (
+                      'ভিন্ন শপের পণ্য রয়েছে — আলাদা অর্ডার করুন'
+                    ) : !isFormValid ? (
+                      'অর্ডার নিশ্চিত করুন'
+                    ) : paymentMethod === 'sslcommerz' ? (
+                      `পেমেন্ট করুন (SSLCommerz) — ৳${Math.round(finalTotal)}`
+                    ) : (
+                      `অর্ডার সম্পন্ন করুন — ৳${Math.round(finalTotal)}`
+                    )}
+                    {isFormValid && !submitting && !hasMultipleSellers && (
+                      <ArrowRight className="ml-2 h-5 w-5" />
                     )}
                   </Button>
+                  {hasMultipleSellers ? (
+                    <p className="text-[11px] font-bold text-destructive text-center w-full">
+                      ⚠️ ভিন্ন শপের পণ্য একসাথে অর্ডার করা যাবে না। একটি শপের পণ্য রেখে বাকিগুলো রিমুভ করুন।
+                    </p>
+                  ) : !isFormValid ? (
+                    <p className="text-[10px] font-bold text-muted-foreground text-center w-full uppercase tracking-widest">
+                      অর্ডার সম্পন্ন করতে ডেলিভারি তথ্য পূরণ করুন
+                    </p>
+                  ) : null}
                 </CardFooter>
               </Card>
             </form>
