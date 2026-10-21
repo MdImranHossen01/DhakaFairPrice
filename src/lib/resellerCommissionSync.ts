@@ -95,12 +95,31 @@ export async function syncResellerCommissionForMotherOrder({
           {
             $inc: {
               walletBalance: commission,
-              pendingBalance: -commission,
+              totalEarnings: commission,
             }
           }
         );
         if (session) resUpdate.session(session);
         await resUpdate;
+
+        // Accurate reconciliation of pendingBalance from active pending transactions
+        const pendingAgg = await ResellerWalletTransaction.aggregate([
+          {
+            $match: {
+              resellerId: rOrder.resellerId,
+              type: 'commission_earned',
+              status: 'pending'
+            }
+          },
+          { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+        const accuratePending = Math.max(0, pendingAgg[0]?.total || 0);
+        const syncPending = Reseller.findByIdAndUpdate(
+          rOrder.resellerId,
+          { $set: { pendingBalance: accuratePending } }
+        );
+        if (session) syncPending.session(session);
+        await syncPending;
       }
     } else {
       let changed = false;
@@ -157,10 +176,22 @@ export async function reconcileResellerCommissions(resellerId?: string | mongoos
         {
           $inc: {
             walletBalance: commission,
-            pendingBalance: -commission,
           }
         }
       );
+
+      const pendingAgg = await ResellerWalletTransaction.aggregate([
+        {
+          $match: {
+            resellerId: rOrder.resellerId,
+            type: 'commission_earned',
+            status: 'pending'
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      const accuratePending = Math.max(0, pendingAgg[0]?.total || 0);
+      await Reseller.findByIdAndUpdate(rOrder.resellerId, { $set: { pendingBalance: accuratePending } });
     }
   }
 }

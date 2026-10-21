@@ -46,6 +46,22 @@ export async function GET() {
       await Reseller.findByIdAndUpdate(reseller._id, { totalEarnings: actualTotalEarnings });
     }
 
+    // Sync accurate pending commission balance based on active pending transactions
+    const pendingAgg = await ResellerWalletTransaction.aggregate([
+      {
+        $match: {
+          resellerId: reseller._id,
+          type: 'commission_earned',
+          status: 'pending'
+        }
+      },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const actualPendingBalance = Math.max(0, pendingAgg[0]?.total || 0);
+    if (reseller.pendingBalance !== actualPendingBalance) {
+      await Reseller.findByIdAndUpdate(reseller._id, { pendingBalance: actualPendingBalance });
+    }
+
     reseller = await Reseller.findById(reseller._id).lean() as any;
 
     // Ensure User profile image is synchronized with store logo

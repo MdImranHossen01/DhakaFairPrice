@@ -339,7 +339,11 @@ export async function POST(
 
       // Update reseller stats (atomic)
       await Reseller.findByIdAndUpdate(reseller._id, {
-        $inc: { totalOrders: 1, totalRevenue: calculatedFinalTotal },
+        $inc: { 
+          totalOrders: 1, 
+          totalRevenue: calculatedFinalTotal,
+          pendingBalance: totalCommission
+        },
       }, { session: sessionConn });
 
       // Create pending commission ledger entry
