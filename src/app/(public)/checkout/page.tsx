@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addToCart, removeFromCart, clearCart, syncItems, keepOnlySeller } from '@/store/slices/cartSlice';
+import { addToCart, updateQuantity, removeFromCart, clearCart, syncItems, keepOnlySeller } from '@/store/slices/cartSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -617,7 +617,7 @@ function CheckoutContent() {
       dispatch(removeFromCart({ productId: item.productId, color: item.color, size: item.size }));
       toast.info(`${item.name} removed from cart`);
     } else {
-      dispatch(addToCart({ ...item, quantity: delta }));
+      dispatch(updateQuantity({ productId: item.productId, color: item.color, size: item.size, delta }));
     }
   };
 

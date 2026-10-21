@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import Swal from 'sweetalert2';
 import { clearCart, addToCart } from '@/store/slices/cartSlice';
+import { toast } from 'sonner';
 
 export interface CartItemInput {
   productId: string;
@@ -32,6 +32,22 @@ export async function validateAndAddToCart({
   dispatch: any;
   onSuccess?: () => void;
 }): Promise<boolean> {
+  // Prevent duplicate item/variant additions
+  const isAlreadyInCart = (cartItems || []).some((item: any) => {
+    const isSameProduct = String(item.productId) === String(newItem.productId);
+    const itemColor = (item.color || '').trim().toLowerCase();
+    const newColor = (newItem.color || '').trim().toLowerCase();
+    const itemSize = (item.size || '').trim().toLowerCase();
+    const newSize = (newItem.size || '').trim().toLowerCase();
+
+    return isSameProduct && itemColor === newColor && itemSize === newSize;
+  });
+
+  if (isAlreadyInCart) {
+    toast.info('Already added to cart');
+    return false;
+  }
+
   if (cartItems && cartItems.length > 0) {
     const existingSeller = cartItems[0].uploadedBy ? String(cartItems[0].uploadedBy) : 'mother';
     const newSeller = newItem.uploadedBy ? String(newItem.uploadedBy) : 'mother';

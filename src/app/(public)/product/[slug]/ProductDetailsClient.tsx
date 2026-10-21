@@ -50,6 +50,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
   const dispatch = useAppDispatch();
   const { data: session } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
+  const cartItems = useAppSelector((state) => state.cart.items);
   const isInWishlist = wishlist.includes(product?._id);
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === 'admin';
@@ -148,6 +149,21 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     }
 
 
+    const isAlreadyInCart = (cartItems || []).some((item: any) => {
+      const isSameProduct = String(item.productId) === String(product._id);
+      const itemColor = (item.color || '').trim().toLowerCase();
+      const newColor = (selectedColor || '').trim().toLowerCase();
+      const itemSize = (item.size || '').trim().toLowerCase();
+      const newSize = (selectedSize || '').trim().toLowerCase();
+
+      return isSameProduct && itemColor === newColor && itemSize === newSize;
+    });
+
+    if (isAlreadyInCart) {
+      toast.info('Already added to cart');
+      return;
+    }
+
     dispatch(addToCart({
       productId: product._id,
       name: product.name,
@@ -158,7 +174,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
       color: selectedColor || undefined,
       size: selectedSize || undefined
     }));
-    toast.success(`Added ${finalQuantity} ${product.name} to cart`);
+    toast.success(`${product.name} added to cart`);
   };
 
   const handleFavorite = async () => {

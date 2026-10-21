@@ -35,19 +35,39 @@ const cartSlice = createSlice({
       const newItem = action.payload;
       const existingItem = state.items.find(
         (item) => 
-          item.productId === newItem.productId && 
-          item.color === newItem.color && 
-          item.size === newItem.size
+          String(item.productId) === String(newItem.productId) && 
+          (item.color || '') === (newItem.color || '') && 
+          (item.size || '') === (newItem.size || '')
       );
 
+      // Only add if not already in cart
       if (!existingItem) {
-        state.totalQuantity += newItem.quantity;
-        state.totalAmount = Math.round((state.totalAmount + newItem.price * newItem.quantity) * 100) / 100;
-        state.items.push(newItem);
-      } else {
-        state.totalQuantity += newItem.quantity;
-        state.totalAmount = Math.round((state.totalAmount + existingItem.price * newItem.quantity) * 100) / 100;
-        existingItem.quantity += newItem.quantity;
+        const qty = newItem.quantity > 0 ? newItem.quantity : 1;
+        state.totalQuantity += qty;
+        state.totalAmount = Math.round((state.totalAmount + newItem.price * qty) * 100) / 100;
+        state.items.push({ ...newItem, quantity: qty });
+      }
+    },
+    updateQuantity(state, action: PayloadAction<{ productId: string; color?: string; size?: string; delta: number }>) {
+      const { productId, color, size, delta } = action.payload;
+      const existingItem = state.items.find(
+        (item) =>
+          String(item.productId) === String(productId) &&
+          (item.color || '') === (color || '') &&
+          (item.size || '') === (size || '')
+      );
+
+      if (existingItem) {
+        const newQty = existingItem.quantity + delta;
+        if (newQty <= 0) {
+          state.totalQuantity -= existingItem.quantity;
+          state.totalAmount = Math.round((state.totalAmount - existingItem.price * existingItem.quantity) * 100) / 100;
+          state.items = state.items.filter((item) => item !== existingItem);
+        } else {
+          state.totalQuantity += delta;
+          state.totalAmount = Math.round((state.totalAmount + existingItem.price * delta) * 100) / 100;
+          existingItem.quantity = newQty;
+        }
       }
     },
     removeFromCart(state, action: PayloadAction<{ productId: string; color?: string; size?: string } | string>) {
@@ -132,6 +152,6 @@ const cartSlice = createSlice({
   },
 });
 
-export const { addToCart, removeFromCart, clearCart, hydrateCart, syncItems, setHydrated, keepOnlySeller } = cartSlice.actions;
+export const { addToCart, updateQuantity, removeFromCart, clearCart, hydrateCart, syncItems, setHydrated, keepOnlySeller } = cartSlice.actions;
 export default cartSlice.reducer;
 

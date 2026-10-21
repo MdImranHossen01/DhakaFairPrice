@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToCart, removeFromCart, clearCart } from '@/store/slices/cartSlice';
 import Swal from 'sweetalert2';
+import { toast } from 'sonner';
 
 export const useCart = () => {
   const dispatch = useAppDispatch();
@@ -10,6 +10,22 @@ export const useCart = () => {
   const totalAmount = useAppSelector((state) => state.cart.totalAmount);
 
   const addItem = async (item: any) => {
+    // Prevent duplicate item/variant additions
+    const isAlreadyInCart = (items || []).some((i: any) => {
+      const isSameProduct = String(i.productId) === String(item.productId);
+      const itemColor = (i.color || '').trim().toLowerCase();
+      const newColor = (item.color || '').trim().toLowerCase();
+      const itemSize = (i.size || '').trim().toLowerCase();
+      const newSize = (item.size || '').trim().toLowerCase();
+
+      return isSameProduct && itemColor === newColor && itemSize === newSize;
+    });
+
+    if (isAlreadyInCart) {
+      toast.info('Already added to cart');
+      return { success: false, alreadyAdded: true };
+    }
+
     if (items.length > 0) {
       const existingUploader = items[0].uploadedBy ? String(items[0].uploadedBy) : 'mother';
       const newUploader = item.uploadedBy ? String(item.uploadedBy) : 'mother';

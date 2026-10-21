@@ -126,18 +126,19 @@ export function ResellerAddToCart({
     try {
       const cartKey = `rscart_${subdomain}`;
       const existing = JSON.parse(localStorage.getItem(cartKey) || '[]');
-      const idx = existing.findIndex((i: any) => i.resellerProductId === resellerProductId && !i.color && !i.size);
+      const idx = existing.findIndex((i: any) => 
+        (String(i.resellerProductId || i.productId) === String(resellerProductId || productId)) && 
+        !i.color && !i.size
+      );
       if (idx >= 0) {
+        toast.info('Already added to cart');
         if (buyNow) {
-          toast.info('Already added to cart');
           window.location.href = '/checkout';
-          setLoading(false);
-          return;
         }
-        existing[idx].quantity = Math.min(stock, existing[idx].quantity + qty);
-      } else {
-        existing.push({ productId, resellerProductId, name, price, image, quantity: Math.min(stock, qty) });
+        setLoading(false);
+        return;
       }
+      existing.push({ productId, resellerProductId, name, price, image, quantity: Math.min(stock, qty) });
       localStorage.setItem(cartKey, JSON.stringify(existing));
       window.dispatchEvent(new Event('reseller-cart-updated'));
       toast.success(`${name} কার্টে যোগ হয়েছে!`);

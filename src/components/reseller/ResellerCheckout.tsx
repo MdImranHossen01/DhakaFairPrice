@@ -8,7 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addToCart as reduxAddToCart, removeFromCart as reduxRemoveFromCart, clearCart as reduxClearCart } from '@/store/slices/cartSlice';
+import { updateQuantity as reduxUpdateQuantity, removeFromCart as reduxRemoveFromCart, clearCart as reduxClearCart } from '@/store/slices/cartSlice';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -408,14 +408,11 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
       dispatch(reduxRemoveFromCart({ productId: item.productId, color: item.color, size: item.size }));
     } else {
       existing[idx] = { ...existing[idx], quantity: newQty };
-      dispatch(reduxAddToCart({
+      dispatch(reduxUpdateQuantity({
         productId: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: delta,
-        image: item.image,
         color: item.color,
         size: item.size,
+        delta,
       }));
     }
     setCart(existing);

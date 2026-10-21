@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Trash, Plus, Minus, ArrowRight, X } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { removeFromCart, addToCart, clearCart } from '@/store/slices/cartSlice';
+import { removeFromCart, updateQuantity, clearCart } from '@/store/slices/cartSlice';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -27,7 +27,7 @@ export function CartDrawer({ children }: { children: React.ReactElement }) {
           dispatch(removeFromCart({ productId: item.productId, color: item.color, size: item.size }));
           toast.info(`${item.name} removed from cart`);
       } else {
-          dispatch(addToCart({ ...item, quantity: delta }));
+          dispatch(updateQuantity({ productId: item.productId, color: item.color, size: item.size, delta }));
       }
   };
 

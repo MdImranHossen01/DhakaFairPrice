@@ -6,6 +6,7 @@ export const cartMiddleware: Middleware = (store) => (next) => (action: any) => 
   // Define cart-related action types
   const cartActions = [
     'cart/addToCart',
+    'cart/updateQuantity',
     'cart/removeFromCart',
     'cart/clearCart'
   ];
