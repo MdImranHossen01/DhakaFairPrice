@@ -29,71 +29,20 @@ import { cleanAccountName } from '@/lib/utils';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 
 function getTransactionTypeInfo(tx: any) {
-  const desc = (tx.description || '').toLowerCase();
-
-  // Deductions: expense, withdrawal, transfer to another account, bill payment credit from receivable, payout to reseller, loan repayment, supplier payment
-  const isDeduction =
-    desc.startsWith('expense') ||
-    desc.startsWith('manual withdrawal') ||
-    desc.startsWith('transfer to') ||
-    desc.startsWith('payment credit for bill') ||
-    desc.startsWith('upfront payment credit') ||
-    desc.includes('payout to') ||
-    desc.includes('commission payout') ||
-    desc.includes('loan repayment') ||
-    desc.startsWith('reseller commission payout') ||
-    desc.startsWith('supplier payment') ||
-    desc.includes('paid to');
-
-  // Additions: income, opening balance, deposit, loan inflow, transfer from another account, bill payment received into cash/bank, payout received
-  const isAddition =
-    desc.startsWith('income') ||
-    desc.startsWith('opening balance') ||
-    desc.startsWith('manual deposit') ||
-    desc.startsWith('transfer from') ||
-    desc.startsWith('business loan inflow') ||
-    desc.startsWith('payment received') ||
-    desc.startsWith('payout received') ||
-    desc.includes('payout received') ||
-    desc.startsWith('cash paid upfront') ||
-    desc.startsWith('bill generated');
-
-  if (isAddition) {
+  if (tx.type === 'debit') {
     return {
-      label: 'Credit (+)',
-      sign: '+',
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
-      textColor: 'text-emerald-600 dark:text-emerald-400',
-    };
-  }
-
-  if (isDeduction) {
-    return {
-      label: 'Debit (-)',
-      sign: '-',
-      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
-      textColor: 'text-rose-600 dark:text-rose-400',
-    };
-  }
-
-  // Fallback: for asset accounts (Cash, Bank, MFS), credit decreases balance (outflow/debit)
-  const isAccountLiability = tx.account?.type === 'liability' || tx.account?.code === 'AP' || tx.account?.code === 'AR';
-  const isOutflow = isAccountLiability ? tx.type === 'debit' : tx.type === 'credit';
-
-  if (isOutflow) {
-    return {
-      label: 'Debit (-)',
-      sign: '-',
-      color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800',
-      textColor: 'text-rose-600 dark:text-rose-400',
+      label: 'Debit',
+      sign: '',
+      color: 'bg-primary/10 text-primary border-primary/20',
+      textColor: 'text-primary',
     };
   }
 
   return {
-    label: 'Credit (+)',
-    sign: '+',
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800',
-    textColor: 'text-emerald-600 dark:text-emerald-400',
+    label: 'Credit',
+    sign: '',
+    color: 'bg-muted text-muted-foreground border-border',
+    textColor: 'text-foreground',
   };
 }
 
@@ -342,8 +291,8 @@ function ResellerLedgerContent() {
                       <TableHead className="w-[110px] whitespace-nowrap">Date</TableHead>
                       <TableHead className="w-[150px] whitespace-nowrap">Account</TableHead>
                       <TableHead className="max-w-[300px]">Description</TableHead>
-                      <TableHead className="text-right w-[120px] whitespace-nowrap text-rose-600 font-bold">Debit (-)</TableHead>
-                      <TableHead className="text-right w-[120px] whitespace-nowrap text-emerald-600 font-bold">Credit (+)</TableHead>
+                      <TableHead className="text-right w-[120px] whitespace-nowrap font-bold text-foreground">Debit</TableHead>
+                      <TableHead className="text-right w-[120px] whitespace-nowrap font-bold text-foreground">Credit</TableHead>
                       <TableHead className="text-right w-[150px] whitespace-nowrap">Running Balance (৳)</TableHead>
                       <TableHead className="text-right w-[80px] whitespace-nowrap">Actions</TableHead>
                     </TableRow>
@@ -371,11 +320,11 @@ function ResellerLedgerContent() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-rose-600">
-                            {txInfo.sign === '-' ? `-৳${Math.round(tx.amount || 0).toLocaleString()}` : '-'}
+                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-primary">
+                            {tx.type === 'debit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
                           </TableCell>
-                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-emerald-600">
-                            {txInfo.sign === '+' ? `+৳${Math.round(tx.amount || 0).toLocaleString()}` : '-'}
+                          <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-foreground">
+                            {tx.type === 'credit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
                           </TableCell>
                           <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">
                             ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
@@ -416,22 +365,22 @@ function ResellerLedgerContent() {
                       <MobileDataRow label="Date" value={tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '-'} />
                       <MobileDataRow label="Account" value={<span className="font-semibold">{cleanAccountName(tx.account?.name)}</span>} />
                       <MobileDataRow
-                        label="Debit (-)"
+                        label="Debit"
                         value={
-                          txInfo.sign === '-' ? (
-                            <span className="font-bold text-rose-600">-৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          tx.type === 'debit' ? (
+                            <span className="font-bold text-primary">৳{Math.round(tx.amount || 0).toLocaleString()}</span>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground">—</span>
                           )
                         }
                       />
                       <MobileDataRow
-                        label="Credit (+)"
+                        label="Credit"
                         value={
-                          txInfo.sign === '+' ? (
-                            <span className="font-bold text-emerald-600">+৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          tx.type === 'credit' ? (
+                            <span className="font-bold text-foreground">৳{Math.round(tx.amount || 0).toLocaleString()}</span>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground">—</span>
                           )
                         }
                       />

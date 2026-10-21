@@ -1074,23 +1074,6 @@ export default function AccountsPage() {
                 );
               }
 
-              const getTxBadge = (tx: any) => {
-                const desc = (tx.description || '').toLowerCase();
-                const isDeduction =
-                  desc.startsWith('expense') ||
-                  desc.startsWith('manual withdrawal') ||
-                  desc.startsWith('transfer to') ||
-                  desc.startsWith('payment credit for bill') ||
-                  desc.startsWith('upfront payment credit') ||
-                  desc.includes('payout to') ||
-                  desc.includes('commission payout') ||
-                  desc.includes('loan repayment') ||
-                  desc.startsWith('reseller commission payout') ||
-                  desc.startsWith('supplier payment') ||
-                  desc.includes('paid to');
-                return isDeduction ? { sign: '-', color: 'text-rose-600' } : { sign: '+', color: 'text-emerald-600' };
-              };
-
               return (
                 <div className="rounded-xl border overflow-hidden">
                   <table className="w-full text-xs text-left">
@@ -1098,14 +1081,13 @@ export default function AccountsPage() {
                       <tr>
                         <th className="py-2.5 px-3">Date</th>
                         <th className="py-2.5 px-3">Description</th>
-                        <th className="py-2.5 px-3 text-right text-rose-600">Debit (-)</th>
-                        <th className="py-2.5 px-3 text-right text-emerald-600">Credit (+)</th>
+                        <th className="py-2.5 px-3 text-right">Debit</th>
+                        <th className="py-2.5 px-3 text-right">Credit</th>
                         <th className="py-2.5 px-3 text-right">Running Balance</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {filtered.map((tx: any) => {
-                        const badge = getTxBadge(tx);
                         return (
                           <tr key={tx._id} className="hover:bg-muted/30 transition-colors">
                             <td className="py-2.5 px-3 whitespace-nowrap text-muted-foreground">
@@ -1119,11 +1101,11 @@ export default function AccountsPage() {
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-3 text-right font-bold text-rose-600 whitespace-nowrap">
-                              {badge.sign === '-' ? `-৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                            <td className="py-2.5 px-3 text-right font-bold text-primary whitespace-nowrap">
+                              {tx.type === 'debit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
                             </td>
-                            <td className="py-2.5 px-3 text-right font-bold text-emerald-600 whitespace-nowrap">
-                              {badge.sign === '+' ? `+৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                            <td className="py-2.5 px-3 text-right font-bold text-foreground whitespace-nowrap">
+                              {tx.type === 'credit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
                             </td>
                             <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
                               ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
