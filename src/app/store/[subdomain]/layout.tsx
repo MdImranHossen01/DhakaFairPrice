@@ -38,6 +38,18 @@ export async function generateMetadata({ params }: { params: Promise<{ subdomain
   };
 }
 
-export default function ResellerStoreLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+export default async function ResellerStoreLayout({ 
+  params, 
+  children 
+}: { 
+  params: Promise<{ subdomain: string }>; 
+  children: React.ReactNode; 
+}) {
+  const { subdomain } = await params;
+  return (
+    <>
+      <meta name="reseller-subdomain" content={subdomain} />
+      {children}
+    </>
+  );
 }

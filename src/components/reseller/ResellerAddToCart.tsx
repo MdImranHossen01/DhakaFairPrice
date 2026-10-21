@@ -74,16 +74,24 @@ export function ResellerAddToCart({
         const qtyVal = quantities[key] || 0;
         if (qtyVal > 0) {
           addedAny = true;
-          const existingIdx = existing.findIndex((i: any) => 
-            i.resellerProductId === resellerProductId && 
-            i.color === v.color && 
-            i.size === v.size
-          );
+          const targetProdId = String(productId || '');
+          const targetResellerId = String(resellerProductId || '');
+          const existingIdx = existing.findIndex((i: any) => {
+            const iProdId = String(i.productId || '');
+            const iResellerId = String(i.resellerProductId || '');
+            const isSame =
+              (iProdId && targetProdId && iProdId === targetProdId) ||
+              (iResellerId && targetResellerId && iResellerId === targetResellerId) ||
+              (iResellerId && targetProdId && iResellerId === targetProdId) ||
+              (iProdId && targetResellerId && iProdId === targetResellerId);
+
+            if (!isSame) return false;
+            return (i.color || '').trim().toLowerCase() === (v.color || '').trim().toLowerCase() &&
+                   (i.size || '').trim().toLowerCase() === (v.size || '').trim().toLowerCase();
+          });
           
           if (existingIdx >= 0) {
-            if (!buyNow) {
-              existing[existingIdx].quantity = Math.min(v.stock, existing[existingIdx].quantity + qtyVal);
-            }
+            toast.info(`${name} (${v.color || ''} ${v.size || ''}) Already added to cart`.trim());
           } else {
             existing.push({
               productId,
@@ -126,10 +134,21 @@ export function ResellerAddToCart({
     try {
       const cartKey = `rscart_${subdomain}`;
       const existing = JSON.parse(localStorage.getItem(cartKey) || '[]');
-      const idx = existing.findIndex((i: any) => 
-        (String(i.resellerProductId || i.productId) === String(resellerProductId || productId)) && 
-        !i.color && !i.size
-      );
+      const targetProdId = String(productId || '');
+      const targetResellerId = String(resellerProductId || '');
+
+      const idx = existing.findIndex((i: any) => {
+        const iProdId = String(i.productId || '');
+        const iResellerId = String(i.resellerProductId || '');
+        const isSame =
+          (iProdId && targetProdId && iProdId === targetProdId) ||
+          (iResellerId && targetResellerId && iResellerId === targetResellerId) ||
+          (iResellerId && targetProdId && iResellerId === targetProdId) ||
+          (iProdId && targetResellerId && iProdId === targetResellerId);
+
+        return isSame && !i.color && !i.size;
+      });
+
       if (idx >= 0) {
         toast.info('Already added to cart');
         if (buyNow) {
@@ -142,6 +161,7 @@ export function ResellerAddToCart({
       localStorage.setItem(cartKey, JSON.stringify(existing));
       window.dispatchEvent(new Event('reseller-cart-updated'));
       toast.success(`${name} কার্টে যোগ হয়েছে!`);
+
       if (buyNow) {
         window.location.href = '/checkout';
       }

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { hydrateCart, setHydrated } from '@/store/slices/cartSlice';
 import { useSession, signOut } from 'next-auth/react';
+import { getResellerSubdomain } from '@/lib/cart-key';
 
 export function CartHydrator({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
@@ -24,6 +25,30 @@ export function CartHydrator({ children }: { children: React.ReactNode }) {
   // 1. Initial LocalStorage Hydration
   useEffect(() => {
     try {
+      const sub = getResellerSubdomain();
+      if (sub) {
+        const cartKey = `rscart_${sub}`;
+        const raw = localStorage.getItem(cartKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const totalQuantity = parsed.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0);
+            const totalAmount = Math.round(
+              parsed.reduce((sum: number, i: any) => sum + ((i.price || 0) * (i.quantity || 1)), 0) * 100
+            ) / 100;
+            dispatch(hydrateCart({
+              items: parsed,
+              totalQuantity,
+              totalAmount,
+              isHydrated: true
+            }));
+            return;
+          }
+        }
+        dispatch(setHydrated());
+        return;
+      }
+
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
@@ -44,12 +69,55 @@ export function CartHydrator({ children }: { children: React.ReactNode }) {
     }
   }, [dispatch]);
 
-  // 2. Auth Sync with Database (Merge Local & DB on Login)
+  // Sync when reseller cart changes in this window
   useEffect(() => {
+    const handleResellerCartUpdated = () => {
+      const sub = getResellerSubdomain();
+      if (!sub) return;
+      try {
+        const cartKey = `rscart_${sub}`;
+        const raw = localStorage.getItem(cartKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const totalQuantity = parsed.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0);
+            const totalAmount = Math.round(
+              parsed.reduce((sum: number, i: any) => sum + ((i.price || 0) * (i.quantity || 1)), 0) * 100
+            ) / 100;
+            dispatch(hydrateCart({
+              items: parsed,
+              totalQuantity,
+              totalAmount,
+              isHydrated: true
+            }));
+          }
+        } else {
+          dispatch(hydrateCart({
+            items: [],
+            totalQuantity: 0,
+            totalAmount: 0,
+            isHydrated: true
+          }));
+        }
+      } catch (e) {
+        console.error('Error syncing cart on reseller-cart-updated:', e);
+      }
+    };
+
+    window.addEventListener('reseller-cart-updated', handleResellerCartUpdated);
+    return () => window.removeEventListener('reseller-cart-updated', handleResellerCartUpdated);
+  }, [dispatch]);
+
+  // 2. Auth Sync with Database (Merge Local & DB on Login) — only for mother shop
+  useEffect(() => {
+    const sub = getResellerSubdomain();
+    if (sub) return; // Skip mother DB cart sync on reseller storefront
+
     // Check if we already merged in this browser session to prevent reappearing items on refresh
     const sessionSynced = typeof window !== 'undefined' && sessionStorage.getItem('cartSynced') === 'true';
 
     if (status === 'authenticated' && cart.isHydrated && !authSyncAttempted.current && !isSyncingRef.current) {
+
       const syncCart = async () => {
         isSyncingRef.current = true;
         try {

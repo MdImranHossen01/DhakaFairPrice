@@ -24,12 +24,13 @@ export function CartDrawer({ children }: { children: React.ReactElement }) {
 
   const handleUpdateQuantity = (item: any, delta: number) => {
       if (item.quantity + delta === 0) {
-          dispatch(removeFromCart({ productId: item.productId, color: item.color, size: item.size }));
+          dispatch(removeFromCart({ productId: item.productId, resellerProductId: item.resellerProductId, color: item.color, size: item.size }));
           toast.info(`${item.name} removed from cart`);
       } else {
-          dispatch(updateQuantity({ productId: item.productId, color: item.color, size: item.size, delta }));
+          dispatch(updateQuantity({ productId: item.productId, resellerProductId: item.resellerProductId, color: item.color, size: item.size, delta }));
       }
   };
+
 
 
 
@@ -96,7 +97,7 @@ export function CartDrawer({ children }: { children: React.ReactElement }) {
                         size="icon" 
                         className="h-6 w-6 text-muted-foreground hover:text-destructive"
                         onClick={() => {
-                            dispatch(removeFromCart({ productId: item.productId, color: item.color, size: item.size }));
+                            dispatch(removeFromCart({ productId: item.productId, resellerProductId: item.resellerProductId, color: item.color, size: item.size }));
                             toast.info(`${item.name} removed from cart`);
                         }}
                         aria-label={`Remove ${[item.name, item.color, item.size].filter(Boolean).join(' - ')} from cart`}

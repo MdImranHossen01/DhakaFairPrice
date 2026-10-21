@@ -4,9 +4,11 @@ import { toast } from 'sonner';
 
 export interface CartItemInput {
   productId: string;
+  resellerProductId?: string;
   name: string;
   price: number;
   basePrice?: number;
+  originalPrice?: number;
   quantity: number;
   image?: string;
   color?: string;
@@ -32,21 +34,35 @@ export async function validateAndAddToCart({
   dispatch: any;
   onSuccess?: () => void;
 }): Promise<boolean> {
+  const newProdId = String(newItem.productId || newItem._id || '');
+  const newResellerId = String(newItem.resellerProductId || '');
+
   // Prevent duplicate item/variant additions
   const isAlreadyInCart = (cartItems || []).some((item: any) => {
-    const isSameProduct = String(item.productId) === String(newItem.productId);
+    const itemProdId = String(item.productId || item._id || '');
+    const itemResellerId = String(item.resellerProductId || '');
+
+    const isSameProduct =
+      (itemProdId && newProdId && itemProdId === newProdId) ||
+      (itemResellerId && newResellerId && itemResellerId === newResellerId) ||
+      (itemResellerId && newProdId && itemResellerId === newProdId) ||
+      (itemProdId && newResellerId && itemProdId === newResellerId);
+
+    if (!isSameProduct) return false;
+
     const itemColor = (item.color || '').trim().toLowerCase();
     const newColor = (newItem.color || '').trim().toLowerCase();
     const itemSize = (item.size || '').trim().toLowerCase();
     const newSize = (newItem.size || '').trim().toLowerCase();
 
-    return isSameProduct && itemColor === newColor && itemSize === newSize;
+    return itemColor === newColor && itemSize === newSize;
   });
 
   if (isAlreadyInCart) {
     toast.info('Already added to cart');
     return false;
   }
+
 
   if (cartItems && cartItems.length > 0) {
     const existingSeller = cartItems[0].uploadedBy ? String(cartItems[0].uploadedBy) : 'mother';

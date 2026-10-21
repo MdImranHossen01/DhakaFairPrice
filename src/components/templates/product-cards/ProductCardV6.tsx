@@ -88,7 +88,8 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
       setShowQuickViewModal(true);
     } else {
       const itemToAdd = {
-        productId: product._id,
+        productId: (product as any).productId || product._id,
+        resellerProductId: (product as any).productId ? product._id : undefined,
         name: product.name,
         price: product.salePrice ?? product.price,
         basePrice: product.price,
@@ -133,15 +134,9 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
       return;
     }
 
-    const existing = cartItems.find((item: any) => item.productId === product._id && !item.color && !item.size);
-    if (existing) {
-      toast.info('Already added to cart');
-      router.push('/checkout');
-      return;
-    }
-
     const itemToAdd = {
-      productId: product._id,
+      productId: (product as any).productId || product._id,
+      resellerProductId: (product as any).productId ? product._id : undefined,
       name: product.name,
       price: product.salePrice ?? product.price,
       basePrice: product.price,
@@ -149,6 +144,7 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
       image: product.images?.[0],
       uploadedBy: (initialProduct as any).uploadedBy ? String((initialProduct as any).uploadedBy) : null,
     };
+
 
     const added = await validateAndAddToCart({
       cartItems,

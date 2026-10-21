@@ -102,7 +102,8 @@ export default function ProductCardV1({ product: initialProduct, isFlashSale, pr
     const displaySalePrice = product.salePrice;
 
     const itemToAdd = {
-      productId: product._id,
+      productId: (product as any).productId || product._id,
+      resellerProductId: (product as any).productId ? product._id : undefined,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
       basePrice: displayPrice,
@@ -110,6 +111,7 @@ export default function ProductCardV1({ product: initialProduct, isFlashSale, pr
       image: product.images?.[0],
       uploadedBy: product.uploadedBy ? String(product.uploadedBy) : null,
     };
+
 
     await validateAndAddToCart({
       cartItems,

@@ -203,11 +203,28 @@ export default function ResellerProductDetailsClient({
         existing.length = 0;
       }
 
-      const existingIdx = existing.findIndex((i: any) =>
-        i.resellerProductId === product._id &&
-        (i.color || null) === (selectedColor || null) &&
-        (i.size || null) === (selectedSize || null)
-      );
+      const targetProdId = String(product.productId || product._id || '');
+      const targetResellerId = String(product._id || '');
+      const targetColor = (selectedColor || '').trim().toLowerCase();
+      const targetSize = (selectedSize || '').trim().toLowerCase();
+
+      const existingIdx = existing.findIndex((i: any) => {
+        const iProdId = String(i.productId || '');
+        const iResellerId = String(i.resellerProductId || '');
+
+        const isSame =
+          (iProdId && targetProdId && iProdId === targetProdId) ||
+          (iResellerId && targetResellerId && iResellerId === targetResellerId) ||
+          (iResellerId && targetProdId && iResellerId === targetProdId) ||
+          (iProdId && targetResellerId && iProdId === targetResellerId);
+
+        if (!isSame) return false;
+
+        const iColor = (i.color || '').trim().toLowerCase();
+        const iSize = (i.size || '').trim().toLowerCase();
+        return iColor === targetColor && iSize === targetSize;
+      });
+
 
       const finalPrice = displaySalePrice && displaySalePrice > 0 ? displaySalePrice : displayPrice;
       const cartItem = {

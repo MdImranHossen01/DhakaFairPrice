@@ -91,7 +91,8 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
     const displaySalePrice = activeVariant?.salePrice || product.salePrice;
 
     const itemToAdd = {
-      productId: product._id,
+      productId: (product as any).productId || product._id,
+      resellerProductId: (product as any).productId ? product._id : undefined,
       name: product.name,
       price: (displaySalePrice !== undefined && displaySalePrice !== null) ? displaySalePrice : displayPrice,
       basePrice: displayPrice,

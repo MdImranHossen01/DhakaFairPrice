@@ -98,7 +98,8 @@ export default function ProductCardV2({ product: initialProduct, isFlashSale }: 
 
   const executeAddToCart = async () => {
     const itemToAdd = {
-      productId: product._id,
+      productId: (product as any).productId || product._id,
+      resellerProductId: (product as any).productId ? product._id : undefined,
       name: product.name,
       price: product.salePrice ?? product.price,
       basePrice: product.price,
