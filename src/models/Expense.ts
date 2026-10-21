@@ -9,6 +9,7 @@ export interface IExpense extends Document {
   resellerId?: mongoose.Types.ObjectId | null;
   date: Date;
   description?: string;
+  reference?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +41,7 @@ const ExpenseSchema: Schema<IExpense> = new Schema(
     },
     date: { type: Date, required: true, default: Date.now },
     description: { type: String },
+    reference: { type: String, index: true },
   },
   { timestamps: true }
 );

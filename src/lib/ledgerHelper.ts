@@ -206,12 +206,10 @@ export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'A
   for (const tx of transactions) {
     const change = calculateTransactionChange(tx, account);
     runningBalance += change;
-    tx.balanceAfter = runningBalance;
-    await tx.save();
+    await LedgerTransaction.updateOne({ _id: tx._id }, { $set: { balanceAfter: runningBalance } });
   }
 
-  account.currentBalance = runningBalance;
-  await account.save();
+  await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
 }
 
 /**
@@ -230,16 +228,15 @@ export async function recalculateLedgerBalanceByAccountId(accountId: any) {
   for (const tx of transactions) {
     const change = calculateTransactionChange(tx, account);
     runningBalance += change;
-    tx.balanceAfter = runningBalance;
-    await tx.save();
+    await LedgerTransaction.updateOne({ _id: tx._id }, { $set: { balanceAfter: runningBalance } });
   }
 
-  account.currentBalance = runningBalance;
-  await account.save();
+  await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
 }
 
 /**
- * Log order payment to the ledger
+ * Log order payment and courier delivery fee to the ledger and expense journal.
+ * All automated courier settlements and online gateway collections flow through the default BANK account.
  */
 export async function logOrderPaymentToLedger(order: any) {
   try {
@@ -249,28 +246,55 @@ export async function logOrderPaymentToLedger(order: any) {
     if (amount <= 0) return;
 
     const shortId = order.shortId || order._id.toString().slice(-8).toUpperCase();
-    const method = (order.paymentMethod || '').toLowerCase().trim();
-    const isOnline = ['online', 'sslcommerz', 'bkash', 'nagad', 'rocket', 'upay', 'stripe', 'card', 'bank', 'bank_transfer'].some(m => method.includes(m));
-    const accountCode: 'BANK' | 'CASH' = isOnline ? 'BANK' : 'CASH';
     const reference = `ORDER-${shortId}`;
-    
-    // Ensure idempotency: check if transaction with this reference already exists
+    const shippingRef = `SHIPPING-${shortId}`;
+    const deliveryCharge = Number(order.deliveryCharge) || 0;
+    const orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
+
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+    const Expense = (await import('@/models/Expense')).default;
+
+    const bankAccount = await LedgerAccount.findOne({
+      $and: [
+        { $or: [{ category: 'Bank' }, { code: 'BANK' }] },
+        { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
+      ]
+    });
+
+    if (!bankAccount) return;
+
+    // 1. Order payment deposited into default BANK account
     const exists = await LedgerTransaction.findOne({ reference });
     if (!exists) {
-      const description = `Customer payment received for Order #${shortId} (${order.paymentMethod || (isOnline ? 'Online' : 'COD')})`;
+      const description = `Customer payment received for Order #${shortId} (${order.paymentMethod || 'Courier COD'})`;
 
       await logLedgerTransaction(
-        accountCode,
-        'debit', // Debit increases Cash or Bank
+        'BANK',
+        'debit', // Debit increases Bank
         amount,
         description,
         reference,
-        order.createdAt ? new Date(order.createdAt) : new Date()
+        orderDate
       );
-      console.log(`[Ledger] Logged payment for Order #${shortId} to ${accountCode} successfully.`);
+      console.log(`[Ledger] Logged payment for Order #${shortId} to BANK successfully.`);
     }
 
-    // Clear AR receivable
+    // 2. Courier delivery charge deducted from BANK account
+    if (deliveryCharge > 0) {
+      const shippingTxExists = await LedgerTransaction.findOne({ reference: shippingRef });
+      if (!shippingTxExists) {
+        await logLedgerTransaction(
+          'BANK',
+          'credit', // Credit decreases Bank for courier shipping cost
+          deliveryCharge,
+          `Courier delivery charge deducted for Order #${shortId}`,
+          shippingRef,
+          orderDate
+        );
+      }
+    }
+
+    // 3. Clear AR receivable
     const arRef = `ORD-${shortId}`;
     const arCreditExists = await LedgerTransaction.findOne({ reference: arRef, type: 'credit' });
     if (!arCreditExists) {
@@ -284,7 +308,40 @@ export async function logOrderPaymentToLedger(order: any) {
       );
     }
 
-    await recalculateLedgerBalance(accountCode);
+    // 4. Auto-log Revenue and Shipping Expense into Expense collection for /admin/expenses-incomes
+    const incomeExpenseExists = await Expense.findOne({ reference });
+    if (!incomeExpenseExists) {
+      await Expense.create({
+        title: `Order Revenue #${shortId}`,
+        amount,
+        category: 'Sales Revenue',
+        type: 'income',
+        paymentAccountId: bankAccount._id,
+        date: orderDate,
+        description: `Customer payment received for Order #${shortId} (${order.paymentMethod || 'Courier COD'})`,
+        reference,
+        resellerId: null
+      });
+    }
+
+    if (deliveryCharge > 0) {
+      const shippingExpenseExists = await Expense.findOne({ reference: shippingRef });
+      if (!shippingExpenseExists) {
+        await Expense.create({
+          title: `Courier Delivery Charge #${shortId}`,
+          amount: deliveryCharge,
+          category: 'Courier & Shipping',
+          type: 'expense',
+          paymentAccountId: bankAccount._id,
+          date: orderDate,
+          description: `Courier shipping fee deducted for Order #${shortId}`,
+          reference: shippingRef,
+          resellerId: null
+        });
+      }
+    }
+
+    await recalculateLedgerBalance('BANK');
     await recalculateLedgerBalance('AR');
   } catch (error) {
     console.error('[Ledger] Error logging order payment to ledger:', error);
@@ -457,38 +514,48 @@ export async function syncBillsToLedger() {
 }
 
 /**
-/**
  * Sync active orders to ledger: ensures Order Receivable AR debit entries exist,
- * settled orders have their AR cleared, and collected payments are recorded in CASH or BANK.
+ * settled orders have their AR cleared, and collected payments & shipping deductions
+ * are recorded in the default BANK account and Expenses/Incomes journal.
  */
 export async function syncOrdersToLedger() {
   try {
     await connectToDatabase();
     const Order = (await import('@/models/Order')).default;
     const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+    const Expense = (await import('@/models/Expense')).default;
 
-    const [arAccount, cashAccount, bankAccount] = await Promise.all([
+    const [arAccount, bankAccount, cashAccount] = await Promise.all([
       LedgerAccount.findOne({
         code: 'AR',
         $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
       }),
       LedgerAccount.findOne({
         $and: [
-          { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
+          { $or: [{ category: 'Bank' }, { code: 'BANK' }] },
           { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
         ]
       }),
       LedgerAccount.findOne({
         $and: [
-          { $or: [{ category: 'Bank' }, { code: 'BANK' }] },
+          { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
           { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
         ]
       })
     ]);
 
-    if (!arAccount) return;
+    if (!arAccount || !bankAccount) return;
 
-    // 0. Auto-reconcile COD delivered orders: in COD e-commerce, Delivered means cash has been collected
+    // Clean any old order transactions mistakenly placed into CASH so Cash account stays 0 for auto orders
+    if (cashAccount) {
+      await LedgerTransaction.deleteMany({
+        account: cashAccount._id,
+        reference: { $regex: /^(ORDER|SHIPPING|DELIVERY)-/i }
+      });
+      await recalculateLedgerBalance('CASH');
+    }
+
+    // 0. Auto-reconcile COD delivered orders: in COD e-commerce, Delivered means cash has been collected by courier
     await Order.updateMany(
       { status: 'Delivered', paymentStatus: { $ne: 'Paid' }, deletedAt: null },
       { $set: { paymentStatus: 'Paid' } }
@@ -506,8 +573,10 @@ export async function syncOrdersToLedger() {
       const totalAmount = Number(order.totalAmount) || 0;
       if (totalAmount <= 0) continue;
 
+      const deliveryCharge = Number(order.deliveryCharge) || 0;
       const orderRef = `ORD-${order.shortId}`;
       const payRef = `ORDER-${order.shortId}`;
+      const shippingRef = `SHIPPING-${order.shortId}`;
       const orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
       const customerName = order.shippingAddress?.fullName || 'Customer';
       const desc = `Customer Receivable for Order #${order.shortId} (${customerName})`;
@@ -540,12 +609,8 @@ export async function syncOrdersToLedger() {
         }
       }
 
-      // 2. Determine payment details
+      // 2. Determine payment details (All courier COD & online collections settle into default Bank account)
       const isPaid = order.paymentStatus === 'Paid' || order.status === 'Delivered';
-      const method = (order.paymentMethod || '').toLowerCase().trim();
-      const isOnline = ['online', 'sslcommerz', 'bkash', 'nagad', 'rocket', 'upay', 'stripe', 'card', 'bank', 'bank_transfer'].some(m => method.includes(m));
-      const targetAccountCode: 'BANK' | 'CASH' = isOnline ? 'BANK' : 'CASH';
-      const targetAccount = targetAccountCode === 'BANK' ? bankAccount : cashAccount;
 
       if (isPaid) {
         // 2a. Settle AR: ensure AR credit exists
@@ -563,63 +628,158 @@ export async function syncOrdersToLedger() {
           await arCredit.save();
         }
 
-        // 2b. Record collection into CASH or BANK
-        if (targetAccount) {
-          const payTx = await LedgerTransaction.findOne({ reference: payRef });
-          const payDesc = `Customer payment received for Order #${order.shortId} (${order.paymentMethod || (isOnline ? 'Online' : 'COD')})`;
+        // 2b. Record collection into default BANK account
+        const payTx = await LedgerTransaction.findOne({ reference: payRef });
+        const payDesc = `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`;
 
-          if (!payTx) {
-            await logLedgerTransaction(targetAccountCode, 'debit', totalAmount, payDesc, payRef, order.createdAt ? new Date(order.createdAt) : new Date());
+        if (!payTx) {
+          await logLedgerTransaction('BANK', 'debit', totalAmount, payDesc, payRef, orderDate);
+        } else {
+          let changed = false;
+          if (payTx.account.toString() !== bankAccount._id.toString()) {
+            payTx.account = bankAccount._id;
+            changed = true;
+          }
+          if (Math.abs(payTx.amount - totalAmount) > 0.01) {
+            payTx.amount = totalAmount;
+            changed = true;
+          }
+          if (payTx.type !== 'debit') {
+            payTx.type = 'debit';
+            changed = true;
+          }
+          if (payTx.description !== payDesc) {
+            payTx.description = payDesc;
+            changed = true;
+          }
+          if (changed) {
+            await payTx.save();
+          }
+        }
+
+        // 2c. Record courier delivery charge deduction from default BANK account
+        if (deliveryCharge > 0) {
+          const shipTx = await LedgerTransaction.findOne({ reference: shippingRef });
+          const shipDesc = `Courier delivery charge deducted for Order #${order.shortId}`;
+
+          if (!shipTx) {
+            await logLedgerTransaction('BANK', 'credit', deliveryCharge, shipDesc, shippingRef, orderDate);
           } else {
             let changed = false;
-            if (payTx.account.toString() !== targetAccount._id.toString()) {
-              payTx.account = targetAccount._id;
+            if (shipTx.account.toString() !== bankAccount._id.toString()) {
+              shipTx.account = bankAccount._id;
               changed = true;
             }
-            if (Math.abs(payTx.amount - totalAmount) > 0.01) {
-              payTx.amount = totalAmount;
+            if (Math.abs(shipTx.amount - deliveryCharge) > 0.01) {
+              shipTx.amount = deliveryCharge;
               changed = true;
             }
-            if (payTx.type !== 'debit') {
-              payTx.type = 'debit';
+            if (shipTx.type !== 'credit') {
+              shipTx.type = 'credit';
               changed = true;
             }
-            if (payTx.description !== payDesc) {
-              payTx.description = payDesc;
+            if (shipTx.description !== shipDesc) {
+              shipTx.description = shipDesc;
               changed = true;
             }
             if (changed) {
-              await payTx.save();
+              await shipTx.save();
             }
           }
+        } else {
+          await LedgerTransaction.deleteMany({ reference: shippingRef });
+        }
+
+        // 2d. Auto-sync to Expense & Income records for /admin/expenses-incomes
+        const incomeExp = await Expense.findOne({ reference: payRef });
+        if (!incomeExp) {
+          await Expense.create({
+            title: `Order Revenue #${order.shortId}`,
+            amount: totalAmount,
+            category: 'Sales Revenue',
+            type: 'income',
+            paymentAccountId: bankAccount._id,
+            date: orderDate,
+            description: `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`,
+            reference: payRef,
+            resellerId: null
+          });
+        } else {
+          let expChanged = false;
+          if (Math.abs(incomeExp.amount - totalAmount) > 0.01) {
+            incomeExp.amount = totalAmount;
+            expChanged = true;
+          }
+          if (incomeExp.paymentAccountId?.toString() !== bankAccount._id.toString()) {
+            incomeExp.paymentAccountId = bankAccount._id;
+            expChanged = true;
+          }
+          if (expChanged) await incomeExp.save();
+        }
+
+        if (deliveryCharge > 0) {
+          const shipExp = await Expense.findOne({ reference: shippingRef });
+          if (!shipExp) {
+            await Expense.create({
+              title: `Courier Delivery Charge #${order.shortId}`,
+              amount: deliveryCharge,
+              category: 'Courier & Shipping',
+              type: 'expense',
+              paymentAccountId: bankAccount._id,
+              date: orderDate,
+              description: `Courier shipping fee deducted for Order #${order.shortId}`,
+              reference: shippingRef,
+              resellerId: null
+            });
+          } else {
+            let shipExpChanged = false;
+            if (Math.abs(shipExp.amount - deliveryCharge) > 0.01) {
+              shipExp.amount = deliveryCharge;
+              shipExpChanged = true;
+            }
+            if (shipExp.paymentAccountId?.toString() !== bankAccount._id.toString()) {
+              shipExp.paymentAccountId = bankAccount._id;
+              shipExpChanged = true;
+            }
+            if (shipExpChanged) await shipExp.save();
+          }
+        } else {
+          await Expense.deleteMany({ reference: shippingRef });
         }
       } else {
-        // If order is not paid, remove any stale AR credit and payment entries
+        // If order is not paid, remove any stale AR credit, payment entries, and expense records
         await LedgerTransaction.deleteMany({
           account: arAccount._id,
           reference: orderRef,
           type: 'credit'
         });
-        await LedgerTransaction.deleteMany({ reference: payRef });
+        await LedgerTransaction.deleteMany({ reference: { $in: [payRef, shippingRef] } });
+        await Expense.deleteMany({ reference: { $in: [payRef, shippingRef] } });
       }
     }
 
-    // 3. Clean AR & Payment transactions for cancelled/deleted orders
+    // 3. Clean AR, Payment, and Expense transactions for cancelled/deleted orders
     const invalidOrders = await Order.find({
       $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }]
     } as any).select('shortId').lean();
 
     const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter(Boolean);
     const invalidPayRefs = invalidOrders.map((o: any) => `ORDER-${o.shortId}`).filter(Boolean);
+    const invalidShipRefs = invalidOrders.map((o: any) => `SHIPPING-${o.shortId}`).filter(Boolean);
+    const allInvalidRefs = [...invalidPayRefs, ...invalidShipRefs];
+
     if (invalidRefs.length > 0) {
       await LedgerTransaction.deleteMany({
         account: arAccount._id,
         reference: { $in: invalidRefs }
       });
     }
-    if (invalidPayRefs.length > 0) {
+    if (allInvalidRefs.length > 0) {
       await LedgerTransaction.deleteMany({
-        reference: { $in: invalidPayRefs }
+        reference: { $in: allInvalidRefs }
+      });
+      await Expense.deleteMany({
+        reference: { $in: allInvalidRefs }
       });
     }
 
@@ -830,9 +990,9 @@ export async function cleanOrphanLedgerTransactions() {
         }
       }
 
-      // 3. Check Order references (e.g. ORDER-XXXX or ORD-XXXX)
-      if (tx.reference && (tx.reference.startsWith('ORDER-') || tx.reference.startsWith('ORD-'))) {
-        const shortId = tx.reference.replace(/^ORD(ER)?-/i, '').trim().toUpperCase();
+      // 3. Check Order references (e.g. ORDER-XXXX, ORD-XXXX, SHIPPING-XXXX, DELIVERY-XXXX)
+      if (tx.reference && (tx.reference.startsWith('ORDER-') || tx.reference.startsWith('ORD-') || tx.reference.startsWith('SHIPPING-') || tx.reference.startsWith('DELIVERY-'))) {
+        const shortId = tx.reference.replace(/^(ORD(ER)?|SHIPPING|DELIVERY)-/i, '').trim().toUpperCase();
         if (!validOrderShortIds.has(shortId)) {
           await LedgerTransaction.findByIdAndDelete(tx._id);
           deletedCount++;
@@ -933,6 +1093,12 @@ export async function cleanOrphanLedgerTransactions() {
       if (exp.supplierBill) {
         const sb = await SupplierBill.findById(exp.supplierBill);
         if (!sb) isOrphan = true;
+      }
+
+      // Check Order links
+      if (exp.reference && (exp.reference.startsWith('ORDER-') || exp.reference.startsWith('SHIPPING-') || exp.reference.startsWith('DELIVERY-'))) {
+        const shortId = exp.reference.replace(/^(ORD(ER)?|SHIPPING|DELIVERY)-/i, '').trim().toUpperCase();
+        if (!validOrderShortIds.has(shortId)) isOrphan = true;
       }
 
       if (isOrphan) {
