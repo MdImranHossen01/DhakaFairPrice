@@ -41,7 +41,7 @@ interface ProductDetailsV4ClientProps {
 
 export default function ProductDetailsV4Client({ product }: ProductDetailsV4ClientProps) {
   const dispatch = useAppDispatch();
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const { data: session } = useSession();
   const wishlist = useAppSelector((state) => state.wishlist.items);
   const isInWishlist = wishlist.includes(product?._id);
@@ -172,6 +172,20 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
   };
 
   const handleBuyNow = async () => {
+    // Check if the item already exists in the cart
+    const existing = items.find(
+      (item: any) =>
+        item.productId === product._id &&
+        (item.color || '') === (effectiveColor || '') &&
+        (item.size || '') === (effectiveSize || '')
+    );
+
+    if (existing) {
+      toast.info('Already added to cart');
+      router.push('/checkout');
+      return;
+    }
+
     const success = await handleAddToCart();
     if (success) {
       router.push('/checkout');

@@ -209,6 +209,29 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
   };
 
   const handleBuyNow = async () => {
+    if (uniqueColors.length > 0 && !selectedColor) {
+      toast.error('Please select a color');
+      return;
+    }
+    if (uniqueSizes.length > 0 && !selectedSize) {
+      toast.error('Please select a size');
+      return;
+    }
+
+    // Check if the item already exists in the cart
+    const existing = cartItems.find(
+      (item) =>
+        item.productId === product._id &&
+        (item.color || '') === (selectedColor || '') &&
+        (item.size || '') === (selectedSize || '')
+    );
+
+    if (existing) {
+      toast.info('Already added to cart');
+      router.push('/checkout');
+      return;
+    }
+
     const success = await handleAddToCart();
     if (success) {
       router.push('/checkout');

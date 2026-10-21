@@ -223,6 +223,12 @@ export default function ResellerProductDetailsClient({
       };
 
       if (existingIdx >= 0) {
+        if (buyNow) {
+          toast.info('Already added to cart');
+          window.location.href = '/checkout';
+          setIsAddingToCart(false);
+          return;
+        }
         existing[existingIdx].quantity = Math.min(stock, existing[existingIdx].quantity + finalQty);
       } else {
         existing.push(cartItem);

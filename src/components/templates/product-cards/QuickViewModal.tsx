@@ -147,6 +147,21 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
   const handleAddToCart = async (e: React.MouseEvent, redirect: boolean = false) => {
     e.preventDefault();
 
+    if (redirect) {
+      const existing = cartItems.find(
+        (item: any) =>
+          item.productId === product._id &&
+          (item.color || '') === (selectedColor || '') &&
+          (item.size || '') === (selectedSize || '')
+      );
+      if (existing) {
+        toast.info('Already added to cart');
+        router.push('/checkout');
+        onClose();
+        return;
+      }
+    }
+
     const itemToAdd = {
       productId: product._id,
       name: product.name,

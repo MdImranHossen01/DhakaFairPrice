@@ -126,44 +126,58 @@ export default function ProductCardV6({ product: initialProduct, isFlashSale, pr
     }
   };
 
-  const handleBuyNow = (e: React.MouseEvent) => {
+  const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (hasVariants) {
       setShowQuickViewModal(true);
       return;
     }
 
-    // Clear cart first for a clean "Buy Now" experience
-    dispatch(clearCart());
+    const existing = cartItems.find((item: any) => item.productId === product._id && !item.color && !item.size);
+    if (existing) {
+      toast.info('Already added to cart');
+      router.push('/checkout');
+      return;
+    }
 
-    dispatch(addToCart({
+    const itemToAdd = {
       productId: product._id,
       name: product.name,
       price: product.salePrice ?? product.price,
       basePrice: product.price,
       quantity: 1,
-      image: product.images?.[0]
-    }));
-
-    // Track InitiateCheckout
-    const initiateCheckoutPayload = {
-      content_name: product.name,
-      content_category: 'Beauty',
-      content_ids: [product._id],
-      content_type: 'product',
-      value: product.salePrice || product.price,
-      currency: 'BDT',
-      quantity: 1
+      image: product.images?.[0],
+      uploadedBy: (initialProduct as any).uploadedBy ? String((initialProduct as any).uploadedBy) : null,
     };
-    const trackingUser = {
-      em: session?.user?.email || undefined,
-      ph: (session?.user as any)?.phone || undefined,
-      fn: session?.user?.name || undefined
-    };
-    fbEvent('InitiateCheckout', initiateCheckoutPayload, trackingUser);
-    ttEvent('InitiateCheckout', initiateCheckoutPayload, trackingUser);
 
-    router.push('/checkout');
+    const added = await validateAndAddToCart({
+      cartItems,
+      newItem: itemToAdd,
+      dispatch,
+      onSuccess: () => {
+        // Track InitiateCheckout
+        const initiateCheckoutPayload = {
+          content_name: product.name,
+          content_category: 'Beauty',
+          content_ids: [product._id],
+          content_type: 'product',
+          value: product.salePrice || product.price,
+          currency: 'BDT',
+          quantity: 1
+        };
+        const trackingUser = {
+          em: session?.user?.email || undefined,
+          ph: (session?.user as any)?.phone || undefined,
+          fn: session?.user?.name || undefined
+        };
+        fbEvent('InitiateCheckout', initiateCheckoutPayload, trackingUser);
+        ttEvent('InitiateCheckout', initiateCheckoutPayload, trackingUser);
+      }
+    });
+
+    if (added) {
+      router.push('/checkout');
+    }
   };
 
   const handleWishlist = async (e: React.MouseEvent) => {

@@ -81,7 +81,9 @@ export function ResellerAddToCart({
           );
           
           if (existingIdx >= 0) {
-            existing[existingIdx].quantity = Math.min(v.stock, existing[existingIdx].quantity + qtyVal);
+            if (!buyNow) {
+              existing[existingIdx].quantity = Math.min(v.stock, existing[existingIdx].quantity + qtyVal);
+            }
           } else {
             existing.push({
               productId,
@@ -126,6 +128,12 @@ export function ResellerAddToCart({
       const existing = JSON.parse(localStorage.getItem(cartKey) || '[]');
       const idx = existing.findIndex((i: any) => i.resellerProductId === resellerProductId && !i.color && !i.size);
       if (idx >= 0) {
+        if (buyNow) {
+          toast.info('Already added to cart');
+          window.location.href = '/checkout';
+          setLoading(false);
+          return;
+        }
         existing[idx].quantity = Math.min(stock, existing[idx].quantity + qty);
       } else {
         existing.push({ productId, resellerProductId, name, price, image, quantity: Math.min(stock, qty) });
