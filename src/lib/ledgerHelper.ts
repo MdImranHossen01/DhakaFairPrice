@@ -160,7 +160,8 @@ export function calculateTransactionChange(tx: any, account: any): number {
     desc.startsWith('supplier payment') ||
     desc.includes('paid to') ||
     desc.includes('settled for order') ||
-    desc.includes('cleared for order');
+    desc.includes('cleared for order') ||
+    desc.includes('payout settled');
 
   // Inflow / Additions: income, deposits, loans received, upfront cash, payments received
   const isAddition =
@@ -173,7 +174,9 @@ export function calculateTransactionChange(tx: any, account: any): number {
     desc.includes('payout received') ||
     desc.startsWith('cash paid upfront') ||
     desc.startsWith('bill generated') ||
-    desc.includes('receivable for order');
+    desc.includes('receivable for order') ||
+    desc.includes('payable for order') ||
+    desc.includes('supplier bill payable');
 
   if (account.type === 'liability' || account.code === 'AP') {
     if (isDeduction) return -amount;
@@ -321,6 +324,20 @@ export async function logPayoutToLedger(payoutTx: any, reseller?: any) {
       payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : new Date()
     );
     console.log(`[Ledger] Logged payout for ${storeName} (৳${amount}) to ${accountCode} successfully.`);
+
+    // Clear AP liability
+    const apRef = `PAYOUT-AP-${shortId}`;
+    const apDebitExists = await LedgerTransaction.findOne({ reference: apRef, type: 'debit' });
+    if (!apDebitExists) {
+      await logLedgerTransaction(
+        'AP',
+        'debit', // Debit decreases liability account (AP)
+        amount,
+        `Commission Payout Settled to ${storeName}`,
+        apRef,
+        payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : new Date()
+      );
+    }
   } catch (error) {
     console.error('[Ledger] Error logging payout to ledger:', error);
   }
@@ -561,6 +578,132 @@ export async function syncOrdersToLedger() {
 }
 
 /**
+ * Sync active supplier bills and reseller payables (commissions & product payouts) to AP in ledger.
+ */
+export async function syncPayablesToLedger() {
+  try {
+    await connectToDatabase();
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const SupplierBill = (await import('@/models/SupplierBill')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+
+    const apAccount = await LedgerAccount.findOne({
+      code: 'AP',
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
+    if (!apAccount) return;
+
+    // 1. Sync active reseller order liabilities
+    const activeResellerOrders = await ResellerOrder.find({
+      status: { $nin: ['Cancelled', 'Failed'] },
+      deletedAt: null
+    } as any).populate('resellerId', 'storeName').lean();
+
+    for (const ro of activeResellerOrders) {
+      if (!ro.shortId) continue;
+      const commissionAmount = Number(ro.resellerCommission) || 0;
+      if (commissionAmount <= 0) continue;
+
+      const apRef = `AP-RO-${ro.shortId}`;
+      const storeName = (ro.resellerId as any)?.storeName || 'Reseller';
+      const orderDate = ro.createdAt ? new Date(ro.createdAt) : new Date();
+
+      const isFulfillment = ro.shortId.includes('-F');
+      const desc = isFulfillment
+        ? `Product Payout Payable for Order #${ro.shortId} (${storeName})`
+        : `Reseller Commission Payable for Order #${ro.shortId} (${storeName})`;
+
+      const apCredit = await LedgerTransaction.findOne({
+        account: apAccount._id,
+        reference: apRef,
+        type: 'credit'
+      });
+
+      if (!apCredit) {
+        await logLedgerTransaction('AP', 'credit', commissionAmount, desc, apRef, orderDate);
+      } else {
+        let changed = false;
+        if (Math.abs(apCredit.amount - commissionAmount) > 0.01) {
+          apCredit.amount = commissionAmount;
+          changed = true;
+        }
+        if (apCredit.description !== desc) {
+          apCredit.description = desc;
+          changed = true;
+        }
+        if (new Date(apCredit.date).getTime() !== orderDate.getTime()) {
+          apCredit.date = orderDate;
+          changed = true;
+        }
+        if (changed) {
+          await apCredit.save();
+        }
+      }
+    }
+
+    // 2. Sync active due supplier bills
+    const dueSupplierBills = await SupplierBill.find({
+      status: 'Due'
+    }).populate('supplier', 'name companyName').lean();
+
+    for (const sb of dueSupplierBills) {
+      const billNo = (sb as any).billNo || sb._id.toString();
+      const apRef = `AP-SB-${billNo}`;
+      const dueAmount = Number((sb as any).dueAmount || (sb as any).totalAmount) || 0;
+      if (dueAmount <= 0) continue;
+
+      const supplierName = (sb as any).supplier?.companyName || (sb as any).supplier?.name || 'Supplier';
+      const billDate = (sb as any).date ? new Date((sb as any).date) : new Date();
+      const desc = `Supplier Bill Payable for ${supplierName} (${billNo})`;
+
+      const apCredit = await LedgerTransaction.findOne({
+        account: apAccount._id,
+        reference: apRef,
+        type: 'credit'
+      });
+
+      if (!apCredit) {
+        await logLedgerTransaction('AP', 'credit', dueAmount, desc, apRef, billDate);
+      } else {
+        let changed = false;
+        if (Math.abs(apCredit.amount - dueAmount) > 0.01) {
+          apCredit.amount = dueAmount;
+          changed = true;
+        }
+        if (apCredit.description !== desc) {
+          apCredit.description = desc;
+          changed = true;
+        }
+        if (new Date(apCredit.date).getTime() !== billDate.getTime()) {
+          apCredit.date = billDate;
+          changed = true;
+        }
+        if (changed) {
+          await apCredit.save();
+        }
+      }
+    }
+
+    // 3. Remove AP liabilities for cancelled orders
+    const cancelledOrders = await ResellerOrder.find({
+      $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }]
+    } as any).select('shortId').lean();
+
+    const cancelledRefs = cancelledOrders.map((o: any) => `AP-RO-${o.shortId}`).filter(Boolean);
+    if (cancelledRefs.length > 0) {
+      await LedgerTransaction.deleteMany({
+        account: apAccount._id,
+        reference: { $in: cancelledRefs }
+      });
+    }
+
+    await recalculateLedgerBalance('AP');
+  } catch (err) {
+    console.error('[Ledger] Error syncing payables to ledger:', err);
+  }
+}
+
+/**
  * Clean up orphan ledger transactions for deleted bills, orders, payouts, loans, supplier bills, expenses
  * and recalculate balances automatically.
  */
@@ -572,6 +715,7 @@ export async function cleanOrphanLedgerTransactions() {
     const Bill = (await import('@/models/Bill')).default;
     const Expense = (await import('@/models/Expense')).default;
     const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
     const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
     const BusinessLoan = (await import('@/models/BusinessLoan')).default;
     const SupplierBill = (await import('@/models/SupplierBill')).default;
@@ -584,24 +728,27 @@ export async function cleanOrphanLedgerTransactions() {
     let deletedCount = 0;
 
     // Fetch reference sets in parallel for high performance
-    const [bills, activeOrders, loans, supplierBills, payouts] = await Promise.all([
+    const [bills, activeOrders, loans, supplierBills, payouts, activeRos] = await Promise.all([
       Bill.find({}, { invoiceNo: 1 }).lean(),
       Order.find({ deletedAt: null }, { _id: 1, shortId: 1 }).lean(),
       BusinessLoan.find({}, { loanId: 1 }).lean(),
       SupplierBill.find({}, { billNo: 1 }).lean(),
       ResellerWalletTransaction.find({ type: 'payout_released' }, { _id: 1 }).lean(),
+      ResellerOrder.find({ status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null } as any, { shortId: 1 }).lean(),
     ]);
 
-    const validBillInvoices = new Set(bills.map(b => (b.invoiceNo || '').toUpperCase()));
+    const validBillInvoices = new Set(bills.map((b: any) => (b.invoiceNo || '').toUpperCase()));
     const validOrderShortIds = new Set([
-      ...activeOrders.map(o => o._id.toString().slice(-8).toUpperCase()),
-      ...activeOrders.map(o => (o.shortId || '').toUpperCase()).filter(Boolean)
+      ...activeOrders.map((o: any) => o._id.toString().slice(-8).toUpperCase()),
+      ...activeOrders.map((o: any) => (o.shortId || '').toUpperCase()).filter(Boolean)
     ]);
-    const validLoanIds = new Set(loans.map(l => l.loanId));
+    const validRoShortIds = new Set(activeRos.map((r: any) => (r.shortId || '').toUpperCase()));
+    const validLoanIds = new Set(loans.map((l: any) => l.loanId));
     const validSupplierBillInvoices = new Set(supplierBills.map((s: any) => ((s.billNo || s.invoiceNo || '') as string).toUpperCase()));
     const validPayoutRefs = new Set([
-      ...payouts.map(p => `PAYOUT-${p._id.toString().slice(-8).toUpperCase()}`),
-      ...payouts.map(p => `PAYOUT-REC-${p._id.toString().slice(-8).toUpperCase()}`)
+      ...payouts.map((p: any) => `PAYOUT-${p._id.toString().slice(-8).toUpperCase()}`),
+      ...payouts.map((p: any) => `PAYOUT-REC-${p._id.toString().slice(-8).toUpperCase()}`),
+      ...payouts.map((p: any) => `PAYOUT-AP-${p._id.toString().slice(-8).toUpperCase()}`)
     ]);
 
     for (const tx of transactions) {
@@ -647,9 +794,20 @@ export async function cleanOrphanLedgerTransactions() {
         }
       }
 
-      // 5. Check Supplier Bill references: SB- or PB-
-      if (tx.reference && (tx.reference.startsWith('SB-') || tx.reference.startsWith('PB-'))) {
-        if (!validSupplierBillInvoices.has(tx.reference.toUpperCase())) {
+      // 5. Check Supplier Bill references: SB- or PB- or AP-SB-
+      if (tx.reference && (tx.reference.startsWith('SB-') || tx.reference.startsWith('PB-') || tx.reference.startsWith('AP-SB-'))) {
+        const cleanSbRef = tx.reference.replace(/^AP-SB-/i, '').toUpperCase();
+        if (!validSupplierBillInvoices.has(cleanSbRef) && !validSupplierBillInvoices.has(tx.reference.toUpperCase())) {
+          await LedgerTransaction.findByIdAndDelete(tx._id);
+          deletedCount++;
+          continue;
+        }
+      }
+
+      // 5b. Check Reseller Order AP references: AP-RO-
+      if (tx.reference && tx.reference.startsWith('AP-RO-')) {
+        const roShortId = tx.reference.replace(/^AP-RO-/i, '').trim().toUpperCase();
+        if (!validRoShortIds.has(roShortId)) {
           await LedgerTransaction.findByIdAndDelete(tx._id);
           deletedCount++;
           continue;
@@ -728,9 +886,10 @@ export async function cleanOrphanLedgerTransactions() {
       }
     }
 
-    // 9. Sync active bills and orders so all current bills and orders have proper AR in ledger
+    // 9. Sync active bills, orders, and payables so all current AR & AP are in ledger
     await syncBillsToLedger();
     await syncOrdersToLedger();
+    await syncPayablesToLedger();
 
     // 10. Recalculate all 4 ledger accounts
     await recalculateLedgerBalance('CASH');

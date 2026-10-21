@@ -118,9 +118,12 @@ export default function PayableLedgerPage() {
         <Card className="shadow-xs cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setActiveTab('resellers')}>
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Reseller Wallet Liability</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Reseller Total Liabilities</p>
               <p className="text-xl font-bold text-foreground mt-1">
-                ৳{Math.round(data?.resellerPayables?.totalWalletPayable || 0).toLocaleString()}
+                ৳{Math.round(data?.resellerPayables?.totalResellerPayable || (data?.resellerPayables?.totalWalletPayable || 0) + (data?.resellerPayables?.totalPendingCommission || 0)).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Cleared: ৳{Math.round(data?.resellerPayables?.totalWalletPayable || 0).toLocaleString()} | Orders: ৳{Math.round(data?.resellerPayables?.totalPendingCommission || 0).toLocaleString()}
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-600">
@@ -248,14 +251,15 @@ export default function PayableLedgerPage() {
                     <th className="p-3 text-left font-bold text-foreground">Owner</th>
                     <th className="p-3 font-bold text-foreground">Total Orders</th>
                     <th className="p-3 font-bold text-emerald-600 dark:text-emerald-400">Lifetime Earnings</th>
-                    <th className="p-3 font-bold text-muted-foreground">Pending In-Transit</th>
-                    <th className="p-3 font-bold text-primary text-right">Cleared Wallet Due</th>
+                    <th className="p-3 font-bold text-foreground">Active Orders Due</th>
+                    <th className="p-3 font-bold text-foreground">Cleared Wallet</th>
+                    <th className="p-3 font-bold text-primary text-right">Total Payable Due</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                      <td colSpan={7} className="p-8 text-center text-muted-foreground">
                         <div className="flex items-center justify-center gap-2">
                           <Loader2 className="h-5 w-5 animate-spin" />
                           <span>Loading reseller liabilities...</span>
@@ -284,17 +288,20 @@ export default function PayableLedgerPage() {
                         <td className="p-3 font-semibold text-emerald-600 dark:text-emerald-400">
                           ৳{Math.round(r.totalEarnings || 0).toLocaleString()}
                         </td>
-                        <td className="p-3 font-medium text-muted-foreground">
+                        <td className="p-3 font-medium text-foreground">
                           ৳{Math.round(r.pendingBalance || 0).toLocaleString()}
                         </td>
-                        <td className="p-3 font-bold text-right text-base text-primary">
+                        <td className="p-3 font-medium text-foreground">
                           ৳{Math.round(r.walletBalance || 0).toLocaleString()}
+                        </td>
+                        <td className="p-3 font-bold text-right text-base text-primary">
+                          ৳{Math.round(r.totalPayable !== undefined ? r.totalPayable : ((r.walletBalance || 0) + (r.pendingBalance || 0))).toLocaleString()}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="p-6 text-center text-muted-foreground">No reseller liabilities recorded.</td>
+                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No reseller liabilities recorded.</td>
                     </tr>
                   )}
                 </tbody>

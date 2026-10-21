@@ -41,11 +41,12 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Ensure active bills and orders are synced so AR balance is up to date
+    // Ensure active bills, orders, and payables are synced so AR and AP balances are up to date
     try {
-      const { syncBillsToLedger, syncOrdersToLedger } = await import('@/lib/ledgerHelper');
+      const { syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
       await syncBillsToLedger();
       await syncOrdersToLedger();
+      await syncPayablesToLedger();
     } catch (syncErr) {
       console.error('Error syncing ledger for accounts:', syncErr);
     }

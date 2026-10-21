@@ -14,12 +14,13 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     await seedLedgerAccounts();
 
-    // Auto-clean any orphan ledger transactions & sync payouts, bills, and orders to ledger
-    const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger, syncOrdersToLedger } = await import('@/lib/ledgerHelper');
+    // Auto-clean any orphan ledger transactions & sync payouts, bills, orders, and payables to ledger
+    const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
     await cleanOrphanLedgerTransactions();
     await backfillPayoutsToLedger();
     await syncBillsToLedger();
     await syncOrdersToLedger();
+    await syncPayablesToLedger();
 
     const { searchParams } = new URL(req.url);
     const accountId = searchParams.get('accountId');

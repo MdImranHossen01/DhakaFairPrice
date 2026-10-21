@@ -66,6 +66,8 @@ export async function GET(req: NextRequest) {
     const totalSupplierDue = dueSupplierBills.reduce((acc: number, curr: any) => acc + (curr.dueAmount || 0), 0);
     const totalResellerWalletPayable = resellers.reduce((acc: number, curr: any) => acc + (curr.walletBalance || 0), 0);
     const totalResellerPendingCommission = resellers.reduce((acc: number, curr: any) => acc + (curr.pendingBalance || 0), 0);
+    const totalResellerPayable = totalResellerWalletPayable + totalResellerPendingCommission;
+    const grandTotalPayable = totalSupplierDue + totalResellerPayable;
 
     return NextResponse.json({
       supplierPayables: {
@@ -74,6 +76,7 @@ export async function GET(req: NextRequest) {
         dueBills: dueSupplierBills
       },
       resellerPayables: {
+        totalResellerPayable,
         totalWalletPayable: totalResellerWalletPayable,
         totalPendingCommission: totalResellerPendingCommission,
         resellers: resellers.map((r: any) => ({
@@ -84,6 +87,7 @@ export async function GET(req: NextRequest) {
           ownerPhone: r.userId?.phone || '',
           walletBalance: r.walletBalance || 0,
           pendingBalance: r.pendingBalance || 0,
+          totalPayable: (r.walletBalance || 0) + (r.pendingBalance || 0),
           totalOrders: orderCountMap.get(r._id.toString()) ?? (r.totalOrders || 0),
           totalEarnings: earningsMap.get(r._id.toString()) || (r.totalEarnings || 0),
           commissionRate: r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10),
@@ -92,7 +96,7 @@ export async function GET(req: NextRequest) {
         })),
         pendingPayouts
       },
-      grandTotalPayable: totalSupplierDue + totalResellerWalletPayable
+      grandTotalPayable
     });
   } catch (error) {
     console.error('Fetch Payables Error:', error);
