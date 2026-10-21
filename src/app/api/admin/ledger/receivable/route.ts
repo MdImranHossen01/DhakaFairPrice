@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import connectToDatabase from '@/lib/db';
 import Bill from '@/models/Bill';
 import Order from '@/models/Order';
+import ResellerOrder from '@/models/ResellerOrder';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +39,18 @@ export async function GET(req: NextRequest) {
         status: { $in: ['Order Placed', 'Confirmed', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
         deletedAt: null
       })
-        .select('shortId customer totalAmount status paymentMethod shippingDetails shippingAddress createdAt')
+        .select('shortId customer totalAmount status paymentMethod shippingDetails shippingAddress createdAt orderSource resellerId storefrontResellerId systemFee')
         .sort({ createdAt: -1 })
         .limit(100)
         .lean()
     ]);
+
+    // Fetch matching reseller orders for accurate system fee / platform commission
+    const shortIds = pendingOrders.map((o: any) => o.shortId).filter(Boolean);
+    const resellerOrders = await ResellerOrder.find({
+      shortId: { $in: shortIds },
+      deletedAt: null
+    }).select('shortId motherOrderId systemFee').lean();
 
     // Aggregate client-wise dues
     const clientMap = new Map<string, any>();
@@ -76,7 +84,16 @@ export async function GET(req: NextRequest) {
 
     // Calculate totals
     const totalClientBillsDue = dueBills.reduce((acc: number, curr: any) => acc + (curr.currentBillDue || 0), 0);
-    const totalPendingOrdersReceivable = pendingOrders.reduce((acc: number, curr: any) => acc + (curr.totalAmount || 0), 0);
+    const totalPendingOrdersReceivable = pendingOrders.reduce((acc: number, curr: any) => {
+      const isStorefront = curr.orderSource === 'reseller_storefront' || Boolean(curr.storefrontResellerId);
+      const matchingRo = resellerOrders.find((r: any) => 
+        (r.motherOrderId && r.motherOrderId.toString() === curr._id.toString()) || 
+        (r.shortId === curr.shortId)
+      );
+      const systemFee = Number(curr.systemFee) || Number(matchingRo?.systemFee) || 0;
+      const rec = isStorefront ? systemFee : (Number(curr.totalAmount) || 0);
+      return acc + rec;
+    }, 0);
     const grandTotalReceivable = totalClientBillsDue + totalPendingOrdersReceivable;
 
     return NextResponse.json({
@@ -88,18 +105,31 @@ export async function GET(req: NextRequest) {
       orderReceivables: {
         totalPending: totalPendingOrdersReceivable,
         count: pendingOrders.length,
-        orders: pendingOrders.map((o: any) => ({
-          _id: o._id,
-          shortId: o.shortId || (o._id ? o._id.toString().slice(-8).toUpperCase() : 'N/A'),
-          customerName: o.shippingAddress?.fullName || 'Customer',
-          customerPhone: o.shippingAddress?.phone || 'N/A',
-          city: o.shippingAddress?.city || 'N/A',
-          totalAmount: o.totalAmount || 0,
-          status: o.status,
-          paymentMethod: o.paymentMethod,
-          courierName: o.shippingDetails?.courierName || 'Pending Courier',
-          createdAt: o.createdAt
-        }))
+        orders: pendingOrders.map((o: any) => {
+          const isStorefront = o.orderSource === 'reseller_storefront' || Boolean(o.storefrontResellerId);
+          const matchingRo = resellerOrders.find((r: any) => 
+            (r.motherOrderId && r.motherOrderId.toString() === o._id.toString()) || 
+            (r.shortId === o.shortId)
+          );
+          const systemFee = Number(o.systemFee) || Number(matchingRo?.systemFee) || 0;
+          const receivableAmount = isStorefront ? systemFee : (Number(o.totalAmount) || 0);
+
+          return {
+            _id: o._id,
+            shortId: o.shortId || (o._id ? o._id.toString().slice(-8).toUpperCase() : 'N/A'),
+            customerName: o.shippingAddress?.fullName || 'Customer',
+            customerPhone: o.shippingAddress?.phone || 'N/A',
+            city: o.shippingAddress?.city || 'N/A',
+            totalAmount: o.totalAmount || 0,
+            receivableAmount,
+            isStorefront,
+            systemFee,
+            status: o.status,
+            paymentMethod: o.paymentMethod,
+            courierName: o.shippingDetails?.courierName || 'Pending Courier',
+            createdAt: o.createdAt
+          };
+        })
       },
       grandTotalReceivable
     });

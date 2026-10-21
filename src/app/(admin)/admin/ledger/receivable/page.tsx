@@ -368,11 +368,11 @@ export default function ReceivableLedgerPage() {
               <table className="w-full text-xs md:text-sm text-center border-collapse">
                 <thead>
                   <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Order ID</th>
+                    <th className="p-3 text-left font-bold text-foreground">Order ID & Source</th>
                     <th className="p-3 text-left font-bold text-foreground">Customer</th>
                     <th className="p-3 font-bold text-foreground">Courier / Status</th>
-                    <th className="p-3 font-bold text-foreground">Payment Method</th>
-                    <th className="p-3 font-bold text-primary text-right">Receivable Amount</th>
+                    <th className="p-3 font-bold text-foreground">Customer COD</th>
+                    <th className="p-3 font-bold text-primary text-right">Mother Shop Receivable</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -388,8 +388,19 @@ export default function ReceivableLedgerPage() {
                   ) : filteredOrders.length > 0 ? (
                     filteredOrders.map((ord: any) => (
                       <tr key={ord._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left font-mono font-bold text-foreground">
-                          #{ord.shortId}
+                        <td className="p-3 text-left">
+                          <div className="font-mono font-bold text-foreground">#{ord.shortId}</div>
+                          <div className="mt-1">
+                            {ord.isStorefront ? (
+                              <Badge variant="secondary" className="text-[10px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20">
+                                Reseller Storefront
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">
+                                Mother Shop
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3 text-left">
                           <div className="font-bold text-foreground">{ord.customerName}</div>
@@ -404,10 +415,18 @@ export default function ReceivableLedgerPage() {
                           </div>
                         </td>
                         <td className="p-3 font-medium text-muted-foreground">
-                          {ord.paymentMethod === 'COD' ? 'Cash on Delivery' : ord.paymentMethod}
+                          <div>৳{Math.round(ord.totalAmount || 0).toLocaleString()}</div>
+                          <div className="text-[10px] text-muted-foreground">{ord.paymentMethod === 'COD' ? 'Cash on Delivery' : ord.paymentMethod}</div>
                         </td>
-                        <td className="p-3 font-bold text-right text-base text-primary">
-                          ৳{Math.round(ord.totalAmount || 0).toLocaleString()}
+                        <td className="p-3 font-bold text-right">
+                          <div className="text-base text-primary">
+                            ৳{Math.round((ord.receivableAmount !== undefined ? ord.receivableAmount : ord.totalAmount) || 0).toLocaleString()}
+                          </div>
+                          {ord.isStorefront && (
+                            <div className="text-[10px] text-muted-foreground font-normal">
+                              Platform Fee
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))

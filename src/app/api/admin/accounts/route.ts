@@ -41,6 +41,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Ensure active bills and orders are synced so AR balance is up to date
+    try {
+      const { syncBillsToLedger, syncOrdersToLedger } = await import('@/lib/ledgerHelper');
+      await syncBillsToLedger();
+      await syncOrdersToLedger();
+    } catch (syncErr) {
+      console.error('Error syncing ledger for accounts:', syncErr);
+    }
+
     const accounts = await LedgerAccount.find({
       $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
     }).sort({ category: 1, name: 1 }).lean();

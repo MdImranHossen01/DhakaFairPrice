@@ -158,7 +158,9 @@ export function calculateTransactionChange(tx: any, account: any): number {
     desc.includes('loan repayment') ||
     desc.startsWith('reseller commission payout') ||
     desc.startsWith('supplier payment') ||
-    desc.includes('paid to');
+    desc.includes('paid to') ||
+    desc.includes('settled for order') ||
+    desc.includes('cleared for order');
 
   // Inflow / Additions: income, deposits, loans received, upfront cash, payments received
   const isAddition =
@@ -170,7 +172,8 @@ export function calculateTransactionChange(tx: any, account: any): number {
     desc.startsWith('payout received') ||
     desc.includes('payout received') ||
     desc.startsWith('cash paid upfront') ||
-    desc.startsWith('bill generated');
+    desc.startsWith('bill generated') ||
+    desc.includes('receivable for order');
 
   if (account.type === 'liability' || account.code === 'AP') {
     if (isDeduction) return -amount;
@@ -182,7 +185,7 @@ export function calculateTransactionChange(tx: any, account: any): number {
   if (isAddition) return amount;
   if (isDeduction) return -amount;
 
-  return tx.type === 'credit' ? amount : -amount;
+  return tx.type === 'debit' ? amount : -amount;
 }
 
 /**
@@ -239,33 +242,45 @@ export async function logOrderPaymentToLedger(order: any) {
   try {
     await connectToDatabase();
     
-    // Determine account code based on paymentMethod
-    // Online -> BANK, others (COD, Manual) -> CASH
+    const isStorefront = order.orderSource === 'reseller_storefront' || Boolean(order.storefrontResellerId);
+    const amount = isStorefront ? (Number(order.systemFee) || 0) : (Number(order.totalAmount) || 0);
+    if (amount <= 0) return;
+
+    const shortId = order.shortId || order._id.toString().slice(-8).toUpperCase();
     const accountCode = order.paymentMethod === 'Online' ? 'BANK' : 'CASH';
-    
-    const amount = order.totalAmount || 0;
-    const orderIdStr = order._id.toString();
-    const shortId = orderIdStr.slice(-8).toUpperCase();
-    
-    const description = `Customer payment received for Order #${shortId}`;
     const reference = `ORDER-${shortId}`;
     
     // Ensure idempotency: check if transaction with this reference already exists
     const exists = await LedgerTransaction.findOne({ reference });
-    if (exists) {
-      console.log(`[Ledger] Entry already exists for order reference: ${reference}`);
-      return;
+    if (!exists) {
+      const description = isStorefront
+        ? `Platform fee received for Order #${shortId}`
+        : `Customer payment received for Order #${shortId}`;
+
+      await logLedgerTransaction(
+        accountCode,
+        'debit', // Debit increases Cash or Bank
+        amount,
+        description,
+        reference,
+        order.createdAt ? new Date(order.createdAt) : new Date()
+      );
+      console.log(`[Ledger] Logged payment for Order #${shortId} to ${accountCode} successfully.`);
     }
-    
-    await logLedgerTransaction(
-      accountCode,
-      'debit', // Debit increases Cash or Bank
-      amount,
-      description,
-      reference,
-      order.createdAt ? new Date(order.createdAt) : new Date()
-    );
-    console.log(`[Ledger] Logged payment for Order #${shortId} to ${accountCode} successfully.`);
+
+    // Clear AR receivable
+    const arRef = `ORD-${shortId}`;
+    const arCreditExists = await LedgerTransaction.findOne({ reference: arRef, type: 'credit' });
+    if (!arCreditExists) {
+      await logLedgerTransaction(
+        'AR',
+        'credit',
+        amount,
+        isStorefront ? `Platform Fee Settled for Order #${shortId}` : `Payment settled for Order #${shortId}`,
+        arRef,
+        order.updatedAt ? new Date(order.updatedAt) : new Date()
+      );
+    }
   } catch (error) {
     console.error('[Ledger] Error logging order payment to ledger:', error);
   }
@@ -423,6 +438,129 @@ export async function syncBillsToLedger() {
 }
 
 /**
+ * Sync active orders to ledger: ensures Order Receivable AR debit entries exist
+ * and settled orders have their AR cleared.
+ */
+export async function syncOrdersToLedger() {
+  try {
+    await connectToDatabase();
+    const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+
+    const arAccount = await LedgerAccount.findOne({
+      code: 'AR',
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
+    if (!arAccount) return;
+
+    // Fetch active/valid orders
+    const orders = await Order.find({
+      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+      deletedAt: null
+    }).lean();
+
+    const shortIds = orders.map((o: any) => o.shortId).filter(Boolean);
+    const resellerOrders = await ResellerOrder.find({
+      shortId: { $in: shortIds },
+      deletedAt: null
+    }).select('shortId motherOrderId systemFee').lean();
+
+    for (const order of orders) {
+      if (!order.shortId) continue;
+
+      const isStorefront = order.orderSource === 'reseller_storefront' || Boolean(order.storefrontResellerId);
+      const matchingRo = resellerOrders.find((r: any) =>
+        (r.motherOrderId && r.motherOrderId.toString() === order._id.toString()) ||
+        (r.shortId === order.shortId)
+      );
+
+      const systemFee = Number(order.systemFee) || Number(matchingRo?.systemFee) || 0;
+      const receivableAmount = isStorefront ? systemFee : (Number(order.totalAmount) || 0);
+
+      if (receivableAmount <= 0) continue;
+
+      const orderRef = `ORD-${order.shortId}`;
+      const orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
+      const customerName = order.shippingAddress?.fullName || 'Customer';
+
+      const desc = isStorefront
+        ? `Platform Fee Receivable for Order #${order.shortId} (${customerName})`
+        : `Customer Receivable for Order #${order.shortId} (${customerName})`;
+
+      // 1. Check AR Debit entry
+      const arDebit = await LedgerTransaction.findOne({
+        account: arAccount._id,
+        reference: orderRef,
+        type: 'debit'
+      });
+
+      if (!arDebit) {
+        await logLedgerTransaction('AR', 'debit', receivableAmount, desc, orderRef, orderDate);
+      } else {
+        let changed = false;
+        if (Math.abs(arDebit.amount - receivableAmount) > 0.01) {
+          arDebit.amount = receivableAmount;
+          changed = true;
+        }
+        if (arDebit.description !== desc) {
+          arDebit.description = desc;
+          changed = true;
+        }
+        if (new Date(arDebit.date).getTime() !== orderDate.getTime()) {
+          arDebit.date = orderDate;
+          changed = true;
+        }
+        if (changed) {
+          await arDebit.save();
+        }
+      }
+
+      // 2. If order is Paid, ensure AR is credited to clear the receivable
+      if (order.paymentStatus === 'Paid') {
+        const arCredit = await LedgerTransaction.findOne({
+          account: arAccount._id,
+          reference: orderRef,
+          type: 'credit'
+        });
+
+        if (!arCredit) {
+          const clearDesc = isStorefront
+            ? `Platform Fee Settled for Order #${order.shortId}`
+            : `Customer Payment Received for Order #${order.shortId}`;
+
+          await logLedgerTransaction('AR', 'credit', receivableAmount, clearDesc, orderRef, order.updatedAt ? new Date(order.updatedAt) : new Date());
+        }
+      } else {
+        // If order is not paid, remove any stale AR credit
+        await LedgerTransaction.deleteMany({
+          account: arAccount._id,
+          reference: orderRef,
+          type: 'credit'
+        });
+      }
+    }
+
+    // Clean AR transactions for cancelled/deleted orders
+    const invalidOrders = await Order.find({
+      $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }]
+    } as any).select('shortId').lean();
+
+    const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter(Boolean);
+    if (invalidRefs.length > 0) {
+      await LedgerTransaction.deleteMany({
+        account: arAccount._id,
+        reference: { $in: invalidRefs }
+      });
+    }
+
+    await recalculateLedgerBalance('AR');
+  } catch (err) {
+    console.error('[Ledger] Error syncing orders to ledger:', err);
+  }
+}
+
+/**
  * Clean up orphan ledger transactions for deleted bills, orders, payouts, loans, supplier bills, expenses
  * and recalculate balances automatically.
  */
@@ -446,16 +584,19 @@ export async function cleanOrphanLedgerTransactions() {
     let deletedCount = 0;
 
     // Fetch reference sets in parallel for high performance
-    const [bills, paidOrders, loans, supplierBills, payouts] = await Promise.all([
+    const [bills, activeOrders, loans, supplierBills, payouts] = await Promise.all([
       Bill.find({}, { invoiceNo: 1 }).lean(),
-      Order.find({ paymentStatus: 'Paid', deletedAt: { $exists: false } }, { _id: 1 }).lean(),
+      Order.find({ deletedAt: null }, { _id: 1, shortId: 1 }).lean(),
       BusinessLoan.find({}, { loanId: 1 }).lean(),
       SupplierBill.find({}, { billNo: 1 }).lean(),
       ResellerWalletTransaction.find({ type: 'payout_released' }, { _id: 1 }).lean(),
     ]);
 
     const validBillInvoices = new Set(bills.map(b => (b.invoiceNo || '').toUpperCase()));
-    const validOrderShortIds = new Set(paidOrders.map(o => o._id.toString().slice(-8).toUpperCase()));
+    const validOrderShortIds = new Set([
+      ...activeOrders.map(o => o._id.toString().slice(-8).toUpperCase()),
+      ...activeOrders.map(o => (o.shortId || '').toUpperCase()).filter(Boolean)
+    ]);
     const validLoanIds = new Set(loans.map(l => l.loanId));
     const validSupplierBillInvoices = new Set(supplierBills.map((s: any) => ((s.billNo || s.invoiceNo || '') as string).toUpperCase()));
     const validPayoutRefs = new Set([
@@ -487,9 +628,9 @@ export async function cleanOrphanLedgerTransactions() {
         }
       }
 
-      // 3. Check Order references (e.g. ORDER-XXXX)
-      if (tx.reference && tx.reference.startsWith('ORDER-')) {
-        const shortId = tx.reference.replace('ORDER-', '').trim().toUpperCase();
+      // 3. Check Order references (e.g. ORDER-XXXX or ORD-XXXX)
+      if (tx.reference && (tx.reference.startsWith('ORDER-') || tx.reference.startsWith('ORD-'))) {
+        const shortId = tx.reference.replace(/^ORD(ER)?-/i, '').trim().toUpperCase();
         if (!validOrderShortIds.has(shortId)) {
           await LedgerTransaction.findByIdAndDelete(tx._id);
           deletedCount++;
@@ -587,8 +728,9 @@ export async function cleanOrphanLedgerTransactions() {
       }
     }
 
-    // 9. Sync active bills so all current bills have proper initial AR & upfront cash in ledger
+    // 9. Sync active bills and orders so all current bills and orders have proper AR in ledger
     await syncBillsToLedger();
+    await syncOrdersToLedger();
 
     // 10. Recalculate all 4 ledger accounts
     await recalculateLedgerBalance('CASH');
