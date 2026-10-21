@@ -20,14 +20,24 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
+    const source = searchParams.get('source'); // 'all' | 'mother' | 'reseller'
+
     await connectToDatabase();
 
     const matchQuery: any = {
       status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
       deletedAt: null,
-      orderSource: { $ne: 'reseller_storefront' },
-      systemNote: { $not: /^Reseller Order/ },
     };
+
+    if (source === 'mother') {
+      matchQuery.orderSource = { $ne: 'reseller_storefront' };
+      matchQuery.systemNote = { $not: /^Reseller Order/ };
+    } else if (source === 'reseller') {
+      matchQuery.$or = [
+        { orderSource: 'reseller_storefront' },
+        { systemNote: /^Reseller Order/ }
+      ];
+    }
 
     if (from || to) {
       matchQuery.createdAt = {};
@@ -42,6 +52,7 @@ export async function GET(req: NextRequest) {
     if (search) {
       const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       matchQuery.$or = [
+        { shortId: { $regex: escaped, $options: 'i' } },
         { slug: { $regex: escaped, $options: 'i' } },
         { 'shippingAddress.fullName': { $regex: escaped, $options: 'i' } },
         { 'shippingAddress.phone': { $regex: escaped, $options: 'i' } }
@@ -54,7 +65,7 @@ export async function GET(req: NextRequest) {
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .select('slug totalAmount deliveryCharge status createdAt items shippingAddress')
+        .select('shortId slug totalAmount deliveryCharge status createdAt items shippingAddress orderSource resellerCommission')
         .populate('user', 'name email phone')
         .lean()
     ]);
@@ -73,12 +84,14 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      const profit = netSales - totalCOGS;
+      const resellerCommission = Number(order.resellerCommission) || 0;
+      const profit = netSales - totalCOGS - resellerCommission;
 
       return {
         _id: order._id,
+        shortId: order.shortId,
         slug: order.slug,
-        invoiceNo: order.slug?.replace('order-', 'INV-') || `ORD-${order._id.toString().slice(-6)}`,
+        invoiceNo: order.shortId ? `#${order.shortId}` : (order.slug?.replace('order-', 'INV-') || `ORD-${order._id.toString().slice(-6)}`),
         date: order.createdAt,
         customerName: order.shippingAddress?.fullName || order.user?.name || 'Walk-in Customer',
         customerPhone: order.shippingAddress?.phone || order.user?.phone || '',
@@ -86,6 +99,8 @@ export async function GET(req: NextRequest) {
         deliveryCost: deliveryCharge,
         total: totalAmount,
         purchasePrice: totalCOGS,
+        resellerCommission,
+        orderSource: order.orderSource,
         profit,
         status: order.status
       };

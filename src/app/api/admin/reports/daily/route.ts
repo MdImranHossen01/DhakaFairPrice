@@ -31,19 +31,31 @@ export async function GET(req: NextRequest) {
     const endDate = new Date(new Date(`${nextYear}-${nextMonth.toString().padStart(2, '0')}-01T00:00:00+06:00`).getTime() - 1);
     const daysInMonth = new Date(year, month, 0).getDate();
 
+    const sourceParam = searchParams.get('source'); // 'all' | 'mother' | 'reseller'
+
+    const orderMatch: any = {
+      status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+      createdAt: { $gte: startDate, $lte: endDate },
+      deletedAt: null,
+    };
+
+    if (sourceParam === 'mother') {
+      orderMatch.orderSource = { $ne: 'reseller_storefront' };
+      orderMatch.systemNote = { $not: /^Reseller Order/ };
+    } else if (sourceParam === 'reseller') {
+      orderMatch.$or = [
+        { orderSource: 'reseller_storefront' },
+        { systemNote: /^Reseller Order/ }
+      ];
+    }
+
     await connectToDatabase();
 
     const [ordersAggregation, expensesAggregation] = await Promise.all([
       // Orders Aggregated by day (BST +06:00)
       Order.aggregate([
         {
-          $match: {
-            status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-            createdAt: { $gte: startDate, $lte: endDate },
-            deletedAt: null,
-            orderSource: { $ne: 'reseller_storefront' },
-            systemNote: { $not: /^Reseller Order/ },
-          }
+          $match: orderMatch
         },
         {
           $group: {
