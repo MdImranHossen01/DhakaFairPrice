@@ -822,7 +822,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                           ) : (session.user as any)?.role === 'reseller' ? (
                             <>
                               <DropdownMenuItem asChild>
-                                <Link href="/dashboard" className="cursor-pointer">
+                                <Link href="/reseller-dashboard" className="cursor-pointer">
                                   <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
                                 </Link>
                               </DropdownMenuItem>
@@ -1063,7 +1063,7 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                               ) : (session.user as any)?.role === 'reseller' ? (
                                 <>
                                   <DropdownMenuItem asChild>
-                                    <Link href="/dashboard" className="cursor-pointer">
+                                    <Link href="/reseller-dashboard" className="cursor-pointer">
                                       <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
                                     </Link>
                                   </DropdownMenuItem>

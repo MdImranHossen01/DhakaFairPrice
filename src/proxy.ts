@@ -121,6 +121,12 @@ export const proxy = auth(async (req) => {
     return response;
   }
 
+  if (nextUrl.pathname === '/reseller-dashboard' || nextUrl.pathname.startsWith('/reseller-dashboard/')) {
+    const sub = nextUrl.pathname.replace(/^\/reseller-dashboard/, '') || '/dashboard';
+    const target = sub === '/' ? '/dashboard' : (sub.startsWith('/') ? sub : `/${sub}`);
+    return NextResponse.redirect(new URL(`/reseller${target}`, nextUrl));
+  }
+
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
   const isResellerRoute = nextUrl.pathname.startsWith("/reseller") && !nextUrl.pathname.startsWith("/reseller-program");
 
