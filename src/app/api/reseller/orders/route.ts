@@ -90,9 +90,28 @@ export async function GET(request: NextRequest) {
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
+        .populate('resellerId', 'storeName subdomain customDomain')
+        .populate({
+          path: 'motherOrderId',
+          select: 'storefrontResellerId resellerId orderSource shortId systemNote',
+          populate: [
+            {
+              path: 'storefrontResellerId',
+              select: 'storeName subdomain customDomain'
+            },
+            {
+              path: 'resellerId',
+              select: 'storeName subdomain customDomain'
+            }
+          ]
+        })
         .populate({
           path: 'items.productId',
-          select: 'uploadedBy'
+          select: 'name uploadedBy isMotherProduct',
+          populate: {
+            path: 'uploadedBy',
+            select: 'storeName subdomain customDomain'
+          }
         })
         .lean(),
       ResellerOrder.countDocuments(query),

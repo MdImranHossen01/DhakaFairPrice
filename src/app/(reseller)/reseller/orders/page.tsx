@@ -79,6 +79,73 @@ function FraudCheckBadge({ phone }: { phone: string }) {
   );
 }
 
+function getOrderSellingStore(order: any) {
+  if (!order) return { storeName: 'Mother Shop', domain: null, isReseller: false };
+
+  const isFulfillmentOrder = Boolean(order.shortId?.includes('-F'));
+  const motherOrder = order.motherOrderId;
+
+  // 1. If it's a fulfillment order, selling store is the storefront reseller on the linked mother order
+  if (isFulfillmentOrder) {
+    const storefrontReseller = (typeof motherOrder === 'object' && motherOrder?.storefrontResellerId?.storeName)
+      ? motherOrder.storefrontResellerId
+      : (typeof motherOrder === 'object' && motherOrder?.resellerId?.storeName)
+        ? motherOrder.resellerId
+        : null;
+
+    if (storefrontReseller?.storeName) {
+      return {
+        storeName: storefrontReseller.storeName,
+        domain: storefrontReseller.customDomain || storefrontReseller.subdomain,
+        isReseller: true,
+      };
+    }
+
+    if (order.systemNote) {
+      const match = order.systemNote.match(/Storefront Order \(([^ -)]+)/i);
+      if (match && match[1]) {
+        return {
+          storeName: match[1],
+          domain: null,
+          isReseller: true,
+        };
+      }
+    }
+  }
+
+  // 2. If it's a storefront order (not -F)
+  const directReseller = (typeof order.resellerId === 'object' && order.resellerId?.storeName)
+    ? order.resellerId
+    : (typeof motherOrder === 'object' && motherOrder?.storefrontResellerId?.storeName)
+      ? motherOrder.storefrontResellerId
+      : null;
+
+  if (directReseller?.storeName) {
+    return {
+      storeName: directReseller.storeName,
+      domain: directReseller.customDomain || directReseller.subdomain,
+      isReseller: true,
+    };
+  }
+
+  if (order.systemNote) {
+    const match = order.systemNote.match(/Storefront Order \(([^ -)]+)/i);
+    if (match && match[1]) {
+      return {
+        storeName: match[1],
+        domain: null,
+        isReseller: true,
+      };
+    }
+  }
+
+  return {
+    storeName: 'Mother Shop',
+    domain: null,
+    isReseller: false,
+  };
+}
+
 function OrdersContent() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -654,14 +721,51 @@ function OrdersContent() {
                           <div className="flex flex-col gap-1 w-full">
                             {order.items?.map((item: any, i: number) => {
                               const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
+                              const uploader = item.uploadedBy || item.productId?.uploadedBy;
+                              const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
                               return (
                                 <div key={item._id || item.id || i} className="text-xs bg-muted/40 p-1.5 rounded-md border font-medium whitespace-normal break-words leading-snug" title={item.name}>
                                   <span className="font-semibold text-primary mr-1">{item.quantity}x</span>{' '}
                                   <span className="font-bold text-foreground">{item.name}</span>
                                   {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
+                                  {uploaderName && (
+                                    <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
+                                      🏷️ Reseller Product: {uploaderName}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
+
+                            {/* Store Info */}
+                            {(() => {
+                              const storeInfo = getOrderSellingStore(order);
+                              if (storeInfo.isReseller && storeInfo.storeName) {
+                                return (
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                      <span>🏪 Reseller:</span>
+                                      <span className="font-extrabold underline decoration-indigo-400">
+                                        {storeInfo.storeName}
+                                      </span>
+                                      {storeInfo.domain && (
+                                        <span className="text-[10px] text-indigo-500 font-normal font-mono">
+                                          ({storeInfo.domain})
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="mt-0.5 flex items-center">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 px-1.5 py-0.2 rounded border border-slate-200 dark:border-zinc-700">
+                                      <span>🏢 Mother Shop</span>
+                                    </span>
+                                  </div>
+                                );
+                              }
+                            })()}
                             {/* Customer Note */}
                             {order.customerNote && (
                               <div className="text-xs bg-sky-50 dark:bg-sky-950/20 text-sky-800 dark:text-sky-300 p-1.5 rounded-md border border-sky-200 dark:border-sky-900/50 mt-1 whitespace-normal break-words flex items-start gap-1 font-medium">
@@ -840,14 +944,51 @@ function OrdersContent() {
                       <div className="flex flex-col gap-1 pt-2 border-t border-dashed">
                         {order.items.map((item: any, i: number) => {
                           const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
+                          const uploader = item.uploadedBy || item.productId?.uploadedBy;
+                          const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
                           return (
                             <div key={item._id || item.id || i} className="text-[11px] bg-muted/40 p-1.5 rounded border font-medium whitespace-normal break-words leading-tight">
                               <span className="font-semibold text-primary mr-1">{item.quantity}x</span>
                               <span className="font-bold text-foreground">{item.name}</span>
                               {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
+                              {uploaderName && (
+                                <span className="ml-1.5 text-[9px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
+                                  🏷️ {uploaderName}
+                                </span>
+                              )}
                             </div>
                           );
                         })}
+
+                        {/* Store Info in Mobile */}
+                        {(() => {
+                          const storeInfo = getOrderSellingStore(order);
+                          if (storeInfo.isReseller && storeInfo.storeName) {
+                            return (
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                  <span>🏪 Reseller:</span>
+                                  <span className="font-bold underline decoration-indigo-400">
+                                    {storeInfo.storeName}
+                                  </span>
+                                  {storeInfo.domain && (
+                                    <span className="text-[9px] text-indigo-500 font-normal font-mono">
+                                      ({storeInfo.domain})
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="mt-0.5 flex items-center">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 px-1.5 py-0.2 rounded border border-slate-200 dark:border-zinc-700">
+                                  <span>🏢 Mother Shop</span>
+                                </span>
+                              </div>
+                            );
+                          }
+                        })()}
                       </div>
                     )}
 

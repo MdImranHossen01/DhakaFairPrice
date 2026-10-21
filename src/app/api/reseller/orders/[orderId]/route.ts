@@ -4,6 +4,7 @@ import dbConnect from '@/lib/db';
 import ResellerOrder from '@/models/ResellerOrder';
 import Reseller from '@/models/Reseller';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 
 export async function GET(
   req: NextRequest,
@@ -28,7 +29,29 @@ export async function GET(
     }
 
     const order = await ResellerOrder.findOne({ _id: orderId, resellerId: reseller._id })
-      .populate('items.productId')
+      .populate('resellerId', 'storeName subdomain customDomain')
+      .populate({
+        path: 'motherOrderId',
+        select: 'storefrontResellerId resellerId orderSource shortId systemNote',
+        populate: [
+          {
+            path: 'storefrontResellerId',
+            select: 'storeName subdomain customDomain'
+          },
+          {
+            path: 'resellerId',
+            select: 'storeName subdomain customDomain'
+          }
+        ]
+      })
+      .populate({
+        path: 'items.productId',
+        select: 'name uploadedBy isMotherProduct image retailPrice price',
+        populate: {
+          path: 'uploadedBy',
+          select: 'storeName subdomain customDomain'
+        }
+      })
       .populate('items.resellerProductId')
       .lean();
 

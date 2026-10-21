@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { 
   Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, 
-  Printer, ExternalLink, Edit, X, MessageSquare, Lock, Tag, Trash2
+  Printer, ExternalLink, Edit, X, MessageSquare, Lock, Tag, Trash2, Store
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { toast } from 'sonner';
@@ -25,6 +25,73 @@ interface ResellerOrderDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate?: () => void;
+}
+
+function getOrderSellingStore(order: any) {
+  if (!order) return { storeName: 'Mother Shop', domain: null, isReseller: false };
+
+  const isFulfillmentOrder = Boolean(order.shortId?.includes('-F'));
+  const motherOrder = order.motherOrderId;
+
+  // 1. If it's a fulfillment order, selling store is the storefront reseller on the linked mother order
+  if (isFulfillmentOrder) {
+    const storefrontReseller = (typeof motherOrder === 'object' && motherOrder?.storefrontResellerId?.storeName)
+      ? motherOrder.storefrontResellerId
+      : (typeof motherOrder === 'object' && motherOrder?.resellerId?.storeName)
+        ? motherOrder.resellerId
+        : null;
+
+    if (storefrontReseller?.storeName) {
+      return {
+        storeName: storefrontReseller.storeName,
+        domain: storefrontReseller.customDomain || storefrontReseller.subdomain,
+        isReseller: true,
+      };
+    }
+
+    if (order.systemNote) {
+      const match = order.systemNote.match(/Storefront Order \(([^ -)]+)/i);
+      if (match && match[1]) {
+        return {
+          storeName: match[1],
+          domain: null,
+          isReseller: true,
+        };
+      }
+    }
+  }
+
+  // 2. If it's a storefront order (not -F)
+  const directReseller = (typeof order.resellerId === 'object' && order.resellerId?.storeName)
+    ? order.resellerId
+    : (typeof motherOrder === 'object' && motherOrder?.storefrontResellerId?.storeName)
+      ? motherOrder.storefrontResellerId
+      : null;
+
+  if (directReseller?.storeName) {
+    return {
+      storeName: directReseller.storeName,
+      domain: directReseller.customDomain || directReseller.subdomain,
+      isReseller: true,
+    };
+  }
+
+  if (order.systemNote) {
+    const match = order.systemNote.match(/Storefront Order \(([^ -)]+)/i);
+    if (match && match[1]) {
+      return {
+        storeName: match[1],
+        domain: null,
+        isReseller: true,
+      };
+    }
+  }
+
+  return {
+    storeName: 'Mother Shop',
+    domain: null,
+    isReseller: false,
+  };
 }
 
 export default function ResellerOrderDetailsDialog({
@@ -537,6 +604,50 @@ export default function ResellerOrderDetailsDialog({
           ) : (
             /* View Mode */
             <div className="space-y-6 pt-4">
+              {/* Selling Store Card */}
+              {(() => {
+                const storeInfo = getOrderSellingStore(order);
+                if (!storeInfo.isReseller && !storeInfo.storeName) return null;
+                return (
+                  <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl text-indigo-700 dark:text-indigo-300">
+                        <Store className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">
+                            {storeInfo.isReseller ? 'Selling Reseller Store' : 'Sales Channel'}
+                          </span>
+                          {storeInfo.domain && (
+                            <Badge variant="outline" className="text-[10px] bg-indigo-100/60 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-800 font-bold">
+                              {storeInfo.domain}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-bold text-foreground">
+                          {storeInfo.storeName}
+                        </p>
+                        {storeInfo.domain && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {storeInfo.domain}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {order.resellerCommission !== undefined && (
+                      <div className="flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <span className="text-[10px] text-muted-foreground font-medium">Your Commission / Payout</span>
+                        <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
+                        {order.systemFee > 0 && (
+                          <span className="text-[11px] text-primary font-mono mt-0.5">Mother Fee: ৳{Math.round(order.systemFee)}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Customer Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
@@ -914,10 +1025,22 @@ export default function ResellerOrderDetailsDialog({
                         </div>
                         <div className="flex flex-col">
                           <span className="font-medium whitespace-normal break-words leading-snug">{item.name}</span>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
                             {item.color && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">{item.color}</Badge>}
                             {item.size && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">Size: {item.size}</Badge>}
                             <span className="text-xs text-muted-foreground ml-1">৳{Math.round(Number(item.retailPrice) || 0)} × {item.quantity}</span>
+                            {(() => {
+                              const uploader = item.uploadedBy || item.productId?.uploadedBy;
+                              const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                              if (uploaderName) {
+                                return (
+                                  <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200">
+                                    🏷️ Reseller Product: {uploaderName}
+                                  </Badge>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
                       </div>
