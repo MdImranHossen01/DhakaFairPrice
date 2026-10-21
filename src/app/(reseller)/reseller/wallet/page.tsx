@@ -156,8 +156,9 @@ export default function ResellerWalletPage() {
             <div className="flex items-center gap-3">
               <TrendingUp className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
               <div>
-                <p className="text-[11px] md:text-xs text-muted-foreground">Total Earnings</p>
+                <p className="text-[11px] md:text-xs text-muted-foreground">Total Cleared Earnings</p>
                 <p className="text-xl md:text-2xl font-black">৳{(reseller?.totalEarnings ?? 0).toLocaleString()}</p>
+                <p className="text-[10px] md:text-[11px] text-muted-foreground">Cleared + Withdrawn</p>
               </div>
             </div>
           </CardContent>
