@@ -1252,7 +1252,7 @@ function OrdersContent() {
                               const domain = resObj?.customDomain || resObj?.subdomain;
                               return (
                                 <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                                  <span>🏪 Store:</span>
+                                  <span>🏪 Reseller:</span>
                                   <span className="font-extrabold underline decoration-indigo-400">
                                     {storeName}
                                   </span>
@@ -1562,7 +1562,7 @@ function OrdersContent() {
                         const domain = resObj?.customDomain || resObj?.subdomain;
                         return (
                           <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">
-                            🏪 Store: {storeName}
+                            🏪 Reseller: {storeName}
                             {domain && (
                               <span className="text-[9px] text-indigo-500 font-normal ml-1">({domain})</span>
                             )}
