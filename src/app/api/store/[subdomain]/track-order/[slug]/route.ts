@@ -60,12 +60,22 @@ export async function GET(
     const normalizedPhone = normalizePhoneNumber(cleanSlug);
     const isPhoneSearch = normalizedPhone.length >= 10 && /^\d+$/.test(normalizedPhone);
 
+    // Filter to ONLY storefront orders placed on this reseller's shop
+    // Exclude internal mother shop supplier payout records and cross-store fulfillments
+    const storefrontFilter: any = {
+      resellerId: reseller._id,
+      $and: [
+        { systemNote: { $not: { $regex: /^Mother Shop Order/i } } },
+        { systemNote: { $not: { $regex: /^Fulfillment for Storefront Order/i } } }
+      ]
+    };
+
     if (isPhoneSearch) {
       const phoneSuffix = normalizedPhone.slice(-10);
       const phoneRegex = new RegExp(phoneSuffix + '$');
 
       const orders = await ResellerOrder.find({
-        resellerId: reseller._id,
+        ...storefrontFilter,
         'customer.phone': { $regex: phoneRegex },
       })
         .sort({ createdAt: -1 })
@@ -84,7 +94,7 @@ export async function GET(
     }
 
     const order = await ResellerOrder.findOne({
-      resellerId: reseller._id,
+      ...storefrontFilter,
       $or: [
         { shortId: cleanSlug.toUpperCase() },
         { shortId: cleanSlug },

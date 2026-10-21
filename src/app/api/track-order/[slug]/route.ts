@@ -59,6 +59,21 @@ export async function GET(
     slug = slug.trim().replace(/^#/, '');
 
     await connectToDatabase();
+    const { getStorefrontReseller } = await import('@/lib/resellerStore');
+    const storefrontReseller = await getStorefrontReseller(req);
+
+    // Tenant Isolation Scope:
+    // If request originates from a reseller store, ONLY match orders placed for that reseller storefront.
+    // If request originates from Mother Shop, ONLY match mother shop orders (exclude reseller storefront orders).
+    const storeScopeFilter: any = storefrontReseller
+      ? { storefrontResellerId: storefrontReseller._id }
+      : {
+          $or: [
+            { storefrontResellerId: { $exists: false } },
+            { storefrontResellerId: null }
+          ],
+          orderSource: { $ne: 'reseller_storefront' }
+        };
 
     const normalizedPhone = normalizePhoneNumber(slug);
     const isPhoneSearch = normalizedPhone.length >= 10 && /^\d+$/.test(normalizedPhone);
@@ -69,7 +84,10 @@ export async function GET(
 
       const orders = await Order.find({
         deletedAt: null,
-        'shippingAddress.phone': { $regex: phoneRegex }
+        $and: [
+          storeScopeFilter,
+          { 'shippingAddress.phone': { $regex: phoneRegex } }
+        ]
       })
         .select('status items totalAmount shippingAddress shippingDetails createdAt shortId paymentMethod')
         .sort({ createdAt: -1 })
@@ -87,7 +105,10 @@ export async function GET(
       });
     }
 
-    let query: any = { deletedAt: null };
+    let query: any = { 
+      deletedAt: null,
+      $and: [storeScopeFilter]
+    };
 
     // 1. Check if it's a full ObjectId
     if (mongoose.isObjectIdOrHexString(slug)) {
@@ -95,8 +116,7 @@ export async function GET(
     } 
     // 2. Check if it's a short ID (8 hex chars or custom shortId)
     else {
-      query = {
-        deletedAt: null,
+      query.$and.push({
         $or: [
           { shortId: slug.toUpperCase() },
           { shortId: slug },
@@ -109,7 +129,7 @@ export async function GET(
             }
           }] : [])
         ]
-      };
+      });
     }
 
     const order = await Order.findOne(query)

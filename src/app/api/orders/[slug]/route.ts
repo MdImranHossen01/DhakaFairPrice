@@ -80,6 +80,21 @@ export async function GET(
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
+    // Tenant Isolation: Non-admins can only view orders corresponding to the current shop context
+    if (!isAdmin) {
+      const { getStorefrontReseller } = await import('@/lib/resellerStore');
+      const storefrontReseller = await getStorefrontReseller(req);
+      if (storefrontReseller) {
+        if (order.storefrontResellerId?.toString() !== storefrontReseller._id.toString()) {
+          return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+        }
+      } else {
+        if (order.storefrontResellerId || order.orderSource === 'reseller_storefront') {
+          return NextResponse.json({ message: 'Order not found' }, { status: 404 });
+        }
+      }
+    }
+
     return NextResponse.json(orderObj);
   } catch (error) {
     console.error('Error fetching order detail:', error);

@@ -76,27 +76,27 @@ export const proxy = auth(async (req) => {
     }
 
     // ── Reseller Dashboard via own domain ──────────────────────────────
-    // If the reseller visits /dashboard, /reseller, /reseller-dashboard, or any subpath
+    // If the reseller visits /reseller, /reseller-dashboard, /reseller-panel, or any subpath
     // from their own shop domain, rewrite it to the storefront reseller-panel route.
-    const isDashboardRoute =
-      nextUrl.pathname === '/dashboard' ||
-      nextUrl.pathname.startsWith('/dashboard/') ||
+    const isResellerPanelRoute =
       nextUrl.pathname === '/reseller' ||
       nextUrl.pathname.startsWith('/reseller/') ||
       nextUrl.pathname === '/reseller-dashboard' ||
-      nextUrl.pathname.startsWith('/reseller-dashboard/');
+      nextUrl.pathname.startsWith('/reseller-dashboard/') ||
+      nextUrl.pathname === '/reseller-panel' ||
+      nextUrl.pathname.startsWith('/reseller-panel/');
 
     let resellerSubPath = '';
-    if (isDashboardRoute) {
+    if (isResellerPanelRoute) {
       const stripped = nextUrl.pathname
-        .replace(/^\/(reseller-dashboard|dashboard|reseller)/, '')
+        .replace(/^\/(reseller-dashboard|reseller-panel|reseller)/, '')
         .replace(/^\//, '');
-      if (stripped && stripped !== 'dashboard') {
+      if (stripped) {
         resellerSubPath = `/${stripped}`;
       }
     }
 
-    const rewrittenPath = isDashboardRoute
+    const rewrittenPath = isResellerPanelRoute
       ? `/store/${targetSubdomain}/reseller-panel${resellerSubPath}`
       : `/store/${targetSubdomain}${nextUrl.pathname === '/' ? '' : nextUrl.pathname}`;
 

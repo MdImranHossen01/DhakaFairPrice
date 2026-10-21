@@ -917,12 +917,33 @@ export async function GET(req: NextRequest) {
         query.$and = query.$and || [];
         query.$and.push({ $or: searchConditions });
       }
-    } else {
       const userId = (session.user as any).id;
       if (!userId) {
         return NextResponse.json({ message: 'User ID missing from session' }, { status: 400 });
       }
-      query = { user: userId, deletedAt: null };
+
+      const { getStorefrontReseller } = await import('@/lib/resellerStore');
+      const storefrontReseller = await getStorefrontReseller(req);
+
+      if (storefrontReseller) {
+        // Reseller Storefront: ONLY show orders placed for this reseller's store
+        query = {
+          user: userId,
+          deletedAt: null,
+          storefrontResellerId: storefrontReseller._id,
+        };
+      } else {
+        // Mother Shop: ONLY show mother shop orders (exclude reseller storefront orders)
+        query = {
+          user: userId,
+          deletedAt: null,
+          $or: [
+            { storefrontResellerId: { $exists: false } },
+            { storefrontResellerId: null },
+          ],
+          orderSource: { $ne: 'reseller_storefront' },
+        };
+      }
     }
 
     const totalCount = await Order.countDocuments(query);
