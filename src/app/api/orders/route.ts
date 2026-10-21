@@ -7,6 +7,8 @@ import User from '@/models/User';
 import GlobalSettings from '@/models/GlobalSettings';
 import WalletTransaction from '@/models/WalletTransaction';
 import Coupon from '@/models/Coupon';
+import Reseller from '@/models/Reseller';
+import ResellerOrder from '@/models/ResellerOrder';
 import { auth } from '@/auth';
 
 import { z } from 'zod';
@@ -917,6 +919,7 @@ export async function GET(req: NextRequest) {
         query.$and = query.$and || [];
         query.$and.push({ $or: searchConditions });
       }
+    } else {
       const userId = (session.user as any).id;
       if (!userId) {
         return NextResponse.json({ message: 'User ID missing from session' }, { status: 400 });
@@ -991,11 +994,21 @@ export async function GET(req: NextRequest) {
       ordersQuery = ordersQuery.skip((page - 1) * limit).limit(limit);
     }
 
-    const orders = await ordersQuery.populate('user', 'name email').populate('resellerId', 'storeName subdomain customDomain');
+    const orders = await ordersQuery
+      .populate('user', 'name email')
+      .populate('resellerId', 'storeName subdomain customDomain')
+      .populate('storefrontResellerId', 'storeName subdomain customDomain')
+      .populate({
+        path: 'items.product',
+        select: 'name uploadedBy',
+        populate: {
+          path: 'uploadedBy',
+          select: 'storeName subdomain customDomain',
+        },
+      });
 
     let processedOrders = orders;
     if (fetchAll && isAdmin) {
-      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
       const orderIds = orders.map((o: any) => o._id);
       const shortIds = orders.map((o: any) => o.shortId).filter(Boolean);
 
@@ -1017,13 +1030,40 @@ export async function GET(req: NextRequest) {
         const orderObj = order.toObject ? order.toObject() : order;
         const ro = roMapByMother.get(order._id.toString()) || (order.shortId ? roMapByShort.get(order.shortId) : null);
 
-        let finalReseller = orderObj.resellerId;
-        if (!finalReseller && ro?.resellerId) {
-          finalReseller = ro.resellerId;
-          const setFields: any = {
-            resellerId: typeof ro.resellerId === 'object' && (ro.resellerId as any)._id ? (ro.resellerId as any)._id : ro.resellerId
+        let finalReseller = orderObj.resellerId || orderObj.storefrontResellerId || ro?.resellerId;
+
+        // If finalReseller is an unpopulated string/ObjectId, populate it
+        if (typeof finalReseller === 'string' || (finalReseller && !finalReseller.storeName && mongoose.Types.ObjectId.isValid(finalReseller))) {
+          try {
+            const found = await Reseller.findById(finalReseller).select('storeName subdomain customDomain').lean();
+            if (found) {
+              finalReseller = found;
+            }
+          } catch (e) {}
+        }
+
+        // Attach product uploader reseller to items if available
+        const itemsWithUploader = (orderObj.items || []).map((item: any) => {
+          const uploader = item.product?.uploadedBy || item.uploadedBy;
+          return {
+            ...item,
+            uploadedBy: uploader
           };
-          if (ro.internalNote && !orderObj.internalNote) {
+        });
+
+        // If no order-level reseller, but items have an uploader reseller
+        if (!finalReseller) {
+          const itemReseller = itemsWithUploader.find((i: any) => i.uploadedBy && typeof i.uploadedBy === 'object' && i.uploadedBy.storeName)?.uploadedBy;
+          if (itemReseller) {
+            finalReseller = itemReseller;
+          }
+        }
+
+        if (!orderObj.resellerId && finalReseller) {
+          const setFields: any = {
+            resellerId: typeof finalReseller === 'object' && (finalReseller as any)._id ? (finalReseller as any)._id : finalReseller
+          };
+          if (ro?.internalNote && !orderObj.internalNote) {
             setFields.internalNote = ro.internalNote;
           }
           Order.findByIdAndUpdate(order._id, { $set: setFields }).exec().catch(() => {});
@@ -1040,15 +1080,20 @@ export async function GET(req: NextRequest) {
         const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (finalReseller ? 'pending' : undefined));
 
         const phone = order.shippingAddress?.phone;
+        const baseResult = {
+          ...orderObj,
+          items: itemsWithUploader,
+          resellerId: finalReseller,
+          internalNote: finalInternalNote,
+          resellerCommission: finalCommission,
+          systemFee: finalSystemFee,
+          salesProfit: finalSalesProfit,
+          commissionStatus: finalCommStatus,
+        };
+
         if (!phone) {
           return {
-            ...orderObj,
-            resellerId: finalReseller,
-            internalNote: finalInternalNote,
-            resellerCommission: finalCommission,
-            systemFee: finalSystemFee,
-            salesProfit: finalSalesProfit,
-            commissionStatus: finalCommStatus,
+            ...baseResult,
             isRepeat: false,
             isDuplicate: false
           };
@@ -1062,13 +1107,7 @@ export async function GET(req: NextRequest) {
 
         if (otherOrders.length === 0) {
           return {
-            ...orderObj,
-            resellerId: finalReseller,
-            internalNote: finalInternalNote,
-            resellerCommission: finalCommission,
-            systemFee: finalSystemFee,
-            salesProfit: finalSalesProfit,
-            commissionStatus: finalCommStatus,
+            ...baseResult,
             isRepeat: false,
             isDuplicate: false
           };
@@ -1087,13 +1126,7 @@ export async function GET(req: NextRequest) {
         });
 
         return {
-          ...orderObj,
-          resellerId: finalReseller,
-          internalNote: finalInternalNote,
-          resellerCommission: finalCommission,
-          systemFee: finalSystemFee,
-          salesProfit: finalSalesProfit,
-          commissionStatus: finalCommStatus,
+          ...baseResult,
           isRepeat: true,
           isDuplicate
         };

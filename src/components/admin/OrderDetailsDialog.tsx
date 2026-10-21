@@ -1197,11 +1197,25 @@ export default function OrderDetailsDialog({
                           {item.color && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">{item.color}</Badge>}
                           {item.size && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">Size: {item.size}</Badge>}
                           <span className="text-xs text-muted-foreground ml-1">৳{Math.round(Number(item.price) || 0)} × {item.quantity}</span>
-                          {order.resellerId && (
-                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200">
-                              🏪 Reseller: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Partner'}
-                            </Badge>
-                          )}
+                          {(() => {
+                            const uploader = item.uploadedBy || item.product?.uploadedBy;
+                            const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                            if (uploaderName) {
+                              return (
+                                <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200">
+                                  🏷️ Reseller Product: {uploaderName}
+                                </Badge>
+                              );
+                            }
+                            if (order.resellerId) {
+                              return (
+                                <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200">
+                                  🏪 Reseller Store: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Partner'}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </div>

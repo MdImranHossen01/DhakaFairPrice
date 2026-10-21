@@ -6,6 +6,9 @@ import Order from '@/models/Order';
 import User from '@/models/User';
 import GlobalSettings from '@/models/GlobalSettings';
 import WalletTransaction from '@/models/WalletTransaction';
+import Coupon from '@/models/Coupon';
+import Reseller from '@/models/Reseller';
+import ResellerOrder from '@/models/ResellerOrder';
 import { auth } from '@/auth';
 // GET single order details
 export async function GET(
@@ -22,18 +25,29 @@ export async function GET(
     await connectToDatabase();
     const order = await Order.findOne({ _id: slug })
       .populate('user', 'name email image')
-      .populate('items.product', 'name price images slug uploadedBy')
-      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact');
+      .populate({
+        path: 'items.product',
+        select: 'name price images slug uploadedBy',
+        populate: {
+          path: 'uploadedBy',
+          select: 'storeName subdomain customDomain pickupAddress contact',
+        },
+      })
+      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact')
+      .populate('storefrontResellerId', 'storeName subdomain customDomain pickupAddress contact');
 
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
 
-    const orderObj = order.toObject ? order.toObject() : order;
+    const orderObj: any = order.toObject ? order.toObject() : order;
+
+    if (!orderObj.resellerId && orderObj.storefrontResellerId) {
+      orderObj.resellerId = orderObj.storefrontResellerId;
+    }
 
     // Fallback/auto-sync from ResellerOrder if resellerId or internalNote missing
     try {
-      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
       const ro = await ResellerOrder.findOne({
         $or: [
           { motherOrderId: order._id },
@@ -69,6 +83,16 @@ export async function GET(
       }
     } catch (roErr) {
       console.error('[Order Detail Reseller Sync Error]', roErr);
+    }
+
+    // If reseller is still an unpopulated string/ObjectId, fetch it
+    if (typeof orderObj.resellerId === 'string' || (orderObj.resellerId && !orderObj.resellerId.storeName && mongoose.Types.ObjectId.isValid(orderObj.resellerId))) {
+      try {
+        const found = await Reseller.findById(orderObj.resellerId).select('storeName subdomain customDomain pickupAddress contact').lean();
+        if (found) {
+          orderObj.resellerId = found;
+        }
+      } catch (e) {}
     }
 
     // Authorization: Must be an admin OR the owner of the order OR it is a guest order

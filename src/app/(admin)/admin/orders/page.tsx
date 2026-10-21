@@ -1218,31 +1218,57 @@ function OrdersContent() {
                     <TableCell className="min-w-[260px] max-w-[380px] whitespace-normal">
                       <div className="flex flex-col gap-1.5 w-full">
                         <div className="flex flex-col gap-1 w-full">
-                          {order.items?.map((item: any, idx: number) => (
-                            <Badge key={idx} variant="outline" className="text-xs px-2 py-1 font-medium whitespace-normal break-words inline-block text-left h-auto leading-snug">
-                              <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
-                              <span>{item.name}</span>
-                              {(item.color || item.size) && (
-                                <span className="text-muted-foreground ml-1 font-normal">
-                                  ({[item.color, item.size].filter(Boolean).join('/')})
-                                </span>
-                              )}
-                            </Badge>
-                          ))}
+                          {order.items?.map((item: any, idx: number) => {
+                            const uploader = item.uploadedBy || item.product?.uploadedBy;
+                            const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                            return (
+                              <Badge key={idx} variant="outline" className="text-xs px-2 py-1 font-medium whitespace-normal break-words inline-block text-left h-auto leading-snug">
+                                <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                                <span>{item.name}</span>
+                                {(item.color || item.size) && (
+                                  <span className="text-muted-foreground ml-1 font-normal">
+                                    ({[item.color, item.size].filter(Boolean).join('/')})
+                                  </span>
+                                )}
+                                {uploaderName && (
+                                  <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
+                                    🏷️ Reseller Product: {uploaderName}
+                                  </span>
+                                )}
+                              </Badge>
+                            );
+                          })}
                         </div>
-                        {/* Reseller Store Info */}
-                        {order.resellerId && (
+                        {/* Store Info */}
+                        {(order.resellerId || order.storefrontResellerId) ? (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                              <span>🏪 Reseller:</span>
-                              <span className="font-extrabold underline decoration-indigo-400">
-                                {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Store'}
-                              </span>
-                              {typeof order.resellerId === 'object' && (order.resellerId.customDomain || order.resellerId.subdomain) && (
-                                <span className="text-[10px] text-indigo-500 font-normal font-mono">
-                                  ({order.resellerId.customDomain || order.resellerId.subdomain})
+                            {(() => {
+                              const resObj = (typeof order.resellerId === 'object' && order.resellerId?.storeName) 
+                                ? order.resellerId 
+                                : (typeof order.storefrontResellerId === 'object' && order.storefrontResellerId?.storeName) 
+                                  ? order.storefrontResellerId 
+                                  : null;
+                              const storeName = resObj?.storeName || (typeof order.resellerId === 'string' ? 'Reseller Store' : 'Reseller Store');
+                              const domain = resObj?.customDomain || resObj?.subdomain;
+                              return (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                                  <span>🏪 Store:</span>
+                                  <span className="font-extrabold underline decoration-indigo-400">
+                                    {storeName}
+                                  </span>
+                                  {domain && (
+                                    <span className="text-[10px] text-indigo-500 font-normal font-mono">
+                                      ({domain})
+                                    </span>
+                                  )}
                                 </span>
-                              )}
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="mt-0.5 flex items-center">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 px-1.5 py-0.2 rounded border border-slate-200 dark:border-zinc-700">
+                              <span>🏢 Mother Shop</span>
                             </span>
                           </div>
                         )}
@@ -1497,17 +1523,26 @@ function OrdersContent() {
 
                   {/* Items List */}
                   <div className="flex flex-col gap-1 pt-1 border-t border-dashed">
-                    {order.items?.map((item: any, idx: number) => (
-                      <Badge key={idx} variant="outline" className="text-[11px] px-2 py-0.5 font-normal whitespace-normal break-words inline-block text-left h-auto leading-tight">
-                        <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
-                        <span>{item.name}</span>
-                        {(item.color || item.size) && (
-                          <span className="text-muted-foreground ml-1">
-                            ({[item.color, item.size].filter(Boolean).join('/')})
-                          </span>
-                        )}
-                      </Badge>
-                    ))}
+                    {order.items?.map((item: any, idx: number) => {
+                      const uploader = item.uploadedBy || item.product?.uploadedBy;
+                      const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                      return (
+                        <Badge key={idx} variant="outline" className="text-[11px] px-2 py-0.5 font-normal whitespace-normal break-words inline-block text-left h-auto leading-tight">
+                          <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                          <span>{item.name}</span>
+                          {(item.color || item.size) && (
+                            <span className="text-muted-foreground ml-1">
+                              ({[item.color, item.size].filter(Boolean).join('/')})
+                            </span>
+                          )}
+                          {uploaderName && (
+                            <span className="ml-1 text-[9px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1 py-0.2 rounded font-bold">
+                              🏷️ {uploaderName}
+                            </span>
+                          )}
+                        </Badge>
+                      );
+                    })}
                   </div>
 
                   {order.customerNote && (
@@ -1515,14 +1550,25 @@ function OrdersContent() {
                       💬 Customer: {order.customerNote}
                     </div>
                   )}
-                  {order.resellerId && (
+                  {(order.resellerId || order.storefrontResellerId) ? (
                     <div className="flex items-center justify-between gap-1 text-[11px] bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1.5 rounded-md border border-indigo-200/60 dark:border-indigo-800">
-                      <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">
-                        🏪 Reseller: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Reseller Order'}
-                        {typeof order.resellerId === 'object' && order.resellerId.customDomain && (
-                          <span className="text-[9px] text-indigo-500 font-normal ml-1">({order.resellerId.customDomain})</span>
-                        )}
-                      </span>
+                      {(() => {
+                        const resObj = (typeof order.resellerId === 'object' && order.resellerId?.storeName) 
+                          ? order.resellerId 
+                          : (typeof order.storefrontResellerId === 'object' && order.storefrontResellerId?.storeName) 
+                            ? order.storefrontResellerId 
+                            : null;
+                        const storeName = resObj?.storeName || (typeof order.resellerId === 'string' ? 'Reseller Store' : 'Reseller Store');
+                        const domain = resObj?.customDomain || resObj?.subdomain;
+                        return (
+                          <span className="font-bold text-indigo-700 dark:text-indigo-300 truncate">
+                            🏪 Store: {storeName}
+                            {domain && (
+                              <span className="text-[9px] text-indigo-500 font-normal ml-1">({domain})</span>
+                            )}
+                          </span>
+                        );
+                      })()}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="font-bold text-green-700 dark:text-green-400">
                           Comm: ৳{Math.round(order.resellerCommission || 0)}
@@ -1541,6 +1587,10 @@ function OrdersContent() {
                           </Badge>
                         )}
                       </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-[10px] text-slate-500 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-200 dark:border-zinc-700 w-fit">
+                      🏢 Mother Shop
                     </div>
                   )}
                   {order.internalNote && (
