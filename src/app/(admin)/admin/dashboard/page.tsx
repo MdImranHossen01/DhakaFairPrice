@@ -1107,7 +1107,7 @@ export default function AdminDashboard() {
 
           <div className="p-4 bg-sky-500/5 border-t border-sky-500/10 flex justify-between items-center font-bold text-sm text-sky-600 dark:text-sky-400">
             <span>Total Payable Obligations:</span>
-            <span className="text-base">৳{Math.round((stats?.resellerWalletTotal || 0) + (stats?.totalActiveLoansDue || 0)).toLocaleString()}</span>
+            <span className="text-base">৳{Math.round((stats?.resellerWalletTotal || 0) + (stats?.resellerPendingTotal || 0) + (stats?.totalActiveLoansDue || 0)).toLocaleString()}</span>
           </div>
         </div>
       </div>

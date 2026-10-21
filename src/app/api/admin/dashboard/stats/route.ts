@@ -11,6 +11,7 @@ import Bill from '@/models/Bill';
 import Subscriber from '@/models/Subscriber';
 import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 import BusinessLoan from '@/models/BusinessLoan';
+import { syncPayablesToLedger } from '@/lib/ledgerHelper';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,6 +19,9 @@ export async function GET(req: NextRequest) {
     if (!session || !(['admin', 'super_admin'].includes((session?.user as any)?.role))) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+
+    // Ensure payables and liabilities are synced to ledger before reading stats
+    await syncPayablesToLedger().catch(() => {});
 
     const { searchParams } = new URL(req.url);
     const from = searchParams.get('from');
@@ -230,8 +234,10 @@ export async function GET(req: NextRequest) {
         .limit(6)
         .lean(),
 
-      // 9. Ledger Accounts (CASH & BANK)
-      LedgerAccount.find({}).lean().catch(() => []),
+      // 9. Ledger Accounts (CASH, BANK, AR, AP)
+      LedgerAccount.find({
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+      }).lean().catch(() => []),
 
       // 10. Reseller Wallets Total
       Reseller.aggregate([
@@ -438,9 +444,18 @@ export async function GET(req: NextRequest) {
     let mfsBalance = 0;
     let cashAccountsCount = 0;
     const bankAccountsList: any[] = [];
+    let arBalance = 0;
+    let apBalance = 0;
+
     (ledgerAccounts as any[]).forEach((acc: any) => {
-      // Exclude AR and AP from liquid cashflow funds
-      if (['AR', 'AP'].includes(acc.code)) return;
+      if (acc.code === 'AR') {
+        arBalance = acc.currentBalance || 0;
+        return;
+      }
+      if (acc.code === 'AP') {
+        apBalance = acc.currentBalance || 0;
+        return;
+      }
 
       if (acc.code === 'CASH' || acc.category === 'Cash') {
         cashBalance += acc.currentBalance || 0;
@@ -459,10 +474,11 @@ export async function GET(req: NextRequest) {
     const pendingPayoutsTotal = (pendingPayoutsStats as any[])?.[0]?.totalPendingPayouts || 0;
     const pendingPayoutsCount = (pendingPayoutsStats as any[])?.[0]?.count || 0;
 
-    // Process Receivables (Bills due + Uncollected order values)
+    // Process Receivables (Prefer real-time Ledger AR live balance, fallback to due bills + pending uncollected orders)
     const billDueTotal = dueBillsStats[0]?.totalDueBills || 0;
     const pendingOrderReceivable = Math.max(0, totalRevenue - paidRevenue);
-    const totalReceivable = billDueTotal + pendingOrderReceivable;
+    const arAccount = (ledgerAccounts as any[]).find((acc: any) => acc.code === 'AR');
+    const totalReceivable = arAccount ? (arAccount.currentBalance || 0) : (billDueTotal + pendingOrderReceivable);
 
     // Process Liabilities (Loans)
     const totalActiveLoansDue = (activeLoansStats as any[])?.[0]?.totalActiveLoansDue || 0;
