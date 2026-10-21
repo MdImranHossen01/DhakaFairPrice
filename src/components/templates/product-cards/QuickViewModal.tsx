@@ -90,7 +90,7 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
       return variantImgs.length > 0 ? variantImgs : (product.images || []);
     }
     return product.images || [];
-  }, [product.images, product.variants, activeVariant?.image, hasVariants]);
+  }, [product.images, product.variants, activeVariant, hasVariants]);
 
   useEffect(() => {
     if (isOpen) {
