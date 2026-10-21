@@ -114,13 +114,18 @@ export async function POST(
           productId: productDoc?._id || rp.productId,
         }).lean();
 
-        const baseCost = uploaderRp?.purchasePrice ?? productDoc?.purchasePrice ?? 0;
+        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
+          ? Number(productDoc.purchasePrice)
+          : (uploaderRp?.purchasePrice ?? 0);
+
+        const itemSystemFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
 
         uploaderItemsMap.get(uploaderId)!.push({
           ...validatedItem,
           resellerProductId: uploaderRp?._id || rp._id,
           retailPrice: rp.purchasePrice,
           purchasePrice: baseCost,
+          systemFee: itemSystemFee,
         });
       }
     }
@@ -358,10 +363,13 @@ export async function POST(
 
       // Create Fulfillment Orders for other resellers if applicable
       let fIndex = 1;
+      let totalMotherSystemFee = 0;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
         const uploaderSubtotal = fItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
         // Base product payout to uploader reseller
         const uploaderCommission = fItems.reduce((sum, item) => sum + (Number(item.purchasePrice) || 0) * item.quantity, 0);
+        const uploaderSystemFee = fItems.reduce((sum, item) => sum + (Number((item as any).systemFee) || Math.max(0, Number(item.retailPrice) - Number(item.purchasePrice))) * item.quantity, 0);
+        totalMotherSystemFee += uploaderSystemFee;
 
         const [uploaderRO] = (await ResellerOrder.create([{
           resellerId: uploaderId,
@@ -376,10 +384,12 @@ export async function POST(
           manualPaymentDetails: manualPaymentDetails || undefined,
           status: 'Order Placed',
           resellerCommission: uploaderCommission,
+          systemFee: uploaderSystemFee,
+          salesProfit: 0,
           commissionStatus: 'pending',
           customerNote: notes || '',
           internalNote: '',
-          systemNote: `Fulfillment for Storefront Order (${reseller.storeName} - ${shortId})`,
+          systemNote: `Fulfillment for Storefront Order (${reseller.storeName} - ${shortId}) - Base Payout: ৳${uploaderCommission}, System Fee: ৳${uploaderSystemFee}`,
           shortId: `${shortId}-F${fIndex}`,
         }], { session: sessionConn })) as any[];
 
@@ -399,12 +409,21 @@ export async function POST(
             type: 'commission_earned',
             amount: uploaderCommission,
             orderId: uploaderRO._id,
-            description: `Commission from fulfillment order ${shortId}-F${fIndex}`,
+            description: `Payout for supplied product in order ${shortId}-F${fIndex}`,
             status: 'pending',
           }], { session: sessionConn });
         }
 
         fIndex++;
+      }
+
+      if (totalMotherSystemFee > 0 || totalCommission > 0) {
+        await Order.findByIdAndUpdate(motherOrder._id, {
+          $set: {
+            systemFee: totalMotherSystemFee,
+            resellerCommission: totalCommission
+          }
+        }, { session: sessionConn });
       }
 
       await sessionConn.commitTransaction();

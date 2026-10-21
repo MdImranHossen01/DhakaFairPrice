@@ -142,7 +142,7 @@ export async function addProductToReseller(
           slug: product.slug,
           images: product.images ?? [],
           stock: product.stock ?? 0,
-          purchasePrice: product.resellerPrice || product.purchasePrice || 0,
+          purchasePrice: isPersonalProduct ? (product.purchasePrice || 0) : (product.resellerPrice || product.purchasePrice || 0),
           motherPrice: product.price ?? 0,
           isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
           isPublished: isPublishedOnStore,

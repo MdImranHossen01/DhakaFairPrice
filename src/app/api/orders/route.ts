@@ -1023,14 +1023,31 @@ export async function GET(req: NextRequest) {
       .populate('resellerId', 'storeName subdomain customDomain')
       .lean();
 
-      const roMapByMother = new Map(resellerOrders.filter((ro: any) => ro.motherOrderId).map((ro: any) => [ro.motherOrderId.toString(), ro]));
-      const roMapByShort = new Map(resellerOrders.filter((ro: any) => ro.shortId).map((ro: any) => [ro.shortId, ro]));
-
       processedOrders = await Promise.all(orders.map(async (order: any) => {
         const orderObj = order.toObject ? order.toObject() : order;
-        const ro = roMapByMother.get(order._id.toString()) || (order.shortId ? roMapByShort.get(order.shortId) : null);
+        
+        // Find matching reseller orders for this mother order
+        const matchingRos = resellerOrders.filter((r: any) =>
+          (r.motherOrderId && r.motherOrderId.toString() === order._id.toString()) ||
+          (order.shortId && r.shortId && (r.shortId === order.shortId || r.shortId.startsWith(order.shortId)))
+        );
 
-        let finalReseller = orderObj.resellerId || orderObj.storefrontResellerId || ro?.resellerId;
+        // Storefront order has exact shortId or does NOT contain '-F' (fulfillment)
+        const ro = matchingRos.find((r: any) => order.shortId && r.shortId === order.shortId)
+          || matchingRos.find((r: any) => !r.shortId?.includes('-F'))
+          || matchingRos[0]
+          || null;
+
+        // Sum system fee from mother order or any fulfillment reseller orders:
+        const totalSystemFee = (orderObj.systemFee && orderObj.systemFee > 0)
+          ? orderObj.systemFee
+          : (matchingRos.reduce((sum: number, r: any) => sum + (Number(r.systemFee) || 0), 0) || (ro?.systemFee ?? 0));
+
+        const totalSalesProfit = (orderObj.salesProfit && orderObj.salesProfit > 0)
+          ? orderObj.salesProfit
+          : (ro?.salesProfit || 0);
+
+        let finalReseller = orderObj.storefrontResellerId || ro?.resellerId || orderObj.resellerId;
 
         // If finalReseller is an unpopulated string/ObjectId, populate it
         if (typeof finalReseller === 'string' || (finalReseller && !finalReseller.storeName && mongoose.Types.ObjectId.isValid(finalReseller))) {
@@ -1075,8 +1092,8 @@ export async function GET(req: NextRequest) {
         }
 
         const finalCommission = ro?.resellerCommission ?? (orderObj.resellerCommission || 0);
-        const finalSystemFee = ro?.systemFee ?? (orderObj.systemFee || 0);
-        const finalSalesProfit = ro?.salesProfit ?? (orderObj.salesProfit || 0);
+        const finalSystemFee = totalSystemFee;
+        const finalSalesProfit = totalSalesProfit;
         const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (finalReseller ? 'pending' : undefined));
 
         const phone = order.shippingAddress?.phone;

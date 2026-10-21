@@ -705,6 +705,9 @@ function OrdersContent() {
                                 Pending
                               </Badge>
                             )}
+                            {order.systemFee > 0 && (
+                              <span className="text-[11px] text-primary font-mono mt-0.5">Mother Fee: ৳{Math.round(order.systemFee)}</span>
+                            )}
                           </div>
                         </TableCell>
 
