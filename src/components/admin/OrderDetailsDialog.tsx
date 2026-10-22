@@ -733,7 +733,7 @@ export default function OrderDetailsDialog({
           <div className="space-y-6 pt-4">
             {/* Reseller Store Card */}
             {order.resellerId && (
-              <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-xl p-3.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl text-indigo-700 dark:text-indigo-300">
                     <Store className="h-5 w-5" />
@@ -754,17 +754,6 @@ export default function OrderDetailsDialog({
                       </p>
                     )}
                   </div>
-                </div>
-                <div className="mt-3 sm:mt-0 w-full sm:max-w-[240px]">
-                  <DisbursementBreakdown
-                    disbursement={order.disbursement}
-                    fallbackCommission={order.resellerCommission}
-                    fallbackSystemFee={order.systemFee}
-                    fallbackDeliveryCharge={order.deliveryCharge}
-                    fallbackTotalAmount={order.totalAmount}
-                    commissionStatus={order.commissionStatus}
-                    mode="card"
-                  />
                 </div>
               </div>
             )}
@@ -1226,10 +1215,75 @@ export default function OrderDetailsDialog({
                 ))}
               </div>
               
-              <div className="pt-4 border-t flex justify-between items-center text-lg">
-                <span className="font-bold">Total Amount:</span>
-                <span className="font-black text-primary">৳{Math.round(Number(order.totalAmount) || 0)}</span>
-              </div>
+              {/* Financial Breakdown & Bill Summary */}
+              {(() => {
+                const computedSubtotal = (order.items || []).reduce((sum: number, it: any) => sum + (Number(it.price || it.retailPrice || 0) * (it.quantity || 1)), 0);
+                const subtotal = order.subtotal !== undefined ? Number(order.subtotal) : computedSubtotal;
+                const deliveryCharge = Number(order.deliveryCharge) || 0;
+                const couponDiscount = Number(order.couponDiscountAmount || order.couponDiscount) || 0;
+                const walletUsed = Number(order.walletAmountUsed) || 0;
+                const totalAmount = Number(order.totalAmount) || 0;
+
+                return (
+                  <div className="pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    {/* Left: Disbursement Breakdown */}
+                    <div>
+                      <DisbursementBreakdown
+                        disbursement={order.disbursement}
+                        fallbackCommission={order.resellerCommission}
+                        fallbackSystemFee={order.systemFee}
+                        fallbackDeliveryCharge={order.deliveryCharge}
+                        fallbackTotalAmount={order.totalAmount}
+                        commissionStatus={order.commissionStatus}
+                        mode="card"
+                      />
+                    </div>
+
+                    {/* Right: Bill Summary */}
+                    <div className="bg-slate-50/80 dark:bg-zinc-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-zinc-800/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5">
+                          <span>🧾</span>
+                          <span>Bill Summary / বিল বিবরণী</span>
+                        </span>
+                        <span className="text-[10px] lowercase font-mono text-muted-foreground/80">customer</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                        <span>Subtotal:</span>
+                        <span className="font-mono font-medium text-foreground">৳{Math.round(subtotal)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                        <span className="flex items-center gap-1.5">
+                          <span>🚚</span>
+                          <span>Delivery Charge:</span>
+                        </span>
+                        <span className="font-mono font-medium text-foreground">৳{Math.round(deliveryCharge)}</span>
+                      </div>
+
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs text-destructive px-1">
+                          <span>Coupon Discount:</span>
+                          <span className="font-mono font-semibold">-৳{Math.round(couponDiscount)}</span>
+                        </div>
+                      )}
+
+                      {walletUsed > 0 && (
+                        <div className="flex justify-between items-center text-xs text-amber-600 dark:text-amber-400 px-1">
+                          <span>Wallet Used:</span>
+                          <span className="font-mono font-semibold">-৳{Math.round(walletUsed)}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-slate-300 dark:border-zinc-700 px-1 mt-1">
+                        <span className="uppercase text-[10px] tracking-wider text-muted-foreground font-sans">Total Amount:</span>
+                        <span className="font-mono text-primary font-black text-base">৳{Math.round(totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Quick Actions for Manual Payments */}

@@ -636,17 +636,6 @@ export default function ResellerOrderDetailsDialog({
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 sm:mt-0 w-full sm:max-w-[240px]">
-                      <DisbursementBreakdown
-                        disbursement={order.disbursement}
-                        fallbackCommission={order.resellerCommission}
-                        fallbackSystemFee={order.systemFee}
-                        fallbackDeliveryCharge={order.deliveryCharge}
-                        fallbackTotalAmount={order.totalAmount}
-                        commissionStatus={order.commissionStatus}
-                        mode="card"
-                      />
-                    </div>
                   </div>
                 );
               })()}
@@ -1054,53 +1043,89 @@ export default function ResellerOrderDetailsDialog({
                   ))}
                 </div>
                 
-                <div className="pt-4 border-t flex flex-col gap-2">
-                  <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <span>Subtotal:</span>
-                    <span>৳{Math.round(Number(order.subtotal) || 0)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <span>Delivery Charge:</span>
-                    <span>৳{Math.round(Number(order.deliveryCharge) || 0)}</span>
-                  </div>
-                  {order.couponDiscount > 0 && (
-                    <div className="flex justify-between items-center text-sm text-destructive">
-                      <span>Discount:</span>
-                      <span>-৳{Math.round(Number(order.couponDiscount) || 0)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t">
-                    <span className="font-bold">Total Amount:</span>
-                    <span className="font-black text-primary">৳{Math.round(Number(order.totalAmount || order.fullOrderValue || order.disbursement?.orderValue) || 0)}</span>
-                  </div>
+                {/* Financial Breakdown & Bill Summary */}
+                {(() => {
+                  const computedSubtotal = (order.items || []).reduce((sum: number, it: any) => sum + (Number(it.retailPrice || it.price || 0) * (it.quantity || 1)), 0);
+                  const subtotal = order.subtotal !== undefined ? Number(order.subtotal) : computedSubtotal;
+                  const deliveryCharge = Number(order.deliveryCharge) || 0;
+                  const couponDiscount = Number(order.couponDiscountAmount || order.couponDiscount) || 0;
+                  const totalAmount = Number(order.totalAmount || order.fullOrderValue || order.disbursement?.orderValue) || 0;
 
-                  <div className="flex justify-between items-center text-sm mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <span className="font-bold text-emerald-800">
-                      {order.shortId?.includes('-F') ? 'Your Product Share (Supplier):' : 'Your Commission:'}
-                    </span>
-                    <div className="text-right">
-                      <span className="font-black text-emerald-600 block">৳{Math.round(Number(order.resellerCommission) || 0)}</span>
-                      <Badge variant="outline" className="text-[10px] bg-white border-emerald-300 text-emerald-700 capitalize">
-                        {order.commissionStatus || 'Pending'}
-                      </Badge>
-                    </div>
-                  </div>
+                  return (
+                    <div className="pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                      {/* Left: Disbursement Breakdown (Placed BEFORE Order Summary) */}
+                      <div>
+                        <DisbursementBreakdown
+                          disbursement={order.disbursement}
+                          fallbackCommission={order.resellerCommission}
+                          fallbackSystemFee={order.systemFee}
+                          fallbackDeliveryCharge={order.deliveryCharge}
+                          fallbackTotalAmount={order.totalAmount}
+                          commissionStatus={order.commissionStatus}
+                          mode="card"
+                        />
+                      </div>
 
-                  {order.disbursement && (
-                    <div className="mt-3">
-                      <DisbursementBreakdown
-                        disbursement={order.disbursement}
-                        fallbackCommission={order.resellerCommission}
-                        fallbackSystemFee={order.systemFee}
-                        fallbackDeliveryCharge={order.deliveryCharge}
-                        fallbackTotalAmount={order.totalAmount}
-                        commissionStatus={order.commissionStatus}
-                        mode="card"
-                      />
+                      {/* Right: Bill Summary & Your Share */}
+                      <div className="space-y-3">
+                        <div className="bg-slate-50/80 dark:bg-zinc-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-2">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-zinc-800/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                            <span className="flex items-center gap-1.5">
+                              <span>🧾</span>
+                              <span>Bill Summary / বিল বিবরণী</span>
+                            </span>
+                            <span className="text-[10px] lowercase font-mono text-muted-foreground/80">customer</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                            <span>Subtotal:</span>
+                            <span className="font-mono font-medium text-foreground">৳{Math.round(subtotal)}</span>
+                          </div>
+
+                          <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                            <span className="flex items-center gap-1.5">
+                              <span>🚚</span>
+                              <span>Delivery Charge:</span>
+                            </span>
+                            <span className="font-mono font-medium text-foreground">৳{Math.round(deliveryCharge)}</span>
+                          </div>
+
+                          {couponDiscount > 0 && (
+                            <div className="flex justify-between items-center text-xs text-destructive px-1">
+                              <span>Coupon Discount:</span>
+                              <span className="font-mono font-semibold">-৳{Math.round(couponDiscount)}</span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-slate-300 dark:border-zinc-700 px-1 mt-1">
+                            <span className="uppercase text-[10px] tracking-wider text-muted-foreground font-sans">Total Amount:</span>
+                            <span className="font-mono text-primary font-black text-base">৳{Math.round(totalAmount)}</span>
+                          </div>
+                        </div>
+
+                        {/* Your Commission / Share Card */}
+                        <div className="flex justify-between items-center text-sm p-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 rounded-xl">
+                          <div>
+                            <span className="font-bold text-emerald-800 dark:text-emerald-300 block text-xs">
+                              {order.shortId?.includes('-F') ? 'Your Product Share (Supplier):' : 'Your Commission:'}
+                            </span>
+                            <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-medium">
+                              Net earnings from this order
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-base block">
+                              ৳{Math.round(Number(order.resellerCommission) || 0)}
+                            </span>
+                            <Badge variant="outline" className="text-[10px] bg-white dark:bg-zinc-900 border-emerald-300 text-emerald-700 dark:text-emerald-300 capitalize font-bold">
+                              {order.commissionStatus || 'Pending'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
               
             </div>
