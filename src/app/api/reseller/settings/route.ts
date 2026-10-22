@@ -25,42 +25,10 @@ export async function GET() {
       await Reseller.findByIdAndUpdate(reseller._id, { $set: { status: 'expired' } });
     }
 
-    // Auto-reconcile any Delivered/Paid commissions
-    const { reconcileResellerCommissions } = await import('@/lib/resellerCommissionSync');
+    // Auto-reconcile commissions and exact wallet balances
+    const { reconcileResellerCommissions, reconcileResellerWalletBalances } = await import('@/lib/resellerCommissionSync');
     await reconcileResellerCommissions(reseller._id);
-
-    // Sync accurate total lifetime earnings based on actual cleared commissions
-    const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
-    const earningsAgg = await ResellerWalletTransaction.aggregate([
-      {
-        $match: {
-          resellerId: reseller._id,
-          type: 'commission_earned',
-          status: { $in: ['cleared', 'completed'] }
-        }
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const actualTotalEarnings = earningsAgg[0]?.total || 0;
-    if (reseller.totalEarnings !== actualTotalEarnings) {
-      await Reseller.findByIdAndUpdate(reseller._id, { totalEarnings: actualTotalEarnings });
-    }
-
-    // Sync accurate pending commission balance based on active pending transactions
-    const pendingAgg = await ResellerWalletTransaction.aggregate([
-      {
-        $match: {
-          resellerId: reseller._id,
-          type: 'commission_earned',
-          status: 'pending'
-        }
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    const actualPendingBalance = Math.max(0, pendingAgg[0]?.total || 0);
-    if (reseller.pendingBalance !== actualPendingBalance) {
-      await Reseller.findByIdAndUpdate(reseller._id, { pendingBalance: actualPendingBalance });
-    }
+    await reconcileResellerWalletBalances(reseller._id);
 
     reseller = await Reseller.findById(reseller._id).lean() as any;
 

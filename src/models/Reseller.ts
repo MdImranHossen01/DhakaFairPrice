@@ -86,6 +86,7 @@ export interface IReseller extends Document {
   totalOrders: number;
   totalRevenue: number;                      // gross revenue from their store
   totalEarnings: number;                     // total commissions earned (lifetime)
+  totalWithdrawn?: number;                    // total payouts withdrawn
   approvedAt?: Date;
   suspendedAt?: Date;
   suspendReason?: string;
@@ -172,6 +173,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
     totalOrders: { type: Number, default: 0, min: 0 },
     totalRevenue: { type: Number, default: 0, min: 0 },
     totalEarnings: { type: Number, default: 0, min: 0 },
+    totalWithdrawn: { type: Number, default: 0, min: 0 },
     approvedAt: { type: Date },
     suspendedAt: { type: Date },
     suspendReason: { type: String },

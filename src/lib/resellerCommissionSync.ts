@@ -179,19 +179,95 @@ export async function reconcileResellerCommissions(resellerId?: string | mongoos
           }
         }
       );
-
-      const pendingAgg = await ResellerWalletTransaction.aggregate([
-        {
-          $match: {
-            resellerId: rOrder.resellerId,
-            type: 'commission_earned',
-            status: 'pending'
-          }
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
-      ]);
-      const accuratePending = Math.max(0, pendingAgg[0]?.total || 0);
-      await Reseller.findByIdAndUpdate(rOrder.resellerId, { $set: { pendingBalance: accuratePending } });
     }
   }
+
+  // Recalibrate exact balances from wallet ledger transactions
+  if (resellerId) {
+    await reconcileResellerWalletBalances(resellerId);
+  } else {
+    const affectedResellerIds = [...new Set(pendingClearedOrders.map(o => o.resellerId.toString()))];
+    for (const id of affectedResellerIds) {
+      await reconcileResellerWalletBalances(id);
+    }
+  }
+}
+
+/**
+ * Automatically reconciles and recalibrates a reseller's wallet balance, pending balance,
+ * total earnings, and total payouts withdrawn directly from immutable ledger transactions.
+ */
+export async function reconcileResellerWalletBalances(resellerId: string | mongoose.Types.ObjectId) {
+  const rId = new mongoose.Types.ObjectId(resellerId.toString());
+
+  // 1. Cleared commission earnings
+  const earningsAgg = await ResellerWalletTransaction.aggregate([
+    {
+      $match: {
+        resellerId: rId,
+        type: 'commission_earned',
+        status: { $in: ['cleared', 'completed'] }
+      }
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  const actualTotalEarnings = earningsAgg[0]?.total || 0;
+
+  // 2. Pending commissions
+  const pendingAgg = await ResellerWalletTransaction.aggregate([
+    {
+      $match: {
+        resellerId: rId,
+        type: 'commission_earned',
+        status: 'pending'
+      }
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  const actualPendingBalance = Math.max(0, pendingAgg[0]?.total || 0);
+
+  // 3. Payouts withdrawn (cleared)
+  const withdrawnAgg = await ResellerWalletTransaction.aggregate([
+    {
+      $match: {
+        resellerId: rId,
+        type: 'payout_released',
+        status: 'cleared'
+      }
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  const actualTotalWithdrawn = Math.abs(withdrawnAgg[0]?.total || 0);
+
+  // 4. Pending payouts requested
+  const pendingPayoutAgg = await ResellerWalletTransaction.aggregate([
+    {
+      $match: {
+        resellerId: rId,
+        type: 'payout_released',
+        status: 'pending'
+      }
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ]);
+  const pendingPayouts = Math.abs(pendingPayoutAgg[0]?.total || 0);
+
+  // 5. Accurate Available Balance = Cleared Lifetime Earnings - Cleared Payouts - Pending Payout Requests
+  const accurateWalletBalance = Math.max(0, actualTotalEarnings - actualTotalWithdrawn - pendingPayouts);
+
+  await Reseller.findByIdAndUpdate(rId, {
+    $set: {
+      walletBalance: accurateWalletBalance,
+      pendingBalance: actualPendingBalance,
+      totalEarnings: actualTotalEarnings,
+      totalWithdrawn: actualTotalWithdrawn,
+    }
+  });
+
+  return {
+    walletBalance: accurateWalletBalance,
+    pendingBalance: actualPendingBalance,
+    totalEarnings: actualTotalEarnings,
+    totalWithdrawn: actualTotalWithdrawn,
+  };
 }

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Wallet, Loader2, ArrowDownCircle, Clock, TrendingUp, RefreshCcw, AlertCircle, Building2
+  Wallet, Loader2, ArrowDownCircle, Clock, TrendingUp, RefreshCcw, AlertCircle, Building2, ArrowDownRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -127,7 +127,7 @@ export default function ResellerWalletPage() {
       </div>
 
       {/* Balance Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
         <Card className="border-green-500/20 bg-green-500/5 shadow-sm">
           <CardContent className="p-3.5 md:pt-6">
             <div className="flex items-center gap-3">
@@ -135,6 +135,7 @@ export default function ResellerWalletPage() {
               <div>
                 <p className="text-[11px] md:text-xs text-muted-foreground">Available Balance</p>
                 <p className="text-xl md:text-2xl font-black text-green-600">৳{(reseller?.walletBalance ?? 0).toLocaleString()}</p>
+                <p className="text-[10px] md:text-[11px] text-muted-foreground">Withdrawable balance</p>
               </div>
             </div>
           </CardContent>
@@ -151,6 +152,18 @@ export default function ResellerWalletPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="border-border/60 bg-card shadow-sm">
+          <CardContent className="p-3.5 md:pt-6">
+            <div className="flex items-center gap-3">
+              <ArrowDownRight className="h-7 w-7 md:h-8 md:w-8 text-primary shrink-0" />
+              <div>
+                <p className="text-[11px] md:text-xs text-muted-foreground">Total Withdrawn</p>
+                <p className="text-xl md:text-2xl font-black text-foreground">৳{(reseller?.totalWithdrawn ?? 0).toLocaleString()}</p>
+                <p className="text-[10px] md:text-[11px] text-muted-foreground">Total payouts disbursed</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="shadow-sm">
           <CardContent className="p-3.5 md:pt-6">
             <div className="flex items-center gap-3">
@@ -158,7 +171,7 @@ export default function ResellerWalletPage() {
               <div>
                 <p className="text-[11px] md:text-xs text-muted-foreground">Total Cleared Earnings</p>
                 <p className="text-xl md:text-2xl font-black">৳{(reseller?.totalEarnings ?? 0).toLocaleString()}</p>
-                <p className="text-[10px] md:text-[11px] text-muted-foreground">Cleared + Withdrawn</p>
+                <p className="text-[10px] md:text-[11px] text-muted-foreground">Available + Withdrawn</p>
               </div>
             </div>
           </CardContent>
