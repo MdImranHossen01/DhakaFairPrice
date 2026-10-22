@@ -401,7 +401,13 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
             ? resData.reseller.systemFeePercent 
             : resData?.reseller?.commissionRate;
           if (rFee !== undefined && rFee !== null && !isNaN(Number(rFee))) {
-            setPlatformCommissionRate(Number(rFee));
+            const feeRate = Number(rFee);
+            setPlatformCommissionRate(feeRate);
+            const pPrice = Number(form.getValues('purchasePrice')) || 0;
+            if (pPrice > 0) {
+              const computed = Math.round(pPrice * (1 + feeRate / 100));
+              form.setValue('resellerPrice', computed);
+            }
           }
         }
       } catch (error) {
