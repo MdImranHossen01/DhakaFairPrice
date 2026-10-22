@@ -120,7 +120,7 @@ export async function printStickerInvoice(orderOrOrders: any | any[], settings: 
     return `
       <div class="sticker-container" style="${index < orders.length - 1 ? 'page-break-after: always; break-after: page;' : ''}">
         <div>
-          <div class="top-header">RTN &gt; ${storeName} - ${orderId}</div>
+          <div class="top-header">${storeName}</div>
           <div class="invoice-label">Invoice: #${orderId}</div>
 
           ${consignmentId ? `
