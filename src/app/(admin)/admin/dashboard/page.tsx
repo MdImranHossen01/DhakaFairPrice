@@ -616,7 +616,7 @@ export default function AdminDashboard() {
             <div className="text-right">
               <p className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Pending Payouts</p>
               <h3 className="text-2xl font-black text-foreground mt-1">
-                ৳{Math.round(stats?.pendingPayoutsTotal || stats?.resellerPendingTotal || 0).toLocaleString()}
+                ৳{Math.round(stats?.pendingPayoutsTotal || 0).toLocaleString()}
               </h3>
             </div>
           </div>
