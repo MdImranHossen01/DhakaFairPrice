@@ -32,10 +32,16 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const result = await TransactionCategory.deleteOne({ _id: id, resellerId: reseller._id });
-    if (result.deletedCount === 0) {
+    const category = await TransactionCategory.findOne({ _id: id, resellerId: reseller._id });
+    if (!category) {
       return NextResponse.json({ message: 'Category not found in your store' }, { status: 404 });
     }
+
+    if (category.isDefault) {
+      return NextResponse.json({ message: 'Default system category cannot be deleted' }, { status: 400 });
+    }
+
+    await TransactionCategory.deleteOne({ _id: id, resellerId: reseller._id });
 
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error: any) {

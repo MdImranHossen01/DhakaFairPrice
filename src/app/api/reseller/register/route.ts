@@ -4,6 +4,7 @@ import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import User from '@/models/User';
 import { normalizePhoneNumber } from '@/lib/utils';
+import { seedResellerLedgerAccounts, seedDefaultTransactionCategories } from '@/lib/ledgerHelper';
 
 export async function POST(request: NextRequest) {
   try {
@@ -144,6 +145,14 @@ export async function POST(request: NextRequest) {
         address: resolvedAddress,
       },
     });
+
+    // Seed default ledger accounts (Bank, Cash, AP, AR) and default categories
+    try {
+      await seedResellerLedgerAccounts(newReseller._id);
+      await seedDefaultTransactionCategories(newReseller._id);
+    } catch (seedErr) {
+      console.error('Failed to pre-seed reseller accounts/categories:', seedErr);
+    }
 
     return NextResponse.json({
       success: true,

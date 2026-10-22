@@ -1,6 +1,67 @@
+import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
+import TransactionCategory from '@/models/TransactionCategory';
+
+/**
+ * Standard default categories for operating expenses and incomes
+ */
+export const DEFAULT_TRANSACTION_CATEGORIES = [
+  { name: 'Ads & Marketing', type: 'expense' as const },
+  { name: 'Courier & Shipping', type: 'expense' as const },
+  { name: 'Office Rent', type: 'expense' as const },
+  { name: 'Others Expense', type: 'expense' as const },
+  { name: 'Packaging & Supplies', type: 'expense' as const },
+  { name: 'Salary & Wages', type: 'expense' as const },
+  { name: 'Software & Tools', type: 'expense' as const },
+  { name: 'Utility & Bills', type: 'expense' as const },
+  { name: 'Investment / Capital', type: 'income' as const },
+  { name: 'Other Income', type: 'income' as const },
+  { name: 'Sales Revenue', type: 'income' as const },
+  { name: 'Service Income', type: 'income' as const },
+];
+
+/**
+ * Seed default transaction categories for mother admin or a reseller.
+ * Automatically cleans up legacy unique indexes (name_1_type_1) that blocked multi-tenancy.
+ */
+export async function seedDefaultTransactionCategories(resellerId?: any) {
+  await connectToDatabase();
+
+  // One-time migration: drop stale collection-wide unique index that blocks multi-tenancy
+  try {
+    await TransactionCategory.collection.dropIndex('name_1_type_1');
+  } catch {
+    // Index doesn't exist or already dropped — safe to ignore
+  }
+  try {
+    await TransactionCategory.collection.dropIndex('name_1');
+  } catch {
+    // Index doesn't exist or already dropped — safe to ignore
+  }
+
+  const targetResellerId = resellerId ? (typeof resellerId === 'string' ? new mongoose.Types.ObjectId(resellerId) : resellerId) : null;
+
+  for (const cat of DEFAULT_TRANSACTION_CATEGORIES) {
+    await TransactionCategory.updateOne(
+      {
+        resellerId: targetResellerId,
+        name: cat.name,
+        type: cat.type,
+      },
+      {
+        $setOnInsert: {
+          name: cat.name,
+          type: cat.type,
+          resellerId: targetResellerId,
+          isDefault: true,
+        },
+      },
+      { upsert: true }
+    );
+  }
+}
 
 /**
  * Seed primary ledger accounts if they do not exist

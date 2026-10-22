@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash, ArrowLeft, Loader2, RefreshCw, Tag, Layers } from 'lucide-react';
+import { Plus, Trash, ArrowLeft, Loader2, RefreshCw, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import Swal from 'sweetalert2';
 
 export default function ResellerCategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -47,7 +48,7 @@ export default function ResellerCategoriesPage() {
       const res = await fetch('/api/reseller/expenses-incomes/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), type })
+        body: JSON.stringify({ name: name.trim(), type }),
       });
       if (res.ok) {
         toast.success(`Category "${name}" created successfully`);
@@ -65,7 +66,18 @@ export default function ResellerCategoriesPage() {
   };
 
   const handleDeleteCategory = async (id: string, catName: string) => {
-    if (!confirm(`Are you sure you want to delete category "${catName}"?`)) return;
+    const result = await Swal.fire({
+      title: 'Delete Category?',
+      text: `Are you sure you want to delete category "${catName}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e11d48',
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       const res = await fetch(`/api/reseller/expenses-incomes/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -80,86 +92,92 @@ export default function ResellerCategoriesPage() {
     }
   };
 
-  const expenseCategories = categories.filter(c => c.type === 'expense');
-  const incomeCategories = categories.filter(c => c.type === 'income');
+  const expenseCategories = categories.filter((c) => c.type === 'expense');
+  const incomeCategories = categories.filter((c) => c.type === 'income');
 
   return (
     <div className="flex-1 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/reseller/expenses-incomes">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Transaction Categories</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">Manage categories for your store operating expenses and incomes</p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Link href="/reseller/expenses-incomes" className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Expense & Income Categories</h1>
           </div>
+          <p className="text-muted-foreground text-xs md:text-sm mt-1">
+            Manage custom categories for organizing business expenses and revenue sources.
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchCategories} disabled={loading}>
+
+        <Button variant="outline" size="sm" onClick={fetchCategories} disabled={loading} className="h-9">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Create Category Form */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" />
-              Add New Category
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Create Category Form Card */}
+        <Card className="shadow-xs lg:col-span-1 h-fit">
+          <CardHeader className="bg-muted/30 py-3 px-4 border-b">
+            <CardTitle className="text-sm md:text-base font-bold flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" /> Add New Category
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleAddCategory} className="space-y-4">
+          <CardContent className="p-4">
+            <form onSubmit={handleAddCategory} className="space-y-4 text-xs">
               <div className="space-y-1.5">
-                <Label htmlFor="name" className="text-xs">Category Name</Label>
-                <Input
-                  id="name"
-                  placeholder="e.g. Courier Charge, Boosting"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-8 text-xs"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="type" className="text-xs">Category Type</Label>
+                <Label className="text-xs">Category Type</Label>
                 <Select value={type} onValueChange={(val: any) => val && setType(val)}>
-                  <SelectTrigger id="type" className="h-8 text-xs">
-                    <SelectValue placeholder="Select type" />
+                  <SelectTrigger className="h-9 text-xs">
+                    <SelectValue placeholder="Select Type">
+                      {type === 'expense' ? 'Expense (খরচ)' : type === 'income' ? 'Income (আয়)' : 'Select Type'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="expense" className="text-xs">Expense</SelectItem>
-                    <SelectItem value="income" className="text-xs">Income</SelectItem>
+                    <SelectItem value="expense" className="text-xs font-semibold text-rose-600">
+                      Expense (খরচ)
+                    </SelectItem>
+                    <SelectItem value="income" className="text-xs font-semibold text-emerald-600">
+                      Income (আয়)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <Button type="submit" size="sm" className="w-full h-8 text-xs font-bold" disabled={submitting}>
-                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />}
-                Save Category
+              <div className="space-y-1.5">
+                <Label className="text-xs">Category Name *</Label>
+                <Input
+                  required
+                  placeholder="e.g. Courier Charge / Packaging / Google Ads"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <Button type="submit" disabled={submitting} className="w-full font-bold h-9">
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                Create Category
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Existing Categories List */}
-        <div className="md:col-span-2 space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-rose-500" />
-                  Expense Categories
-                </span>
-                <Badge variant="secondary" className="text-[10px]">{expenseCategories.length}</Badge>
-              </CardTitle>
+        {/* Categories List Cards */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Expense Categories */}
+          <Card className="shadow-xs overflow-hidden">
+            <CardHeader className="bg-rose-500/10 border-b border-rose-500/20 py-2.5 px-4 flex flex-row items-center justify-between">
+              <span className="font-bold text-rose-700 dark:text-rose-300 text-sm flex items-center gap-1.5">
+                <Tag className="h-4 w-4" /> Expense Categories ({expenseCategories.length})
+              </span>
+              <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300">
+                Expense
+              </Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               {loading ? (
                 <div className="text-center py-6 text-muted-foreground text-xs">Loading categories...</div>
               ) : expenseCategories.length === 0 ? (
@@ -169,18 +187,20 @@ export default function ResellerCategoriesPage() {
                   {expenseCategories.map((c) => (
                     <Badge
                       key={c._id}
-                      variant="outline"
-                      className="px-2.5 py-1 text-xs bg-rose-500/5 text-rose-600 border-rose-500/20 flex items-center gap-1.5"
+                      variant="secondary"
+                      className="px-3 py-1.5 text-xs font-medium bg-muted/60 text-foreground border flex items-center gap-1.5"
                     >
                       {c.name}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(c._id, c.name)}
-                        className="hover:text-destructive transition-colors ml-1"
-                        title="Delete category"
-                      >
-                        <Trash className="h-3 w-3" />
-                      </button>
+                      {!c.isDefault && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(c._id, c.name)}
+                          className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+                          title="Delete category"
+                        >
+                          <Trash className="h-3 w-3" />
+                        </button>
+                      )}
                     </Badge>
                   ))}
                 </div>
@@ -188,17 +208,17 @@ export default function ResellerCategoriesPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-emerald-500" />
-                  Income Categories
-                </span>
-                <Badge variant="secondary" className="text-[10px]">{incomeCategories.length}</Badge>
-              </CardTitle>
+          {/* Income Categories */}
+          <Card className="shadow-xs overflow-hidden">
+            <CardHeader className="bg-emerald-500/10 border-b border-emerald-500/20 py-2.5 px-4 flex flex-row items-center justify-between">
+              <span className="font-bold text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-1.5">
+                <Tag className="h-4 w-4" /> Income Categories ({incomeCategories.length})
+              </span>
+              <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">
+                Income
+              </Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               {loading ? (
                 <div className="text-center py-6 text-muted-foreground text-xs">Loading categories...</div>
               ) : incomeCategories.length === 0 ? (
@@ -208,18 +228,20 @@ export default function ResellerCategoriesPage() {
                   {incomeCategories.map((c) => (
                     <Badge
                       key={c._id}
-                      variant="outline"
-                      className="px-2.5 py-1 text-xs bg-emerald-500/5 text-emerald-600 border-emerald-500/20 flex items-center gap-1.5"
+                      variant="secondary"
+                      className="px-3 py-1.5 text-xs font-medium bg-muted/60 text-foreground border flex items-center gap-1.5"
                     >
                       {c.name}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(c._id, c.name)}
-                        className="hover:text-destructive transition-colors ml-1"
-                        title="Delete category"
-                      >
-                        <Trash className="h-3 w-3" />
-                      </button>
+                      {!c.isDefault && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(c._id, c.name)}
+                          className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+                          title="Delete category"
+                        >
+                          <Trash className="h-3 w-3" />
+                        </button>
+                      )}
                     </Badge>
                   ))}
                 </div>

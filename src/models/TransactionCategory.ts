@@ -4,6 +4,7 @@ export interface ITransactionCategory extends Document {
   name: string;
   type: 'expense' | 'income';
   resellerId?: mongoose.Types.ObjectId | null;
+  isDefault?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,10 @@ const TransactionCategorySchema: Schema<ITransactionCategory> = new Schema(
       type: String,
       required: true,
       enum: ['expense', 'income'],
+    },
+    isDefault: {
+      type: Boolean,
+      default: false,
     },
     resellerId: {
       type: Schema.Types.ObjectId,
