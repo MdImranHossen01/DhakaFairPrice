@@ -84,16 +84,6 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
   const orders = Array.isArray(orderOrOrders) ? orderOrOrders : [orderOrOrders];
   if (orders.length === 0) return;
 
-  const getAbsoluteUrl = (url: string) => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
-    }
-    return url;
-  };
-  const finalSignUrl = getAbsoluteUrl('/assets/sign.png');
-
   // Dynamic colors based on shadcn/tailwind config
   let primary = '#0284c7'; // Vibrant ocean blue
   let primaryForeground = '#ffffff';
@@ -264,14 +254,6 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
               <span>Total Amount:</span>
               <span class="grand-total-amount">৳${totalAmount}</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Seal & Authorized Signature -->
-        <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
-          <div style="display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 140px;">
-            <img src="${finalSignUrl}" alt="Seal & Signature" style="height: 48px; max-width: 130px; object-fit: contain; display: block; margin-bottom: 2px; mix-blend-mode: multiply;" onerror="this.style.display='none'" />
-            <div style="font-size: 10.5px; font-weight: 600; color: var(--muted-foreground); border-top: 1px dashed #cbd5e1; padding-top: 3px; width: 100%; letter-spacing: 0.02em;">Authorized Signature</div>
           </div>
         </div>
 
