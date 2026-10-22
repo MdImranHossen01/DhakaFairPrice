@@ -183,6 +183,20 @@ export async function GET(
       }
     }
 
+    // Attach sellingStore info for customer-facing documents (Invoices, Stickers)
+    const sfRes = orderObj.storefrontResellerId || orderObj.resellerId;
+    if (sfRes && typeof sfRes === 'object' && sfRes.storeName) {
+      orderObj.sellingStore = {
+        storeName: sfRes.storeName,
+        domain: sfRes.customDomain || (sfRes.subdomain ? `${sfRes.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+        email: sfRes.contact?.email || '',
+        phone: sfRes.contact?.phone || sfRes.pickupAddress?.phone || '',
+        address: sfRes.contact?.address || sfRes.pickupAddress?.address || '',
+        logoUrl: sfRes.logoUrl || '',
+        isReseller: true,
+      };
+    }
+
     return NextResponse.json(orderObj);
   } catch (error) {
     console.error('Error fetching order detail:', error);

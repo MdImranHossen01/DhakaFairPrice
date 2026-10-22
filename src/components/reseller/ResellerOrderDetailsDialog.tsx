@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import Swal from 'sweetalert2';
 import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
+import { generateInvoicePDF } from '@/lib/invoice-generator';
+import { printStickerInvoice } from '@/lib/sticker-generator';
 
 interface ResellerOrderDetailsDialogProps {
   orderId: string | null;
@@ -276,10 +278,15 @@ export default function ResellerOrderDetailsDialog({
     }
   };
 
-  const handleLocalPrint = (type: 'invoice' | 'sticker') => {
+  const handleLocalPrint = async (type: 'invoice' | 'sticker') => {
     if (!order) return;
-    const qs = `?id=${order._id}&type=${type}`;
-    window.open(`/admin/orders/print${qs}`, '_blank');
+    if (type === 'invoice') {
+      toast.info('Generating PDF invoice...');
+      await generateInvoicePDF(order, settings, 'print');
+    } else {
+      toast.info('Preparing sticker invoice...');
+      await printStickerInvoice(order, settings);
+    }
   };
 
   const handleBookCourier = async () => {

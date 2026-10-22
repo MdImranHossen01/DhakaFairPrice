@@ -29,18 +29,18 @@ export async function GET(
     }
 
     const order = await ResellerOrder.findOne({ _id: orderId, resellerId: reseller._id })
-      .populate('resellerId', 'storeName subdomain customDomain')
+      .populate('resellerId', 'storeName subdomain customDomain contact pickupAddress logoUrl')
       .populate({
         path: 'motherOrderId',
         select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission subtotal items',
         populate: [
           {
             path: 'storefrontResellerId',
-            select: 'storeName subdomain customDomain'
+            select: 'storeName subdomain customDomain contact pickupAddress logoUrl'
           },
           {
             path: 'resellerId',
-            select: 'storeName subdomain customDomain'
+            select: 'storeName subdomain customDomain contact pickupAddress logoUrl'
           }
         ]
       })
@@ -169,6 +169,37 @@ export async function GET(
       });
     }
 
+    // Determine the selling storefront store (White-label invoice branding)
+    let sellingStoreInfo: any = null;
+    const isFulfillment = Boolean((order as any).shortId?.includes('-F'));
+    if (isFulfillment) {
+      const sfReseller = (motherOrder as any)?.storefrontResellerId || (motherOrder as any)?.resellerId;
+      if (sfReseller && sfReseller.storeName) {
+        sellingStoreInfo = {
+          storeName: sfReseller.storeName,
+          domain: sfReseller.customDomain || (sfReseller.subdomain ? `${sfReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+          email: sfReseller.contact?.email || '',
+          phone: sfReseller.contact?.phone || sfReseller.pickupAddress?.phone || '',
+          address: sfReseller.contact?.address || sfReseller.pickupAddress?.address || '',
+          logoUrl: sfReseller.logoUrl || '',
+          isReseller: true,
+        };
+      }
+    } else {
+      const myReseller = (order as any).resellerId;
+      if (myReseller && myReseller.storeName) {
+        sellingStoreInfo = {
+          storeName: myReseller.storeName,
+          domain: myReseller.customDomain || (myReseller.subdomain ? `${myReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+          email: myReseller.contact?.email || '',
+          phone: myReseller.contact?.phone || myReseller.pickupAddress?.phone || '',
+          address: myReseller.contact?.address || myReseller.pickupAddress?.address || '',
+          logoUrl: myReseller.logoUrl || '',
+          isReseller: true,
+        };
+      }
+    }
+
     return NextResponse.json({
       ...order,
       items: finalItems,
@@ -177,6 +208,7 @@ export async function GET(
       totalAmount: finalOrderValue,
       disbursement,
       fullOrderValue: finalOrderValue,
+      sellingStore: sellingStoreInfo,
     });
   } catch (error: any) {
     console.error('Error fetching reseller order:', error);
