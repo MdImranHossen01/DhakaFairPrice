@@ -18,6 +18,7 @@ import { printStickerInvoice } from '@/lib/sticker-generator';
 import Swal from 'sweetalert2';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
 
 interface OrderDetailsDialogProps {
   orderId: string | null;
@@ -754,18 +755,17 @@ export default function OrderDetailsDialog({
                     )}
                   </div>
                 </div>
-                {order.resellerCommission !== undefined && (
-                  <div className="flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0">
-                    <span className="text-[10px] text-muted-foreground font-medium">Reseller Payout</span>
-                    <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
-                    {order.systemFee > 0 && (
-                      <span className="text-[11px] text-primary font-mono mt-0.5">System Fee: +৳{Math.round(order.systemFee)}</span>
-                    )}
-                    {order.salesProfit > 0 && (
-                      <span className="text-[11px] text-emerald-600 font-semibold font-mono">Sales Profit: +৳{Math.round(order.salesProfit)}</span>
-                    )}
-                  </div>
-                )}
+                <div className="mt-3 sm:mt-0 w-full sm:max-w-[240px]">
+                  <DisbursementBreakdown
+                    disbursement={order.disbursement}
+                    fallbackCommission={order.resellerCommission}
+                    fallbackSystemFee={order.systemFee}
+                    fallbackDeliveryCharge={order.deliveryCharge}
+                    fallbackTotalAmount={order.totalAmount}
+                    commissionStatus={order.commissionStatus}
+                    mode="card"
+                  />
+                </div>
               </div>
             )}
 

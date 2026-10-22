@@ -48,15 +48,28 @@ export async function GET(
 
     // Fallback/auto-sync from ResellerOrder if resellerId or internalNote missing
     try {
-      const ro = await ResellerOrder.findOne({
+      const matchingRos = await ResellerOrder.find({
         $or: [
           { motherOrderId: order._id },
-          ...(order.shortId ? [{ shortId: order.shortId }] : [])
+          ...(order.shortId ? [{ shortId: order.shortId }, { shortId: new RegExp(`^${order.shortId}`) }] : [])
         ],
         deletedAt: null
       })
       .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact')
       .lean();
+
+      const ro = matchingRos.find((r: any) => order.shortId && r.shortId === order.shortId)
+        || matchingRos.find((r: any) => !r.shortId?.includes('-F'))
+        || matchingRos[0]
+        || null;
+
+      const fulfillmentRos = matchingRos.filter((r: any) =>
+        r.shortId?.includes('-F') || (ro && r._id.toString() !== ro._id.toString())
+      );
+
+      const totalSystemFee = (orderObj.systemFee && orderObj.systemFee > 0)
+        ? orderObj.systemFee
+        : (matchingRos.reduce((sum: number, r: any) => sum + (Number(r.systemFee) || 0), 0) || (ro?.systemFee ?? 0));
 
       if (ro) {
         if (!orderObj.resellerId && ro.resellerId) {
@@ -71,9 +84,7 @@ export async function GET(
         if (orderObj.resellerCommission === undefined && ro.resellerCommission !== undefined) {
           orderObj.resellerCommission = ro.resellerCommission;
         }
-        if (orderObj.systemFee === undefined && ro.systemFee !== undefined) {
-          orderObj.systemFee = ro.systemFee;
-        }
+        orderObj.systemFee = totalSystemFee;
         if (orderObj.salesProfit === undefined && ro.salesProfit !== undefined) {
           orderObj.salesProfit = ro.salesProfit;
         }
@@ -81,6 +92,48 @@ export async function GET(
           orderObj.commissionStatus = ro.commissionStatus;
         }
       }
+
+      // Compute full disbursement
+      const orderValue = Math.round(Number(orderObj.totalAmount) || 0);
+      const deliveryCharge = Math.round(Number(orderObj.deliveryCharge) || 0);
+      const motherFee = Math.round(Number(totalSystemFee) || 0);
+
+      let supplierPart: { name: string; amount: number; status?: string } | null = null;
+      if (fulfillmentRos.length > 0) {
+        const firstF = fulfillmentRos[0];
+        const supName = (firstF.resellerId as any)?.storeName || 'Supplier';
+        const totalSupAmount = fulfillmentRos.reduce((sum: number, f: any) => sum + (Number(f.resellerCommission) || 0), 0);
+        supplierPart = {
+          name: supName,
+          amount: Math.round(totalSupAmount),
+          status: firstF.commissionStatus || 'pending'
+        };
+      }
+
+      let sellerPart: { name: string; amount: number; status?: string } | null = null;
+      if (ro && (ro.shortId === orderObj.shortId || !ro.shortId?.includes('-F'))) {
+        const sellerName = (ro.resellerId as any)?.storeName || 'Storefront Reseller';
+        const sellerAmount = Math.round(Number(ro.resellerCommission) || 0);
+        sellerPart = {
+          name: sellerName,
+          amount: sellerAmount,
+          status: ro.commissionStatus || 'pending'
+        };
+      }
+
+      const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || (ro && Number(ro.systemFee) > 0));
+      const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
+      const motherProfit = Math.max(0, orderValue - distributedSoFar);
+
+      orderObj.disbursement = {
+        orderValue,
+        deliveryCharge,
+        supplier: supplierPart,
+        seller: sellerPart,
+        isOwnProductSale,
+        motherFee,
+        motherProfit,
+      };
     } catch (roErr) {
       console.error('[Order Detail Reseller Sync Error]', roErr);
     }

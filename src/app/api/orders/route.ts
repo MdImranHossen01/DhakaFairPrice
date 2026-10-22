@@ -1107,6 +1107,53 @@ export async function GET(req: NextRequest) {
         const finalSalesProfit = totalSalesProfit;
         const finalCommStatus = ro?.commissionStatus ?? (orderObj.commissionStatus || (finalReseller ? 'pending' : undefined));
 
+        // Fulfillment orders for supplied products:
+        const fulfillmentRos = matchingRos.filter((r: any) =>
+          r.shortId?.includes('-F') || (ro && r._id.toString() !== ro._id.toString())
+        );
+
+        const orderValue = Math.round(Number(orderObj.totalAmount) || 0);
+        const deliveryCharge = Math.round(Number(orderObj.deliveryCharge) || 0);
+        const motherFee = Math.round(Number(totalSystemFee) || 0);
+
+        let supplierPart: { name: string; amount: number; status?: string } | null = null;
+        if (fulfillmentRos.length > 0) {
+          const firstF = fulfillmentRos[0];
+          const supName = (firstF.resellerId as any)?.storeName || 'Supplier';
+          const totalSupAmount = fulfillmentRos.reduce((sum: number, f: any) => sum + (Number(f.resellerCommission) || 0), 0);
+          supplierPart = {
+            name: supName,
+            amount: Math.round(totalSupAmount),
+            status: firstF.commissionStatus || 'pending'
+          };
+        }
+
+        let sellerPart: { name: string; amount: number; status?: string } | null = null;
+        if (ro && (ro.shortId === orderObj.shortId || !ro.shortId?.includes('-F'))) {
+          const sellerName = (ro.resellerId as any)?.storeName || (finalReseller as any)?.storeName || 'Storefront Reseller';
+          const sellerAmount = Math.round(Number(ro.resellerCommission) || 0);
+          sellerPart = {
+            name: sellerName,
+            amount: sellerAmount,
+            status: ro.commissionStatus || 'pending'
+          };
+        }
+
+        const isOwnProductSale = !supplierPart && !!sellerPart && (Number(orderObj.systemFee) > 0 || (ro && Number(ro.systemFee) > 0));
+
+        const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
+        const motherProfit = Math.max(0, orderValue - distributedSoFar);
+
+        const disbursement = {
+          orderValue,
+          deliveryCharge,
+          supplier: supplierPart,
+          seller: sellerPart,
+          isOwnProductSale,
+          motherFee,
+          motherProfit,
+        };
+
         const phone = order.shippingAddress?.phone;
         const baseResult = {
           ...orderObj,
@@ -1117,6 +1164,7 @@ export async function GET(req: NextRequest) {
           systemFee: finalSystemFee,
           salesProfit: finalSalesProfit,
           commissionStatus: finalCommStatus,
+          disbursement,
         };
 
         if (!phone) {

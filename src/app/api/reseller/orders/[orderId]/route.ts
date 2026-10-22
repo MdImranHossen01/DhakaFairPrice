@@ -32,7 +32,7 @@ export async function GET(
       .populate('resellerId', 'storeName subdomain customDomain')
       .populate({
         path: 'motherOrderId',
-        select: 'storefrontResellerId resellerId orderSource shortId systemNote',
+        select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission',
         populate: [
           {
             path: 'storefrontResellerId',
@@ -59,7 +59,82 @@ export async function GET(
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
 
-    return NextResponse.json(order);
+    const mId = (order as any).motherOrderId?._id || (order as any).motherOrderId;
+    let siblingRos: any[] = [];
+    if (mId) {
+      siblingRos = await ResellerOrder.find({
+        motherOrderId: mId,
+        deletedAt: null
+      })
+      .select('motherOrderId shortId resellerId resellerCommission systemFee commissionStatus')
+      .populate('resellerId', 'storeName subdomain')
+      .lean();
+    }
+
+    const motherOrder = (order as any).motherOrderId;
+    const storefrontRo = siblingRos.find((r: any) => !r.shortId?.includes('-F'))
+      || ((order as any).shortId && !(order as any).shortId.includes('-F') ? order : null);
+
+    const fulfillmentRos = siblingRos.filter((r: any) =>
+      r.shortId?.includes('-F') || (storefrontRo && r._id.toString() !== storefrontRo._id.toString())
+    );
+
+    const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number((order as any).totalAmount) || 0);
+    const deliveryCharge = Math.round(Number(motherOrder?.deliveryCharge) || Number((order as any).deliveryCharge) || 0);
+    const motherFee = Math.round(Number(motherOrder?.systemFee) || Number((order as any).systemFee) || 0);
+
+    let supplierPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
+    if (fulfillmentRos.length > 0) {
+      const firstF = fulfillmentRos[0];
+      const supName = (firstF.resellerId as any)?.storeName || 'Supplier';
+      const totalSupAmount = fulfillmentRos.reduce((sum: number, f: any) => sum + (Number(f.resellerCommission) || 0), 0);
+      const isYou = firstF.resellerId?._id?.toString() === reseller._id.toString() || firstF.resellerId?.toString() === reseller._id.toString();
+      supplierPart = {
+        name: supName,
+        amount: Math.round(totalSupAmount),
+        isYou,
+        status: firstF.commissionStatus || 'pending'
+      };
+    }
+
+    let sellerPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
+    if (storefrontRo) {
+      const sellerName = (storefrontRo.resellerId as any)?.storeName || 'Storefront Reseller';
+      const isYou = storefrontRo.resellerId?._id?.toString() === reseller._id.toString() || storefrontRo.resellerId?.toString() === reseller._id.toString();
+      sellerPart = {
+        name: sellerName,
+        amount: Math.round(Number(storefrontRo.resellerCommission) || 0),
+        isYou,
+        status: storefrontRo.commissionStatus || 'pending'
+      };
+    } else if (!(order as any).shortId?.includes('-F')) {
+      sellerPart = {
+        name: ((order as any).resellerId as any)?.storeName || 'Storefront Reseller',
+        amount: Math.round(Number((order as any).resellerCommission) || 0),
+        isYou: true,
+        status: (order as any).commissionStatus || 'pending'
+      };
+    }
+
+    const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number((order as any).systemFee) > 0);
+    const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
+    const motherProfit = Math.max(0, orderValue - distributedSoFar);
+
+    const disbursement = {
+      orderValue,
+      deliveryCharge,
+      supplier: supplierPart,
+      seller: sellerPart,
+      isOwnProductSale,
+      motherFee,
+      motherProfit,
+    };
+
+    return NextResponse.json({
+      ...order,
+      disbursement,
+      fullOrderValue: orderValue,
+    });
   } catch (error: any) {
     console.error('Error fetching reseller order:', error);
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

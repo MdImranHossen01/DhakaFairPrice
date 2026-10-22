@@ -19,6 +19,7 @@ import { format, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import Swal from 'sweetalert2';
+import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
 
 interface ResellerOrderDetailsDialogProps {
   orderId: string | null;
@@ -635,15 +636,17 @@ export default function ResellerOrderDetailsDialog({
                         )}
                       </div>
                     </div>
-                    {order.resellerCommission !== undefined && (
-                      <div className="flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0">
-                        <span className="text-[10px] text-muted-foreground font-medium">Your Commission / Payout</span>
-                        <span className="text-sm font-black text-green-600">৳{Math.round(order.resellerCommission || 0)}</span>
-                        {order.systemFee > 0 && (
-                          <span className="text-[11px] text-primary font-mono mt-0.5">Mother Fee: ৳{Math.round(order.systemFee)}</span>
-                        )}
-                      </div>
-                    )}
+                    <div className="mt-3 sm:mt-0 w-full sm:max-w-[240px]">
+                      <DisbursementBreakdown
+                        disbursement={order.disbursement}
+                        fallbackCommission={order.resellerCommission}
+                        fallbackSystemFee={order.systemFee}
+                        fallbackDeliveryCharge={order.deliveryCharge}
+                        fallbackTotalAmount={order.totalAmount}
+                        commissionStatus={order.commissionStatus}
+                        mode="card"
+                      />
+                    </div>
                   </div>
                 );
               })()}

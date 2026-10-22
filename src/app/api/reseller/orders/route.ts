@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         .populate('resellerId', 'storeName subdomain customDomain')
         .populate({
           path: 'motherOrderId',
-          select: 'storefrontResellerId resellerId orderSource shortId systemNote',
+          select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission',
           populate: [
             {
               path: 'storefrontResellerId',
@@ -121,6 +121,100 @@ export async function GET(request: NextRequest) {
       ])
     ]);
 
+    // Collect motherOrderIds to fetch sibling reseller orders for comprehensive disbursement breakdown
+    const motherOrderIds = orders
+      .map((o: any) => o.motherOrderId?._id || o.motherOrderId)
+      .filter(Boolean);
+
+    let siblingRos: any[] = [];
+    if (motherOrderIds.length > 0) {
+      siblingRos = await ResellerOrder.find({
+        motherOrderId: { $in: motherOrderIds },
+        deletedAt: null
+      })
+      .select('motherOrderId shortId resellerId resellerCommission systemFee commissionStatus')
+      .populate('resellerId', 'storeName subdomain')
+      .lean();
+    }
+
+    const processedOrders = orders.map((order: any) => {
+      const motherOrder = order.motherOrderId;
+      const mId = motherOrder?._id?.toString() || motherOrder?.toString();
+      
+      const relatedRos = siblingRos.filter((r: any) =>
+        r.motherOrderId?.toString() === mId
+      );
+
+      // Find storefront order and fulfillment orders
+      const storefrontRo = relatedRos.find((r: any) => !r.shortId?.includes('-F'))
+        || (order.shortId && !order.shortId.includes('-F') ? order : null);
+
+      const fulfillmentRos = relatedRos.filter((r: any) =>
+        r.shortId?.includes('-F') || (storefrontRo && r._id.toString() !== storefrontRo._id.toString())
+      );
+
+      // Order value & delivery from mother order (or fallback to this order)
+      const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number(order.totalAmount) || 0);
+      const deliveryCharge = Math.round(Number(motherOrder?.deliveryCharge) || Number(order.deliveryCharge) || 0);
+      const motherFee = Math.round(Number(motherOrder?.systemFee) || Number(order.systemFee) || 0);
+
+      // Supplier
+      let supplierPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
+      if (fulfillmentRos.length > 0) {
+        const firstF = fulfillmentRos[0];
+        const supName = (firstF.resellerId as any)?.storeName || 'Supplier';
+        const totalSupAmount = fulfillmentRos.reduce((sum: number, f: any) => sum + (Number(f.resellerCommission) || 0), 0);
+        const isYou = firstF.resellerId?._id?.toString() === resellerId.toString() || firstF.resellerId?.toString() === resellerId.toString();
+        supplierPart = {
+          name: supName,
+          amount: Math.round(totalSupAmount),
+          isYou,
+          status: firstF.commissionStatus || 'pending'
+        };
+      }
+
+      // Seller (Storefront)
+      let sellerPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
+      if (storefrontRo) {
+        const sellerName = (storefrontRo.resellerId as any)?.storeName || 'Storefront Reseller';
+        const isYou = storefrontRo.resellerId?._id?.toString() === resellerId.toString() || storefrontRo.resellerId?.toString() === resellerId.toString();
+        sellerPart = {
+          name: sellerName,
+          amount: Math.round(Number(storefrontRo.resellerCommission) || 0),
+          isYou,
+          status: storefrontRo.commissionStatus || 'pending'
+        };
+      } else if (!order.shortId?.includes('-F')) {
+        sellerPart = {
+          name: (order.resellerId as any)?.storeName || 'Storefront Reseller',
+          amount: Math.round(Number(order.resellerCommission) || 0),
+          isYou: true,
+          status: order.commissionStatus || 'pending'
+        };
+      }
+
+      const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number(order.systemFee) > 0);
+
+      const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
+      const motherProfit = Math.max(0, orderValue - distributedSoFar);
+
+      const disbursement = {
+        orderValue,
+        deliveryCharge,
+        supplier: supplierPart,
+        seller: sellerPart,
+        isOwnProductSale,
+        motherFee,
+        motherProfit,
+      };
+
+      return {
+        ...order,
+        disbursement,
+        fullOrderValue: orderValue,
+      };
+    });
+
     const statusCounts = {
       all: 0, placed: 0, confirmed: 0, paid: 0, hold: 0, processing: 0, ready: 0, released: 0, delivered: 0, cancelled: 0
     };
@@ -140,7 +234,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ orders, total, page, limit, statusCounts });
+    return NextResponse.json({ orders: processedOrders, total, page, limit, statusCounts });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

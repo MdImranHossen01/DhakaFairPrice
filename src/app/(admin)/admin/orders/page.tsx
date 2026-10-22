@@ -17,6 +17,7 @@ import ManualOrderDialog from '@/components/admin/ManualOrderDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
 import {
   Loader2,
   Eye,
@@ -1128,7 +1129,7 @@ function OrdersContent() {
                 <TableHead className="font-bold text-sm text-foreground">Order Info</TableHead>
                 <TableHead className="font-bold text-sm text-foreground">Items</TableHead>
                 <TableHead className="font-bold text-sm text-foreground">Total</TableHead>
-                <TableHead className="font-bold text-sm text-foreground">Commission</TableHead>
+                <TableHead className="font-bold text-sm text-foreground">Disbursement / বণ্টন</TableHead>
                 <TableHead className="font-bold text-sm text-foreground">Payment</TableHead>
                 <TableHead className="font-bold text-sm text-foreground">Status</TableHead>
                 <TableHead className="text-right font-bold text-sm text-foreground">Actions</TableHead>
@@ -1294,34 +1295,14 @@ function OrdersContent() {
                     </TableCell>
                     <TableCell className="font-extrabold text-base">৳{Math.round(order.totalAmount ?? 0)}</TableCell>
                     <TableCell>
-                      {order.resellerId ? (
-                        <div className="flex flex-col gap-1 items-start">
-                          <span className="font-bold text-green-600 text-base">
-                            ৳{Math.round(order.resellerCommission || 0)}
-                          </span>
-                          {order.commissionStatus === 'cleared' ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-xs px-2 py-0.5 font-bold">
-                              Paid
-                            </Badge>
-                          ) : order.commissionStatus === 'cancelled' ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300 text-xs px-2 py-0.5 font-bold">
-                              Cancelled
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-xs px-2 py-0.5 font-bold">
-                              Pending
-                            </Badge>
-                          )}
-                          {(order.systemFee > 0 || order.salesProfit > 0) && (
-                            <div className="text-[11px] text-muted-foreground whitespace-nowrap mt-0.5 flex flex-col font-mono leading-tight">
-                              {order.systemFee > 0 && <span className="text-primary font-medium">Fee: +৳{Math.round(order.systemFee)}</span>}
-                              {order.salesProfit > 0 && <span className="text-emerald-600 font-semibold">Profit: +৳{Math.round(order.salesProfit)}</span>}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground font-mono">—</span>
-                      )}
+                      <DisbursementBreakdown
+                        disbursement={order.disbursement}
+                        fallbackCommission={order.resellerCommission}
+                        fallbackSystemFee={order.systemFee}
+                        fallbackDeliveryCharge={order.deliveryCharge}
+                        fallbackTotalAmount={order.totalAmount}
+                        commissionStatus={order.commissionStatus}
+                      />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
