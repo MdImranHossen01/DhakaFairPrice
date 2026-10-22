@@ -57,7 +57,7 @@ export default function ResellerReceivablePage() {
           </Link>
           <div>
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">Account Receivable</h1>
-            <p className="text-xs md:text-sm text-muted-foreground">Track unpaid customer orders, pending COD collections and receivables</p>
+            <p className="text-xs md:text-sm text-muted-foreground">Track pending commission and receivables from in-transit customer orders</p>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={fetchReceivables} disabled={loading} className="h-9">
@@ -71,7 +71,7 @@ export default function ResellerReceivablePage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-emerald-600" />
-              <p className="text-xs text-muted-foreground font-medium">Total Pending Receivables (COD / Dues)</p>
+              <p className="text-xs text-muted-foreground font-medium">Total Pending Receivables (Pending Commission)</p>
             </div>
             <p className="text-2xl font-black text-emerald-600 mt-1">৳{(summary.totalReceivable || 0).toLocaleString()}</p>
           </CardContent>
@@ -91,7 +91,7 @@ export default function ResellerReceivablePage() {
       {/* Receivables Orders Table */}
       <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
         <div className="p-3.5 border-b bg-muted/40 flex items-center justify-between">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Pending COD / Receivable Customer Orders</h3>
+          <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Pending In-Transit Receivable Orders</h3>
           <Badge variant="secondary" className="text-[10px]">{orders.length}</Badge>
         </div>
 
@@ -104,20 +104,21 @@ export default function ResellerReceivablePage() {
                 <TableHead className="text-xs font-bold">Customer</TableHead>
                 <TableHead className="text-xs font-bold">Status</TableHead>
                 <TableHead className="text-xs font-bold">Payment Method</TableHead>
-                <TableHead className="text-xs font-bold text-right">Receivable Amount</TableHead>
+                <TableHead className="text-xs font-bold text-right">Order Total</TableHead>
+                <TableHead className="text-xs font-bold text-right">Your Receivable</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-36 text-center">
+                  <TableCell colSpan={7} className="h-36 text-center">
                     <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
                     <p className="text-xs text-muted-foreground mt-2 font-medium">Loading receivables...</p>
                   </TableCell>
                 </TableRow>
               ) : orders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-36 text-center text-muted-foreground text-xs">
+                  <TableCell colSpan={7} className="h-36 text-center text-muted-foreground text-xs">
                     No pending receivable orders found.
                   </TableCell>
                 </TableRow>
@@ -145,8 +146,11 @@ export default function ResellerReceivablePage() {
                     <TableCell className="text-xs text-muted-foreground font-medium">
                       {o.paymentMethod || 'COD'}
                     </TableCell>
-                    <TableCell className="text-right text-xs font-black text-emerald-600">
+                    <TableCell className="text-right text-xs text-muted-foreground font-mono">
                       ৳{(o.totalAmount || 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right text-xs font-black text-emerald-600 font-mono">
+                      ৳{(o.resellerCommission !== undefined ? o.resellerCommission : (o.commission || 0)).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 ))

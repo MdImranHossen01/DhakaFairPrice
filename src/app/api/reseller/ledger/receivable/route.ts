@@ -34,9 +34,7 @@ export async function GET(req: NextRequest) {
       { $set: { paymentStatus: 'Paid' } }
     );
 
-    // Pending In-transit customer orders (COD / In-transit receivables for this reseller)
-    // Note: Once an order is Delivered, COD has been paid upon delivery.
-    // Also, Mother Shop orders where commission has cleared are not pending customer receivables.
+    // Pending In-transit orders for this reseller (reseller's receivable commission)
     const pendingOrders = await ResellerOrder.find({
       resellerId: reseller._id,
       paymentStatus: { $ne: 'Paid' },
@@ -44,12 +42,12 @@ export async function GET(req: NextRequest) {
       commissionStatus: { $ne: 'cleared' },
       deletedAt: null
     })
-      .select('shortId customer totalAmount status paymentMethod shippingAddress createdAt')
+      .select('shortId customer totalAmount resellerCommission status paymentMethod shippingAddress createdAt')
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
 
-    const totalReceivable = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const totalReceivable = pendingOrders.reduce((sum, o) => sum + (Number(o.resellerCommission) || 0), 0);
 
     return NextResponse.json({
       summary: {
