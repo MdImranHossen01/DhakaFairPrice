@@ -171,7 +171,11 @@ export async function PATCH(
       const updatedMother = await Order.findByIdAndUpdate(order.motherOrderId, { $set: motherUpdate }, { new: true });
 
       // Handle product sales counting on Mother Order
-      if (['Confirmed', 'Paid', 'Delivered'].includes(status || '') && updatedMother && !updatedMother.isSalesCounted) {
+      const targetStatus = status || updatedMother?.status || order.status;
+      const targetPayment = paymentStatus || updatedMother?.paymentStatus || order.paymentStatus;
+      const isSaleValid = (['Confirmed', 'Paid', 'Delivered'].includes(targetStatus) || targetPayment === 'Paid') && targetStatus !== 'Cancelled';
+
+      if (isSaleValid && updatedMother && !updatedMother.isSalesCounted && updatedMother.status !== 'Cancelled') {
         try {
           const Product = (await import('@/models/Product')).default;
           for (const item of updatedMother.items) {
@@ -210,6 +214,27 @@ export async function PATCH(
           await recalculateLedgerBalance('BANK');
         } catch (syncErr) {
           console.error('[Reseller Order Cancel Sync Error]', syncErr);
+        }
+      } else if (order.status === 'Cancelled' && status && status !== 'Cancelled') {
+        try {
+          if (order.motherOrderId) {
+            const { reDeductStockForOrder } = await import('@/lib/stockHelper');
+            await reDeductStockForOrder({
+              orderId: order.motherOrderId,
+            });
+            if (isSaleValid && updatedMother) {
+              const Product = (await import('@/models/Product')).default;
+              for (const item of updatedMother.items) {
+                await Product.updateOne(
+                  { _id: item.product },
+                  { $inc: { totalSales: item.quantity } }
+                );
+              }
+              await Order.findByIdAndUpdate(order.motherOrderId, { isSalesCounted: true });
+            }
+          }
+        } catch (reDeductErr) {
+          console.error('[Reseller Order Stock Re-deduct Error]', reDeductErr);
         }
       }
     }

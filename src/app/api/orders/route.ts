@@ -708,6 +708,17 @@ export async function POST(req: NextRequest) {
 
     await session.commitTransaction();
 
+    // Sync updated stock to all reseller storefronts
+    try {
+      const { syncProductToResellers } = await import('@/lib/syncEngine');
+      const uniqueProductIds = Array.from(new Set(successfulDeductions.map(d => d.productId)));
+      for (const pId of uniqueProductIds) {
+        await syncProductToResellers(pId).catch(err => console.error('[Reseller Sync Error]', err));
+      }
+    } catch (syncErr) {
+      console.error('[Sync Error after mother order creation]', syncErr);
+    }
+
     // Delete matching abandoned cart on successful purchase
     try {
       const cleanPhone = shippingAddress.phone.replace(/\s+/g, '').trim();

@@ -76,7 +76,7 @@ export async function PATCH(req: NextRequest) {
 
       const Product = (await import('@/models/Product')).default;
       const ResellerOrder = (await import('@/models/ResellerOrder')).default;
-      const becomesValid = ['Confirmed', 'Paid', 'Delivered'].includes(status || '');
+      const becomesValid = (['Confirmed', 'Paid', 'Delivered'].includes(status || '') || paymentStatus === 'Paid') && status !== 'Cancelled';
 
       const resellerOrderUpdate: any = {};
       if (status) {

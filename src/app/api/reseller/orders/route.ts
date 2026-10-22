@@ -358,6 +358,22 @@ export async function POST(request: NextRequest) {
     const finalTotal = Math.max(0, serverComputedSubtotal + delCharge - discount);
     const netCommission = Math.max(0, totalCommission - discount);
 
+    // Deduct product stock immediately upon order placement
+    const { deductStockForOrderItems } = await import('@/lib/stockHelper');
+    await deductStockForOrderItems({
+      items: validatedItems.map(i => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        name: i.name,
+        color: i.color,
+        size: i.size,
+      })),
+      session: sessionConn,
+      skipResellerSync: true,
+    });
+
+    const isPaidOrValidSale = (paymentStatus === 'Paid' || ['Confirmed', 'Delivered'].includes(status || '')) && status !== 'Cancelled';
+
     // 3. Create Mother Order (for fulfillment & dispatch)
     const [motherOrder] = await Order.create([{
       user: customerUser._id,
@@ -498,8 +514,24 @@ export async function POST(request: NextRequest) {
       fIndex++;
     }
 
+    if (isPaidOrValidSale) {
+      const { countSalesForOrder } = await import('@/lib/stockHelper');
+      await countSalesForOrder({ orderId: motherOrder._id, session: sessionConn });
+    }
+
     await sessionConn.commitTransaction();
     sessionConn.endSession();
+
+    // Sync updated stock to all reseller stores for affected products
+    try {
+      const { syncProductToResellers } = await import('@/lib/syncEngine');
+      const uniqueProductIds = Array.from(new Set(validatedItems.map(i => (i.productId?._id || i.productId).toString())));
+      for (const pId of uniqueProductIds) {
+        await syncProductToResellers(pId).catch(err => console.error('[Reseller Sync Error]', err));
+      }
+    } catch (syncErr) {
+      console.error('[Sync Error after manual order creation]', syncErr);
+    }
 
     return NextResponse.json({
       success: true,

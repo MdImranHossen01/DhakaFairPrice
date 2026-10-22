@@ -264,8 +264,10 @@ export async function PATCH(
       }
 
       // 1. Handle Sales Counting logic (Atomic-like within transaction)
-      const saleBecomingValid = ['Confirmed', 'Paid', 'Delivered'].includes(status || order.status);
-      if (saleBecomingValid && !order.isSalesCounted) {
+      const targetStatus = updateData.status || order.status;
+      const targetPayment = updateData.paymentStatus || order.paymentStatus;
+      const saleBecomingValid = (['Confirmed', 'Paid', 'Delivered'].includes(targetStatus) || targetPayment === 'Paid') && targetStatus !== 'Cancelled';
+      if (saleBecomingValid && !order.isSalesCounted && order.status !== 'Cancelled') {
         const Product = (await import('@/models/Product')).default;
         for (const item of order.items) {
           await Product.updateOne(
@@ -298,6 +300,17 @@ export async function PATCH(
         });
         stockActionProductIds = stockRes.affectedProductIds || [];
         updateData.isStockRestored = false;
+        if (saleBecomingValid) {
+          const Product = (await import('@/models/Product')).default;
+          for (const item of order.items) {
+            await Product.updateOne(
+              { _id: item.product },
+              { $inc: { totalSales: item.quantity } },
+              { session: dbSession }
+            );
+          }
+          updateData.isSalesCounted = true;
+        }
       }
 
       // 2. Loyalty System: Award Tokens on Success

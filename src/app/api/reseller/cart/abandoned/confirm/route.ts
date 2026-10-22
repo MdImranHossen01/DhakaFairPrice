@@ -141,6 +141,20 @@ export async function POST(req: NextRequest) {
         customerUser = newUser;
       }
 
+      // Deduct product stock immediately upon order placement
+      const { deductStockForOrderItems } = await import('@/lib/stockHelper');
+      await deductStockForOrderItems({
+        items: validatedItems.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          name: item.name,
+          color: item.color,
+          size: item.size,
+        })),
+        session: sessionConn,
+        skipResellerSync: true,
+      });
+
       // Create Mother Order for Admin fulfillment & dispatch
       const [motherOrder] = await Order.create([{
         user: customerUser?._id,
@@ -209,6 +223,17 @@ export async function POST(req: NextRequest) {
       await AbandonedCart.findByIdAndDelete(cartId, { session: sessionConn });
 
       await sessionConn.commitTransaction();
+
+      // Sync updated stock to all reseller stores for affected products
+      try {
+        const { syncProductToResellers } = await import('@/lib/syncEngine');
+        const uniqueProductIds = Array.from(new Set(validatedItems.map(i => (i.productId?._id || i.productId).toString())));
+        for (const pId of uniqueProductIds) {
+          await syncProductToResellers(pId).catch(err => console.error('[Reseller Sync Error]', err));
+        }
+      } catch (syncErr) {
+        console.error('[Sync Error after abandoned cart confirm]', syncErr);
+      }
       
       return NextResponse.json({ message: 'Order confirmed successfully', orderId: resellerOrder._id });
     } catch (txError) {
