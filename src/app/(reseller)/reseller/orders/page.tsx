@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-  Loader2, Eye, Search, ChevronDown, CheckCircle2, XCircle, Download, Plus, Copy, RefreshCcw, MoreHorizontal, FileText, Printer, Truck
+  Loader2, Eye, Search, ChevronDown, CheckCircle2, XCircle, Download, Plus, Copy, RefreshCcw, MoreHorizontal, FileText, Printer, Truck, X
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -154,6 +154,7 @@ function OrdersContent() {
   const [statusCounts, setStatusCounts] = useState<any>({});
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [commissionFilter, setCommissionFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
@@ -167,11 +168,24 @@ function OrdersContent() {
   const [settings, setSettings] = useState<any>(null);
   const [reseller, setReseller] = useState<any>(null);
 
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Reset to page 1 when debounced search or filters change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (statusFilter !== 'All') params.set('status', statusFilter);
       if (commissionFilter !== 'All') params.set('commissionStatus', commissionFilter);
       if (dateFilter.from) params.set('from', dateFilter.from);
@@ -190,6 +204,9 @@ function OrdersContent() {
 
   useEffect(() => {
     fetchOrders();
+  }, [page, debouncedSearch, statusFilter, commissionFilter, dateFilter]);
+
+  useEffect(() => {
     Promise.all([
       fetch('/api/settings').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/reseller/settings').then(r => r.ok ? r.json() : null).catch(() => null),
@@ -197,7 +214,7 @@ function OrdersContent() {
       if (settingsData) setSettings(settingsData);
       if (resellerData?.reseller) setReseller(resellerData.reseller);
     });
-  }, [page, statusFilter, commissionFilter, dateFilter]);
+  }, []);
 
   const getResellerBranding = () => {
     return {
@@ -459,8 +476,18 @@ function OrdersContent() {
               placeholder="Search name, phone, email or ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 w-full h-10"
+              className="pl-8 pr-8 w-full h-10"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors"
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="block md:hidden w-full sm:w-auto">

@@ -28,6 +28,22 @@ interface ResellerManualOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
+  initialData?: {
+    customer?: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      street?: string;
+      city?: string;
+      division?: string;
+      zipCode?: string;
+    };
+    items?: any[];
+    deliveryCharge?: number;
+    discount?: number;
+    internalNote?: string;
+    cartId?: string;
+  } | null;
 }
 
 const RESELLER_STATUSES = [
@@ -40,6 +56,7 @@ export default function ResellerManualOrderDialog({
   open,
   onOpenChange,
   onCreated,
+  initialData,
 }: ResellerManualOrderDialogProps) {
   const [manualOrderLoading, setManualOrderLoading] = useState(false);
   const [productSearch, setProductSearch] = useState('');
@@ -60,6 +77,49 @@ export default function ResellerManualOrderDialog({
   const [paymentStatus, setPaymentStatus] = useState('Pending');
   const [orderStatus, setOrderStatus] = useState('Order Placed');
   const [internalNote, setInternalNote] = useState('');
+
+  // Prefill when opened with initialData (e.g. from abandoned cart)
+  useEffect(() => {
+    if (open && initialData) {
+      if (initialData.customer) {
+        setCustomer({
+          name: initialData.customer.name || '',
+          phone: initialData.customer.phone || '',
+          email: initialData.customer.email || '',
+          street: initialData.customer.street || '',
+          city: initialData.customer.city || 'Dhaka',
+          division: initialData.customer.division || 'Dhaka',
+          zipCode: initialData.customer.zipCode || '1200',
+        });
+      }
+      if (initialData.items && initialData.items.length > 0) {
+        setManualItems(initialData.items);
+      }
+      if (typeof initialData.deliveryCharge === 'number') {
+        setDeliveryCharge(initialData.deliveryCharge);
+      }
+      if (typeof initialData.discount === 'number') {
+        setDiscount(initialData.discount);
+      }
+      if (initialData.internalNote) {
+        setInternalNote(initialData.internalNote);
+      }
+    } else if (open && !initialData) {
+      setCustomer({
+        name: '',
+        phone: '',
+        email: '',
+        street: '',
+        city: 'Dhaka',
+        division: 'Dhaka',
+        zipCode: '1200',
+      });
+      setManualItems([]);
+      setDeliveryCharge(120);
+      setDiscount(0);
+      setInternalNote('');
+    }
+  }, [open, initialData]);
 
   // Debounce product search
   useEffect(() => {
@@ -230,6 +290,13 @@ export default function ResellerManualOrderDialog({
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || 'Manual order placed successfully!');
+        if (initialData?.cartId) {
+          try {
+            await fetch(`/api/cart/abandoned?id=${initialData.cartId}`, { method: 'DELETE' });
+          } catch (e) {
+            // ignore
+          }
+        }
         onOpenChange(false);
         setCustomer({
           name: '',

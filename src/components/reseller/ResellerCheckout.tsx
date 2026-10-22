@@ -445,9 +445,11 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
     toast.info(`${item.name} সরানো হয়েছে`);
   };
 
+  const submissionSucceededRef = useRef(false);
+
   // Abandoned Carts Tracking
   useEffect(() => {
-    if (cart.length === 0 || submitting || showSuccessModal) return;
+    if (cart.length === 0 || submitting || showSuccessModal || submissionSucceededRef.current) return;
     if (!watchedPhone || watchedPhone.trim().length < 11 || !watchedFullName || watchedFullName.trim().length < 2) return;
 
     const syncAbandonedCart = async () => {
@@ -540,6 +542,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
 
       const data = await res.json();
       if (res.ok) {
+        submissionSucceededRef.current = true;
         const orderShortId = data.shortId || data.orderId;
         const nameParts = (values.fullName || '').trim().split(/\s+/);
         const validItems = cart.filter(i => i.resellerProductId || i.productId);

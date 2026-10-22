@@ -77,11 +77,16 @@ export async function GET(request: NextRequest) {
     if (status) query.status = status;
     if (commissionStatus && commissionStatus !== 'All') query.commissionStatus = commissionStatus;
     if (search) {
-      const sanitizedSearch = search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const cleanSearch = search.trim();
+      const sanitizedSearch = cleanSearch.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+      const withoutHash = cleanSearch.startsWith('#') ? cleanSearch.substring(1).trim() : cleanSearch;
+      const sanitizedWithoutHash = withoutHash.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
       query.$or = [
-        { shortId: { $regex: sanitizedSearch, $options: 'i' } },
+        { shortId: { $regex: sanitizedWithoutHash, $options: 'i' } },
         { 'customer.phone': { $regex: sanitizedSearch, $options: 'i' } },
         { 'customer.name': { $regex: sanitizedSearch, $options: 'i' } },
+        { 'customer.email': { $regex: sanitizedSearch, $options: 'i' } },
       ];
     }
 
