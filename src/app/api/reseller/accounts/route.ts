@@ -6,7 +6,7 @@ import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
 
-import { seedResellerLedgerAccounts } from '@/lib/ledgerHelper';
+import { seedResellerLedgerAccounts, syncResellerOrdersToLedger } from '@/lib/ledgerHelper';
 
 async function getReseller(userId: string) {
   await connectToDatabase();
@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
 
     // Ensure the 4 default accounts (Bank, Cash in Hand, AP, AR) exist for this reseller
     await seedResellerLedgerAccounts(reseller._id);
+    await syncResellerOrdersToLedger(reseller._id);
 
     const accounts = await LedgerAccount.find({
       resellerId: reseller._id

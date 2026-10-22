@@ -666,11 +666,12 @@ export async function syncOrdersToLedger() {
       const orderRef = `ORD-${order.shortId}`;
       const payRef = `ORDER-${order.shortId}`;
       const shippingRef = `SHIPPING-${order.shortId}`;
-      const orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
+      const baseTime = (order.createdAt ? new Date(order.createdAt) : new Date()).getTime();
+      const orderDate = new Date(baseTime);
       const customerName = order.shippingAddress?.fullName || 'Customer';
       const desc = `Customer Receivable for Order #${order.shortId} (${customerName})`;
 
-      // 1. Ensure AR Debit entry exists (represents customer/courier receivable)
+      // 1. Ensure AR Debit entry exists (represents customer/courier receivable) - FIRST EVENT
       const arDebit = await LedgerTransaction.findOne({
         account: arAccount._id,
         reference: orderRef,
@@ -689,8 +690,8 @@ export async function syncOrdersToLedger() {
           arDebit.description = desc;
           changed = true;
         }
-        if (new Date(arDebit.date).getTime() !== orderDate.getTime()) {
-          arDebit.date = orderDate;
+        if (new Date(arDebit.date).getTime() !== baseTime) {
+          arDebit.date = new Date(baseTime);
           changed = true;
         }
         if (changed) {
@@ -702,27 +703,13 @@ export async function syncOrdersToLedger() {
       const isPaid = order.paymentStatus === 'Paid' || order.status === 'Delivered';
 
       if (isPaid) {
-        // 2a. Settle AR: ensure AR credit exists
-        const arCredit = await LedgerTransaction.findOne({
-          account: arAccount._id,
-          reference: orderRef,
-          type: 'credit'
-        });
-
-        if (!arCredit) {
-          const clearDesc = `Customer Payment Received for Order #${order.shortId}`;
-          await logLedgerTransaction('AR', 'credit', totalAmount, clearDesc, orderRef, order.updatedAt ? new Date(order.updatedAt) : new Date());
-        } else if (Math.abs(arCredit.amount - totalAmount) > 0.01) {
-          arCredit.amount = totalAmount;
-          await arCredit.save();
-        }
-
-        // 2b. Record collection into default BANK account
+        // 2a. Record collection into default BANK account - SECOND EVENT
+        const payDate = new Date(baseTime + 1000);
         const payTx = await LedgerTransaction.findOne({ reference: payRef });
         const payDesc = `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`;
 
         if (!payTx) {
-          await logLedgerTransaction('BANK', 'debit', totalAmount, payDesc, payRef, orderDate);
+          await logLedgerTransaction('BANK', 'debit', totalAmount, payDesc, payRef, payDate);
         } else {
           let changed = false;
           if (payTx.account.toString() !== bankAccount._id.toString()) {
@@ -741,18 +728,49 @@ export async function syncOrdersToLedger() {
             payTx.description = payDesc;
             changed = true;
           }
+          if (new Date(payTx.date).getTime() !== payDate.getTime()) {
+            payTx.date = payDate;
+            changed = true;
+          }
           if (changed) {
             await payTx.save();
           }
         }
 
-        // 2c. Record courier delivery charge deduction from default BANK account
+        // 2b. Settle AR: ensure AR credit exists - THIRD EVENT
+        const settleDate = new Date(baseTime + 2000);
+        const arCredit = await LedgerTransaction.findOne({
+          account: arAccount._id,
+          reference: orderRef,
+          type: 'credit'
+        });
+
+        if (!arCredit) {
+          const clearDesc = `Payment settled for Order #${order.shortId}`;
+          await logLedgerTransaction('AR', 'credit', totalAmount, clearDesc, orderRef, settleDate);
+        } else {
+          let changed = false;
+          if (Math.abs(arCredit.amount - totalAmount) > 0.01) {
+            arCredit.amount = totalAmount;
+            changed = true;
+          }
+          if (new Date(arCredit.date).getTime() !== settleDate.getTime()) {
+            arCredit.date = settleDate;
+            changed = true;
+          }
+          if (changed) {
+            await arCredit.save();
+          }
+        }
+
+        // 2c. Record courier delivery charge deduction from default BANK account - FOURTH EVENT
         if (deliveryCharge > 0) {
+          const shipDate = new Date(baseTime + 3000);
           const shipTx = await LedgerTransaction.findOne({ reference: shippingRef });
           const shipDesc = `Courier delivery charge deducted for Order #${order.shortId}`;
 
           if (!shipTx) {
-            await logLedgerTransaction('BANK', 'credit', deliveryCharge, shipDesc, shippingRef, orderDate);
+            await logLedgerTransaction('BANK', 'credit', deliveryCharge, shipDesc, shippingRef, shipDate);
           } else {
             let changed = false;
             if (shipTx.account.toString() !== bankAccount._id.toString()) {
@@ -769,6 +787,10 @@ export async function syncOrdersToLedger() {
             }
             if (shipTx.description !== shipDesc) {
               shipTx.description = shipDesc;
+              changed = true;
+            }
+            if (new Date(shipTx.date).getTime() !== shipDate.getTime()) {
+              shipTx.date = shipDate;
               changed = true;
             }
             if (changed) {
@@ -910,9 +932,10 @@ export async function syncPayablesToLedger() {
 
       const apRef = `AP-RO-${ro.shortId}`;
       const storeName = (ro.resellerId as any)?.storeName || 'Reseller';
-      const orderDate = ro.createdAt ? new Date(ro.createdAt) : new Date();
-
       const isFulfillment = ro.shortId.includes('-F');
+      const baseTime = (ro.createdAt ? new Date(ro.createdAt) : new Date()).getTime();
+      const orderDate = new Date(baseTime + (isFulfillment ? 5000 : 4000));
+
       const desc = isFulfillment
         ? `Product Payout Payable for Order #${ro.shortId} (${storeName})`
         : `Reseller Commission Payable for Order #${ro.shortId} (${storeName})`;
@@ -1295,4 +1318,211 @@ export async function logResellerPayoutDepositToAccount(payoutTx: any) {
     console.error('[Ledger] Error depositing payout to reseller account:', err);
   }
 }
+
+/**
+ * Sync reseller storefront and fulfillment orders to the reseller's individual ledger.
+ * - When order is placed/confirmed: Creates Accounts Receivable (AR Debit) for commission or product payout.
+ * - When order is Paid / Cleared: Settles AR (AR Credit) and records deposit into Reseller's Bank (Bank Debit).
+ */
+export async function syncResellerOrdersToLedger(resellerId?: any) {
+  try {
+    await connectToDatabase();
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+    const Reseller = (await import('@/models/Reseller')).default;
+
+    const resellerQuery: any = {};
+    if (resellerId) resellerQuery._id = resellerId;
+
+    const resellers = await Reseller.find(resellerQuery).select('_id storeName').lean();
+
+    for (const r of resellers) {
+      const rId = r._id;
+      await seedResellerLedgerAccounts(rId);
+
+      const [arAccount, bankAccount, cashAccount] = await Promise.all([
+        LedgerAccount.findOne({ resellerId: rId, code: 'AR' }),
+        LedgerAccount.findOne({ resellerId: rId, code: 'BANK' }),
+        LedgerAccount.findOne({ resellerId: rId, code: 'CASH' }),
+      ]);
+
+      if (!arAccount || !bankAccount) continue;
+
+      const ros = await ResellerOrder.find({
+        resellerId: rId,
+        status: { $ne: 'Cancelled' as any },
+        deletedAt: null
+      }).lean();
+
+      for (const ro of ros) {
+        if (!ro.shortId) continue;
+        const amount = Number(ro.resellerCommission) || 0;
+        if (amount <= 0) continue;
+
+        const isFulfillment = ro.shortId.includes('-F');
+        const orderRef = `AR-RO-${ro.shortId}`;
+        const payRef = `PAY-RO-${ro.shortId}`;
+        const baseTime = (ro.createdAt ? new Date(ro.createdAt) : new Date()).getTime();
+        const itemName = ro.items?.map((i: any) => i.name).join(', ') || 'Product';
+        const receivableDesc = isFulfillment
+          ? `Product Sales Receivable for Order #${ro.shortId} (${itemName})`
+          : `Sales Commission Receivable for Order #${ro.shortId}`;
+
+        // 1. AR Debit entry (Receivable from platform) - FIRST EVENT
+        const arDebit = await LedgerTransaction.findOne({
+          account: arAccount._id,
+          resellerId: rId,
+          reference: orderRef,
+          type: 'debit'
+        });
+
+        if (!arDebit) {
+          await LedgerTransaction.create({
+            account: arAccount._id,
+            resellerId: rId,
+            date: new Date(baseTime),
+            description: receivableDesc,
+            type: 'debit',
+            amount,
+            reference: orderRef,
+            balanceAfter: 0,
+          });
+        } else {
+          let changed = false;
+          if (Math.abs(arDebit.amount - amount) > 0.01) {
+            arDebit.amount = amount;
+            changed = true;
+          }
+          if (arDebit.description !== receivableDesc) {
+            arDebit.description = receivableDesc;
+            changed = true;
+          }
+          if (new Date(arDebit.date).getTime() !== baseTime) {
+            arDebit.date = new Date(baseTime);
+            changed = true;
+          }
+          if (changed) await arDebit.save();
+        }
+
+        // 2. Paid / Cleared settlement
+        const isPaid = ro.paymentStatus === 'Paid' || ro.commissionStatus === 'cleared' || ro.status === 'Delivered';
+
+        if (isPaid) {
+          // Deposit into Bank - SECOND EVENT
+          const bankDesc = isFulfillment
+            ? `Product payout received for Order #${ro.shortId} (${itemName})`
+            : `Commission payment received for Order #${ro.shortId}`;
+          const bankDate = new Date(baseTime + 1000);
+
+          const bankTx = await LedgerTransaction.findOne({
+            account: bankAccount._id,
+            resellerId: rId,
+            reference: payRef,
+            type: 'debit'
+          });
+
+          if (!bankTx) {
+            await LedgerTransaction.create({
+              account: bankAccount._id,
+              resellerId: rId,
+              date: bankDate,
+              description: bankDesc,
+              type: 'debit',
+              amount,
+              reference: payRef,
+              balanceAfter: 0,
+            });
+          } else {
+            let changed = false;
+            if (Math.abs(bankTx.amount - amount) > 0.01) {
+              bankTx.amount = amount;
+              changed = true;
+            }
+            if (bankTx.description !== bankDesc) {
+              bankTx.description = bankDesc;
+              changed = true;
+            }
+            if (new Date(bankTx.date).getTime() !== bankDate.getTime()) {
+              bankTx.date = bankDate;
+              changed = true;
+            }
+            if (changed) await bankTx.save();
+          }
+
+          // Settle AR - THIRD EVENT
+          const settleDesc = isFulfillment
+            ? `Product payout settled for Order #${ro.shortId} (${itemName})`
+            : `Commission payment settled for Order #${ro.shortId}`;
+          const settleDate = new Date(baseTime + 2000);
+
+          const arCredit = await LedgerTransaction.findOne({
+            account: arAccount._id,
+            resellerId: rId,
+            reference: orderRef,
+            type: 'credit'
+          });
+
+          if (!arCredit) {
+            await LedgerTransaction.create({
+              account: arAccount._id,
+              resellerId: rId,
+              date: settleDate,
+              description: settleDesc,
+              type: 'credit',
+              amount,
+              reference: orderRef,
+              balanceAfter: 0,
+            });
+          } else {
+            let changed = false;
+            if (Math.abs(arCredit.amount - amount) > 0.01) {
+              arCredit.amount = amount;
+              changed = true;
+            }
+            if (arCredit.description !== settleDesc) {
+              arCredit.description = settleDesc;
+              changed = true;
+            }
+            if (new Date(arCredit.date).getTime() !== settleDate.getTime()) {
+              arCredit.date = settleDate;
+              changed = true;
+            }
+            if (changed) await arCredit.save();
+          }
+        } else {
+          // If not paid, remove any stale settlement or bank deposit
+          await LedgerTransaction.deleteMany({
+            resellerId: rId,
+            $or: [
+              { account: arAccount._id, reference: orderRef, type: 'credit' },
+              { account: bankAccount._id, reference: payRef }
+            ]
+          });
+        }
+      }
+
+      // Clean invalid / cancelled orders for this reseller
+      const invalidRos = await ResellerOrder.find({
+        resellerId: rId,
+        $or: [{ status: 'Cancelled' as any }, { deletedAt: { $ne: null } }]
+      }).select('shortId').lean();
+
+      const invalidRefs = invalidRos.map(r => `AR-RO-${r.shortId}`).concat(invalidRos.map(r => `PAY-RO-${r.shortId}`));
+      if (invalidRefs.length > 0) {
+        await LedgerTransaction.deleteMany({
+          resellerId: rId,
+          reference: { $in: invalidRefs }
+        });
+      }
+
+      // Recalculate running balances for this reseller's accounts
+      await recalculateLedgerBalanceByAccountId(arAccount._id);
+      await recalculateLedgerBalanceByAccountId(bankAccount._id);
+      if (cashAccount) await recalculateLedgerBalanceByAccountId(cashAccount._id);
+    }
+  } catch (err) {
+    console.error('Error syncing reseller orders to ledger:', err);
+  }
+}
+
 
