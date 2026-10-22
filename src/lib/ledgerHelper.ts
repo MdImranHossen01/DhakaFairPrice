@@ -17,6 +17,7 @@ export const DEFAULT_TRANSACTION_CATEGORIES = [
   { name: 'Software & Tools', type: 'expense' as const },
   { name: 'Utility & Bills', type: 'expense' as const },
   { name: 'Investment / Capital', type: 'income' as const },
+  { name: 'Commission', type: 'income' as const },
   { name: 'Other Income', type: 'income' as const },
   { name: 'Sales Revenue', type: 'income' as const },
   { name: 'Service Income', type: 'income' as const },
@@ -1284,38 +1285,92 @@ export async function logResellerPayoutDepositToAccount(payoutTx: any) {
     const shortId = txIdStr.slice(-8).toUpperCase();
     const reference = `PAYOUT-REC-${shortId}`;
 
+    // 1. Record LedgerTransaction and update connected account balance if not already present
     const exists = await LedgerTransaction.findOne({ reference, account: targetAccount._id });
-    if (exists) {
-      console.log(`[Ledger] Reseller ledger entry already exists for reference: ${reference}`);
-      return;
+    if (!exists) {
+      // For asset accounts, debit increases balance
+      const change = targetAccount.type === 'liability' ? -amount : amount;
+      const balanceAfter = (targetAccount.currentBalance || 0) + change;
+
+      const tx = new LedgerTransaction({
+        account: targetAccount._id,
+        resellerId: targetAccount.resellerId || payoutTx.resellerId,
+        date: payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : (payoutTx.createdAt ? new Date(payoutTx.createdAt) : new Date()),
+        description: `Payout received from Mother Shop via ${payoutTx.payoutMethod || 'Mobile Banking'}${payoutTx.payoutReference ? ` (${payoutTx.payoutReference})` : ''}`,
+        type: 'debit',
+        amount,
+        reference,
+        balanceAfter,
+      });
+
+      await tx.save();
+
+      targetAccount.currentBalance = balanceAfter;
+      await targetAccount.save();
+
+      // Recalculate running balances for this account
+      await recalculateLedgerBalanceByAccountId(targetAccount._id);
+      console.log(`[Ledger] Deposited ৳${amount} into reseller account ${targetAccount.name} (${targetAccount.code}). New balance: ৳${targetAccount.currentBalance}`);
     }
 
-    // For asset accounts, debit increases balance
-    const change = targetAccount.type === 'liability' ? -amount : amount;
-    const balanceAfter = (targetAccount.currentBalance || 0) + change;
+    // 2. Automatically record/sync to Expense collection as Income for /reseller-dashboard/expenses-incomes
+    const Expense = (await import('@/models/Expense')).default;
+    const existingExpense = await Expense.findOne({ reference });
+    const payoutDate = payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : (payoutTx.createdAt ? new Date(payoutTx.createdAt) : new Date());
+    const methodStr = payoutTx.payoutMethod || 'Payout';
+    const expenseTitle = `Commission Withdrawal (${methodStr})`;
+    const expenseDesc = `Reseller commission payout received via ${methodStr}${payoutTx.payoutReference ? ` (${payoutTx.payoutReference})` : ''}`;
 
-    const tx = new LedgerTransaction({
-      account: targetAccount._id,
-      resellerId: targetAccount.resellerId || payoutTx.resellerId,
-      date: payoutTx.updatedAt ? new Date(payoutTx.updatedAt) : new Date(),
-      description: `Payout received from Mother Shop via ${payoutTx.payoutMethod || 'Mobile Banking'}${payoutTx.payoutReference ? ` (${payoutTx.payoutReference})` : ''}`,
-      type: 'debit',
-      amount,
-      reference,
-      balanceAfter,
-    });
-
-    await tx.save();
-
-    targetAccount.currentBalance = balanceAfter;
-    await targetAccount.save();
-
-    // Recalculate running balances for this account
-    await recalculateLedgerBalanceByAccountId(targetAccount._id);
-
-    console.log(`[Ledger] Deposited ৳${amount} into reseller account ${targetAccount.name} (${targetAccount.code}). New balance: ৳${targetAccount.currentBalance}`);
+    if (!existingExpense) {
+      await Expense.create({
+        title: expenseTitle,
+        amount,
+        category: 'Commission',
+        type: 'income',
+        paymentAccountId: targetAccount._id,
+        resellerId: targetAccount.resellerId || payoutTx.resellerId,
+        date: payoutDate,
+        description: expenseDesc,
+        reference,
+      });
+      console.log(`[Ledger] Recorded ৳${amount} payout income into reseller Expenses & Incomes.`);
+    } else {
+      let expChanged = false;
+      if (Math.abs(existingExpense.amount - amount) > 0.01) {
+        existingExpense.amount = amount;
+        expChanged = true;
+      }
+      if (existingExpense.paymentAccountId?.toString() !== targetAccount._id.toString()) {
+        existingExpense.paymentAccountId = targetAccount._id;
+        expChanged = true;
+      }
+      if (existingExpense.type !== 'income') {
+        existingExpense.type = 'income';
+        expChanged = true;
+      }
+      if (expChanged) await existingExpense.save();
+    }
   } catch (err) {
     console.error('[Ledger] Error depositing payout to reseller account:', err);
+  }
+}
+
+/**
+ * Synchronize all cleared reseller commission payouts to their connected accounts and Expenses & Incomes
+ */
+export async function syncResellerPayoutsToExpenses(resellerId?: any) {
+  try {
+    await connectToDatabase();
+    const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+    const query: any = { type: 'payout_released', status: 'cleared' };
+    if (resellerId) query.resellerId = resellerId;
+
+    const clearedPayouts = await ResellerWalletTransaction.find(query).lean();
+    for (const p of clearedPayouts) {
+      await logResellerPayoutDepositToAccount(p);
+    }
+  } catch (err) {
+    console.error('[Ledger] Error syncing reseller payouts to expenses:', err);
   }
 }
 

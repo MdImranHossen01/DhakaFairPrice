@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
 
     // Auto-sync orders and payouts to this reseller's ledger
     await syncResellerOrdersToLedger(reseller._id);
+    const { syncResellerPayoutsToExpenses } = await import('@/lib/ledgerHelper');
+    await syncResellerPayoutsToExpenses(reseller._id);
 
     const { searchParams } = new URL(req.url);
     const accountId = searchParams.get('accountId');

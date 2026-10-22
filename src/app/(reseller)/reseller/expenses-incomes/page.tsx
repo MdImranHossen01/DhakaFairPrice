@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash, Edit, Search, MoreHorizontal, Loader2, RefreshCcw, TrendingUp, TrendingDown, BookOpen, Layers } from 'lucide-react';
+import { Plus, Trash, Edit, Search, MoreHorizontal, Loader2, RefreshCcw, TrendingUp, TrendingDown, BookOpen, Layers, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -152,6 +152,20 @@ function ResellerExpensesContent() {
             <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-semibold">
               <Layers className="h-4 w-4" />
               Categories
+            </Button>
+          </Link>
+
+          <Link href="/reseller/reports/payouts">
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-semibold">
+              <Wallet className="h-4 w-4 text-primary" />
+              Payouts & Earnings
+            </Button>
+          </Link>
+
+          <Link href="/reseller/ledger">
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-semibold">
+              <BookOpen className="h-4 w-4 text-primary" />
+              Ledger
             </Button>
           </Link>
 
@@ -321,7 +335,16 @@ function ResellerExpensesContent() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs">
-                      <div className="font-semibold text-foreground">{tx.title}</div>
+                      <div className="font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
+                        <span>{tx.title}</span>
+                        {tx.reference?.startsWith('PAYOUT-REC-') && (
+                          <Link href="/reseller/reports/payouts">
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20 hover:underline">
+                              Payout Ref: {tx.reference}
+                            </Badge>
+                          </Link>
+                        )}
+                      </div>
                       {tx.description && (
                         <div className="text-[11px] text-muted-foreground line-clamp-1">{tx.description}</div>
                       )}
@@ -348,21 +371,38 @@ function ResellerExpensesContent() {
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingTransaction(tx);
-                              setIsDialogOpen(true);
-                            }}
-                            className="cursor-pointer text-xs"
-                          >
-                            <Edit className="mr-2 h-3.5 w-3.5" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(tx._id)}
-                            className="cursor-pointer text-destructive focus:text-destructive text-xs"
-                          >
-                            <Trash className="mr-2 h-3.5 w-3.5" /> Delete
-                          </DropdownMenuItem>
+                          {tx.reference?.startsWith('PAYOUT-REC-') ? (
+                            <>
+                              <DropdownMenuItem asChild className="cursor-pointer text-xs">
+                                <Link href="/reseller/reports/payouts">
+                                  <Wallet className="mr-2 h-3.5 w-3.5 text-primary" /> View in Payouts
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="cursor-pointer text-xs">
+                                <Link href="/reseller/ledger">
+                                  <BookOpen className="mr-2 h-3.5 w-3.5 text-primary" /> View in Ledger
+                                </Link>
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingTransaction(tx);
+                                  setIsDialogOpen(true);
+                                }}
+                                className="cursor-pointer text-xs"
+                              >
+                                <Edit className="mr-2 h-3.5 w-3.5" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(tx._id)}
+                                className="cursor-pointer text-destructive focus:text-destructive text-xs"
+                              >
+                                <Trash className="mr-2 h-3.5 w-3.5" /> Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

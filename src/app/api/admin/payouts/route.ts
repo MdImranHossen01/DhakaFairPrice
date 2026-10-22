@@ -105,6 +105,14 @@ export async function PATCH(request: NextRequest) {
           }],
           { session: sessionConn }
         );
+
+        // Clean up any previously created LedgerTransaction or Expense for this payout
+        const shortId = transaction._id.toString().slice(-8).toUpperCase();
+        const ref = `PAYOUT-REC-${shortId}`;
+        const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+        const Expense = (await import('@/models/Expense')).default;
+        await LedgerTransaction.deleteMany({ reference: ref }).session(sessionConn);
+        await Expense.deleteMany({ reference: ref }).session(sessionConn);
       }
 
       await sessionConn.commitTransaction();

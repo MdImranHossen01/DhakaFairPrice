@@ -75,7 +75,17 @@ export default function ResellerExpenseReportPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/reseller/expenses-incomes">
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-semibold">
+              Expenses & Incomes
+            </Button>
+          </Link>
+          <Link href="/reseller/ledger">
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs font-semibold">
+              Ledger
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={fetchExpenses} disabled={loading} className="h-9 px-2.5">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
