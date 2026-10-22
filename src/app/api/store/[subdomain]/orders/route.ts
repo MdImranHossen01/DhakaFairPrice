@@ -63,8 +63,13 @@ export async function POST(
     // Validate each item against ResellerProduct and calculate commission
     const validatedItems = [];
     let totalCommission = 0;
+    let totalOwnProductSystemFee = 0;
     const uploaderItemsMap = new Map<string, any[]>();
     const supplierIds = new Set<string>();
+
+    const resellerFeeRate = reseller.systemFeePercent !== undefined 
+      ? reseller.systemFeePercent 
+      : (reseller.commissionRate ?? 10);
 
     for (const item of items) {
       const qty = parseInt(item.quantity, 10);
@@ -78,9 +83,6 @@ export async function POST(
         return NextResponse.json({ error: `Requested quantity for "${rp.name}" exceeds available stock. Only ${rp.stock} left.` }, { status: 400 });
       }
 
-      const commission = (rp.retailPrice - rp.purchasePrice) * qty;
-      totalCommission += commission;
-
       const productDoc = rp.productId as any;
       const uploaderId = productDoc?.uploadedBy ? productDoc.uploadedBy.toString() : null;
       supplierIds.add(uploaderId || 'mother');
@@ -91,16 +93,40 @@ export async function POST(
         }, { status: 400 });
       }
 
+      const isOwnProduct = !!(uploaderId && uploaderId === reseller._id.toString());
+      let itemSystemFee = 0;
+
+      if (isOwnProduct) {
+        // Reseller is selling their OWN uploaded product on their own storefront
+        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
+          ? Number(productDoc.purchasePrice)
+          : (rp.purchasePrice ?? 0);
+
+        itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * qty;
+        totalOwnProductSystemFee += itemSystemFee;
+
+        // Reseller keeps retail sales revenue minus Mother platform system fee
+        const ownEarnings = (rp.retailPrice * qty) - itemSystemFee;
+        totalCommission += ownEarnings;
+      } else {
+        // Dropshipping from mother catalog or another reseller
+        const commission = (rp.retailPrice - rp.purchasePrice) * qty;
+        totalCommission += commission;
+      }
+
       const validatedItem = {
         resellerProductId: rp._id,
         productId: productDoc?._id || rp.productId,
         name: rp.name,
         quantity: qty,
         retailPrice: rp.retailPrice,
-        purchasePrice: rp.purchasePrice,
+        purchasePrice: isOwnProduct 
+          ? ((productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0) ? Number(productDoc.purchasePrice) : rp.purchasePrice) 
+          : rp.purchasePrice,
         image: rp.images?.[0],
         color: item.color || undefined,
         size: item.size || undefined,
+        systemFee: itemSystemFee,
       };
 
       validatedItems.push(validatedItem);
@@ -118,14 +144,14 @@ export async function POST(
           ? Number(productDoc.purchasePrice)
           : (uploaderRp?.purchasePrice ?? 0);
 
-        const itemSystemFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
+        const itemFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
 
         uploaderItemsMap.get(uploaderId)!.push({
           ...validatedItem,
           resellerProductId: uploaderRp?._id || rp._id,
           retailPrice: rp.purchasePrice,
           purchasePrice: baseCost,
-          systemFee: itemSystemFee,
+          systemFee: itemFee,
         });
       }
     }
@@ -342,10 +368,13 @@ export async function POST(
         manualPaymentDetails: manualPaymentDetails || undefined,
         status: 'Order Placed',
         resellerCommission: totalCommission,
+        systemFee: totalOwnProductSystemFee,
         commissionStatus: 'pending',
         customerNote: notes || '',
         internalNote: '',
-        systemNote: `Storefront Order (${reseller.storeName})`,
+        systemNote: totalOwnProductSystemFee > 0
+          ? `Storefront Order (${reseller.storeName}) - Own Product (Earnings: ৳${totalCommission}, System Fee: ৳${totalOwnProductSystemFee})`
+          : `Storefront Order (${reseller.storeName})`,
         shortId,
       }], { session: sessionConn })) as any[];
 
@@ -379,7 +408,7 @@ export async function POST(
 
       // Create Fulfillment Orders for other resellers if applicable
       let fIndex = 1;
-      let totalMotherSystemFee = 0;
+      let totalMotherSystemFee = totalOwnProductSystemFee;
       for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
         const uploaderSubtotal = fItems.reduce((sum, item) => sum + item.retailPrice * item.quantity, 0);
         // Base product payout to uploader reseller

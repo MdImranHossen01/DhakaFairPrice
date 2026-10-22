@@ -271,9 +271,14 @@ export async function POST(request: NextRequest) {
 
     let serverComputedSubtotal = 0;
     let totalCommission = 0;
+    let totalOwnProductSystemFee = 0;
     const validatedItems: any[] = [];
     const uploaderItemsMap = new Map<string, any[]>();
     const shortId = 'ORD-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+
+    const resellerFeeRate = reseller.systemFeePercent !== undefined 
+      ? reseller.systemFeePercent 
+      : (reseller.commissionRate ?? 10);
 
     for (const item of items) {
       const product = await Product.findById(item.productId).session(sessionConn);
@@ -321,7 +326,20 @@ export async function POST(request: NextRequest) {
       const retailPrice = Number(item.price) || product.salePrice || product.price || 0;
       const purchasePrice = Number(item.purchasePrice) || product.purchasePrice || product.price || 0;
       const itemSubtotal = retailPrice * item.quantity;
-      const itemCommission = (retailPrice - purchasePrice) * item.quantity;
+
+      const uploaderId = product.uploadedBy ? product.uploadedBy.toString() : null;
+      const isOwnProduct = !!(uploaderId && uploaderId === reseller._id.toString());
+      let itemCommission = 0;
+      let itemSystemFee = 0;
+
+      if (isOwnProduct) {
+        const baseCost = Number(product.purchasePrice) || 0;
+        itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * item.quantity;
+        totalOwnProductSystemFee += itemSystemFee;
+        itemCommission = (retailPrice * item.quantity) - itemSystemFee;
+      } else {
+        itemCommission = (retailPrice - purchasePrice) * item.quantity;
+      }
 
       serverComputedSubtotal += itemSubtotal;
       totalCommission += itemCommission;
@@ -332,15 +350,15 @@ export async function POST(request: NextRequest) {
         name: product.name,
         quantity: item.quantity,
         retailPrice,
-        purchasePrice,
+        purchasePrice: isOwnProduct ? (Number(product.purchasePrice) || 0) : purchasePrice,
         image: item.image || product.images?.[0] || '',
         color: item.color || undefined,
         size: item.size || undefined,
+        systemFee: itemSystemFee,
       };
 
       validatedItems.push(validatedItem);
 
-      const uploaderId = product.uploadedBy ? product.uploadedBy.toString() : null;
       if (uploaderId && uploaderId !== reseller._id.toString()) {
         if (!uploaderItemsMap.has(uploaderId)) {
           uploaderItemsMap.set(uploaderId, []);
@@ -408,6 +426,7 @@ export async function POST(request: NextRequest) {
       internalNote: internalNote || undefined,
       systemNote: `Manual Order by Reseller (${reseller.storeName})`,
       resellerCommission: netCommission,
+      systemFee: totalOwnProductSystemFee,
       commissionStatus: 'pending',
     }], { session: sessionConn });
 
@@ -435,10 +454,13 @@ export async function POST(request: NextRequest) {
       paymentStatus: paymentStatus || 'Pending',
       status: status || 'Order Placed',
       resellerCommission: netCommission,
+      systemFee: totalOwnProductSystemFee,
       commissionStatus: 'pending',
       shortId,
       internalNote: internalNote || '',
-      systemNote: `Manual Order created from Reseller Dashboard`,
+      systemNote: totalOwnProductSystemFee > 0
+        ? `Manual Order created from Reseller Dashboard - Own Product (Earnings: ৳${netCommission}, System Fee: ৳${totalOwnProductSystemFee})`
+        : `Manual Order created from Reseller Dashboard`,
     }], { session: sessionConn });
 
     // 5. Update Reseller stats
