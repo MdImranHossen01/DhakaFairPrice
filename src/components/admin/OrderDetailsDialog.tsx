@@ -1240,47 +1240,89 @@ export default function OrderDetailsDialog({
                       />
                     </div>
 
-                    {/* Right: Bill Summary */}
-                    <div className="bg-slate-50/80 dark:bg-zinc-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-2">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-zinc-800/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                        <span className="flex items-center gap-1.5">
-                          <span>🧾</span>
-                          <span>Bill Summary / বিল বিবরণী</span>
-                        </span>
-                        <span className="text-[10px] lowercase font-mono text-muted-foreground/80">customer</span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
-                        <span>Subtotal:</span>
-                        <span className="font-mono font-medium text-foreground">৳{Math.round(subtotal)}</span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
-                        <span className="flex items-center gap-1.5">
-                          <span>🚚</span>
-                          <span>Delivery Charge:</span>
-                        </span>
-                        <span className="font-mono font-medium text-foreground">৳{Math.round(deliveryCharge)}</span>
-                      </div>
-
-                      {couponDiscount > 0 && (
-                        <div className="flex justify-between items-center text-xs text-destructive px-1">
-                          <span>Coupon Discount:</span>
-                          <span className="font-mono font-semibold">-৳{Math.round(couponDiscount)}</span>
+                    {/* Right: Bill Summary & Mother Shop Earnings */}
+                    <div className="space-y-3">
+                      <div className="bg-slate-50/80 dark:bg-zinc-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800 space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-zinc-800/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <span className="flex items-center gap-1.5">
+                            <span>🧾</span>
+                            <span>Bill Summary / বিল বিবরণী</span>
+                          </span>
+                          <span className="text-[10px] lowercase font-mono text-muted-foreground/80">customer</span>
                         </div>
-                      )}
 
-                      {walletUsed > 0 && (
-                        <div className="flex justify-between items-center text-xs text-amber-600 dark:text-amber-400 px-1">
-                          <span>Wallet Used:</span>
-                          <span className="font-mono font-semibold">-৳{Math.round(walletUsed)}</span>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                          <span>Subtotal:</span>
+                          <span className="font-mono font-medium text-foreground">৳{Math.round(subtotal)}</span>
                         </div>
-                      )}
 
-                      <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-slate-300 dark:border-zinc-700 px-1 mt-1">
-                        <span className="uppercase text-[10px] tracking-wider text-muted-foreground font-sans">Total Amount:</span>
-                        <span className="font-mono text-primary font-black text-base">৳{Math.round(totalAmount)}</span>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                          <span className="flex items-center gap-1.5">
+                            <span>🚚</span>
+                            <span>Delivery Charge:</span>
+                          </span>
+                          <span className="font-mono font-medium text-foreground">৳{Math.round(deliveryCharge)}</span>
+                        </div>
+
+                        {couponDiscount > 0 && (
+                          <div className="flex justify-between items-center text-xs text-destructive px-1">
+                            <span>Coupon Discount:</span>
+                            <span className="font-mono font-semibold">-৳{Math.round(couponDiscount)}</span>
+                          </div>
+                        )}
+
+                        {walletUsed > 0 && (
+                          <div className="flex justify-between items-center text-xs text-amber-600 dark:text-amber-400 px-1">
+                            <span>Wallet Used:</span>
+                            <span className="font-mono font-semibold">-৳{Math.round(walletUsed)}</span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-slate-300 dark:border-zinc-700 px-1 mt-1">
+                          <span className="uppercase text-[10px] tracking-wider text-muted-foreground font-sans">Total Amount:</span>
+                          <span className="font-mono text-primary font-black text-base">৳{Math.round(totalAmount)}</span>
+                        </div>
                       </div>
+
+                      {/* Mother Shop Earnings / Revenue Card */}
+                      {(() => {
+                        const motherFee = Math.round(Number(order.disbursement?.motherFee ?? order.systemFee) || 0);
+                        const motherProfit = Math.round(Number(order.disbursement?.motherProfit ?? order.salesProfit) || 0);
+                        const totalMotherEarnings = motherFee + motherProfit;
+                        const isPaid = order.paymentStatus === 'Paid';
+
+                        return (
+                          <div className="flex justify-between items-center text-sm p-3 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 rounded-xl">
+                            <div>
+                              <span className="font-bold text-indigo-900 dark:text-indigo-300 block text-xs flex items-center gap-1.5">
+                                <span>🏢</span>
+                                <span>Mother Shop Earnings / নিজস্ব আয়:</span>
+                              </span>
+                              <span className="text-[10px] text-indigo-600/90 dark:text-indigo-400/90 font-medium flex items-center gap-1.5 mt-0.5">
+                                {motherFee > 0 && <span>Platform Fee: ৳{motherFee}</span>}
+                                {motherFee > 0 && motherProfit > 0 && <span>•</span>}
+                                {motherProfit > 0 && <span>Direct Profit: ৳{motherProfit}</span>}
+                                {motherFee === 0 && motherProfit === 0 && <span>Net revenue from this order</span>}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-mono font-black text-indigo-700 dark:text-indigo-400 text-base block">
+                                ৳{totalMotherEarnings}
+                              </span>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-[10px] font-bold capitalize ${
+                                  isPaid 
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-zinc-900 dark:text-emerald-300' 
+                                    : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-zinc-900 dark:text-amber-300'
+                                }`}
+                              >
+                                {isPaid ? 'Received' : 'Pending'}
+                              </Badge>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 );
