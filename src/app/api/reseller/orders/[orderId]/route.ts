@@ -32,7 +32,7 @@ export async function GET(
       .populate('resellerId', 'storeName subdomain customDomain')
       .populate({
         path: 'motherOrderId',
-        select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission',
+        select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission subtotal items',
         populate: [
           {
             path: 'storefrontResellerId',
@@ -130,10 +130,36 @@ export async function GET(
       motherProfit,
     };
 
+    const finalDeliveryCharge = deliveryCharge;
+    const finalOrderValue = orderValue;
+    const finalSubtotal = Number(motherOrder?.subtotal) || Math.max(0, finalOrderValue - finalDeliveryCharge);
+
+    let finalItems = (order as any).items || [];
+    if (motherOrder?.items && Array.isArray(motherOrder.items) && motherOrder.items.length > 0) {
+      finalItems = finalItems.map((it: any) => {
+        const matchingMotherItem = motherOrder.items.find((mi: any) => {
+          const miProdId = mi.product?._id?.toString() || mi.product?.toString();
+          const itProdId = it.productId?._id?.toString() || it.productId?.toString();
+          return miProdId && itProdId && miProdId === itProdId;
+        });
+        if (matchingMotherItem && matchingMotherItem.price) {
+          return {
+            ...it,
+            retailPrice: matchingMotherItem.price,
+          };
+        }
+        return it;
+      });
+    }
+
     return NextResponse.json({
       ...order,
+      items: finalItems,
+      subtotal: finalSubtotal,
+      deliveryCharge: finalDeliveryCharge,
+      totalAmount: finalOrderValue,
       disbursement,
-      fullOrderValue: orderValue,
+      fullOrderValue: finalOrderValue,
     });
   } catch (error: any) {
     console.error('Error fetching reseller order:', error);

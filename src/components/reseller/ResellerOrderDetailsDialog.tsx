@@ -1072,11 +1072,13 @@ export default function ResellerOrderDetailsDialog({
                   
                   <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t">
                     <span className="font-bold">Total Amount:</span>
-                    <span className="font-black text-primary">৳{Math.round(Number(order.totalAmount) || 0)}</span>
+                    <span className="font-black text-primary">৳{Math.round(Number(order.totalAmount || order.fullOrderValue || order.disbursement?.orderValue) || 0)}</span>
                   </div>
 
                   <div className="flex justify-between items-center text-sm mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <span className="font-bold text-emerald-800">Your Commission:</span>
+                    <span className="font-bold text-emerald-800">
+                      {order.shortId?.includes('-F') ? 'Your Product Share (Supplier):' : 'Your Commission:'}
+                    </span>
                     <div className="text-right">
                       <span className="font-black text-emerald-600 block">৳{Math.round(Number(order.resellerCommission) || 0)}</span>
                       <Badge variant="outline" className="text-[10px] bg-white border-emerald-300 text-emerald-700 capitalize">
@@ -1084,6 +1086,20 @@ export default function ResellerOrderDetailsDialog({
                       </Badge>
                     </div>
                   </div>
+
+                  {order.disbursement && (
+                    <div className="mt-3">
+                      <DisbursementBreakdown
+                        disbursement={order.disbursement}
+                        fallbackCommission={order.resellerCommission}
+                        fallbackSystemFee={order.systemFee}
+                        fallbackDeliveryCharge={order.deliveryCharge}
+                        fallbackTotalAmount={order.totalAmount}
+                        commissionStatus={order.commissionStatus}
+                        mode="card"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
               
