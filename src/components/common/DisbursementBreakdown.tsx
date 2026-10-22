@@ -29,6 +29,7 @@ interface DisbursementBreakdownProps {
   fallbackTotalAmount?: number;
   commissionStatus?: string;
   mode?: 'table' | 'card';
+  perspective?: 'admin' | 'reseller';
 }
 
 export function DisbursementBreakdown({
@@ -38,7 +39,8 @@ export function DisbursementBreakdown({
   fallbackDeliveryCharge,
   fallbackTotalAmount,
   commissionStatus,
-  mode = 'table'
+  mode = 'table',
+  perspective = 'admin'
 }: DisbursementBreakdownProps) {
   if (!disbursement) {
     const comm = Math.round(fallbackCommission || 0);
@@ -64,7 +66,7 @@ export function DisbursementBreakdown({
             </Badge>
           )}
         </div>
-        {fee > 0 && <span className="text-[11px] text-primary">Mother Fee: ৳{fee}</span>}
+        {perspective !== 'reseller' && fee > 0 && <span className="text-[11px] text-primary">Mother Fee: ৳{fee}</span>}
         {del > 0 && <span className="text-[10px] text-muted-foreground">Delivery: ৳{del}</span>}
       </div>
     );
@@ -110,6 +112,9 @@ export function DisbursementBreakdown({
             {supplier.isYou && (
               <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full">You</span>
             )}
+            {!supplier.isYou && perspective === 'reseller' && (
+              <span className="text-[9px] bg-slate-200/80 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-medium px-1 py-0.2 rounded">Product Cost</span>
+            )}
           </span>
           <span className={`font-mono font-bold ${supplier.isYou ? 'text-emerald-700 dark:text-emerald-300 font-black' : 'text-slate-800 dark:text-zinc-200'}`}>
             ৳{supplier.amount}
@@ -140,19 +145,19 @@ export function DisbursementBreakdown({
         </div>
       )}
 
-      {/* 3. Mother Platform Fee */}
-      {motherFee > 0 && (
+      {/* 3. Mother Platform Fee - Only shown to Admin or for Reseller's own product sales */}
+      {motherFee > 0 && (perspective !== 'reseller' || isOwnProductSale) && (
         <div className="flex justify-between items-center px-2 py-0.5 text-slate-600 dark:text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span>⚙️</span>
-            <span>Mother Fee:</span>
+            <span>{isOwnProductSale ? 'Platform Fee:' : 'Mother Fee:'}</span>
           </span>
           <span className="font-mono font-bold text-primary">৳{motherFee}</span>
         </div>
       )}
 
-      {/* 4. Mother Shop direct profit (for mother catalog goods) */}
-      {(motherProfit ?? 0) > 0 && (
+      {/* 4. Mother Shop direct profit (Only shown to Admin) */}
+      {perspective !== 'reseller' && (motherProfit ?? 0) > 0 && (
         <div className="flex justify-between items-center px-2 py-0.5 text-slate-600 dark:text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span>🏢</span>

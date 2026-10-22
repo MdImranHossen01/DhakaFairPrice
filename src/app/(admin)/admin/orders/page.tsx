@@ -1302,6 +1302,7 @@ function OrdersContent() {
                         fallbackDeliveryCharge={order.deliveryCharge}
                         fallbackTotalAmount={order.totalAmount}
                         commissionStatus={order.commissionStatus}
+                        perspective="admin"
                       />
                     </TableCell>
                     <TableCell>

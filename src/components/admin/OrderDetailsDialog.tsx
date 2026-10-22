@@ -1236,6 +1236,7 @@ export default function OrderDetailsDialog({
                         fallbackTotalAmount={order.totalAmount}
                         commissionStatus={order.commissionStatus}
                         mode="card"
+                        perspective="admin"
                       />
                     </div>
 

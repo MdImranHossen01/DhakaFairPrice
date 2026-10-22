@@ -1063,6 +1063,7 @@ export default function ResellerOrderDetailsDialog({
                           fallbackTotalAmount={order.totalAmount}
                           commissionStatus={order.commissionStatus}
                           mode="card"
+                          perspective="reseller"
                         />
                       </div>
 
