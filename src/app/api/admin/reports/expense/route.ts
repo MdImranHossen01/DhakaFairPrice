@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const matchQuery: any = { type: { $ne: 'income' } };
+    const matchQuery: any = {
+      type: { $ne: 'income' },
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    };
     if (category && category !== 'all') {
       matchQuery.category = category;
     }

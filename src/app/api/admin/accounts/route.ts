@@ -15,11 +15,8 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Ensure Bengali names in existing accounts are updated to English
-    await LedgerAccount.updateMany(
-      { name: /হাতে নগদ/ },
-      { $set: { name: 'Cash in Hand' } }
-    );
+    const { searchParams } = new URL(req.url);
+    const shouldSync = searchParams.get('sync') === 'true';
 
     // Ensure the default primary Cash in Hand account exists for admin
     const cashAccount = await LedgerAccount.findOne({
@@ -27,7 +24,7 @@ export async function GET(req: NextRequest) {
         { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
         { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
       ]
-    });
+    }).lean();
     if (!cashAccount) {
       await LedgerAccount.create({
         name: 'Cash in Hand',
@@ -41,14 +38,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Ensure active bills, orders, and payables are synced so AR and AP balances are up to date
-    try {
-      const { syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
-      await syncBillsToLedger();
-      await syncOrdersToLedger();
-      await syncPayablesToLedger();
-    } catch (syncErr) {
-      console.error('Error syncing ledger for accounts:', syncErr);
+    // Only run active ledger synchronization when explicitly requested (e.g. Sync & Refresh button)
+    if (shouldSync) {
+      try {
+        const { syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+        await syncBillsToLedger();
+        await syncOrdersToLedger();
+        await syncPayablesToLedger();
+      } catch (syncErr) {
+        console.error('Error syncing ledger for accounts:', syncErr);
+      }
     }
 
     const accounts = await LedgerAccount.find({

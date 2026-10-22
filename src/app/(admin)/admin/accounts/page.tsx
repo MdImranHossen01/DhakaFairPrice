@@ -81,9 +81,17 @@ export default function AccountsPage() {
     }
   };
 
+  const isProtectedAccount = (account: any) => {
+    const code = account?.code?.toUpperCase()?.trim();
+    const name = account?.name?.toLowerCase()?.trim();
+    return (
+      ['CASH', 'BANK', 'AP', 'AR'].includes(code) ||
+      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(name)
+    );
+  };
+
   const handleDeleteAccount = async (account: any) => {
-    const isDefault = ['CASH', 'BANK', 'AP', 'AR'].includes(account.code);
-    if (isDefault) {
+    if (isProtectedAccount(account)) {
       await Swal.fire({
         title: 'Protected System Account',
         text: `"${account.name}" (${account.code}) is a core system account required for automatic store operations (orders, payouts, bills) and cannot be deleted.`,
@@ -174,13 +182,17 @@ export default function AccountsPage() {
   });
   const [transferring, setTransferring] = useState(false);
 
-  const fetchAccounts = async () => {
+  const fetchAccounts = async (forceSync = false) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/accounts');
+      const url = forceSync ? '/api/admin/accounts?sync=true' : '/api/admin/accounts';
+      const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         setAccounts(json.accounts || []);
+        if (forceSync) {
+          toast.success('Accounts & ledger synchronized successfully');
+        }
       }
     } catch (error) {
       console.error('Failed to fetch accounts:', error);
@@ -191,7 +203,7 @@ export default function AccountsPage() {
   };
 
   useEffect(() => {
-    fetchAccounts();
+    fetchAccounts(false);
   }, []);
 
   const handleOpenCredit = (acc: any | null) => {
@@ -351,8 +363,9 @@ export default function AccountsPage() {
           <Button 
             variant="outline" 
             size="icon" 
-            onClick={fetchAccounts} 
+            onClick={() => fetchAccounts(true)} 
             disabled={loading} 
+            title="Sync & Refresh Accounts"
             className="h-9 w-9"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -544,13 +557,15 @@ export default function AccountsPage() {
                                 <span>View in Full Ledger</span>
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteAccount(acc)}
-                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                              <span>Delete Account</span>
-                            </DropdownMenuItem>
+                            {!isProtectedAccount(acc) && (
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteAccount(acc)}
+                                className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                                <span>Delete Account</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -640,13 +655,15 @@ export default function AccountsPage() {
                               <span>View in Full Ledger</span>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteAccount(acc)}
-                            className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-rose-600" />
-                            <span>Delete Account</span>
-                          </DropdownMenuItem>
+                          {!isProtectedAccount(acc) && (
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteAccount(acc)}
+                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Delete Account</span>
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

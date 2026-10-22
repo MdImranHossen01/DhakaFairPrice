@@ -202,9 +202,17 @@ export default function ResellerAccountsPage() {
     }
   };
 
+  const isProtectedAccount = (account: any) => {
+    const code = account?.code?.toUpperCase()?.trim();
+    const name = account?.name?.toLowerCase()?.trim();
+    return (
+      ['CASH', 'BANK', 'AP', 'AR'].includes(code) ||
+      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(name)
+    );
+  };
+
   const handleDeleteAccount = async (account: any) => {
-    const isDefault = ['CASH', 'BANK', 'AP', 'AR'].includes(account.code);
-    if (isDefault) {
+    if (isProtectedAccount(account)) {
       await Swal.fire({
         title: 'Protected System Account',
         text: `"${account.name}" (${account.code}) is a core store account required for automatic store operations and cannot be deleted.`,
@@ -446,13 +454,15 @@ export default function ResellerAccountsPage() {
                           <Save className="h-3.5 w-3.5 text-muted-foreground" />
                           <span>Edit Opening Balance</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteAccount(acc)}
-                          className="text-xs cursor-pointer text-destructive focus:text-destructive gap-2 font-semibold"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                          <span>Delete Account</span>
-                        </DropdownMenuItem>
+                        {!isProtectedAccount(acc) && (
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteAccount(acc)}
+                            className="text-xs cursor-pointer text-destructive focus:text-destructive gap-2 font-semibold"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            <span>Delete Account</span>
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

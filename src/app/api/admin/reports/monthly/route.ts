@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
             _id: { $dateToString: { format: '%Y-%m', date: '$createdAt', timezone: '+06:00' } },
             totalSales: { $sum: '$totalAmount' },
             deliveryCost: { $sum: '$deliveryCharge' },
+            resellerCommission: { $sum: { $ifNull: ['$resellerCommission', 0] } },
             orderCount: { $sum: 1 },
             cogs: {
               $sum: {
@@ -67,12 +68,14 @@ export async function GET(req: NextRequest) {
         }
       ]),
 
-      // Expenses Aggregated by month (%Y-%m) (BST +06:00)
+      // Expenses Aggregated by month (%Y-%m) (BST +06:00) - Only Mother general operating expenses
       Expense.aggregate([
         {
           $match: {
             date: { $gte: startDate, $lte: endDate },
-            type: { $ne: 'income' }
+            type: { $ne: 'income' },
+            category: { $ne: 'Courier & Shipping' }, // Exclude courier charge as it is already subtracted in Net Sales
+            $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
           }
         },
         {
@@ -99,6 +102,7 @@ export async function GET(req: NextRequest) {
     let summaryNetSales = 0;
     let summaryDeliveryCost = 0;
     let summaryTotal = 0;
+    let summaryResellerCommission = 0;
     let summarySalesProfit = 0;
     let summaryExpense = 0;
     let summaryNetProfit = 0;
@@ -108,18 +112,20 @@ export async function GET(req: NextRequest) {
       const monthKey = `${year}-${monthStr}`;
       const monthName = monthNames[m - 1];
 
-      const orderData = orderMap.get(monthKey) || { totalSales: 0, deliveryCost: 0, cogs: 0, orderCount: 0 };
+      const orderData = orderMap.get(monthKey) || { totalSales: 0, deliveryCost: 0, cogs: 0, resellerCommission: 0, orderCount: 0 };
       const expense = expenseMap.get(monthKey) || 0;
 
       const netSales = Math.max(0, orderData.totalSales - orderData.deliveryCost);
       const deliveryCost = orderData.deliveryCost || 0;
       const total = orderData.totalSales || 0;
-      const salesProfit = netSales - (orderData.cogs || 0);
+      const resellerCommission = orderData.resellerCommission || 0;
+      const salesProfit = Math.max(0, netSales - (orderData.cogs || 0) - resellerCommission);
       const netProfit = salesProfit - expense;
 
       summaryNetSales += netSales;
       summaryDeliveryCost += deliveryCost;
       summaryTotal += total;
+      summaryResellerCommission += resellerCommission;
       summarySalesProfit += salesProfit;
       summaryExpense += expense;
       summaryNetProfit += netProfit;
@@ -131,6 +137,7 @@ export async function GET(req: NextRequest) {
         netSales,
         deliveryCost,
         total,
+        resellerCommission,
         salesProfit,
         expense,
         netProfit,
@@ -145,6 +152,7 @@ export async function GET(req: NextRequest) {
         totalNetSales: summaryNetSales,
         totalDeliveryCost: summaryDeliveryCost,
         grandTotal: summaryTotal,
+        totalResellerCommission: summaryResellerCommission,
         totalSalesProfit: summarySalesProfit,
         totalExpense: summaryExpense,
         totalNetProfit: summaryNetProfit

@@ -561,6 +561,34 @@ export async function syncOrdersToLedger() {
       { $set: { paymentStatus: 'Paid' } }
     );
 
+    // 0b. Auto-sync resellerCommission from ResellerOrder to Order
+    await Order.updateMany(
+      {
+        orderSource: { $ne: 'reseller_storefront' },
+        resellerCommission: { $gt: 0 }
+      },
+      { $set: { resellerCommission: 0 } }
+    );
+
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const resellerOrdersWithComm = await ResellerOrder.find({
+      resellerCommission: { $gt: 0 },
+      deletedAt: null
+    }).select('shortId resellerCommission commissionStatus').lean();
+
+    for (const ro of resellerOrdersWithComm) {
+      if (!ro.shortId) continue;
+      await Order.updateOne(
+        { shortId: ro.shortId, orderSource: 'reseller_storefront' },
+        {
+          $set: {
+            resellerCommission: ro.resellerCommission,
+            ...(ro.commissionStatus ? { commissionStatus: ro.commissionStatus } : {})
+          }
+        }
+      );
+    }
+
     // Fetch active/valid orders
     const orders = await Order.find({
       status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },

@@ -91,8 +91,12 @@ export async function DELETE(
       return NextResponse.json({ message: 'Account not found in your store' }, { status: 404 });
     }
 
-    if (['CASH', 'BANK', 'AP', 'AR'].includes(account.code) || account.category === 'Cash') {
-      return NextResponse.json({ message: 'Default system accounts cannot be deleted' }, { status: 400 });
+    const isProtected =
+      ['CASH', 'BANK', 'AP', 'AR'].includes(account.code?.toUpperCase()?.trim()) ||
+      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(account.name?.toLowerCase()?.trim()) ||
+      account.category === 'Cash';
+    if (isProtected) {
+      return NextResponse.json({ message: `Core store account (${account.name}) cannot be deleted as it is required for store operations.` }, { status: 400 });
     }
 
     // 1. Cascade delete all linked expenses/incomes recorded under this account

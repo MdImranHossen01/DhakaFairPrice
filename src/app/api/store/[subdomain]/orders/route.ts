@@ -305,6 +305,8 @@ export async function POST(
         manualPaymentDetails: manualPaymentDetails || undefined,
         status: 'Order Placed',
         resellerId: reseller._id,
+        resellerCommission: totalCommission,
+        commissionStatus: 'pending',
         customerNote: notes || '',
         internalNote: '',
         systemNote: `Reseller Order (${reseller.storeName})`,

@@ -42,6 +42,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { Pagination } from '@/components/ui/pagination';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
+import { cleanAccountName } from '@/lib/utils';
 
 function getTransactionTypeInfo(tx: any) {
   if (tx.type === 'debit') {
@@ -403,7 +404,7 @@ function AccountsLedgerContent() {
                   <SelectItem value="all">All Accounts</SelectItem>
                   {accounts.map((acc) => (
                     <SelectItem key={acc._id} value={acc._id} className="text-xs">
-                      {acc.name}
+                      {cleanAccountName(acc.name)} {acc.code ? `(${acc.code})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

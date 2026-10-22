@@ -87,8 +87,11 @@ export async function DELETE(
       return NextResponse.json({ message: 'Account not found' }, { status: 404 });
     }
 
-    // Protect default core system accounts
-    if (['CASH', 'BANK', 'AP', 'AR'].includes(account.code)) {
+    // Protect default core system accounts (AR, AP, BANK, CASH)
+    const isProtected =
+      ['CASH', 'BANK', 'AP', 'AR'].includes(account.code?.toUpperCase()?.trim()) ||
+      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(account.name?.toLowerCase()?.trim());
+    if (isProtected) {
       return NextResponse.json(
         { message: `Core system account (${account.name}) cannot be deleted as it is required for store operations.` },
         { status: 400 }

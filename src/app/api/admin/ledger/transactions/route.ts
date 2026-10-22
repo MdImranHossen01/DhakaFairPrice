@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import mongoose from 'mongoose';
 import connectToDatabase from '@/lib/db';
 import LedgerTransaction from '@/models/LedgerTransaction';
 import { logLedgerTransaction, seedLedgerAccounts } from '@/lib/ledgerHelper';
@@ -12,29 +13,34 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    await seedLedgerAccounts();
-
-    // Auto-clean any orphan ledger transactions & sync payouts, bills, orders, and payables to ledger
-    const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
-    await cleanOrphanLedgerTransactions();
-    await backfillPayoutsToLedger();
-    await syncBillsToLedger();
-    await syncOrdersToLedger();
-    await syncPayablesToLedger();
 
     const { searchParams } = new URL(req.url);
     const accountId = searchParams.get('accountId');
+    const shouldSync = searchParams.get('sync') === 'true';
+
+    // Only run heavy full reconciliation when explicitly requested (e.g. sync button)
+    if (shouldSync) {
+      await seedLedgerAccounts();
+      const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+      await cleanOrphanLedgerTransactions();
+      await backfillPayoutsToLedger();
+      await syncBillsToLedger();
+      await syncOrdersToLedger();
+      await syncPayablesToLedger();
+    }
 
     const queryFilter: any = {
       $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
     };
-    if (accountId) {
-      queryFilter.account = accountId;
+    if (accountId && mongoose.Types.ObjectId.isValid(accountId)) {
+      queryFilter.account = new mongoose.Types.ObjectId(accountId);
     }
 
     const transactions = await LedgerTransaction.find(queryFilter)
       .populate('account')
-      .sort({ date: -1, createdAt: -1 });
+      .sort({ date: -1, createdAt: -1 })
+      .limit(accountId ? 200 : 500)
+      .lean();
 
     return NextResponse.json(transactions);
   } catch (error: any) {

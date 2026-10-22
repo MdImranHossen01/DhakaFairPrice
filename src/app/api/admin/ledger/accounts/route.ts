@@ -12,13 +12,11 @@ export async function GET() {
     }
 
     await connectToDatabase();
-    await seedLedgerAccounts();
 
-    // Auto-sync any approved reseller payouts to the ledger
-    const { backfillPayoutsToLedger } = await import('@/lib/ledgerHelper');
-    await backfillPayoutsToLedger();
+    const accounts = await LedgerAccount.find({
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    }).sort({ category: 1, name: 1 }).lean();
 
-    const accounts = await LedgerAccount.find().sort({ code: 1 });
     return NextResponse.json(accounts);
   } catch (error: any) {
     console.error('Error fetching ledger accounts:', error);
@@ -42,7 +40,10 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
     
-    const account = await LedgerAccount.findOne({ code });
+    const account = await LedgerAccount.findOne({
+      code,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
     if (!account) {
       return NextResponse.json({ message: 'Account not found' }, { status: 404 });
     }
@@ -53,7 +54,10 @@ export async function POST(req: NextRequest) {
     // Recalculate full balance of the account
     await recalculateLedgerBalance(code);
 
-    const updatedAccount = await LedgerAccount.findOne({ code });
+    const updatedAccount = await LedgerAccount.findOne({
+      code,
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    }).lean();
     return NextResponse.json(updatedAccount);
   } catch (error: any) {
     console.error('Error updating opening balance:', error);
