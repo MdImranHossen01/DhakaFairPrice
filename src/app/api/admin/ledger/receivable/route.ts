@@ -4,6 +4,8 @@ import connectToDatabase from '@/lib/db';
 import Bill from '@/models/Bill';
 import Order from '@/models/Order';
 import ResellerOrder from '@/models/ResellerOrder';
+import LedgerAccount from '@/models/LedgerAccount';
+import { syncBillsToLedger, syncOrdersToLedger } from '@/lib/ledgerHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,18 +19,22 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    const [dueBills, allClientBills, pendingOrders] = await Promise.all([
-      // 1. Unpaid Client Invoices / Credit Bills
+    // Auto-sync bills and orders to ledger so receivables stay 100% reconciled
+    await syncBillsToLedger();
+    await syncOrdersToLedger();
+
+    const [dueBills, allClientBills, pendingOrders, arAccount] = await Promise.all([
+      // 1. Unpaid Client Invoices / Credit Bills (excluding offers and delivery chalans)
       Bill.find({
         status: 'Due',
-        documentType: { $ne: 'offer' }
+        documentType: { $nin: ['offer', 'chalan'] }
       })
         .sort({ date: -1 })
         .lean(),
 
-      // 2. All bills to aggregate client-wise statistics
+      // 2. All bills to aggregate client-wise statistics (excluding offers and chalans)
       Bill.find({
-        documentType: { $ne: 'offer' }
+        documentType: { $nin: ['offer', 'chalan'] }
       })
         .sort({ date: -1 })
         .lean(),
@@ -42,7 +48,13 @@ export async function GET(req: NextRequest) {
         .select('shortId customer totalAmount status paymentMethod shippingDetails shippingAddress createdAt orderSource resellerId storefrontResellerId systemFee')
         .sort({ createdAt: -1 })
         .limit(100)
-        .lean()
+        .lean(),
+
+      // 4. Ledger Account for Accounts Receivable
+      LedgerAccount.findOne({
+        code: 'AR',
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+      }).lean()
     ]);
 
     // Fetch matching reseller orders for accurate system fee / platform commission
@@ -85,16 +97,10 @@ export async function GET(req: NextRequest) {
     // Calculate totals
     const totalClientBillsDue = dueBills.reduce((acc: number, curr: any) => acc + (curr.currentBillDue || 0), 0);
     const totalPendingOrdersReceivable = pendingOrders.reduce((acc: number, curr: any) => {
-      const isStorefront = curr.orderSource === 'reseller_storefront' || Boolean(curr.storefrontResellerId);
-      const matchingRo = resellerOrders.find((r: any) => 
-        (r.motherOrderId && r.motherOrderId.toString() === curr._id.toString()) || 
-        (r.shortId === curr.shortId)
-      );
-      const systemFee = Number(curr.systemFee) || Number(matchingRo?.systemFee) || 0;
-      const rec = isStorefront ? systemFee : (Number(curr.totalAmount) || 0);
+      const rec = Number(curr.totalAmount) || 0;
       return acc + rec;
     }, 0);
-    const grandTotalReceivable = totalClientBillsDue + totalPendingOrdersReceivable;
+    const grandTotalReceivable = (arAccount as any)?.currentBalance ?? (totalClientBillsDue + totalPendingOrdersReceivable);
 
     return NextResponse.json({
       clientPayables: {
@@ -112,7 +118,7 @@ export async function GET(req: NextRequest) {
             (r.shortId === o.shortId)
           );
           const systemFee = Number(o.systemFee) || Number(matchingRo?.systemFee) || 0;
-          const receivableAmount = isStorefront ? systemFee : (Number(o.totalAmount) || 0);
+          const receivableAmount = Number(o.totalAmount) || 0;
 
           return {
             _id: o._id,

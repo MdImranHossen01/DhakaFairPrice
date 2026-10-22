@@ -27,6 +27,10 @@ export async function GET(req: NextRequest) {
       await syncBillsToLedger();
       await syncOrdersToLedger();
       await syncPayablesToLedger();
+    } else {
+      const { syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+      await syncOrdersToLedger();
+      await syncPayablesToLedger();
     }
 
     const queryFilter: any = {

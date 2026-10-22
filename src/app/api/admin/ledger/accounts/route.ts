@@ -13,6 +13,11 @@ export async function GET() {
 
     await connectToDatabase();
 
+    const { syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+    await syncBillsToLedger();
+    await syncOrdersToLedger();
+    await syncPayablesToLedger();
+
     const accounts = await LedgerAccount.find({
       $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
     }).sort({ category: 1, name: 1 }).lean();
