@@ -357,7 +357,7 @@ export default function AccountsPage() {
             className="gap-1.5 font-bold h-9 text-xs"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>+ Add Account</span>
+            <span>Add Account</span>
           </Button>
 
           <Button 

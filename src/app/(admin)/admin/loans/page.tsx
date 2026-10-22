@@ -210,7 +210,7 @@ export default function LoansPage() {
 
           <Button size="sm" onClick={() => setNewLoanOpen(true)} className="gap-1.5 font-bold h-9 text-xs">
             <Plus className="h-3.5 w-3.5" />
-            <span>+ Record Loan</span>
+            <span>Record Loan</span>
           </Button>
 
           <Button variant="outline" size="icon" onClick={fetchLoans} disabled={loading} className="h-9 w-9">

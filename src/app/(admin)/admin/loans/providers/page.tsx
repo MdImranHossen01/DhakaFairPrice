@@ -148,7 +148,7 @@ export default function LoanProvidersPage() {
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setModalOpen(true)} className="gap-1.5 font-bold">
             <Plus className="h-4 w-4" />
-            <span>+ Add Provider</span>
+            <span>Add Provider</span>
           </Button>
 
           <Button variant="outline" size="icon" onClick={fetchProviders} disabled={loading} className="h-9 w-9">
