@@ -96,7 +96,7 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
     const getHsl = (varName: string, fallback: string) => {
       const val = rootStyle.getPropertyValue(varName).trim();
       if (!val) return fallback;
-      if (val.startsWith('#') || val.startsWith('rgb') || val.startsWith('hsl')) return val;
+      if (val.startsWith('#') || val.includes('(')) return val;
       return `hsl(${val})`;
     };
     primary = getHsl('--primary', primary);
@@ -143,6 +143,9 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
     const customerZip = order.shippingAddress?.zipCode || order.customer?.address?.zipCode || "";
     const customerPhone = order.shippingAddress?.phone || order.customerPhone || order.customer?.phone || "";
 
+    const isPaid = String(order.paymentStatus || '').toLowerCase() === 'paid';
+    const paymentBadgeHtml = `<div class="pay-badge ${isPaid ? 'paid' : 'due'}">${isPaid ? '✓ PAID' : '● DUE'}</div>`;
+
     return `
       <div class="invoice-container" style="${index < orders.length - 1 ? 'page-break-after: always; break-after: page;' : ''}">
         <div class="header">
@@ -158,8 +161,9 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
               ${brandWebsite ? `<div>Web: ${brandWebsite}</div>` : ''}
             </div>
           </div>
-          <div>
+          <div class="header-right">
             <h1 class="invoice-title">INVOICE</h1>
+            ${paymentBadgeHtml}
           </div>
         </div>
 
@@ -247,8 +251,7 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
         </div>
 
         <div class="footer">
-          <div>Thank you for choosing <strong>${brandName}</strong>!</div>
-          <div style="margin-top: 5px; font-size: 10px; color: var(--muted-foreground);">This is a computer-generated invoice.</div>
+          <div>Thank you for choosing <strong>${brandName}</strong>! <span style="margin: 0 6px;">|</span> This is a computer-generated invoice.</div>
         </div>
       </div>
     `;
@@ -269,6 +272,9 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             --muted-foreground: ${mutedForeground};
             --foreground: ${foreground};
             --background: ${background};
+            --primary-dark: color-mix(in srgb, var(--primary) 70%, black);
+            --primary-tint: color-mix(in srgb, var(--primary) 8%, var(--background));
+            --primary-soft: color-mix(in srgb, var(--primary) 30%, var(--background));
           }
           * {
             box-sizing: border-box;
@@ -292,33 +298,66 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             page-break-inside: avoid;
             break-inside: avoid;
           }
+          .invoice-container {
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-height: 262mm;
+          }
+          .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+          }
+          .pay-badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 5px 16px;
+            border-radius: 999px;
+            border: 2px solid var(--primary-foreground);
+          }
+          .pay-badge.paid {
+            background: var(--primary-foreground);
+            color: var(--primary);
+          }
+          .pay-badge.due {
+            background: transparent;
+            color: var(--primary-foreground);
+          }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 20px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--primary-foreground);
+            border-radius: 10px;
+            padding: 22px 24px;
+            margin-bottom: 24px;
           }
           .brand-logo-container {
             display: flex;
             flex-direction: column;
           }
           .brand-logo {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 700;
-            color: var(--primary);
+            color: var(--primary-foreground);
             text-transform: uppercase;
-            margin-bottom: 5px;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
           }
           .brand-details {
             font-size: 12px;
-            color: var(--muted-foreground);
+            color: var(--primary-foreground);
           }
           .invoice-title {
-            font-size: 28px;
+            font-size: 30px;
             font-weight: 700;
-            color: var(--border);
+            letter-spacing: 3px;
+            color: var(--primary-foreground);
             text-align: right;
             margin: 0;
           }
@@ -328,12 +367,19 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             gap: 20px;
             margin-bottom: 30px;
           }
+          .bill-to, .order-info {
+            background: var(--primary-tint);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 14px 16px;
+          }
           .bill-to h3, .order-info h3 {
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            margin-bottom: 10px;
-            color: var(--muted-foreground);
+            letter-spacing: 1px;
+            margin: 0 0 10px 0;
+            color: var(--primary);
           }
           .bill-to p, .order-info p {
             margin: 4px 0;
@@ -353,16 +399,22 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             margin-bottom: 30px;
           }
           th {
-            background-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: var(--primary-foreground);
             text-align: left;
-            padding: 10px;
+            padding: 11px 10px;
             font-size: 12px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
           }
+          th:first-child { border-top-left-radius: 8px; }
+          th:last-child { border-top-right-radius: 8px; }
           td {
             padding: 12px 10px;
             border-bottom: 1px solid var(--border);
+          }
+          tbody tr:nth-child(even) td {
+            background: var(--primary-tint);
           }
           .text-right {
             text-align: right;
@@ -377,6 +429,10 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
           }
           .totals-box {
             width: 300px;
+            background: var(--primary-tint);
+            border: 1px solid var(--primary-soft);
+            border-radius: 10px;
+            padding: 10px 14px;
           }
           .total-row {
             display: flex;
@@ -385,20 +441,26 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             font-size: 13px;
           }
           .total-row.grand-total {
-            border-top: 2px solid var(--border);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--primary-foreground);
+            border-radius: 8px;
             font-size: 16px;
             font-weight: 700;
-            padding-top: 10px;
-            color: var(--foreground);
+            padding: 10px 12px;
+            margin-top: 8px;
           }
           .footer {
             text-align: center;
             font-size: 11px;
             color: var(--muted-foreground);
-            border-top: 1px solid var(--border);
-            padding-top: 20px;
-            margin-top: 40px;
+            background: var(--primary-tint);
+            border-bottom: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 12px 20px;
+            white-space: nowrap;
+            margin-top: auto;
           }
+          .footer strong { color: var(--primary); }
           @media print {
             body {
               padding: 0;
@@ -406,6 +468,7 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             .invoice-container {
               padding: 0;
               max-width: 100%;
+              min-height: 266mm;
             }
             @page {
               size: A4;
