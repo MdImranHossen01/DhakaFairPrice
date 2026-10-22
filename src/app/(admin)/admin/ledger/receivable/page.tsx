@@ -1,35 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Building2, 
-  Users, 
-  ShoppingBag, 
+  ArrowLeft, 
   Loader2, 
   RefreshCw, 
-  ArrowLeft, 
   Search,
-  DollarSign,
   FileText,
-  Truck,
-  ExternalLink,
-  Phone,
-  MapPin,
-  Calendar
+  History,
+  TrendingUp,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function ReceivableLedgerPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'bills' | 'clients' | 'orders'>('bills');
-  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const fetchReceivables = async () => {
     setLoading(true);
@@ -38,10 +32,12 @@ export default function ReceivableLedgerPage() {
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        toast.error('Failed to load accounts receivable transactions');
       }
     } catch (error) {
-      console.error('Failed to fetch receivable ledger:', error);
-      toast.error('Failed to load receivable ledger');
+      console.error('Failed to fetch receivable transactions:', error);
+      toast.error('Failed to load accounts receivable transactions');
     } finally {
       setLoading(false);
     }
@@ -51,398 +47,193 @@ export default function ReceivableLedgerPage() {
     fetchReceivables();
   }, []);
 
-  const clientDueBills = data?.clientPayables?.dueBills || [];
-  const clientSummaries = data?.clientPayables?.clientDues || [];
-  const pendingOrders = data?.orderReceivables?.orders || [];
+  const account = data?.account;
+  const transactions: any[] = data?.transactions || [];
 
-  const filteredBills = clientDueBills.filter((b: any) =>
-    b.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
-    b.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-    b.clientPhone?.toLowerCase().includes(search.toLowerCase())
+  const filteredTransactions = useMemo(() => {
+    if (!searchTerm.trim()) return transactions;
+    const term = searchTerm.toLowerCase().trim();
+    return transactions.filter((tx) => {
+      const desc = (tx.description || '').toLowerCase();
+      const ref = (tx.reference || '').toLowerCase();
+      const dateStr = tx.date ? format(new Date(tx.date), 'dd MMM yyyy').toLowerCase() : '';
+      return desc.includes(term) || ref.includes(term) || dateStr.includes(term);
+    });
+  }, [transactions, searchTerm]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
-  const filteredClients = clientSummaries.filter((c: any) =>
-    c.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-    c.clientPhone?.toLowerCase().includes(search.toLowerCase()) ||
-    c.clientAddress?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const filteredOrders = pendingOrders.filter((o: any) =>
-    o.shortId?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-    o.customerPhone?.toLowerCase().includes(search.toLowerCase()) ||
-    o.city?.toLowerCase().includes(search.toLowerCase())
-  );
+  const liveBalance = account?.currentBalance ?? 0;
 
   return (
     <div className="flex-1 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/ledger" className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Accounts Receivable Ledger (প্রাপ্য সম্পদ)</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/ledger">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <History className="h-6 w-6 text-indigo-600" />
+              <span>Accounts Receivable — Transaction History</span>
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+              Account Code: <span className="font-mono font-bold text-foreground">AR</span> • Type: <span className="font-medium text-foreground">Asset</span> • Category: <span className="font-medium text-foreground">{account?.category || 'Other'}</span>
+            </p>
           </div>
-          <p className="text-muted-foreground text-xs md:text-sm mt-1">
-            Comprehensive ledger of outstanding client credit bills, customer receivables, and pending delivery cashflows.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchReceivables} disabled={loading} className="h-9">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-4 py-2 text-right shadow-xs">
+            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 justify-end">
+              <TrendingUp className="h-3 w-3 text-emerald-600" />
+              <span>Live Balance</span>
+            </div>
+            <div className={`text-xl md:text-2xl font-black ${liveBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
+              ৳{Math.round(liveBalance).toLocaleString()}
+            </div>
+          </div>
+
+          <Button variant="outline" size="icon" onClick={fetchReceivables} disabled={loading} className="h-10 w-10 shrink-0">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Top 3 Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-emerald-500/5 border-emerald-500/20 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 uppercase">Total Combined Receivable</p>
-              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
-                ৳{Math.round(data?.grandTotalReceivable || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600">
-              <DollarSign className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="shadow-xs cursor-pointer hover:border-primary/40 transition-colors" 
-          onClick={() => setActiveTab('bills')}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Client Credit Bills Due</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                ৳{Math.round(data?.clientPayables?.totalDue || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600">
-              <FileText className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="shadow-xs cursor-pointer hover:border-primary/40 transition-colors" 
-          onClick={() => setActiveTab('orders')}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Pending COD & In-Transit</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                ৳{Math.round(data?.orderReceivables?.totalPending || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-600">
-              <Truck className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs & Search Bar */}
+      {/* Search and Action Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center bg-muted/50 p-1 rounded-lg border w-fit overflow-x-auto max-w-full">
-          <button
-            onClick={() => setActiveTab('bills')}
-            className={`text-xs px-4 py-1.5 rounded-md font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'bills' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Client Due Bills ({clientDueBills.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('clients')}
-            className={`text-xs px-4 py-1.5 rounded-md font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'clients' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            Client Ledger Summary ({clientSummaries.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`text-xs px-4 py-1.5 rounded-md font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'orders' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            Order Receivables ({pendingOrders.length})
-          </button>
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search this account's transactions / ref / date..."
+            className="pl-9 pr-9 h-10 text-xs bg-card"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={
-              activeTab === 'bills' 
-                ? 'Search invoice or client...' 
-                : activeTab === 'clients' 
-                ? 'Search client name/phone...' 
-                : 'Search order or customer...'
-            }
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs"
-          />
-        </div>
+        {account?._id && (
+          <Button asChild variant="outline" size="sm" className="h-10 text-xs gap-1.5 shrink-0 font-medium">
+            <Link href={`/admin/ledger?accountId=${account._id}&accountName=${encodeURIComponent(account.name || 'Accounts Receivable')}`}>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span>Open in Full Ledger</span>
+            </Link>
+          </Button>
+        )}
       </div>
 
-      {/* 1. Client Due Invoices Table */}
-      {activeTab === 'bills' && (
-        <Card className="shadow-xs overflow-hidden">
-          <CardHeader className="bg-muted/30 py-3 px-4 border-b flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-indigo-600" /> Outstanding Client Credit Invoices
-            </CardTitle>
-            <Link href="/admin/bills" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-              Manage Client Bills <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs md:text-sm text-center border-collapse">
-                <thead>
-                  <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Date</th>
-                    <th className="p-3 font-bold text-foreground">Invoice No</th>
-                    <th className="p-3 text-left font-bold text-foreground">Client Details</th>
-                    <th className="p-3 font-bold text-foreground">Total Bill</th>
-                    <th className="p-3 font-bold text-emerald-600">Collected</th>
-                    <th className="p-3 font-bold text-rose-600 text-right">Current Due</th>
-                    <th className="p-3 font-bold text-foreground text-center">Action</th>
+      {/* Transactions Table Card */}
+      <div className="rounded-2xl border bg-card shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted/50 text-muted-foreground border-b uppercase text-[10px] font-bold tracking-wider">
+              <tr>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Description</th>
+                <th className="py-3 px-4 text-right">Debit</th>
+                <th className="py-3 px-4 text-right">Credit</th>
+                <th className="py-3 px-4 text-right">Running Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="h-48 text-center">
+                    <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground mt-2 font-medium">Loading transactions...</p>
+                  </td>
+                </tr>
+              ) : filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="h-40 text-center text-muted-foreground">
+                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-40 stroke-1" />
+                    <p className="font-medium text-xs">No transaction records found for Accounts Receivable.</p>
+                  </td>
+                </tr>
+              ) : (
+                paginatedTransactions.map((tx: any) => (
+                  <tr key={tx._id} className="hover:bg-muted/30 transition-colors">
+                    <td className="py-3 px-4 whitespace-nowrap text-muted-foreground font-medium">
+                      {tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '—'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-foreground text-xs leading-snug">{tx.description}</div>
+                      {tx.reference && (
+                        <span className="text-[10px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded font-mono inline-block mt-1 border">
+                          Ref: {tx.reference}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap font-mono text-sm">
+                      {tx.type === 'debit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-foreground whitespace-nowrap font-mono text-sm">
+                      {tx.type === 'credit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-black text-foreground whitespace-nowrap font-mono text-sm">
+                      ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading client dues...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredBills.length > 0 ? (
-                    filteredBills.map((bill: any) => (
-                      <tr key={bill._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left text-muted-foreground">
-                          {new Date(bill.date).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 font-medium text-foreground font-mono">
-                          {bill.invoiceNo}
-                        </td>
-                        <td className="p-3 text-left">
-                          <div className="font-bold text-foreground">{bill.clientName}</div>
-                          <div className="text-[11px] text-muted-foreground">{bill.clientPhone}</div>
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          ৳{Math.round(bill.gTotal || bill.total || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-medium text-emerald-600">
-                          ৳{Math.round(bill.cashIn || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-bold text-right text-rose-600">
-                          ৳{Math.round(bill.currentBillDue || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 text-center">
-                          <Link 
-                            href={`/admin/bills?search=${encodeURIComponent(bill.invoiceNo)}`}
-                            className="text-xs text-primary hover:underline font-semibold"
-                          >
-                            View / Collect
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                        No outstanding client credit dues found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* 2. Client Ledger Dues Summary Table */}
-      {activeTab === 'clients' && (
-        <Card className="shadow-xs overflow-hidden">
-          <CardHeader className="bg-muted/30 py-3 px-4 border-b flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-600" /> Client-wise Outstanding Balance Summary
-            </CardTitle>
-            <Link href="/admin/bills" className="text-xs text-primary font-semibold hover:underline">
-              Create New Invoice &rarr;
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs md:text-sm text-center border-collapse">
-                <thead>
-                  <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Client Name</th>
-                    <th className="p-3 text-left font-bold text-foreground">Phone & Address</th>
-                    <th className="p-3 font-bold text-foreground">Invoices</th>
-                    <th className="p-3 font-bold text-foreground">Total Billed</th>
-                    <th className="p-3 font-bold text-emerald-600">Total Collected</th>
-                    <th className="p-3 font-bold text-rose-600 text-right">Total Outstanding</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading client summaries...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredClients.length > 0 ? (
-                    filteredClients.map((client: any, idx: number) => (
-                      <tr key={idx} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left">
-                          <div className="font-bold text-foreground">{client.clientName}</div>
-                        </td>
-                        <td className="p-3 text-left">
-                          <div className="text-xs font-mono text-foreground">{client.clientPhone}</div>
-                          {client.clientAddress && (
-                            <div className="text-[11px] text-muted-foreground truncate max-w-xs">{client.clientAddress}</div>
-                          )}
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          <Badge variant="outline" className="text-[10px]">{client.totalInvoices} Bills</Badge>
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          ৳{Math.round(client.totalBilled || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-medium text-emerald-600">
-                          ৳{Math.round(client.totalCollected || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-bold text-right text-rose-600 text-base">
-                          ৳{Math.round(client.totalDue || 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                        No client due balances recorded.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Footer */}
+        <div className="p-3.5 border-t bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Total <strong className="text-foreground">{filteredTransactions.length}</strong> transaction{filteredTransactions.length === 1 ? '' : 's'} recorded
+          </span>
 
-      {/* 3. Order & COD Receivables Table */}
-      {activeTab === 'orders' && (
-        <Card className="shadow-xs overflow-hidden">
-          <CardHeader className="bg-muted/30 py-3 px-4 border-b flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-sky-600" /> Pending Customer Orders & Courier COD
-            </CardTitle>
-            <Link href="/admin/orders" className="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
-              Manage Orders <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs md:text-sm text-center border-collapse">
-                <thead>
-                  <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Order ID & Source</th>
-                    <th className="p-3 text-left font-bold text-foreground">Customer</th>
-                    <th className="p-3 font-bold text-foreground">Courier / Status</th>
-                    <th className="p-3 font-bold text-foreground">Customer COD</th>
-                    <th className="p-3 font-bold text-primary text-right">Mother Shop Receivable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading pending order receivables...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredOrders.length > 0 ? (
-                    filteredOrders.map((ord: any) => (
-                      <tr key={ord._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left">
-                          <div className="font-mono font-bold text-foreground">#{ord.shortId}</div>
-                          <div className="mt-1">
-                            {ord.isStorefront ? (
-                              <Badge variant="secondary" className="text-[10px] bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20">
-                                Reseller Storefront
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">
-                                Mother Shop
-                              </Badge>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3 text-left">
-                          <div className="font-bold text-foreground">{ord.customerName}</div>
-                          <div className="text-[11px] text-muted-foreground">{ord.customerPhone} {ord.city ? `(${ord.city})` : ''}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="text-xs font-semibold">{ord.courierName}</span>
-                            <Badge variant="outline" className="text-[10px] px-2 py-0.5">
-                              {ord.status}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="p-3 font-medium text-muted-foreground">
-                          <div>৳{Math.round(ord.totalAmount || 0).toLocaleString()}</div>
-                          <div className="text-[10px] text-muted-foreground">{ord.paymentMethod === 'COD' ? 'Cash on Delivery' : ord.paymentMethod}</div>
-                        </td>
-                        <td className="p-3 font-bold text-right">
-                          <div className="text-base text-primary">
-                            ৳{Math.round((ord.receivableAmount !== undefined ? ord.receivableAmount : ord.totalAmount) || 0).toLocaleString()}
-                          </div>
-                          {ord.isStorefront && (
-                            <div className="text-[10px] text-muted-foreground font-normal">
-                              Platform Fee
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                        No pending order receivables.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                Previous
+              </Button>
+              <span className="px-2 text-xs font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              >
+                Next
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </div>
+      </div>
     </div>
   );
 }
