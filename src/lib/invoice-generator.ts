@@ -147,7 +147,6 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
         <!-- Header (Layout: Store Info Left, INVOICE Right) -->
         <div class="header">
           <div class="brand-logo-container">
-            ${store.logoUrl ? `<img src="${store.logoUrl}" class="brand-logo-img" alt="${store.name}" />` : ''}
             <div class="brand-logo">${store.name}</div>
             <div class="brand-details">
               ${store.address ? `<div>${store.address}</div>` : ''}
@@ -238,18 +237,14 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
               <span>Shipping Charge:</span>
               <span>৳${Math.round(deliveryCharge)}</span>
             </div>
-            ${couponDiscount > 0 ? `
-              <div class="total-row discount-row">
-                <span>Coupon Discount:</span>
-                <span>- ৳${Math.round(couponDiscount)}</span>
-              </div>
-            ` : ''}
-            ${walletUsed > 0 ? `
-              <div class="total-row discount-row">
-                <span>Loyalty Discount:</span>
-                <span>- ৳${Math.round(walletUsed)}</span>
-              </div>
-            ` : ''}
+            <div class="total-row" style="${couponDiscount > 0 ? 'color: var(--primary); font-weight: 600;' : ''}">
+              <span>Coupon Discount:</span>
+              <span>${couponDiscount > 0 ? `- ৳${Math.round(couponDiscount)}` : '৳0'}</span>
+            </div>
+            <div class="total-row" style="${walletUsed > 0 ? 'color: var(--primary); font-weight: 600;' : ''}">
+              <span>Loyalty Discount:</span>
+              <span>${walletUsed > 0 ? `- ৳${Math.round(walletUsed)}` : '৳0'}</span>
+            </div>
             <div class="total-row grand-total">
               <span>Total Amount:</span>
               <span class="grand-total-amount">৳${totalAmount}</span>
@@ -327,20 +322,14 @@ export async function generateInvoicePDF(orderOrOrders: any | any[], settings: a
             display: flex;
             flex-direction: column;
             flex: 1;
-          }
-          .brand-logo-img {
-            max-height: 50px;
-            max-width: 180px;
-            object-fit: contain;
-            margin-bottom: 6px;
-          }
           .brand-logo {
-            font-size: 20px;
+            font-size: 26px;
             font-weight: 800;
             color: var(--primary);
             text-transform: uppercase;
-            letter-spacing: -0.2px;
-            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+            margin-bottom: 6px;
           }
           .brand-details {
             font-size: 11.5px;
