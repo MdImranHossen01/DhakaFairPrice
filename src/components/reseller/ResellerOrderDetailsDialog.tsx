@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { 
   Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, 
-  Printer, ExternalLink, Edit, X, MessageSquare, Lock, Tag, Trash2, Store
+  Printer, ExternalLink, Edit, X, MessageSquare, Lock, Tag, Trash2, Store, PlusCircle, Package
 } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ import Swal from 'sweetalert2';
 import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
 import { generateInvoicePDF } from '@/lib/invoice-generator';
 import { printStickerInvoice } from '@/lib/sticker-generator';
+import ProductPickerDialog, { SelectedProductItem } from '@/components/common/ProductPickerDialog';
 
 interface ResellerOrderDetailsDialogProps {
   orderId: string | null;
@@ -111,6 +112,25 @@ export default function ResellerOrderDetailsDialog({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+
+  const handleAddPickerProducts = (selectedProducts: SelectedProductItem[]) => {
+    const mapped = selectedProducts.map(p => ({
+      productId: p.productId,
+      resellerProductId: p.productId,
+      name: p.name,
+      retailPrice: p.price,
+      purchasePrice: p.purchasePrice || 0,
+      quantity: p.quantity || 1,
+      color: p.color || '',
+      size: p.size || '',
+      image: p.image || '',
+    }));
+    setEditForm((prev: any) => ({
+      ...prev,
+      items: [...(prev?.items || []), ...mapped]
+    }));
+  };
 
   // Settings & Courier Selection States
   const [settings, setSettings] = useState<any>(null);
@@ -186,6 +206,18 @@ export default function ResellerOrderDetailsDialog({
               zipCode: orderData.customer?.address?.zipCode || '',
             }
           },
+          items: orderData.items ? orderData.items.map((item: any) => ({
+            productId: item.productId?._id || item.productId,
+            resellerProductId: item.resellerProductId?._id || item.resellerProductId || item.productId?._id || item.productId,
+            name: item.name || '',
+            retailPrice: Number(item.retailPrice) || Number(item.price) || 0,
+            purchasePrice: Number(item.purchasePrice) || 0,
+            quantity: Number(item.quantity) || 1,
+            color: item.color || '',
+            size: item.size || '',
+            image: item.image || '',
+          })) : [],
+          deliveryCharge: orderData.deliveryCharge || 0,
           internalNote: orderData.internalNote || '',
           customerNote: orderData.customerNote || '',
           status: orderData.status || 'Order Placed',
@@ -261,6 +293,18 @@ export default function ResellerOrderDetailsDialog({
                 zipCode: updatedData.customer?.address?.zipCode || '',
               }
             },
+            items: updatedData.items ? updatedData.items.map((item: any) => ({
+              productId: item.productId?._id || item.productId,
+              resellerProductId: item.resellerProductId?._id || item.resellerProductId || item.productId?._id || item.productId,
+              name: item.name || '',
+              retailPrice: Number(item.retailPrice) || Number(item.price) || 0,
+              purchasePrice: Number(item.purchasePrice) || 0,
+              quantity: Number(item.quantity) || 1,
+              color: item.color || '',
+              size: item.size || '',
+              image: item.image || '',
+            })) : [],
+            deliveryCharge: updatedData.deliveryCharge || 0,
             internalNote: updatedData.internalNote || '',
             customerNote: updatedData.customerNote || '',
             status: updatedData.status || 'Order Placed',
@@ -328,7 +372,11 @@ export default function ResellerOrderDetailsDialog({
     }
   };
 
-  if (!open) return null;
+  const firstItemProduct = order?.items?.[0]?.productId;
+  const existingSellerId = firstItemProduct?.uploadedBy?._id || firstItemProduct?.uploadedBy;
+  const isFirstMotherProduct = firstItemProduct?.isMotherProduct || (!existingSellerId && firstItemProduct);
+  const filterUploadedBy = existingSellerId ? existingSellerId.toString() : (isFirstMotherProduct ? 'mother' : undefined);
+  const sellerDisplayName = firstItemProduct?.uploadedBy?.storeName || (isFirstMotherProduct ? 'Mother Shop' : (order?.resellerId?.storeName || undefined));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -495,6 +543,152 @@ export default function ResellerOrderDetailsDialog({
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Order Items */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase text-muted-foreground">Order Items</h3>
+                    {sellerDisplayName && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Items restricted to seller: <strong className="text-foreground">{sellerDisplayName}</strong>
+                      </p>
+                    )}
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs font-bold flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                    onClick={() => setProductPickerOpen(true)}
+                  >
+                    <PlusCircle className="h-4 w-4" /> Add Item
+                  </Button>
+                </div>
+
+                <div className="space-y-3 max-h-[300px] overflow-y-auto border p-3 rounded-lg bg-muted/20">
+                  {(!editForm.items || editForm.items.length === 0) ? (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                      No items in this order. Click "+ Add Item" above to select products.
+                    </div>
+                  ) : (
+                    editForm.items.map((item: any, index: number) => (
+                      <div key={index} className="border rounded-lg p-2.5 bg-background shadow-xs space-y-2">
+                        <div className="flex items-center gap-2.5">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="h-10 w-10 rounded-md object-cover border shrink-0" />
+                          ) : (
+                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                              <Package className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <input 
+                              type="text" 
+                              placeholder="Product Name"
+                              value={item.name} 
+                              onChange={(e) => {
+                                const newItems = [...editForm.items];
+                                newItems[index].name = e.target.value;
+                                setEditForm({ ...editForm, items: newItems });
+                              }}
+                              className="w-full text-xs p-1.5 border rounded font-semibold text-foreground"
+                            />
+                          </div>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                            onClick={() => {
+                              const newItems = editForm.items.filter((_: any, idx: number) => idx !== index);
+                              setEditForm({ ...editForm, items: newItems });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1 border-t text-xs">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-muted-foreground block">Qty</label>
+                            <input 
+                              type="number" 
+                              min="1"
+                              value={item.quantity} 
+                              onChange={(e) => {
+                                const newItems = [...editForm.items];
+                                newItems[index].quantity = Math.max(1, Number(e.target.value) || 1);
+                                setEditForm({ ...editForm, items: newItems });
+                              }}
+                              className="w-full text-xs p-1.5 border rounded text-center font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-muted-foreground block">Price (৳)</label>
+                            <input 
+                              type="number" 
+                              min="0"
+                              value={item.retailPrice} 
+                              onChange={(e) => {
+                                const newItems = [...editForm.items];
+                                newItems[index].retailPrice = Math.max(0, Number(e.target.value) || 0);
+                                setEditForm({ ...editForm, items: newItems });
+                              }}
+                              className="w-full text-xs p-1.5 border rounded text-center font-bold"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-muted-foreground block">Color</label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. Red"
+                              value={item.color || ''} 
+                              onChange={(e) => {
+                                const newItems = [...editForm.items];
+                                newItems[index].color = e.target.value;
+                                setEditForm({ ...editForm, items: newItems });
+                              }}
+                              className="w-full text-xs p-1.5 border rounded text-center"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-muted-foreground block">Size</label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. XL"
+                              value={item.size || ''} 
+                              onChange={(e) => {
+                                const newItems = [...editForm.items];
+                                newItems[index].size = e.target.value;
+                                setEditForm({ ...editForm, items: newItems });
+                              }}
+                              className="w-full text-xs p-1.5 border rounded text-center"
+                            />
+                          </div>
+                          <div className="hidden sm:flex flex-col justify-end items-end pb-1">
+                            <span className="text-[10px] text-muted-foreground font-medium">Subtotal</span>
+                            <span className="text-xs font-black text-primary">৳{(Number(item.retailPrice) || 0) * (Number(item.quantity) || 1)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="pt-1">
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1">Delivery Charge (৳)</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={editForm.deliveryCharge !== undefined ? editForm.deliveryCharge : ''} 
+                    onChange={(e) => setEditForm({ ...editForm, deliveryCharge: Math.max(0, Number(e.target.value) || 0) })}
+                    className="w-full sm:w-1/2 text-sm p-2 border rounded-lg"
+                  />
                 </div>
               </div>
 
@@ -1144,6 +1338,14 @@ export default function ResellerOrderDetailsDialog({
           </div>
         )}
       </DialogContent>
+
+      <ProductPickerDialog
+        open={productPickerOpen}
+        onOpenChange={setProductPickerOpen}
+        onAddSelected={handleAddPickerProducts}
+        uploadedByFilter={filterUploadedBy}
+        sellerName={sellerDisplayName}
+      />
     </Dialog>
   );
 }

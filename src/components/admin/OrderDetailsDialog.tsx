@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, ExternalLink, FileText, Printer, Trash2, PlusCircle, Edit, X, MessageSquare, Lock, Tag, Store } from 'lucide-react';
+import { Loader2, Mail, Phone, MapPin, CreditCard, Calendar, Truck, ExternalLink, FileText, Printer, Trash2, PlusCircle, Edit, X, MessageSquare, Lock, Tag, Store, Package } from 'lucide-react';
 import { format, isValid } from 'date-fns';
 import { toast } from 'sonner';
 import { generateInvoicePDF } from '@/lib/invoice-generator';
@@ -19,6 +19,7 @@ import Swal from 'sweetalert2';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { DisbursementBreakdown } from '@/components/common/DisbursementBreakdown';
+import ProductPickerDialog, { SelectedProductItem } from '@/components/common/ProductPickerDialog';
 
 interface OrderDetailsDialogProps {
   orderId: string | null;
@@ -58,6 +59,24 @@ export default function OrderDetailsDialog({
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+
+  const handleAddPickerProducts = (selectedProducts: SelectedProductItem[]) => {
+    const mapped = selectedProducts.map(p => ({
+      product: p.productId,
+      name: p.name,
+      price: p.price,
+      quantity: p.quantity || 1,
+      color: p.color || '',
+      size: p.size || '',
+      image: p.image || '',
+      purchasePrice: p.purchasePrice || 0
+    }));
+    setEditForm((prev: any) => ({
+      ...prev,
+      items: [...(prev?.items || []), ...mapped]
+    }));
+  };
 
   const handleLocalPrint = async (type: 'invoice' | 'sticker') => {
     if (type === 'invoice') {
@@ -278,7 +297,11 @@ export default function OrderDetailsDialog({
     }
   };
 
-  if (!open) return null;
+  const firstItemProduct = order?.items?.[0]?.product;
+  const existingSellerId = firstItemProduct?.uploadedBy?._id || firstItemProduct?.uploadedBy;
+  const isFirstMotherProduct = firstItemProduct?.isMotherProduct || (!existingSellerId && firstItemProduct);
+  const filterUploadedBy = existingSellerId ? existingSellerId.toString() : (isFirstMotherProduct ? 'mother' : undefined);
+  const sellerDisplayName = firstItemProduct?.uploadedBy?.storeName || (isFirstMotherProduct ? 'Mother Shop' : (order?.resellerId?.storeName || undefined));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -534,122 +557,59 @@ export default function OrderDetailsDialog({
                 {/* 4. Items List */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold uppercase text-muted-foreground">Order Items</h3>
+                    <div>
+                      <h3 className="text-sm font-bold uppercase text-muted-foreground">Order Items</h3>
+                      {sellerDisplayName && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Items restricted to seller: <strong className="text-foreground">{sellerDisplayName}</strong>
+                        </p>
+                      )}
+                    </div>
                     <Button 
                       type="button" 
                       variant="outline" 
                       size="sm" 
-                      className="text-xs font-bold flex items-center gap-1"
-                      onClick={() => {
-                        setEditForm({
-                          ...editForm,
-                          items: [
-                            ...editForm.items,
-                            { product: '', name: 'New Product', price: 100, quantity: 1, color: '', size: '', image: '', purchasePrice: 0 }
-                          ]
-                        });
-                      }}
+                      className="text-xs font-bold flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                      onClick={() => setProductPickerOpen(true)}
                     >
                       <PlusCircle className="h-4 w-4" /> Add Item
                     </Button>
                   </div>
 
-                  <div className="space-y-3 max-h-[250px] overflow-y-auto border p-3 rounded bg-muted/20">
-                    {editForm.items.map((item: any, index: number) => (
-                      <div key={index} className="border-b pb-3 mb-3 last:border-b-0 last:pb-0 last:mb-0 space-y-2">
-                        <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-12 sm:col-span-6 space-y-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Product ID (MongoDB ObjectId)</label>
-                            <input 
-                              type="text" 
-                              placeholder="6a0324e0cec01780aa969ec0"
-                              value={item.product || ''} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].product = e.target.value;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded"
-                            />
-                          </div>
-                          <div className="col-span-12 sm:col-span-6 space-y-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Item Name</label>
-                            <input 
-                              type="text" 
-                              placeholder="Product Name"
-                              value={item.name} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].name = e.target.value;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded font-medium"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-5 gap-2">
-                          <div className="space-y-1 col-span-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Qty</label>
-                            <input 
-                              type="number" 
-                              min="1"
-                              value={item.quantity} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].quantity = Number(e.target.value) || 1;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded text-center"
-                            />
-                          </div>
-                          <div className="space-y-1 col-span-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Price</label>
-                            <input 
-                              type="number" 
-                              value={item.price} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].price = Number(e.target.value) || 0;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded text-center"
-                            />
-                          </div>
-                          <div className="space-y-1 col-span-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Color</label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Red"
-                              value={item.color || ''} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].color = e.target.value;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded text-center"
-                            />
-                          </div>
-                          <div className="space-y-1 col-span-1">
-                            <label className="text-[10px] font-bold text-muted-foreground">Size</label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. XL"
-                              value={item.size || ''} 
-                              onChange={(e) => {
-                                const newItems = [...editForm.items];
-                                newItems[index].size = e.target.value;
-                                setEditForm({ ...editForm, items: newItems });
-                              }}
-                              className="w-full text-xs p-1.5 border rounded text-center"
-                            />
-                          </div>
-                          <div className="col-span-1 flex items-end justify-center pb-0.5">
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto border p-3 rounded-lg bg-muted/20">
+                    {(!editForm.items || editForm.items.length === 0) ? (
+                      <div className="text-center py-6 text-xs text-muted-foreground">
+                        No items in this order. Click "+ Add Item" above to select products.
+                      </div>
+                    ) : (
+                      editForm.items.map((item: any, index: number) => (
+                        <div key={index} className="border rounded-lg p-2.5 bg-background shadow-xs space-y-2">
+                          <div className="flex items-center gap-2.5">
+                            {item.image ? (
+                              <img src={item.image} alt={item.name} className="h-10 w-10 rounded-md object-cover border shrink-0" />
+                            ) : (
+                              <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                                <Package className="h-5 w-5" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <input 
+                                type="text" 
+                                placeholder="Product Name"
+                                value={item.name} 
+                                onChange={(e) => {
+                                  const newItems = [...editForm.items];
+                                  newItems[index].name = e.target.value;
+                                  setEditForm({ ...editForm, items: newItems });
+                                }}
+                                className="w-full text-xs p-1.5 border rounded font-semibold text-foreground"
+                              />
+                            </div>
                             <Button 
                               type="button" 
-                              variant="destructive" 
+                              variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
                               onClick={() => {
                                 const newItems = editForm.items.filter((_: any, idx: number) => idx !== index);
                                 setEditForm({ ...editForm, items: newItems });
@@ -658,9 +618,72 @@ export default function OrderDetailsDialog({
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
+
+                          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1 border-t text-xs">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-muted-foreground block">Qty</label>
+                              <input 
+                                type="number" 
+                                min="1"
+                                value={item.quantity} 
+                                onChange={(e) => {
+                                  const newItems = [...editForm.items];
+                                  newItems[index].quantity = Math.max(1, Number(e.target.value) || 1);
+                                  setEditForm({ ...editForm, items: newItems });
+                                }}
+                                className="w-full text-xs p-1.5 border rounded text-center font-bold"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-muted-foreground block">Price (৳)</label>
+                              <input 
+                                type="number" 
+                                min="0"
+                                value={item.price} 
+                                onChange={(e) => {
+                                  const newItems = [...editForm.items];
+                                  newItems[index].price = Math.max(0, Number(e.target.value) || 0);
+                                  setEditForm({ ...editForm, items: newItems });
+                                }}
+                                className="w-full text-xs p-1.5 border rounded text-center font-bold"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-muted-foreground block">Color</label>
+                              <input 
+                                type="text" 
+                                placeholder="e.g. Red"
+                                value={item.color || ''} 
+                                onChange={(e) => {
+                                  const newItems = [...editForm.items];
+                                  newItems[index].color = e.target.value;
+                                  setEditForm({ ...editForm, items: newItems });
+                                }}
+                                className="w-full text-xs p-1.5 border rounded text-center"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-muted-foreground block">Size</label>
+                              <input 
+                                type="text" 
+                                placeholder="e.g. XL"
+                                value={item.size || ''} 
+                                onChange={(e) => {
+                                  const newItems = [...editForm.items];
+                                  newItems[index].size = e.target.value;
+                                  setEditForm({ ...editForm, items: newItems });
+                                }}
+                                className="w-full text-xs p-1.5 border rounded text-center"
+                              />
+                            </div>
+                            <div className="hidden sm:flex flex-col justify-end items-end pb-1">
+                              <span className="text-[10px] text-muted-foreground font-medium">Subtotal</span>
+                              <span className="text-xs font-black text-primary">৳{(Number(item.price) || 0) * (Number(item.quantity) || 1)}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -1411,6 +1434,13 @@ export default function OrderDetailsDialog({
         )}
       </DialogContent>
 
+      <ProductPickerDialog
+        open={productPickerOpen}
+        onOpenChange={setProductPickerOpen}
+        onAddSelected={handleAddPickerProducts}
+        uploadedByFilter={filterUploadedBy}
+        sellerName={sellerDisplayName}
+      />
     </Dialog>
   );
 }

@@ -239,7 +239,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { customer, internalNote, customerNote, status, paymentStatus } = body;
+    const { customer, internalNote, customerNote, status, paymentStatus, items, deliveryCharge } = body;
 
     const order = await ResellerOrder.findOne({ _id: orderId, resellerId: reseller._id });
     if (!order) {
@@ -261,6 +261,100 @@ export async function PATCH(
           zipCode: customer.address.zipCode !== undefined ? customer.address.zipCode : order.customer.address?.zipCode || '',
         };
       }
+    }
+
+    // Update items & financial recalculation if provided
+    let finalValidatedItems: any[] | null = null;
+    let targetSellerKey: string | null = null;
+
+    if (items !== undefined && Array.isArray(items)) {
+      if (items.length === 0) {
+        return NextResponse.json({ message: 'Order must contain at least one item' }, { status: 400 });
+      }
+
+      const resellerFeeRate = Number((reseller as any).systemFeeRate) >= 0 ? Number((reseller as any).systemFeeRate) : 2;
+      let serverComputedSubtotal = 0;
+      let totalCommission = 0;
+      let totalOwnProductSystemFee = 0;
+      const validatedList: any[] = [];
+
+      for (const item of items) {
+        const prodId = item.productId || item.product;
+        const prod = await Product.findById(prodId);
+        if (!prod) {
+          return NextResponse.json({ message: `Product not found: ${item.name || prodId}` }, { status: 400 });
+        }
+
+        // Strict Seller Isolation Enforcement:
+        // All items in an order must belong to the exact same vendor / pickup location.
+        const itemSellerKey = prod.uploadedBy ? prod.uploadedBy.toString() : 'mother';
+        if (targetSellerKey === null) {
+          targetSellerKey = itemSellerKey;
+        } else if (targetSellerKey !== itemSellerKey) {
+          return NextResponse.json({
+            message: 'All items in an order must be from the same seller / pickup location. Mixed seller orders are not supported.'
+          }, { status: 400 });
+        }
+
+        const retailPrice = Number(item.retailPrice) !== undefined && !isNaN(Number(item.retailPrice))
+          ? Number(item.retailPrice)
+          : (Number(item.price) || prod.salePrice || prod.price || 0);
+        const purchasePrice = Number(item.purchasePrice) !== undefined && !isNaN(Number(item.purchasePrice))
+          ? Number(item.purchasePrice)
+          : (prod.purchasePrice || prod.price || 0);
+        const quantity = Math.max(1, Number(item.quantity) || 1);
+        const itemSubtotal = retailPrice * quantity;
+
+        const uploaderId = prod.uploadedBy ? prod.uploadedBy.toString() : null;
+        const isOwnProduct = !!(uploaderId && uploaderId === reseller._id.toString());
+        let itemCommission = 0;
+        let itemSystemFee = 0;
+
+        if (isOwnProduct) {
+          const baseCost = Number(prod.purchasePrice) || 0;
+          itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * quantity;
+          totalOwnProductSystemFee += itemSystemFee;
+          itemCommission = (retailPrice * quantity) - itemSystemFee;
+        } else {
+          itemCommission = (retailPrice - purchasePrice) * quantity;
+        }
+
+        serverComputedSubtotal += itemSubtotal;
+        totalCommission += itemCommission;
+
+        validatedList.push({
+          resellerProductId: prod._id,
+          productId: prod._id,
+          name: item.name || prod.name,
+          quantity,
+          retailPrice,
+          purchasePrice: isOwnProduct ? (Number(prod.purchasePrice) || 0) : purchasePrice,
+          image: item.image || prod.images?.[0] || (prod as any).image || '',
+          color: item.color || undefined,
+          size: item.size || undefined,
+          systemFee: itemSystemFee,
+          uploaderId,
+        });
+      }
+
+      finalValidatedItems = validatedList;
+
+      const delCharge = deliveryCharge !== undefined ? Math.max(0, Number(deliveryCharge) || 0) : (order.deliveryCharge || 0);
+      const discount = Number(order.couponDiscount) || 0;
+      const finalTotal = Math.max(0, serverComputedSubtotal + delCharge - discount);
+      const netCommission = Math.max(0, totalCommission - discount);
+
+      order.items = finalValidatedItems as any;
+      order.subtotal = serverComputedSubtotal;
+      order.deliveryCharge = delCharge;
+      order.totalAmount = finalTotal;
+      order.resellerCommission = netCommission;
+      order.systemFee = totalOwnProductSystemFee;
+    } else if (deliveryCharge !== undefined) {
+      const delCharge = Math.max(0, Number(deliveryCharge) || 0);
+      const discount = Number(order.couponDiscount) || 0;
+      order.deliveryCharge = delCharge;
+      order.totalAmount = Math.max(0, (order.subtotal || 0) + delCharge - discount);
     }
 
     // Update status if provided
@@ -310,6 +404,60 @@ export async function PATCH(
           motherUpdate['shippingAddress.division'] = order.customer.address.division;
           motherUpdate['shippingAddress.zipCode'] = order.customer.address.zipCode || '0000';
         }
+      }
+      if (finalValidatedItems) {
+        motherUpdate.items = finalValidatedItems.map(i => ({
+          product: i.productId,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.retailPrice,
+          purchasePrice: i.purchasePrice,
+          image: i.image,
+          color: i.color,
+          size: i.size,
+        }));
+        motherUpdate.subtotal = order.subtotal;
+        motherUpdate.deliveryCharge = order.deliveryCharge;
+        motherUpdate.totalAmount = order.totalAmount;
+        motherUpdate.resellerCommission = order.resellerCommission;
+        motherUpdate.systemFee = order.systemFee;
+
+        // Sync linked supplier fulfillment orders if any
+        try {
+          const fulfillmentOrders = await ResellerOrder.find({
+            motherOrderId: order.motherOrderId,
+            shortId: { $regex: /-F\d+$/ }
+          });
+          for (const fo of fulfillmentOrders) {
+            const foUploaderId = fo.resellerId.toString();
+            const foItems = finalValidatedItems
+              .filter(vi => vi.uploaderId === foUploaderId)
+              .map(vi => ({
+                resellerProductId: vi.resellerProductId,
+                productId: vi.productId,
+                name: vi.name,
+                quantity: vi.quantity,
+                retailPrice: vi.purchasePrice,
+                purchasePrice: vi.purchasePrice,
+                image: vi.image,
+                color: vi.color,
+                size: vi.size,
+              }));
+            if (foItems.length > 0) {
+              const uploaderCommission = foItems.reduce((sum: number, item: any) => sum + (Number(item.purchasePrice) || 0) * item.quantity, 0);
+              fo.items = foItems;
+              fo.subtotal = uploaderCommission;
+              fo.totalAmount = uploaderCommission;
+              fo.resellerCommission = uploaderCommission;
+              await fo.save();
+            }
+          }
+        } catch (fErr) {
+          console.error('[Sync Fulfillment Orders Error]', fErr);
+        }
+      } else if (deliveryCharge !== undefined) {
+        motherUpdate.deliveryCharge = order.deliveryCharge;
+        motherUpdate.totalAmount = order.totalAmount;
       }
       if (customerNote !== undefined) motherUpdate.customerNote = customerNote;
       if (internalNote !== undefined) motherUpdate.internalNote = internalNote;

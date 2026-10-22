@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Trash, Search, User, Phone, MapPin, Calendar, Download, RefreshCw, Loader2, ClipboardCheck, Plus, Trash2 } from 'lucide-react';
+import { Trash, Search, User, Phone, MapPin, Calendar, Download, RefreshCw, Loader2, ClipboardCheck, Plus, Trash2, Store, ShoppingBag, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -66,6 +66,8 @@ function AbandonedCartsContent() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'mother' | 'reseller' | 'all'>('mother');
+  const [counts, setCounts] = useState({ mother: 0, reseller: 0, all: 0 });
   
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -268,6 +270,12 @@ function AbandonedCartsContent() {
         toast.success(data.message || 'Manual order created successfully!');
         if (currentConfirmingCartId) {
           setConfirmedCartIds(prev => [...prev, currentConfirmingCartId]);
+          try {
+            await fetch(`/api/cart/abandoned?id=${currentConfirmingCartId}`, { method: 'DELETE' });
+            fetchCarts(currentPage);
+          } catch (e) {
+            // ignore
+          }
         }
         setIsManualOrderOpen(false);
         setCurrentConfirmingCartId(null);
@@ -318,7 +326,7 @@ function AbandonedCartsContent() {
     setManualPaymentMethod('COD');
     setManualPaymentStatus('Pending');
     setManualStatus('Order Placed');
-    setManualInternalNote(`Order created from Abandoned Cart ID: ${cart._id}`);
+    setManualInternalNote(`Order created from ${cart.resellerId?.storeName ? `Reseller (${cart.resellerId.storeName})` : 'Abandoned'} Cart ID: ${cart._id}`);
 
     // Map items. We need variants lists (colorsList, sizesList) for select boxes.
     // Let's fetch products details for each item to populate variants info.
@@ -406,7 +414,8 @@ function AbandonedCartsContent() {
         limit: '20',
         search: debouncedSearch,
         from: dateFilter.from,
-        to: dateFilter.to
+        to: dateFilter.to,
+        tab: activeTab,
       });
 
       const res = await fetch(`/api/cart/abandoned?${queryParams.toString()}`);
@@ -416,6 +425,9 @@ function AbandonedCartsContent() {
       setCarts(data.carts || []);
       setTotalPages(data.totalPages || 1);
       setTotalCount(data.totalCount || 0);
+      if (data.counts) {
+        setCounts(data.counts);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to load abandoned carts');
     } finally {
@@ -425,7 +437,15 @@ function AbandonedCartsContent() {
 
   useEffect(() => {
     fetchCarts(currentPage);
-  }, [currentPage, debouncedSearch, dateFilter.from, dateFilter.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentPage, debouncedSearch, dateFilter.from, dateFilter.to, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTabChange = (tab: 'mother' | 'reseller' | 'all') => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('page');
+    router.push(`/admin/abandoned-carts?${params.toString()}`);
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -470,7 +490,8 @@ function AbandonedCartsContent() {
         limit: 'all',
         search: debouncedSearch,
         from: dateFilter.from,
-        to: dateFilter.to
+        to: dateFilter.to,
+        tab: activeTab,
       });
 
       const res = await fetch(`/api/cart/abandoned?${queryParams.toString()}`);
@@ -485,6 +506,7 @@ function AbandonedCartsContent() {
 
       const headers = [
         'Cart ID',
+        'Store',
         'Date',
         'Customer Name',
         'Phone',
@@ -501,8 +523,11 @@ function AbandonedCartsContent() {
           return `• ${i.quantity} x ${i.name}${variantDesc ? ` [${variantDesc}]` : ''} (@৳${i.price})`;
         }).join('\n');
 
+        const storeName = c.resellerId ? `Reseller: ${c.resellerId.storeName || c.resellerId.subdomain}` : 'Mother Shop';
+
         return [
           c._id.toUpperCase(),
+          storeName,
           format(new Date(c.createdAt), 'yyyy-MM-dd HH:mm'),
           c.fullName,
           c.phone,
@@ -561,6 +586,69 @@ function AbandonedCartsContent() {
         </div>
       </div>
 
+      {/* Store Scope Tabs */}
+      <div className="flex items-center gap-2 border-b border-border pb-2 overflow-x-auto">
+        <button
+          type="button"
+          onClick={() => handleTabChange('mother')}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'mother'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          <span>Mother Shop</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+            activeTab === 'mother'
+              ? 'bg-primary-foreground/20 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            {counts.mother}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('reseller')}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'reseller'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <Store className="h-4 w-4" />
+          <span>Reseller Stores</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+            activeTab === 'reseller'
+              ? 'bg-primary-foreground/20 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            {counts.reseller}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('all')}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'all'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+          }`}
+        >
+          <ShoppingBag className="h-4 w-4" />
+          <span>All Carts</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+            activeTab === 'all'
+              ? 'bg-primary-foreground/20 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            {counts.all}
+          </span>
+        </button>
+      </div>
+
       {/* Date Filters & Search */}
       <Card className="bg-card/50">
         <CardContent className="pt-6">
@@ -601,7 +689,9 @@ function AbandonedCartsContent() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cart Sessions</CardTitle>
+          <CardTitle>
+            {activeTab === 'mother' ? 'Mother Shop Cart Sessions' : activeTab === 'reseller' ? 'Reseller Stores Cart Sessions' : 'All Cart Sessions'}
+          </CardTitle>
           <CardDescription>
             Showing {carts.length} of {totalCount} active abandoned cart sessions.
           </CardDescription>
@@ -614,7 +704,7 @@ function AbandonedCartsContent() {
             </div>
           ) : carts.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
-              No abandoned carts found.
+              No abandoned carts found for this store view.
             </div>
           ) : (
             <div className="space-y-4">
@@ -623,6 +713,7 @@ function AbandonedCartsContent() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Customer Details</TableHead>
+                      <TableHead>Store</TableHead>
                       <TableHead>Cart Items</TableHead>
                       <TableHead>Total Amount</TableHead>
                       <TableHead>Time</TableHead>
@@ -632,7 +723,7 @@ function AbandonedCartsContent() {
                   <TableBody>
                     {carts.map((cart) => (
                       <TableRow key={cart._id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="max-w-[250px] align-top">
+                        <TableCell className="max-w-[240px] align-top">
                           <div className="space-y-1">
                             <div className="font-semibold text-foreground flex items-center gap-1.5 w-full min-w-0">
                               <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -674,6 +765,24 @@ function AbandonedCartsContent() {
                               </div>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="align-top whitespace-nowrap">
+                          {cart.resellerId ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Store className="h-3 w-3" />
+                                {cart.resellerId.storeName || 'Reseller Store'}
+                              </span>
+                              {cart.resellerId.subdomain && (
+                                <p className="text-[10px] text-muted-foreground">{cart.resellerId.subdomain}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                              <Building2 className="h-3 w-3" />
+                              Mother Shop
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="max-w-[300px] align-top">
                           <div className="space-y-2">

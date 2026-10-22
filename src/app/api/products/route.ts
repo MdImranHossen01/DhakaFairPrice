@@ -41,9 +41,25 @@ export async function GET(req: NextRequest) {
       andConditions.push({ categories: { $in: category.split(',') } });
     }
 
+    const uploadedBy = searchParams.get('uploadedBy');
+    if (uploadedBy) {
+      if (uploadedBy === 'mother' || uploadedBy === 'null' || uploadedBy === 'admin') {
+        andConditions.push({
+          $or: [
+            { isMotherProduct: true },
+            { uploadedBy: null },
+            { uploadedBy: { $exists: false } },
+          ]
+        });
+      } else {
+        andConditions.push({ uploadedBy });
+      }
+    }
+
     const tab = searchParams.get('tab') || 'all';
     const session = await auth();
     const isAdmin = session?.user && ['admin', 'super_admin', 'manager', 'moderator'].includes((session.user as any).role);
+    const isReseller = session?.user && (session.user as any).role === 'reseller';
     
     if (isAdmin) {
       // Self-heal orphan products from deleted resellers
@@ -73,6 +89,9 @@ export async function GET(req: NextRequest) {
           uploadedBy: { $ne: null, $exists: true }
         });
       }
+    } else if (isReseller) {
+      // Logged-in reseller querying products for order editing or catalog lookup
+      andConditions.push({ isPublished: true });
     } else {
       // Non-admin storefront customers: strictly show active Mother Shop products
       andConditions.push({

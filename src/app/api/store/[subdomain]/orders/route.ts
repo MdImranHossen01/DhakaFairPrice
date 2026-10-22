@@ -474,6 +474,17 @@ export async function POST(
       await sessionConn.commitTransaction();
       sessionConn.endSession();
 
+      // Clean up matching abandoned cart for this customer on this reseller storefront
+      try {
+        const cleanCustPhone = (customer.phone || '').replace(/\s+/g, '').trim();
+        if (cleanCustPhone) {
+          const AbandonedCart = (await import('@/models/AbandonedCart')).default;
+          await AbandonedCart.deleteMany({ phone: cleanCustPhone, resellerId: reseller._id });
+        }
+      } catch (cartErr) {
+        console.error('[AbandonedCart cleanup error in reseller storefront order]', cartErr);
+      }
+
       // Sync updated stock to all reseller stores for affected products
       try {
         const { syncProductToResellers } = await import('@/lib/syncEngine');

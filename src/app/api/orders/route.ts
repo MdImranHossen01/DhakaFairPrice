@@ -719,11 +719,14 @@ export async function POST(req: NextRequest) {
       console.error('[Sync Error after mother order creation]', syncErr);
     }
 
-    // Delete matching abandoned cart on successful purchase
+    // Delete matching mother shop abandoned cart on successful purchase
     try {
       const cleanPhone = shippingAddress.phone.replace(/\s+/g, '').trim();
       const AbandonedCart = (await import('@/models/AbandonedCart')).default;
-      await AbandonedCart.findOneAndDelete({ phone: cleanPhone });
+      await AbandonedCart.deleteMany({
+        phone: cleanPhone,
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+      });
     } catch (e) {
       console.error('Failed to delete matching abandoned cart:', e);
     }

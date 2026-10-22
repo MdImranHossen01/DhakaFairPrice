@@ -221,6 +221,20 @@ export async function POST(req: NextRequest) {
     await session.commitTransaction();
     session.endSession();
 
+    // Clean up matching Mother Shop abandoned cart
+    try {
+      const cleanPhone = (shippingAddress.phone || '').replace(/\s+/g, '').trim();
+      if (cleanPhone) {
+        const AbandonedCart = (await import('@/models/AbandonedCart')).default;
+        await AbandonedCart.deleteMany({
+          phone: cleanPhone,
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        });
+      }
+    } catch (e) {
+      console.error('Failed to delete matching abandoned cart:', e);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Manual order created successfully!',
