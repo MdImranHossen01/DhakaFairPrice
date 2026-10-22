@@ -1137,9 +1137,19 @@ export async function GET(req: NextRequest) {
             amount: sellerAmount,
             status: ro.commissionStatus || 'pending'
           };
+        } else if (finalReseller) {
+          const sellerName = (finalReseller as any)?.storeName || 'Storefront Reseller';
+          const sellerAmount = Math.round(Number(finalCommission) || (orderObj.resellerCommission ? Number(orderObj.resellerCommission) : 0));
+          if (sellerAmount > 0) {
+            sellerPart = {
+              name: sellerName,
+              amount: sellerAmount,
+              status: finalCommStatus || 'pending'
+            };
+          }
         }
 
-        const isOwnProductSale = !supplierPart && !!sellerPart && (Number(orderObj.systemFee) > 0 || (ro && Number(ro.systemFee) > 0));
+        const isOwnProductSale = !supplierPart && !!sellerPart && (Number(finalSystemFee) > 0 || Number(orderObj.systemFee) > 0 || (ro && Number(ro.systemFee) > 0));
 
         const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
         const motherProfit = Math.max(0, orderValue - distributedSoFar);

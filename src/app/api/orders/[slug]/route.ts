@@ -112,16 +112,27 @@ export async function GET(
 
       let sellerPart: { name: string; amount: number; status?: string } | null = null;
       if (ro && (ro.shortId === orderObj.shortId || !ro.shortId?.includes('-F'))) {
-        const sellerName = (ro.resellerId as any)?.storeName || 'Storefront Reseller';
+        const sellerName = (ro.resellerId as any)?.storeName || (orderObj.storefrontResellerId as any)?.storeName || (orderObj.resellerId as any)?.storeName || 'Storefront Reseller';
         const sellerAmount = Math.round(Number(ro.resellerCommission) || 0);
         sellerPart = {
           name: sellerName,
           amount: sellerAmount,
           status: ro.commissionStatus || 'pending'
         };
+      } else if (orderObj.storefrontResellerId || orderObj.resellerId) {
+        const resObj = orderObj.storefrontResellerId || orderObj.resellerId;
+        const sellerName = typeof resObj === 'object' && resObj?.storeName ? resObj.storeName : 'Storefront Reseller';
+        const sellerAmount = Math.round(Number(orderObj.resellerCommission) || 0);
+        if (sellerAmount > 0) {
+          sellerPart = {
+            name: sellerName,
+            amount: sellerAmount,
+            status: orderObj.commissionStatus || 'pending'
+          };
+        }
       }
 
-      const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || (ro && Number(ro.systemFee) > 0));
+      const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number(orderObj.systemFee) > 0 || (ro && Number(ro.systemFee) > 0));
       const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
       const motherProfit = Math.max(0, orderValue - distributedSoFar);
 
