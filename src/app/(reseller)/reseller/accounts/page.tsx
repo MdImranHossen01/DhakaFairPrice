@@ -24,10 +24,10 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   X,
-  Trash2,
+  Save,
   History,
   Search,
-  Save
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -46,12 +46,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
 import { TransactionForm } from '@/components/admin/TransactionForm';
 import { isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 export default function ResellerAccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const transferableAccounts = accounts.filter(isTransferableAccount);
 
   // Account Transaction History Modal State
   const [historyAccount, setHistoryAccount] = useState<any>(null);
@@ -76,129 +78,6 @@ export default function ResellerAccountsPage() {
       toast.error('Failed to load transaction history');
     } finally {
       setHistoryLoading(false);
-    }
-  };
-
-  // Quick Transaction Modal State
-  const [txModalOpen, setTxModalOpen] = useState(false);
-  const [selectedAccountForTx, setSelectedAccountForTx] = useState<any>(null);
-  const [txModalType, setTxModalType] = useState<'income' | 'expense'>('income');
-  const [txModalTab, setTxModalTab] = useState<'journal' | 'transfer'>('journal');
-
-  // New Account Modal State
-  const [newAccountOpen, setNewAccountOpen] = useState(false);
-  const [accountForm, setAccountForm] = useState({
-    name: '',
-    code: '',
-    category: 'Bank',
-    accountNumber: '',
-    bankName: '',
-    branchName: '',
-    bankAccountType: 'Savings',
-    mfsProvider: 'bKash',
-    mfsType: 'Merchant',
-    openingBalance: '',
-    description: ''
-  });
-  const [submittingAccount, setSubmittingAccount] = useState(false);
-
-  // Edit Opening Balance Modal State
-  const [editOpeningModalOpen, setEditOpeningModalOpen] = useState(false);
-  const [selectedAccountForEdit, setSelectedAccountForEdit] = useState<any>(null);
-  const [newOpeningBalance, setNewOpeningBalance] = useState('');
-  const [submittingEditOpening, setSubmittingEditOpening] = useState(false);
-
-  const fetchAccounts = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/reseller/accounts');
-      if (res.ok) {
-        const json = await res.json();
-        setAccounts(json.accounts || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch accounts:', error);
-      toast.error('Failed to load accounts');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAccounts();
-  }, []);
-
-  // Group accounts by category (Excluding AR and AP from liquid cashflow accounts)
-  const bankAccounts = accounts.filter(a => (a.category === 'Bank' || a.code === 'BANK') && a.code !== 'AR' && a.code !== 'AP');
-  const cashAccounts = accounts.filter(a => a.category === 'Cash' || a.code === 'CASH');
-  const mfsAccounts = accounts.filter(a => a.category === 'MFS');
-  const totalBalance = (bankAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
-    (cashAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
-    (mfsAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0));
-
-  const handleCreateAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountForm.name.trim() || !accountForm.code.trim()) {
-      toast.error('Account name and unique code are required');
-      return;
-    }
-
-    setSubmittingAccount(true);
-    try {
-      const res = await fetch('/api/reseller/accounts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...accountForm,
-          openingBalance: Number(accountForm.openingBalance) || 0
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create account');
-
-      toast.success('Account created successfully');
-      setNewAccountOpen(false);
-      setAccountForm({
-        name: '',
-        code: '',
-        category: 'Bank',
-        accountNumber: '',
-        bankName: '',
-        branchName: '',
-        bankAccountType: 'Savings',
-        mfsProvider: 'bKash',
-        mfsType: 'Merchant',
-        openingBalance: '',
-        description: ''
-      });
-      fetchAccounts();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create account');
-    } finally {
-      setSubmittingAccount(false);
-    }
-  };
-
-  const handleUpdateOpeningBalance = async () => {
-    if (!selectedAccountForEdit) return;
-    setSubmittingEditOpening(true);
-    try {
-      const res = await fetch(`/api/reseller/accounts/${selectedAccountForEdit._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ openingBalance: Number(newOpeningBalance) || 0 })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update balance');
-
-      toast.success('Opening balance updated');
-      setEditOpeningModalOpen(false);
-      fetchAccounts();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update balance');
-    } finally {
-      setSubmittingEditOpening(false);
     }
   };
 
@@ -245,6 +124,7 @@ export default function ResellerAccountsPage() {
     });
 
     if (!result.isConfirmed) return;
+
     try {
       const res = await fetch(`/api/reseller/accounts/${account._id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -254,49 +134,249 @@ export default function ResellerAccountsPage() {
       } else {
         toast.error(data.message || 'Failed to delete account');
       }
-    } catch (error) {
+    } catch (err: any) {
+      console.error('Failed to delete account:', err);
       toast.error('Failed to delete account');
     }
   };
 
-  const openQuickTx = (account: any, type: 'income' | 'expense', tab: 'journal' | 'transfer' = 'journal') => {
-    setSelectedAccountForTx(account);
-    setTxModalType(type);
-    setTxModalTab(tab);
+  // Quick Transaction Modal State (Add Money / Debit / Transfer)
+  const [txModalOpen, setTxModalOpen] = useState(false);
+  const [selectedAccountForTx, setSelectedAccountForTx] = useState<any>(null);
+  const [txModalType, setTxModalType] = useState<'income' | 'expense'>('income');
+  const [txModalTab, setTxModalTab] = useState<'journal' | 'transfer'>('journal');
+
+  // New Account Modal State
+  const [newAccountOpen, setNewAccountOpen] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    name: '',
+    code: '',
+    category: 'Bank',
+    accountNumber: '',
+    bankName: '',
+    branchName: '',
+    bankAccountType: 'Savings',
+    mfsProvider: 'bKash',
+    mfsType: 'Merchant',
+    openingBalance: '',
+    description: ''
+  });
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountForm.name.trim() || !accountForm.code.trim()) {
+      toast.error('Account name and unique code are required');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const res = await fetch('/api/reseller/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(accountForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to create account');
+      }
+
+      toast.success('Account created successfully');
+      setNewAccountOpen(false);
+      setAccountForm({
+        name: '',
+        code: '',
+        category: 'Bank',
+        accountNumber: '',
+        bankName: '',
+        branchName: '',
+        bankAccountType: 'Savings',
+        mfsProvider: 'bKash',
+        mfsType: 'Merchant',
+        openingBalance: '',
+        description: ''
+      });
+      fetchAccounts();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const todayLocal = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Transfer Modal State (Standalone)
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferForm, setTransferForm] = useState({
+    fromAccountId: '',
+    toAccountId: '',
+    amount: '',
+    note: '',
+    date: todayLocal()
+  });
+  const [transferring, setTransferring] = useState(false);
+
+  const fetchAccounts = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/reseller/accounts');
+      if (res.ok) {
+        const json = await res.json();
+        setAccounts(json.accounts || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch accounts:', error);
+      toast.error('Failed to load accounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccounts();
+  }, []);
+
+  const handleOpenCredit = (acc: any | null) => {
+    setSelectedAccountForTx(acc);
+    setTxModalType('income');
+    setTxModalTab('journal');
     setTxModalOpen(true);
+  };
+
+  const handleOpenDebit = (acc: any | null) => {
+    setSelectedAccountForTx(acc);
+    setTxModalType('expense');
+    setTxModalTab('journal');
+    setTxModalOpen(true);
+  };
+
+  const handleOpenTransfer = (acc: any) => {
+    setSelectedAccountForTx(acc);
+    setTxModalTab('transfer');
+    setTxModalOpen(true);
+  };
+
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = Number(transferForm.amount);
+    if (!amt || amt <= 0) {
+      toast.error('Please enter a valid transfer amount');
+      return;
+    }
+    if (!transferForm.fromAccountId || !transferForm.toAccountId) {
+      toast.error('Please select both source and destination accounts');
+      return;
+    }
+    if (transferForm.fromAccountId === transferForm.toAccountId) {
+      toast.error('Source and destination accounts cannot be the same');
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const res = await fetch('/api/reseller/accounts/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromAccountId: transferForm.fromAccountId,
+          toAccountId: transferForm.toAccountId,
+          amount: amt,
+          note: transferForm.note,
+          date: transferForm.date
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Transfer failed');
+      }
+
+      toast.success(data.message || 'Transfer executed successfully');
+      setTransferOpen(false);
+      setTransferForm({
+        fromAccountId: '',
+        toAccountId: '',
+        amount: '',
+        note: '',
+        date: todayLocal()
+      });
+      fetchAccounts();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setTransferring(false);
+    }
+  };
+
+  // Group accounts by category (Excluding AR and AP from liquid cashflow accounts)
+  const bankAccounts = accounts.filter(a => (a.category === 'Bank' || a.code === 'BANK') && a.code !== 'AR' && a.code !== 'AP');
+  const cashAccounts = accounts.filter(a => a.category === 'Cash' || a.code === 'CASH');
+  const mfsAccounts = accounts.filter(a => a.category === 'MFS');
+  const totalBalance = (bankAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (cashAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0)) +
+    (mfsAccounts.reduce((acc, c) => acc + (c.currentBalance || 0), 0));
+
+  const getAccountIcon = (category: string, code?: string) => {
+    if (code === 'CASH' || category === 'Cash') {
+      return <Wallet className="h-4 w-4 text-emerald-600" />;
+    }
+    if (category === 'MFS') {
+      return <Smartphone className="h-4 w-4 text-sky-600" />;
+    }
+    if (code === 'AR') {
+      return <ArrowDownCircle className="h-4 w-4 text-blue-600" />;
+    }
+    if (code === 'AP') {
+      return <ArrowUpCircle className="h-4 w-4 text-rose-600" />;
+    }
+    return <Building2 className="h-4 w-4 text-indigo-600" />;
   };
 
   return (
     <div className="flex-1 space-y-4 md:space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight">All Accounts</h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Manage your store bank accounts, cash registers, and MFS wallets</p>
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight">Bank, Cash & MFS Accounts</h1>
+          <p className="text-muted-foreground text-xs md:text-sm mt-1">
+            Real-time multi-account cashflow, bank ledgers, mobile wallets and internal fund transfers.
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            size="sm"
-            onClick={() => setNewAccountOpen(true)}
-            className="h-9 gap-1.5 text-xs font-bold"
+
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setNewAccountOpen(true)} 
+            className="gap-1.5 font-bold h-9 text-xs"
           >
-            <Plus className="h-4 w-4" />
-            Add New Account
+            <Plus className="h-3.5 w-3.5" />
+            <span>+ Add Account</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            onClick={fetchAccounts}
-            disabled={loading}
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={fetchAccounts} 
+            disabled={loading} 
+            title="Refresh Accounts"
+            className="h-9 w-9"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </Button>
         </div>
       </div>
 
-      {/* Overview Cards */}
+      {/* Summary Total Header Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4">
         <Card className="bg-primary/5 border-primary/20 shadow-xs">
           <CardContent className="p-3 md:p-4 flex items-center justify-between">
@@ -355,363 +435,596 @@ export default function ResellerAccountsPage() {
         </Card>
       </div>
 
-      {/* Accounts List Grid */}
-      {loading ? (
-        <div className="py-20 text-center text-muted-foreground text-xs">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
-          Loading store accounts...
-        </div>
-      ) : accounts.length === 0 ? (
-        <div className="py-20 text-center text-muted-foreground text-xs">
-          No accounts found. Click "Add New Account" to set up your accounts.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {accounts.map((acc) => {
-            const isCash = acc.code === 'CASH' || acc.category === 'Cash';
-            const isBank = acc.code === 'BANK' || acc.category === 'Bank';
-            const isAR = acc.code === 'AR';
-            const isAP = acc.code === 'AP';
-            const isDefault = ['CASH', 'BANK', 'AP', 'AR'].includes(acc.code);
-
-            const Icon = isCash
-              ? Wallet
-              : isBank
-              ? Building2
-              : isAR
-              ? ArrowDownCircle
-              : isAP
-              ? ArrowUpCircle
-              : acc.category === 'MFS'
-              ? Smartphone
-              : Building2;
-
-            const iconClass = isCash
-              ? 'bg-emerald-500/10 text-emerald-600'
-              : isBank
-              ? 'bg-indigo-500/10 text-indigo-600'
-              : isAR
-              ? 'bg-blue-500/10 text-blue-600'
-              : isAP
-              ? 'bg-rose-500/10 text-rose-600'
-              : acc.category === 'MFS'
-              ? 'bg-sky-500/10 text-sky-600'
-              : 'bg-muted text-muted-foreground';
-
-            const typeLabel = isCash
-              ? 'Cash'
-              : isAR
-              ? 'Receivable'
-              : isAP
-              ? 'Payable'
-              : acc.category || 'Bank';
-
-            return (
-              <Card key={acc._id} className="relative overflow-hidden hover:shadow-md transition-all border">
-                <CardHeader className="p-4 pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
-                        <Icon className="h-4 w-4" />
+      {/* Accounts List Table Card */}
+      <Card className="shadow-xs overflow-hidden">
+        <CardHeader className="bg-muted/30 py-2.5 px-3 md:py-3 md:px-4 border-b flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm md:text-base font-bold">All Connected Accounts</CardTitle>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono">{accounts.length} Accounts</Badge>
+        </CardHeader>
+        <CardContent className="p-0">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-xs md:text-sm text-center border-collapse">
+              <thead>
+                <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
+                  <th className="p-3 text-left font-bold text-foreground">Account Name</th>
+                  <th className="p-3 font-bold text-foreground">Type</th>
+                  <th className="p-3 font-bold text-foreground">Code</th>
+                  <th className="p-3 text-left font-bold text-foreground">Details / Bank Info</th>
+                  <th className="p-3 font-bold text-muted-foreground">Opening Balance</th>
+                  <th className="p-3 font-bold text-primary text-right">Current Live Balance</th>
+                  <th className="p-3 font-bold text-foreground text-center w-14">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading accounts...</span>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-sm leading-tight text-foreground line-clamp-1">{cleanAccountName(acc.name)}</h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">{acc.code}</Badge>
-                          <span className="text-[10px] text-muted-foreground font-medium">{typeLabel}</span>
+                    </td>
+                  </tr>
+                ) : accounts.length > 0 ? (
+                  accounts.map((acc: any) => (
+                    <tr key={acc._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-left">
+                        <div className="font-bold text-foreground flex items-center gap-2">
+                          {getAccountIcon(acc.category, acc.code)}
+                          {cleanAccountName(acc.name)}
                         </div>
-                      </div>
-                    </div>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 text-xs font-medium">
-                        <DropdownMenuItem
-                          onClick={() => handleOpenHistory(acc)}
-                          className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
-                        >
-                          <History className="h-3.5 w-3.5" />
-                          <span>Transaction History</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild className="cursor-pointer gap-2">
-                          <Link href={`/reseller/ledger?accountId=${acc._id}&accountName=${encodeURIComponent(acc.name)}`}>
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>View in Full Ledger</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedAccountForEdit(acc);
-                            setNewOpeningBalance(String(acc.openingBalance || 0));
-                            setEditOpeningModalOpen(true);
-                          }}
-                          className="text-xs cursor-pointer gap-2"
-                        >
-                          <Save className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>Edit Opening Balance</span>
-                        </DropdownMenuItem>
-                        {!isProtectedAccount(acc) && (
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteAccount(acc)}
-                            className="text-xs cursor-pointer text-destructive focus:text-destructive gap-2 font-semibold"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            <span>Delete Account</span>
-                          </DropdownMenuItem>
+                        {acc.description && (
+                          <div className="text-[11px] text-muted-foreground pl-6">{acc.description}</div>
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="secondary" className="text-[10px] font-semibold">
+                          {acc.code === 'CASH' ? 'Cash' : acc.code === 'AR' ? 'Receivable' : acc.code === 'AP' ? 'Payable' : acc.category}
+                        </Badge>
+                      </td>
+                      <td className="p-3 font-mono text-xs text-muted-foreground">{acc.code}</td>
+                      <td className="p-3 text-left">
+                        {acc.accountNumber && (
+                          <div className="font-mono text-xs text-foreground">A/C: {acc.accountNumber}</div>
+                        )}
+                        {acc.mfsProvider && (
+                          <div className="text-[11px] text-sky-600 font-semibold">{acc.mfsProvider} {acc.mfsType ? `· ${acc.mfsType}` : ''}</div>
+                        )}
+                        {acc.bankName && (
+                          <div className="text-[11px] text-muted-foreground">{acc.bankName} {acc.branchName ? `(${acc.branchName})` : ''}</div>
+                        )}
+                        {acc.bankAccountType && (
+                          <div className="text-[11px] text-indigo-500">{acc.bankAccountType} Account</div>
+                        )}
+                        {!acc.accountNumber && !acc.bankName && !acc.mfsProvider && (
+                          <span className="text-muted-foreground italic text-[11px]">Direct account</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-muted-foreground font-medium">৳{Math.round(acc.openingBalance || 0).toLocaleString()}</td>
+                      <td className="p-3 font-bold text-right text-base text-primary">
+                        ৳{Math.round(acc.currentBalance || 0).toLocaleString()}
+                      </td>
+                      <td className="p-3 text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 p-0 hover:bg-muted/80 rounded-md"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 text-xs font-medium">
+                            <DropdownMenuItem
+                              onClick={() => handleOpenCredit(acc)}
+                              className="text-emerald-600 focus:text-emerald-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Plus className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Credit + (Add Money)</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleOpenDebit(acc)}
+                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <ArrowDownCircle className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Debit - (Expense)</span>
+                            </DropdownMenuItem>
+                            {isTransferableAccount(acc) && (
+                              <DropdownMenuItem
+                                onClick={() => handleOpenTransfer(acc)}
+                                className="text-primary font-semibold cursor-pointer gap-2"
+                              >
+                                <ArrowRightLeft className="h-3.5 w-3.5" />
+                                <span>Transfer Funds</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => handleOpenHistory(acc)}
+                              className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <History className="h-3.5 w-3.5" />
+                              <span>Transaction History</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/reseller/ledger?accountId=${acc._id}&accountName=${encodeURIComponent(acc.name)}`}
+                                className="flex items-center gap-2 cursor-pointer w-full text-foreground"
+                              >
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>View in Full Ledger</span>
+                              </Link>
+                            </DropdownMenuItem>
+                            {!isProtectedAccount(acc) && (
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteAccount(acc)}
+                                className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                                <span>Delete Account</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts found. Click '+ Add Account' to create one.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                <CardContent className="p-4 pt-2 space-y-3">
-                  <div className="bg-muted/40 p-2.5 rounded-lg flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-muted-foreground font-medium">Current Balance</p>
-                      <p className="text-xl font-black text-foreground">৳{(acc.currentBalance || 0).toLocaleString()}</p>
+          {/* Mobile Card List View */}
+          <div className="block md:hidden p-2 space-y-2.5">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                <span>Loading accounts...</span>
+              </div>
+            ) : accounts.length > 0 ? (
+              accounts.map((acc: any) => (
+                <MobileDataCard
+                  key={acc._id}
+                  title={
+                    <div className="flex items-center gap-1.5 font-bold text-sm">
+                      {getAccountIcon(acc.category, acc.code)}
+                      <span>{cleanAccountName(acc.name)}</span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground font-medium">Opening Balance</p>
-                      <p className="text-xs font-semibold text-muted-foreground">৳{(acc.openingBalance || 0).toLocaleString()}</p>
+                  }
+                  badge={
+                    <Badge variant="secondary" className="text-[10px]">
+                      {acc.code === 'CASH' ? 'Cash' : acc.code === 'AR' ? 'Receivable' : acc.code === 'AP' ? 'Payable' : acc.category}
+                    </Badge>
+                  }
+                  footer={
+                    <div className="flex items-center justify-between w-full font-bold text-xs pt-2 border-t">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Live Balance:</span>
+                        <span className="text-primary text-sm font-black">৳{Math.round(acc.currentBalance || 0).toLocaleString()}</span>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 font-semibold">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            <span>Action</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 text-xs font-medium">
+                          <DropdownMenuItem
+                            onClick={() => handleOpenCredit(acc)}
+                            className="text-emerald-600 focus:text-emerald-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Credit + (Add Money)</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDebit(acc)}
+                            className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <ArrowDownCircle className="h-3.5 w-3.5 text-rose-600" />
+                            <span>Debit - (Expense)</span>
+                          </DropdownMenuItem>
+                          {isTransferableAccount(acc) && (
+                            <DropdownMenuItem
+                              onClick={() => handleOpenTransfer(acc)}
+                              className="text-primary font-semibold cursor-pointer gap-2"
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                              <span>Transfer Funds</span>
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => handleOpenHistory(acc)}
+                            className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <History className="h-3.5 w-3.5" />
+                            <span>Transaction History</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/reseller/ledger?accountId=${acc._id}&accountName=${encodeURIComponent(acc.name)}`}
+                              className="flex items-center gap-2 cursor-pointer w-full text-foreground"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span>View in Full Ledger</span>
+                            </Link>
+                          </DropdownMenuItem>
+                          {!isProtectedAccount(acc) && (
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteAccount(acc)}
+                              className="text-rose-600 focus:text-rose-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-rose-600" />
+                              <span>Delete Account</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
+                  }
+                >
+                  <MobileDataRow label="Account Code" value={<span className="font-mono text-xs">{acc.code}</span>} />
+                  {acc.accountNumber && <MobileDataRow label="Account No" value={<span className="font-mono text-xs">{acc.accountNumber}</span>} />}
+                  {acc.bankName && <MobileDataRow label="Bank / Branch" value={`${acc.bankName} ${acc.branchName ? `(${acc.branchName})` : ''}`} />}
+                  <MobileDataRow label="Opening Balance" value={`৳${Math.round(acc.openingBalance || 0).toLocaleString()}`} />
+                  {acc.description && <MobileDataRow label="Note" value={<span className="text-xs text-muted-foreground">{acc.description}</span>} />}
+                </MobileDataCard>
+              ))
+            ) : (
+              <div className="p-6 text-center text-muted-foreground text-xs">
+                No accounts found. Click '+ Add Account' to create one.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-                  {/* Account details if available */}
-                  {(acc.accountNumber || acc.bankName || acc.mfsProvider) ? (
-                    <div className="text-[11px] text-muted-foreground space-y-0.5">
-                      {acc.bankName && <p className="truncate">Bank: <span className="text-foreground font-medium">{acc.bankName} {acc.branchName ? `(${acc.branchName})` : ''}</span></p>}
-                      {acc.accountNumber && <p className="truncate font-mono">A/C: <span className="text-foreground font-medium">{acc.accountNumber}</span></p>}
-                      {acc.mfsProvider && <p className="truncate text-sky-600 font-semibold">{acc.mfsProvider} {acc.mfsType ? `· ${acc.mfsType}` : ''}</p>}
-                    </div>
-                  ) : (
-                    <div className="text-[11px] text-muted-foreground italic">
-                      Direct account
-                    </div>
-                  )}
+      {/* Quick Add Money / Debit / Transfer Dialog (Integrated TransactionForm) */}
+      <Dialog open={txModalOpen} onOpenChange={setTxModalOpen}>
+        <DialogContent className="sm:max-w-[500px] w-full">
+          <DialogHeader>
+            <DialogTitle>
+              {txModalTab === 'transfer' 
+                ? 'Transfer Funds' 
+                : txModalType === 'income' 
+                  ? (selectedAccountForTx ? `Add Money / Credit to ${selectedAccountForTx.name}` : 'Add Money / Deposit (Credit)')
+                  : (selectedAccountForTx ? `Withdraw / Debit from ${selectedAccountForTx.name}` : 'Withdraw / Expense (Debit)')}
+            </DialogTitle>
+          </DialogHeader>
+          <TransactionForm
+            key={`${selectedAccountForTx?._id}-${txModalType}-${txModalTab}`}
+            presetType={txModalType}
+            presetAccountId={selectedAccountForTx?._id}
+            presetTab={txModalTab}
+            apiPrefix="/api/reseller"
+            onSuccess={(wasEdit) => {
+              fetchAccounts();
+              if (wasEdit) {
+                setTxModalOpen(false);
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
-                  {/* Quick Action Buttons */}
-                  <div className="grid grid-cols-3 gap-1.5 pt-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] px-1 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/10"
-                      onClick={() => openQuickTx(acc, 'income', 'journal')}
-                    >
-                      + Deposit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] px-1 text-rose-600 border-rose-500/20 hover:bg-rose-500/10"
-                      onClick={() => openQuickTx(acc, 'expense', 'journal')}
-                    >
-                      - Debit
-                    </Button>
-                    {isTransferableAccount(acc) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-[10px] px-1 text-primary border-primary/20 hover:bg-primary/10"
-                        onClick={() => openQuickTx(acc, 'expense', 'transfer')}
-                      >
-                        <ArrowRightLeft className="h-3 w-3 mr-1" /> Transfer
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* New Account Dialog */}
+      {/* Add Account Modal */}
       <Dialog open={newAccountOpen} onOpenChange={setNewAccountOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md p-0 overflow-hidden gap-0">
+          {/* Styled Header */}
+          <div className="bg-primary px-5 py-3.5 flex justify-between items-center">
+            <h2 className="text-base font-bold text-primary-foreground flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New Account
+            </h2>
+            <button
+              onClick={() => setNewAccountOpen(false)}
+              className="text-primary-foreground hover:bg-white/10 p-1 rounded-md transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Form Body — Scrollable */}
+          <div className="overflow-y-auto max-h-[80vh]">
+          <form onSubmit={handleCreateAccount} className="p-5 space-y-4 pb-6">
+            {/* Account Name */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Account Name <span className="text-red-500">*</span></Label>
+              <Input
+                required
+                autoFocus
+                placeholder="e.g. City Bank Primary / bKash Merchant"
+                value={accountForm.name}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, name: e.target.value }))}
+                className="h-11 text-base"
+              />
+            </div>
+
+            {/* Account Code */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Account Code (Unique) <span className="text-red-500">*</span></Label>
+              <Input
+                required
+                placeholder="e.g. CBL-01 / BKASH-01"
+                value={accountForm.code}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                className="h-11 text-base font-mono uppercase"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Account Type <span className="text-red-500">*</span></Label>
+              <Select
+                value={accountForm.category}
+                onValueChange={(val) => val && setAccountForm(prev => ({ ...prev, category: val }))}
+              >
+                <SelectTrigger className="h-11 text-base">
+                  <SelectValue placeholder="Select Account Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MFS">MFS (bKash, Nagad, etc.)</SelectItem>
+                  <SelectItem value="Bank">Bank Account</SelectItem>
+                  <SelectItem value="Cash">Cash in Hand</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* MFS-specific fields */}
+            {accountForm.category === 'MFS' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2 border p-4 rounded-lg bg-muted/30">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">MFS Provider</Label>
+                  <Select
+                    value={accountForm.mfsProvider}
+                    onValueChange={(val) => val && setAccountForm(prev => ({ ...prev, mfsProvider: val }))}
+                  >
+                    <SelectTrigger className="h-11 text-base">
+                      <SelectValue placeholder="Select Provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bKash">bKash</SelectItem>
+                      <SelectItem value="Nagad">Nagad</SelectItem>
+                      <SelectItem value="Rocket">Rocket</SelectItem>
+                      <SelectItem value="Upay">Upay</SelectItem>
+                      <SelectItem value="mCash">mCash</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">Account Type</Label>
+                  <Select
+                    value={accountForm.mfsType}
+                    onValueChange={(val) => val && setAccountForm(prev => ({ ...prev, mfsType: val }))}
+                  >
+                    <SelectTrigger className="h-11 text-base">
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Merchant">Merchant</SelectItem>
+                      <SelectItem value="Agent">Agent</SelectItem>
+                      <SelectItem value="Personal">Personal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Bank-specific fields */}
+            {accountForm.category === 'Bank' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-semibold">Bank Name</Label>
+                    <Input
+                      placeholder="e.g. Dutch Bangla"
+                      value={accountForm.bankName}
+                      onChange={(e) => setAccountForm(prev => ({ ...prev, bankName: e.target.value }))}
+                      className="h-11 text-base"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-semibold">Branch Name</Label>
+                    <Input
+                      placeholder="e.g. Dhanmondi"
+                      value={accountForm.branchName}
+                      onChange={(e) => setAccountForm(prev => ({ ...prev, branchName: e.target.value }))}
+                      className="h-11 text-base"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">Bank Account Type</Label>
+                  <Select
+                    value={accountForm.bankAccountType}
+                    onValueChange={(val) => val && setAccountForm(prev => ({ ...prev, bankAccountType: val }))}
+                  >
+                    <SelectTrigger className="h-11 text-base">
+                      <SelectValue placeholder="Select Account Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Savings">Savings Account</SelectItem>
+                      <SelectItem value="Current">Current Account</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Account Number / Mobile Number */}
+            {(accountForm.category === 'Bank' || accountForm.category === 'MFS') && (
+              <div className="space-y-1.5 animate-in fade-in">
+                <Label className="text-sm font-semibold">
+                  {accountForm.category === 'MFS' ? 'Mobile Number' : 'Account Number'}
+                </Label>
+                <Input
+                  placeholder={accountForm.category === 'MFS' ? 'e.g. 01712345678' : 'e.g. 104.120.55421'}
+                  value={accountForm.accountNumber}
+                  onChange={(e) => setAccountForm(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  className="h-11 text-base font-mono"
+                />
+              </div>
+            )}
+
+            {/* Opening Balance */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Opening Balance (৳)</Label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="0"
+                value={accountForm.openingBalance}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, openingBalance: e.target.value }))}
+                className="h-11 text-base"
+              />
+              <p className="text-xs text-muted-foreground">Current balance when starting with this system.</p>
+            </div>
+
+            {/* Description/Note */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Note / Description</Label>
+              <Textarea
+                placeholder="Optional notes regarding this account..."
+                value={accountForm.description}
+                onChange={(e) => setAccountForm(prev => ({ ...prev, description: e.target.value }))}
+                className="min-h-[80px] text-sm resize-y"
+              />
+            </div>
+
+            {/* Submit */}
+            <div className="pt-1 flex justify-center">
+              <Button
+                type="submit"
+                disabled={creating}
+                className="w-full sm:w-auto px-8 h-11 text-base rounded-full font-semibold"
+              >
+                {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Account
+              </Button>
+            </div>
+          </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Internal Transfer Modal */}
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">Add New Account</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 font-bold">
+              <ArrowRightLeft className="h-5 w-5 text-primary" />
+              Transfer Funds (Internal Transfer)
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateAccount} className="space-y-3 text-xs">
+
+          <form onSubmit={handleTransfer} className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
-              <Label className="text-xs">Account Name *</Label>
-              <Input
-                placeholder="e.g. City Bank Current Account"
-                value={accountForm.name}
-                onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
-                className="h-8 text-xs"
-                required
-              />
+              <Label className="text-xs">From Account (Source) *</Label>
+              <Select
+                value={transferForm.fromAccountId}
+                onValueChange={(val) => {
+                  const v = val || '';
+                  setTransferForm(prev => ({ ...prev, fromAccountId: v }));
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select Source Account">
+                    {transferForm.fromAccountId ? (
+                      transferableAccounts.find(a => a._id === transferForm.fromAccountId)
+                        ? `${transferableAccounts.find(a => a._id === transferForm.fromAccountId)?.name} (Available: ৳${Math.round(transferableAccounts.find(a => a._id === transferForm.fromAccountId)?.currentBalance || 0)})`
+                        : 'Select Source Account'
+                    ) : 'Select Source Account'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {transferableAccounts.map(a => (
+                    <SelectItem key={a._id} value={a._id} className="text-xs">
+                      {a.name} (Available: ৳{Math.round(a.currentBalance || 0)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">To Account (Destination) *</Label>
+              <Select
+                value={transferForm.toAccountId}
+                onValueChange={(val) => {
+                  const v = val || '';
+                  setTransferForm(prev => ({ ...prev, toAccountId: v }));
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select Destination Account">
+                    {transferForm.toAccountId ? (
+                      transferableAccounts.find(a => a._id === transferForm.toAccountId)
+                        ? `${transferableAccounts.find(a => a._id === transferForm.toAccountId)?.name} (Balance: ৳${Math.round(transferableAccounts.find(a => a._id === transferForm.toAccountId)?.currentBalance || 0)})`
+                        : 'Select Destination Account'
+                    ) : 'Select Destination Account'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {transferableAccounts.filter(a => a._id !== transferForm.fromAccountId).map(a => (
+                    <SelectItem key={a._id} value={a._id} className="text-xs">
+                      {a.name} (Balance: ৳{Math.round(a.currentBalance || 0)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Unique Account Code *</Label>
+                <Label className="text-xs">Transfer Amount (৳) *</Label>
                 <Input
-                  placeholder="e.g. CITY01"
-                  value={accountForm.code}
-                  onChange={(e) => setAccountForm({ ...accountForm, code: e.target.value.toUpperCase() })}
-                  className="h-8 text-xs uppercase"
                   required
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 5000"
+                  value={transferForm.amount}
+                  onChange={(e) => setTransferForm(prev => ({ ...prev, amount: e.target.value }))}
+                  className="h-8 text-xs"
                 />
               </div>
-
               <div className="space-y-1">
-                <Label className="text-xs">Category *</Label>
-                <Select
-                  value={accountForm.category}
-                  onValueChange={(val) => val && setAccountForm({ ...accountForm, category: val })}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Bank" className="text-xs">Bank</SelectItem>
-                    <SelectItem value="MFS" className="text-xs">MFS (bKash/Nagad)</SelectItem>
-                    <SelectItem value="Other" className="text-xs">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs">Transfer Date</Label>
+                <Input
+                  type="date"
+                  value={transferForm.date}
+                  onChange={(e) => setTransferForm(prev => ({ ...prev, date: e.target.value }))}
+                  className="h-8 text-xs"
+                />
               </div>
             </div>
 
-            {accountForm.category === 'Bank' && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Bank Name</Label>
-                  <Input
-                    placeholder="e.g. City Bank"
-                    value={accountForm.bankName}
-                    onChange={(e) => setAccountForm({ ...accountForm, bankName: e.target.value })}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Account Number</Label>
-                  <Input
-                    placeholder="Account Number"
-                    value={accountForm.accountNumber}
-                    onChange={(e) => setAccountForm({ ...accountForm, accountNumber: e.target.value })}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-
-            {accountForm.category === 'MFS' && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Provider</Label>
-                  <Select
-                    value={accountForm.mfsProvider}
-                    onValueChange={(val) => val && setAccountForm({ ...accountForm, mfsProvider: val })}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bKash" className="text-xs">bKash</SelectItem>
-                      <SelectItem value="Nagad" className="text-xs">Nagad</SelectItem>
-                      <SelectItem value="Rocket" className="text-xs">Rocket</SelectItem>
-                      <SelectItem value="Upay" className="text-xs">Upay</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Wallet Number</Label>
-                  <Input
-                    placeholder="e.g. 017XXXXXXXX"
-                    value={accountForm.accountNumber}
-                    onChange={(e) => setAccountForm({ ...accountForm, accountNumber: e.target.value })}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="space-y-1">
-              <Label className="text-xs">Opening Balance (৳)</Label>
+              <Label className="text-xs">Transfer Note / Reference</Label>
               <Input
-                type="number"
-                placeholder="0"
-                value={accountForm.openingBalance}
-                onChange={(e) => setAccountForm({ ...accountForm, openingBalance: e.target.value })}
+                placeholder="e.g. Daily cash deposit to bank"
+                value={transferForm.note}
+                onChange={(e) => setTransferForm(prev => ({ ...prev, note: e.target.value }))}
                 className="h-8 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-xs">Description / Note</Label>
-              <Textarea
-                placeholder="Optional notes..."
-                value={accountForm.description}
-                onChange={(e) => setAccountForm({ ...accountForm, description: e.target.value })}
-                className="text-xs min-h-[45px]"
               />
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" size="sm" onClick={() => setNewAccountOpen(false)} className="h-8 text-xs">
-                Cancel
-              </Button>
-              <Button type="submit" size="sm" disabled={submittingAccount} className="h-8 text-xs font-bold">
-                {submittingAccount && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-                Save Account
+              <Button type="button" variant="outline" size="sm" onClick={() => setTransferOpen(false)}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={transferring} className="font-bold">
+                {transferring ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Execute Transfer
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Opening Balance Dialog */}
-      <Dialog open={editOpeningModalOpen} onOpenChange={setEditOpeningModalOpen}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold">Edit Opening Balance</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-xs py-1">
-            <p className="text-muted-foreground">Account: <span className="font-bold text-foreground">{selectedAccountForEdit?.name}</span></p>
-            <div className="space-y-1">
-              <Label className="text-xs">New Opening Balance (৳)</Label>
-              <Input
-                type="number"
-                value={newOpeningBalance}
-                onChange={(e) => setNewOpeningBalance(e.target.value)}
-                className="h-8 text-xs"
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setEditOpeningModalOpen(false)} className="h-8 text-xs">Cancel</Button>
-            <Button size="sm" onClick={handleUpdateOpeningBalance} disabled={submittingEditOpening} className="h-8 text-xs font-bold">
-              {submittingEditOpening && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
-              Update
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Transaction Modal (Add Money / Debit / Transfer) */}
-      <Dialog open={txModalOpen} onOpenChange={setTxModalOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold">
-              {txModalTab === 'transfer' ? 'Transfer Balance' : txModalType === 'income' ? 'Deposit Money' : 'Debit Money'}
-            </DialogTitle>
-          </DialogHeader>
-          <TransactionForm
-            presetAccountId={selectedAccountForTx?._id}
-            presetType={txModalType}
-            presetTab={txModalTab}
-            apiPrefix="/api/reseller"
-            onSuccess={() => {
-              setTxModalOpen(false);
-              fetchAccounts();
-            }}
-          />
         </DialogContent>
       </Dialog>
 
