@@ -655,7 +655,7 @@ function OrdersContent() {
                   <TableHead className="font-bold text-sm text-foreground">Order Info</TableHead>
                   <TableHead className="font-bold text-sm text-foreground">Items</TableHead>
                   <TableHead className="font-bold text-sm text-foreground">Total</TableHead>
-                  <TableHead className="font-bold text-sm text-foreground">Disbursement / বণ্টন</TableHead>
+                  <TableHead className="font-bold text-sm text-foreground">Disbursement</TableHead>
                   <TableHead className="font-bold text-sm text-foreground">Payment</TableHead>
                   <TableHead className="font-bold text-sm text-foreground">Status</TableHead>
                   <TableHead className="text-right font-bold text-sm text-foreground">Actions</TableHead>
@@ -758,7 +758,7 @@ function OrdersContent() {
                                   {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
                                   {uploaderName && (
                                     <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
-                                      🏷️ Reseller Product: {uploaderName}
+                                      🏷️ Source: {uploaderName}
                                     </span>
                                   )}
                                 </div>
@@ -772,7 +772,7 @@ function OrdersContent() {
                                 return (
                                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                     <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                                      <span>🏪 Reseller:</span>
+                                      <span>🏪 Seller:</span>
                                       <span className="font-extrabold underline decoration-indigo-400">
                                         {storeInfo.storeName}
                                       </span>
@@ -992,7 +992,7 @@ function OrdersContent() {
                             return (
                               <div className="mt-1 flex flex-wrap items-center gap-1">
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                                  <span>🏪 Reseller:</span>
+                                  <span>🏪 Seller:</span>
                                   <span className="font-bold underline decoration-indigo-400">
                                     {storeInfo.storeName}
                                   </span>

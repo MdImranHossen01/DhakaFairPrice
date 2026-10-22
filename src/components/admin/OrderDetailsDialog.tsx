@@ -1215,14 +1215,14 @@ export default function OrderDetailsDialog({
                             if (uploaderName) {
                               return (
                                 <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200">
-                                  🏷️ Reseller Product: {uploaderName}
+                                  🏷️ Source: {uploaderName}
                                 </Badge>
                               );
                             }
                             if (order.resellerId) {
                               return (
                                 <Badge variant="outline" className="text-[9px] py-0 px-1.5 h-4 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200">
-                                  🏪 Reseller Store: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Partner'}
+                                  🏪 Seller: {typeof order.resellerId === 'object' && order.resellerId.storeName ? order.resellerId.storeName : 'Partner'}
                                 </Badge>
                               );
                             }

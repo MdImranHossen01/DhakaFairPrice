@@ -66,7 +66,7 @@ export function DisbursementBreakdown({
             </Badge>
           )}
         </div>
-        {fee > 0 && <span className="text-[11px] text-primary">{perspective === 'reseller' ? 'Platform Fee:' : 'Mother Fee:'} ৳{fee}</span>}
+        {fee > 0 && <span className="text-[11px] text-primary">System Fee: ৳{fee}</span>}
         {del > 0 && <span className="text-[10px] text-muted-foreground">Delivery: ৳{del}</span>}
       </div>
     );
@@ -93,7 +93,7 @@ export function DisbursementBreakdown({
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-zinc-800/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
           <span className="flex items-center gap-1.5">
             <span>⚖️</span>
-            <span>Disbursement / বণ্টন</span>
+            <span>Disbursement</span>
           </span>
           <span className="text-[10px] lowercase font-mono text-muted-foreground/80">breakdown</span>
         </div>
@@ -145,12 +145,12 @@ export function DisbursementBreakdown({
         </div>
       )}
 
-      {/* 3. Mother Platform Fee - Shown to Admin, or to Reseller for own product sales or product supplier */}
+      {/* 3. System Fee - Shown to Admin, or to Reseller for own product sales or product supplier */}
       {motherFee > 0 && (perspective !== 'reseller' || isOwnProductSale || supplier?.isYou) && (
         <div className="flex justify-between items-center px-2 py-0.5 text-slate-600 dark:text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span>⚙️</span>
-            <span>{perspective === 'reseller' ? 'Platform Fee:' : 'Mother Fee:'}</span>
+            <span>System Fee:</span>
           </span>
           <span className="font-mono font-bold text-primary">৳{motherFee}</span>
         </div>
