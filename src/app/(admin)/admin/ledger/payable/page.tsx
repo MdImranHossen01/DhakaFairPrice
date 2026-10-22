@@ -1,31 +1,29 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-  Building2, 
-  Store, 
-  Wallet, 
+  ArrowLeft, 
   Loader2, 
   RefreshCw, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
   Search,
-  DollarSign
+  FileText,
+  History,
+  TrendingDown,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function PayableLedgerPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'suppliers' | 'resellers'>('suppliers');
-  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const fetchPayables = async () => {
     setLoading(true);
@@ -34,10 +32,12 @@ export default function PayableLedgerPage() {
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        toast.error('Failed to load accounts payable transactions');
       }
     } catch (error) {
-      console.error('Failed to fetch payable ledger:', error);
-      toast.error('Failed to load payable ledger');
+      console.error('Failed to fetch payable transactions:', error);
+      toast.error('Failed to load accounts payable transactions');
     } finally {
       setLoading(false);
     }
@@ -47,269 +47,193 @@ export default function PayableLedgerPage() {
     fetchPayables();
   }, []);
 
-  const supplierDueBills = data?.supplierPayables?.dueBills || [];
-  const resellersList = data?.resellerPayables?.resellers || [];
+  const account = data?.account;
+  const transactions: any[] = data?.transactions || [];
 
-  const filteredBills = supplierDueBills.filter((b: any) =>
-    b.billNo?.toLowerCase().includes(search.toLowerCase()) ||
-    b.supplier?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    b.supplier?.companyName?.toLowerCase().includes(search.toLowerCase())
+  const filteredTransactions = useMemo(() => {
+    if (!searchTerm.trim()) return transactions;
+    const term = searchTerm.toLowerCase().trim();
+    return transactions.filter((tx) => {
+      const desc = (tx.description || '').toLowerCase();
+      const ref = (tx.reference || '').toLowerCase();
+      const dateStr = tx.date ? format(new Date(tx.date), 'dd MMM yyyy').toLowerCase() : '';
+      return desc.includes(term) || ref.includes(term) || dateStr.includes(term);
+    });
+  }, [transactions, searchTerm]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
-  const filteredResellers = resellersList.filter((r: any) =>
-    r.storeName?.toLowerCase().includes(search.toLowerCase()) ||
-    r.subdomain?.toLowerCase().includes(search.toLowerCase()) ||
-    r.ownerName?.toLowerCase().includes(search.toLowerCase())
-  );
+  const liveBalance = account?.currentBalance ?? 0;
 
   return (
     <div className="flex-1 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/ledger" className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Accounts Payable Ledger (প্রদেয় দায়)</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/ledger">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
+              <History className="h-6 w-6 text-rose-600" />
+              <span>Accounts Payable — Transaction History</span>
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+              Account Code: <span className="font-mono font-bold text-foreground">AP</span> • Type: <span className="font-medium text-foreground">Liability</span> • Category: <span className="font-medium text-foreground">{account?.category || 'Payable'}</span>
+            </p>
           </div>
-          <p className="text-muted-foreground text-xs md:text-sm mt-1">
-            Comprehensive ledger of outstanding supplier purchase dues and drop-shipping reseller wallet liabilities.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchPayables} disabled={loading} className="h-9">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl px-4 py-2 text-right shadow-xs">
+            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 justify-end">
+              <TrendingDown className="h-3 w-3 text-rose-600" />
+              <span>Live Balance</span>
+            </div>
+            <div className="text-xl md:text-2xl font-black text-rose-600 dark:text-rose-400">
+              ৳{Math.round(liveBalance).toLocaleString()}
+            </div>
+          </div>
+
+          <Button variant="outline" size="icon" onClick={fetchPayables} disabled={loading} className="h-10 w-10 shrink-0">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {/* Top 3 Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-rose-500/5 border-rose-500/20 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-rose-600 uppercase">Total Combined Payable</p>
-              <p className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
-                ৳{Math.round(data?.grandTotalPayable || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-600">
-              <DollarSign className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setActiveTab('suppliers')}>
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Supplier Bills Due</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                ৳{Math.round(data?.supplierPayables?.totalDue || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600">
-              <Building2 className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-xs cursor-pointer hover:border-primary/40 transition-colors" onClick={() => setActiveTab('resellers')}>
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase">Reseller Total Liabilities</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                ৳{Math.round(data?.resellerPayables?.totalResellerPayable || (data?.resellerPayables?.totalWalletPayable || 0) + (data?.resellerPayables?.totalPendingCommission || 0)).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Cleared: ৳{Math.round(data?.resellerPayables?.totalWalletPayable || 0).toLocaleString()} | Orders: ৳{Math.round(data?.resellerPayables?.totalPendingCommission || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-600">
-              <Wallet className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs & Search Bar */}
+      {/* Search and Action Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center bg-muted/50 p-1 rounded-lg border w-fit">
-          <button
-            onClick={() => setActiveTab('suppliers')}
-            className={`text-xs px-4 py-1.5 rounded-md font-bold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'suppliers' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Building2 className="h-3.5 w-3.5" />
-            Supplier Payables ({data?.supplierPayables?.dueBills?.length || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab('resellers')}
-            className={`text-xs px-4 py-1.5 rounded-md font-bold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'resellers' ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Store className="h-3.5 w-3.5" />
-            Reseller Payables ({data?.resellerPayables?.resellers?.length || 0})
-          </button>
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search this account's transactions / ref / date..."
+            className="pl-9 pr-9 h-10 text-xs bg-card"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={activeTab === 'suppliers' ? 'Search supplier or bill...' : 'Search reseller store...'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 text-xs"
-          />
-        </div>
+        {account?._id && (
+          <Button asChild variant="outline" size="sm" className="h-10 text-xs gap-1.5 shrink-0 font-medium">
+            <Link href={`/admin/ledger?accountId=${account._id}&accountName=${encodeURIComponent(account.name || 'Accounts Payable')}`}>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span>Open in Full Ledger</span>
+            </Link>
+          </Button>
+        )}
       </div>
 
-      {/* 1. Supplier Payables Table */}
-      {activeTab === 'suppliers' && (
-        <Card className="shadow-xs overflow-hidden">
-          <CardHeader className="bg-muted/30 py-3 px-4 border-b flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-indigo-600" /> Outstanding Supplier Invoices & Dues
-            </CardTitle>
-            <Link href="/admin/supplier-bills" className="text-xs text-primary font-semibold hover:underline">
-              Manage Supplier Bills &rarr;
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs md:text-sm text-center border-collapse">
-                <thead>
-                  <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Date</th>
-                    <th className="p-3 font-bold text-foreground">Bill No</th>
-                    <th className="p-3 text-left font-bold text-foreground">Supplier</th>
-                    <th className="p-3 font-bold text-foreground">Total Bill</th>
-                    <th className="p-3 font-bold text-emerald-600">Paid</th>
-                    <th className="p-3 font-bold text-rose-600 text-right">Outstanding Due</th>
+      {/* Transactions Table Card */}
+      <div className="rounded-2xl border bg-card shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-muted/50 text-muted-foreground border-b uppercase text-[10px] font-bold tracking-wider">
+              <tr>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4">Description</th>
+                <th className="py-3 px-4 text-right">Debit</th>
+                <th className="py-3 px-4 text-right">Credit</th>
+                <th className="py-3 px-4 text-right">Running Balance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="h-48 text-center">
+                    <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground mt-2 font-medium">Loading transactions...</p>
+                  </td>
+                </tr>
+              ) : filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="h-40 text-center text-muted-foreground">
+                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-40 stroke-1" />
+                    <p className="font-medium text-xs">No transaction records found for Accounts Payable.</p>
+                  </td>
+                </tr>
+              ) : (
+                paginatedTransactions.map((tx: any) => (
+                  <tr key={tx._id} className="hover:bg-muted/30 transition-colors">
+                    <td className="py-3 px-4 whitespace-nowrap text-muted-foreground font-medium">
+                      {tx.date ? format(new Date(tx.date), 'dd MMM yyyy') : '—'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-foreground text-xs leading-snug">{tx.description}</div>
+                      {tx.reference && (
+                        <span className="text-[10px] text-muted-foreground bg-muted/80 px-2 py-0.5 rounded font-mono inline-block mt-1 border">
+                          Ref: {tx.reference}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-primary whitespace-nowrap font-mono text-sm">
+                      {tx.type === 'debit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-foreground whitespace-nowrap font-mono text-sm">
+                      {tx.type === 'credit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-black text-foreground whitespace-nowrap font-mono text-sm">
+                      ৳{Math.round(tx.balanceAfter || 0).toLocaleString()}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading supplier dues...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredBills.length > 0 ? (
-                    filteredBills.map((bill: any) => (
-                      <tr key={bill._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left text-muted-foreground">{new Date(bill.date).toLocaleDateString()}</td>
-                        <td className="p-3 font-medium text-foreground font-mono">{bill.billNo}</td>
-                        <td className="p-3 text-left">
-                          <div className="font-bold text-foreground">{bill.supplier?.name}</div>
-                          {bill.supplier?.companyName && (
-                            <div className="text-[11px] text-muted-foreground">{bill.supplier?.companyName}</div>
-                          )}
-                        </td>
-                        <td className="p-3 font-medium text-foreground">৳{Math.round(bill.total || 0).toLocaleString()}</td>
-                        <td className="p-3 font-medium text-emerald-600">৳{Math.round(bill.paidAmount || 0).toLocaleString()}</td>
-                        <td className="p-3 font-bold text-right text-rose-600">
-                          ৳{Math.round(bill.dueAmount || 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} className="p-6 text-center text-muted-foreground">No outstanding supplier dues.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-      {/* 2. Reseller Payables Table */}
-      {activeTab === 'resellers' && (
-        <Card className="shadow-xs overflow-hidden">
-          <CardHeader className="bg-muted/30 py-3 px-4 border-b flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <Store className="h-4 w-4 text-sky-600" /> Reseller Cleared Wallet Liabilities
-            </CardTitle>
-            <Link href="/admin/payouts" className="text-xs text-primary font-semibold hover:underline">
-              Process Payout Requests &rarr;
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs md:text-sm text-center border-collapse">
-                <thead>
-                  <tr className="bg-muted/20 border-b text-muted-foreground font-semibold">
-                    <th className="p-3 text-left font-bold text-foreground">Reseller Store</th>
-                    <th className="p-3 text-left font-bold text-foreground">Owner</th>
-                    <th className="p-3 font-bold text-foreground">Total Orders</th>
-                    <th className="p-3 font-bold text-emerald-600 dark:text-emerald-400">Lifetime Earnings</th>
-                    <th className="p-3 font-bold text-foreground">Active Orders Due</th>
-                    <th className="p-3 font-bold text-foreground">Cleared Wallet</th>
-                    <th className="p-3 font-bold text-primary text-right">Total Payable Due</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={7} className="p-8 text-center text-muted-foreground">
-                        <div className="flex items-center justify-center gap-2">
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          <span>Loading reseller liabilities...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredResellers.length > 0 ? (
-                    filteredResellers.map((r: any) => (
-                      <tr key={r._id} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 text-left">
-                          <div className="font-bold text-foreground flex items-center gap-1.5">
-                            <Store className="h-3.5 w-3.5 text-primary" />
-                            {r.storeName}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground font-mono">{r.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || ""}</div>
-                        </td>
-                        <td className="p-3 text-left">
-                          <div className="font-medium text-foreground">{r.ownerName}</div>
-                          {r.ownerPhone && <div className="text-[11px] text-muted-foreground">{r.ownerPhone}</div>}
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          <Badge variant="outline" className="font-mono bg-muted/40 font-semibold text-xs">
-                            {r.totalOrders || 0} Orders
-                          </Badge>
-                        </td>
-                        <td className="p-3 font-semibold text-emerald-600 dark:text-emerald-400">
-                          ৳{Math.round(r.totalEarnings || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          ৳{Math.round(r.pendingBalance || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-medium text-foreground">
-                          ৳{Math.round(r.walletBalance || 0).toLocaleString()}
-                        </td>
-                        <td className="p-3 font-bold text-right text-base text-primary">
-                          ৳{Math.round(r.totalPayable !== undefined ? r.totalPayable : ((r.walletBalance || 0) + (r.pendingBalance || 0))).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="p-6 text-center text-muted-foreground">No reseller liabilities recorded.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+        {/* Footer */}
+        <div className="p-3.5 border-t bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Total <strong className="text-foreground">{filteredTransactions.length}</strong> transaction{filteredTransactions.length === 1 ? '' : 's'} recorded
+          </span>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              >
+                Previous
+              </Button>
+              <span className="px-2 text-xs font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 text-xs"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              >
+                Next
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </div>
+      </div>
     </div>
   );
 }
