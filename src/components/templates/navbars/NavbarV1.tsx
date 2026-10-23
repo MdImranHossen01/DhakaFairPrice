@@ -1,5 +1,6 @@
 "use client";
 
+import { BecomeResellerButton } from '@/components/storefront/BecomeResellerButton';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -966,6 +967,8 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                         </div>
                       )}
                     </div>
+
+                    {!isResellerStore && <BecomeResellerButton className="hidden lg:inline-flex px-4 py-1.5 text-xs whitespace-nowrap" />}
 
                     {/* Wishlist Link */}
                     <Link href="/dashboard/wishlist" className="relative p-1.5 text-foreground hover:text-primary transition-colors">
