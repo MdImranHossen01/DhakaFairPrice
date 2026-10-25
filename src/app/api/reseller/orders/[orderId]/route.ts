@@ -274,7 +274,7 @@ export async function PATCH(
 
       const resellerFeeRate = reseller.systemFeePercent !== undefined 
         ? reseller.systemFeePercent 
-        : (reseller.commissionRate ?? 10);
+        : (reseller.commissionRate ?? 15);
       let serverComputedSubtotal = 0;
       let totalCommission = 0;
       let totalOwnProductSystemFee = 0;
