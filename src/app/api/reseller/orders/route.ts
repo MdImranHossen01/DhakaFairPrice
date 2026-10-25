@@ -448,8 +448,9 @@ export async function POST(request: NextRequest) {
       let itemSystemFee = 0;
 
       if (isOwnProduct) {
-        const baseCost = Number(product.purchasePrice) || 0;
-        itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * item.quantity;
+        // Reseller is selling their OWN uploaded product on their own storefront
+        // Calculate platform system fee on the retail selling price to protect against base price manipulation
+        itemSystemFee = Math.round(retailPrice * (resellerFeeRate / 100)) * item.quantity;
         totalOwnProductSystemFee += itemSystemFee;
         itemCommission = (retailPrice * item.quantity) - itemSystemFee;
       } else {

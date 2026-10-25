@@ -272,7 +272,9 @@ export async function PATCH(
         return NextResponse.json({ message: 'Order must contain at least one item' }, { status: 400 });
       }
 
-      const resellerFeeRate = Number((reseller as any).systemFeeRate) >= 0 ? Number((reseller as any).systemFeeRate) : 2;
+      const resellerFeeRate = reseller.systemFeePercent !== undefined 
+        ? reseller.systemFeePercent 
+        : (reseller.commissionRate ?? 10);
       let serverComputedSubtotal = 0;
       let totalCommission = 0;
       let totalOwnProductSystemFee = 0;
@@ -311,8 +313,9 @@ export async function PATCH(
         let itemSystemFee = 0;
 
         if (isOwnProduct) {
-          const baseCost = Number(prod.purchasePrice) || 0;
-          itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * quantity;
+          // Reseller is selling their OWN uploaded product on their own storefront
+          // Calculate platform system fee on the retail selling price to protect against base price manipulation
+          itemSystemFee = Math.round(retailPrice * (resellerFeeRate / 100)) * quantity;
           totalOwnProductSystemFee += itemSystemFee;
           itemCommission = (retailPrice * quantity) - itemSystemFee;
         } else {

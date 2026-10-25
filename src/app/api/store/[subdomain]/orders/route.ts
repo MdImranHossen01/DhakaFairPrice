@@ -98,11 +98,8 @@ export async function POST(
 
       if (isOwnProduct) {
         // Reseller is selling their OWN uploaded product on their own storefront
-        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
-          ? Number(productDoc.purchasePrice)
-          : (rp.purchasePrice ?? 0);
-
-        itemSystemFee = Math.round(baseCost * (resellerFeeRate / 100)) * qty;
+        // Calculate platform system fee on the retail selling price to protect against base price manipulation
+        itemSystemFee = Math.round(rp.retailPrice * (resellerFeeRate / 100)) * qty;
         totalOwnProductSystemFee += itemSystemFee;
 
         // Reseller keeps retail sales revenue minus Mother platform system fee

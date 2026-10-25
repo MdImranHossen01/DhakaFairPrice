@@ -156,6 +156,23 @@ const productSchema = z.object({
         path: ['salePrice'],
       });
     }
+    // Validate: purchasePrice (Reseller/Base price) must be > 0 and not exceed price
+    const purchasePriceVal = data.purchasePrice === '' || data.purchasePrice === undefined ? undefined : Number(data.purchasePrice);
+    if (purchasePriceVal !== undefined) {
+      if (purchasePriceVal <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Base / Reseller price must be greater than zero',
+          path: ['purchasePrice'],
+        });
+      } else if (priceVal > 0 && purchasePriceVal > priceVal) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Base / Reseller price cannot exceed retail price',
+          path: ['purchasePrice'],
+        });
+      }
+    }
     // No variants: main SKU is mandatory
     if (!data.sku || data.sku.trim().length < 2) {
       ctx.addIssue({
@@ -192,6 +209,22 @@ const productSchema = z.object({
             message: 'Discounted price cannot exceed price',
             path: ['variants', vIdx, 'sizes', sIdx, 'salePrice'],
           });
+        }
+        const sizePurchasePrice = size.purchasePrice === '' || size.purchasePrice === undefined ? undefined : Number(size.purchasePrice);
+        if (sizePurchasePrice !== undefined) {
+          if (sizePurchasePrice <= 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Base / Reseller price must be greater than zero',
+              path: ['variants', vIdx, 'sizes', sIdx, 'purchasePrice'],
+            });
+          } else if (sizePrice > 0 && sizePurchasePrice > sizePrice) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Base / Reseller price cannot exceed retail price',
+              path: ['variants', vIdx, 'sizes', sIdx, 'purchasePrice'],
+            });
+          }
         }
         if (!size.sku || size.sku.trim().length < 2) {
           ctx.addIssue({
@@ -498,6 +531,39 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
           stock: derivedStock,
         }]
       : [];
+
+    if (isReseller) {
+      if (!hasVariants) {
+        if (!derivedPurchasePrice || derivedPurchasePrice <= 0) {
+          toast.error('Reseller / Base price is required and must be greater than zero');
+          setLoading(false);
+          return;
+        }
+        if (derivedPrice > 0 && derivedPurchasePrice > derivedPrice) {
+          toast.error('Reseller / Base price cannot exceed retail price');
+          setLoading(false);
+          return;
+        }
+      } else {
+        for (const [cIdx, cGroup] of (values.variants || []).entries()) {
+          for (const [sIdx, sizeInfo] of (cGroup.sizes || []).entries()) {
+            const vPurchase = Number(sizeInfo.purchasePrice) || 0;
+            const vPrice = Number(sizeInfo.price) || 0;
+            const variantLabel = [cGroup.color, sizeInfo.size].filter(Boolean).join(' / ') || `Item ${cIdx + 1}`;
+            if (vPurchase <= 0) {
+              toast.error(`Reseller / Base price is required for variant (${variantLabel})`);
+              setLoading(false);
+              return;
+            }
+            if (vPrice > 0 && vPurchase > vPrice) {
+              toast.error(`Reseller / Base price cannot exceed retail price for variant (${variantLabel})`);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+    }
 
     const cleanValues = {
       ...values,

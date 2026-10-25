@@ -74,6 +74,27 @@ export async function POST(request: NextRequest) {
     const settings = await GlobalSettings.findOne().lean();
     const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 15;
 
+    const hasVariants = Array.isArray(variants) && variants.length > 0;
+    if (!hasVariants) {
+      if (parsedPurchasePrice <= 0) {
+        return NextResponse.json({ error: 'Reseller / Base price is required and must be greater than zero' }, { status: 400 });
+      }
+      if (parsedPrice > 0 && parsedPurchasePrice > parsedPrice) {
+        return NextResponse.json({ error: 'Reseller / Base price cannot exceed retail price' }, { status: 400 });
+      }
+    } else {
+      for (const v of variants) {
+        const vPurchase = Number(v.purchasePrice) || 0;
+        const vPrice = Number(v.price) || 0;
+        if (vPurchase <= 0) {
+          return NextResponse.json({ error: 'Reseller / Base price is required for each variant and must be greater than zero' }, { status: 400 });
+        }
+        if (vPrice > 0 && vPurchase > vPrice) {
+          return NextResponse.json({ error: 'Reseller / Base price cannot exceed retail price for each variant' }, { status: 400 });
+        }
+      }
+    }
+
     // Automatically calculate resellerPrice (Base purchase price + System Commission %)
     let computedResellerPrice = parsedResellerPrice;
     if (parsedPurchasePrice && parsedPurchasePrice > 0) {
@@ -164,12 +185,29 @@ export async function PATCH(request: NextRequest) {
 
     if (updateData.purchasePrice !== undefined) {
       const pPrice = Number(updateData.purchasePrice) || 0;
-      if (pPrice > 0) {
-        updateData.resellerPrice = Math.round(pPrice * (1 + commissionPct / 100));
+      const refPrice = Number(updateData.salePrice && updateData.salePrice > 0 ? updateData.salePrice : (updateData.price ?? 0));
+      if (pPrice <= 0) {
+        return NextResponse.json({ error: 'Reseller / Base price is required and must be greater than zero' }, { status: 400 });
       }
+      if (refPrice > 0 && pPrice > refPrice) {
+        return NextResponse.json({ error: 'Reseller / Base price cannot exceed retail price' }, { status: 400 });
+      }
+      updateData.resellerPrice = Math.round(pPrice * (1 + commissionPct / 100));
     }
 
     if (Array.isArray(updateData.variants)) {
+      for (const v of updateData.variants) {
+        if (v.purchasePrice !== undefined) {
+          const vPurchase = Number(v.purchasePrice) || 0;
+          const vPrice = Number(v.price) || 0;
+          if (vPurchase <= 0) {
+            return NextResponse.json({ error: 'Reseller / Base price is required for each variant and must be greater than zero' }, { status: 400 });
+          }
+          if (vPrice > 0 && vPurchase > vPrice) {
+            return NextResponse.json({ error: 'Reseller / Base price cannot exceed retail price for each variant' }, { status: 400 });
+          }
+        }
+      }
       updateData.variants = updateData.variants.map((v: any) => {
         const vPurchase = Number(v.purchasePrice) || 0;
         let vReseller = Number(v.resellerPrice) || 0;
