@@ -187,14 +187,22 @@ export async function POST(
 
     try {
       // 1. Find or auto-create customer user account
-      let customerUser = await User.findOne({
-        $or: [
-          ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
-          ...(customer.email ? [{ email: customer.email.toLowerCase().trim() }] : []),
-          ...(normalizedPhone ? [{ email: `${normalizedPhone}@store.com` }] : []),
-          ...(normalizedPhone ? [{ email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` }] : [])
-        ]
-      }).session(sessionConn);
+      const { auth } = await import('@/auth');
+      const authSession = await auth();
+      let customerUser = authSession?.user?.id
+        ? await User.findById(authSession.user.id).session(sessionConn)
+        : null;
+
+      if (!customerUser) {
+        customerUser = await User.findOne({
+          $or: [
+            ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+            ...(customer.email ? [{ email: customer.email.toLowerCase().trim() }] : []),
+            ...(normalizedPhone ? [{ email: `${normalizedPhone}@store.com` }] : []),
+            ...(normalizedPhone ? [{ email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` }] : [])
+          ]
+        }).session(sessionConn);
+      }
 
       if (!customerUser && normalizedPhone) {
         const [newUser] = (await User.create([{
@@ -352,6 +360,7 @@ export async function POST(
       // 5. Create Reseller Order
       const [order] = (await ResellerOrder.create([{
         resellerId: reseller._id,
+        user: customerUser?._id,
         motherOrderId: motherOrder._id,
         customer,
         items: validatedItems,

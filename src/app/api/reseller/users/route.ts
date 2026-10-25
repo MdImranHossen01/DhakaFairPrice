@@ -55,13 +55,40 @@ export async function GET(request: NextRequest) {
 
     const search = searchParams.get('search') || '';
 
-    // 2. Find any customer user IDs that placed orders with this reseller
-    const ResellerOrder = mongoose.models.ResellerOrder || mongoose.model('ResellerOrder');
-    const customerUserIds = await ResellerOrder.distinct('user', { resellerId: reseller._id });
-    const validOrderedUserIds = customerUserIds.filter((uid: any) => uid && mongoose.Types.ObjectId.isValid(uid));
+    // 2. Find any customer user IDs, phones, and emails that placed orders with this reseller
+    const ResellerOrder = mongoose.models.ResellerOrder || (await import('@/models/ResellerOrder')).default;
+    const Order = mongoose.models.Order || (await import('@/models/Order')).default;
+
+    const [
+      resellerOrderUserIds,
+      motherOrderUserIds,
+      resellerOrderPhones,
+      motherOrderPhones,
+      resellerOrderEmails,
+    ] = await Promise.all([
+      ResellerOrder.distinct('user', { resellerId: reseller._id }),
+      Order.distinct('user', { storefrontResellerId: reseller._id }),
+      ResellerOrder.distinct('customer.phone', { resellerId: reseller._id }),
+      Order.distinct('shippingAddress.phone', { storefrontResellerId: reseller._id }),
+      ResellerOrder.distinct('customer.email', { resellerId: reseller._id }),
+    ]);
+
+    const allUserIds = [...resellerOrderUserIds, ...motherOrderUserIds].filter(
+      (uid: any) => uid && mongoose.Types.ObjectId.isValid(uid)
+    );
+    const validOrderedUserIds = Array.from(new Set(allUserIds.map((id: any) => id.toString()))).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+
+    const rawPhones = [...resellerOrderPhones, ...motherOrderPhones].filter(Boolean) as string[];
+    const cleanPhones = Array.from(new Set(rawPhones.map((p) => p.trim())));
+
+    const rawEmails = resellerOrderEmails.filter(
+      (em: any) => em && typeof em === 'string' && !em.endsWith('@store.com')
+    ) as string[];
+    const cleanEmails = Array.from(new Set(rawEmails.map((e) => e.toLowerCase().trim())));
 
     // 3. Construct safe query matching reseller's customers
-    // NOTE: registeredVia is an ObjectId in User schema, so only pass valid ObjectIds (never raw subdomain string)
     const orConditions: any[] = [
       { registeredVia: reseller._id },
       { resellerId: reseller._id },
@@ -70,8 +97,15 @@ export async function GET(request: NextRequest) {
     if (validOrderedUserIds.length > 0) {
       orConditions.push({ _id: { $in: validOrderedUserIds } });
     }
+    if (cleanPhones.length > 0) {
+      orConditions.push({ phone: { $in: cleanPhones } });
+    }
+    if (cleanEmails.length > 0) {
+      orConditions.push({ email: { $in: cleanEmails } });
+    }
 
     const query: Record<string, any> = {
+      role: 'user',
       $or: orConditions,
     };
 
@@ -101,10 +135,36 @@ export async function GET(request: NextRequest) {
     // 4. Enrich with totalOrders count and formatted address
     const users = await Promise.all(
       rawUsers.map(async (u: any) => {
-        const orderCount = await ResellerOrder.countDocuments({
+        const phoneVariants = u.phone ? [
+          u.phone,
+          u.phone.replace(/^\+88/, ''),
+          `+88${u.phone.replace(/^\+88/, '')}`,
+          `88${u.phone.replace(/^\+88/, '')}`,
+        ] : [];
+
+        const orderMatch: any = {
           resellerId: reseller._id,
-          user: u._id,
-        });
+          $or: [
+            { user: u._id },
+            ...(phoneVariants.length > 0 ? [{ 'customer.phone': { $in: phoneVariants } }] : []),
+            ...(u.email && !u.email.endsWith('@store.com') ? [{ 'customer.email': u.email.toLowerCase().trim() }] : []),
+          ],
+        };
+
+        let orderCount = await ResellerOrder.countDocuments(orderMatch);
+
+        // Backup check from mother Order collection if ResellerOrder count is 0
+        if (orderCount === 0) {
+          orderCount = await Order.countDocuments({
+            storefrontResellerId: reseller._id,
+            $or: [
+              { user: u._id },
+              ...(phoneVariants.length > 0 ? [{ 'shippingAddress.phone': { $in: phoneVariants } }] : []),
+              ...(u.email && !u.email.endsWith('@store.com') ? [{ 'shippingAddress.email': u.email.toLowerCase().trim() }] : []),
+            ],
+          });
+        }
+
         const defaultAddress = u.addresses?.find((a: any) => a.isDefault) || u.addresses?.[0];
         const formattedAddress = defaultAddress
           ? [defaultAddress.street, defaultAddress.city, defaultAddress.division].filter(Boolean).join(', ')

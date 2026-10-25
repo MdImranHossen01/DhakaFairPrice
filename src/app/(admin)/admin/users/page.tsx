@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   UserCog,
   Trash2,
-  Search
+  Search,
+  Store
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -65,6 +66,7 @@ interface UserData {
   totalOrders: number;
   totalSpent: number;
   lastOrderDate?: string;
+  storeOrigin?: string;
 }
 
 function UsersContent() {
@@ -72,6 +74,8 @@ function UsersContent() {
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role') || 'all';
   const [currentPage, setCurrentPage] = useState(Math.max(1, parseInt(searchParams.get('page') || '1')));
+  const [sourceFilter, setSourceFilter] = useState<string>('mother');
+  const [activeResellers, setActiveResellers] = useState<{ _id: string; storeName: string; subdomain: string }[]>([]);
 
   const [users, setUsers] = useState<UserData[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -97,7 +101,7 @@ function UsersContent() {
       params.delete('page');
       router.push(`/admin/users?${params.toString()}`);
     }
-  }, [debouncedSearchTerm, roleParam]);
+  }, [debouncedSearchTerm, roleParam, sourceFilter]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAssignAdminOpen, setIsAssignAdminOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
@@ -114,12 +118,16 @@ function UsersContent() {
     try {
       const searchEncoded = encodeURIComponent(debouncedSearchTerm || '');
       const roleEncoded = encodeURIComponent(roleParam || '');
-      const response = await fetch(`/api/admin/users?page=${page}&limit=20&search=${searchEncoded}&role=${roleEncoded}`);
+      const sourceEncoded = encodeURIComponent(sourceFilter || 'mother');
+      const response = await fetch(`/api/admin/users?page=${page}&limit=20&search=${searchEncoded}&role=${roleEncoded}&source=${sourceEncoded}`);
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data.users || []);
       setTotalPages(data.totalPages || 1);
       setTotalCount(data.totalCount || 0);
+      if (Array.isArray(data.activeResellers)) {
+        setActiveResellers(data.activeResellers);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');
@@ -130,7 +138,7 @@ function UsersContent() {
 
   useEffect(() => {
     fetchUsers(currentPage);
-  }, [currentPage, debouncedSearchTerm, roleParam]);
+  }, [currentPage, debouncedSearchTerm, roleParam, sourceFilter]);
 
   useEffect(() => {
     const pageFromParams = Math.max(1, parseInt(searchParams.get('page') || '1'));
@@ -286,15 +294,39 @@ function UsersContent() {
         </div>
       </div>
       
-      {/* Search Filter Input */}
-      <div className="relative w-full max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          placeholder="Search name, email or phone..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-8 h-9 rounded-xl border bg-white text-xs shadow-xs"
-        />
+      {/* Search and Store Filter */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search name, email or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 h-9 rounded-xl border bg-white text-xs shadow-xs"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-muted-foreground whitespace-nowrap flex items-center gap-1">
+            <Store className="h-3.5 w-3.5" /> Store Scope:
+          </span>
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="h-9 rounded-xl border bg-white text-xs px-3 font-semibold text-slate-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="mother">Mother Shop Customers</option>
+            <option value="all">All Stores (Global)</option>
+            {activeResellers.map((r) => (
+              <option key={r._id} value={r._id}>
+                {r.storeName} (Reseller)
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="rounded-2xl border shadow-xs overflow-hidden bg-white">
@@ -306,6 +338,7 @@ function UsersContent() {
                 <TableHead className="w-[60px]">Avatar</TableHead>
                 <TableHead className="font-bold">Name</TableHead>
                 <TableHead className="font-bold">Email</TableHead>
+                <TableHead className="font-bold">Store Origin</TableHead>
                 <TableHead className="font-bold">Orders</TableHead>
                 <TableHead className="font-bold">Role</TableHead>
                 <TableHead className="font-bold">Joined</TableHead>
@@ -315,7 +348,7 @@ function UsersContent() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center">
+                  <TableCell colSpan={8} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <p className="text-muted-foreground font-medium text-xs">Loading user data...</p>
@@ -324,7 +357,7 @@ function UsersContent() {
                 </TableRow>
               ) : users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-48 text-center text-xs text-muted-foreground">
+                  <TableCell colSpan={8} className="h-48 text-center text-xs text-muted-foreground">
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -357,6 +390,19 @@ function UsersContent() {
                       </button>
                     </TableCell>
                     <TableCell className="text-slate-600 text-xs">{user.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                          user.storeOrigin === 'Mother Shop'
+                            ? 'border-primary/40 text-primary bg-primary/5'
+                            : 'border-amber-400 text-amber-800 bg-amber-50'
+                        }`}
+                      >
+                        <Store className="w-2.5 h-2.5 mr-1 inline" />
+                        {user.storeOrigin || 'Mother Shop'}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-700 text-xs">{user.totalOrders} Orders</span>
@@ -529,6 +575,14 @@ function UsersContent() {
                 }
               >
                 <MobileDataRow label="Email" value={<span className="text-muted-foreground text-xs">{user.email}</span>} />
+                <MobileDataRow 
+                  label="Store" 
+                  value={
+                    <Badge variant="outline" className="text-[10px] font-semibold border-primary/30">
+                      {user.storeOrigin || 'Mother Shop'}
+                    </Badge>
+                  } 
+                />
                 <MobileDataRow label="Orders" value={`${user.totalOrders} (৳${user.totalSpent.toLocaleString()})`} />
                 <MobileDataRow label="Joined" value={new Date(user.createdAt).toLocaleDateString()} />
               </MobileDataCard>

@@ -641,6 +641,7 @@ export async function POST(req: NextRequest) {
           [
             {
               resellerId: uploaderId,
+              user: user?._id,
               motherOrderId: newOrder._id,
               customer: {
                 name: shippingAddress.fullName,
@@ -942,23 +943,41 @@ export async function GET(req: NextRequest) {
       const { getStorefrontReseller } = await import('@/lib/resellerStore');
       const storefrontReseller = await getStorefrontReseller(req);
 
+      const User = (await import('@/models/User')).default;
+      const userDoc = await User.findById(userId).select('phone email').lean() as any;
+      const phoneVariants = userDoc?.phone ? [
+        userDoc.phone,
+        userDoc.phone.replace(/^\+88/, ''),
+        `+88${userDoc.phone.replace(/^\+88/, '')}`,
+        `88${userDoc.phone.replace(/^\+88/, '')}`,
+      ] : [];
+
+      const userMatchConditions: any[] = [{ user: userId }];
+      if (phoneVariants.length > 0) {
+        userMatchConditions.push({ 'shippingAddress.phone': { $in: phoneVariants } });
+      }
+
       if (storefrontReseller) {
         // Reseller Storefront: ONLY show orders placed for this reseller's store
         query = {
-          user: userId,
+          $or: userMatchConditions,
           deletedAt: null,
           storefrontResellerId: storefrontReseller._id,
         };
       } else {
         // Mother Shop: ONLY show mother shop orders (exclude reseller storefront orders)
         query = {
-          user: userId,
+          $or: userMatchConditions,
           deletedAt: null,
-          $or: [
-            { storefrontResellerId: { $exists: false } },
-            { storefrontResellerId: null },
+          $and: [
+            {
+              $or: [
+                { storefrontResellerId: { $exists: false } },
+                { storefrontResellerId: null },
+              ],
+            },
+            { orderSource: { $ne: 'reseller_storefront' } },
           ],
-          orderSource: { $ne: 'reseller_storefront' },
         };
       }
     }

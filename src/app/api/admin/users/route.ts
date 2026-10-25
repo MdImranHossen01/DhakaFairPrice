@@ -18,13 +18,17 @@ export async function GET(req: NextRequest) {
     const limit = Math.max(1, parseInt(searchParams.get('limit') || '20'));
     const search = searchParams.get('search') || '';
     const roleParam = searchParams.get('role');
+    const sourceParam = searchParams.get('source') || 'mother'; // 'mother' | 'all' | resellerId
 
     await connectToDatabase();
+    const mongoose = (await import('mongoose')).default;
+    const Reseller = mongoose.models.Reseller || (await import('@/models/Reseller')).default;
 
     const matchQuery: any = { role: { $ne: 'super_admin' as const } };
     if (roleParam && roleParam !== 'all' && roleParam !== 'super_admin') {
       matchQuery.role = { $eq: roleParam, $ne: 'super_admin' as const };
     }
+
     if (search) {
       matchQuery.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -32,9 +36,76 @@ export async function GET(req: NextRequest) {
         { phone: { $regex: search, $options: 'i' } }
       ];
     }
+
+    let orderPipelineMatch: any = {};
+
+    if (roleParam === 'user' || !roleParam || roleParam === 'all') {
+      if (sourceParam === 'mother') {
+        // Find users who registered on Mother shop or placed mother orders
+        const motherOrderedUserIds = await Order.distinct('user', {
+          $or: [
+            { storefrontResellerId: null },
+            { storefrontResellerId: { $exists: false } },
+          ],
+          orderSource: { $ne: 'reseller_storefront' },
+          user: { $ne: null },
+        });
+
+        const motherOrConditions: any[] = [
+          { registeredVia: { $in: [null, undefined] }, resellerId: { $in: [null, undefined] } },
+        ];
+        if (motherOrderedUserIds.length > 0) {
+          motherOrConditions.push({ _id: { $in: motherOrderedUserIds } });
+        }
+
+        matchQuery.$and = matchQuery.$and || [];
+        matchQuery.$and.push({ $or: motherOrConditions });
+
+        orderPipelineMatch = {
+          $expr: { $eq: ['$user', '$$userId'] },
+          $or: [
+            { storefrontResellerId: null },
+            { storefrontResellerId: { $exists: false } },
+          ],
+          orderSource: { $ne: 'reseller_storefront' },
+        };
+      } else if (sourceParam !== 'all' && mongoose.Types.ObjectId.isValid(sourceParam)) {
+        // Specific reseller store
+        const targetResellerId = new mongoose.Types.ObjectId(sourceParam);
+        const resellerOrderedUserIds = await Order.distinct('user', {
+          storefrontResellerId: targetResellerId,
+          user: { $ne: null },
+        });
+
+        const resellerOrConditions: any[] = [
+          { registeredVia: targetResellerId },
+        ];
+        if (resellerOrderedUserIds.length > 0) {
+          resellerOrConditions.push({ _id: { $in: resellerOrderedUserIds } });
+        }
+
+        matchQuery.$and = matchQuery.$and || [];
+        matchQuery.$and.push({ $or: resellerOrConditions });
+
+        orderPipelineMatch = {
+          $expr: { $eq: ['$user', '$$userId'] },
+          storefrontResellerId: targetResellerId,
+        };
+      } else {
+        // 'all' stores: calculate all orders
+        orderPipelineMatch = {
+          $expr: { $eq: ['$user', '$$userId'] },
+        };
+      }
+    } else {
+      orderPipelineMatch = {
+        $expr: { $eq: ['$user', '$$userId'] },
+      };
+    }
+
     const totalCount = await User.countDocuments(matchQuery);
 
-    // Aggregate users with their order stats (efficiently skip/limit before lookup)
+    // Aggregate users with their order stats and store origin
     const users = await User.aggregate([
       { $match: matchQuery },
       { $sort: { createdAt: -1 } },
@@ -43,10 +114,20 @@ export async function GET(req: NextRequest) {
       {
         $lookup: {
           from: 'orders',
-          localField: '_id',
-          foreignField: 'user',
-          as: 'userOrders'
-        }
+          let: { userId: '$_id' },
+          pipeline: [
+            { $match: orderPipelineMatch },
+          ],
+          as: 'userOrders',
+        },
+      },
+      {
+        $lookup: {
+          from: 'resellers',
+          localField: 'registeredVia',
+          foreignField: '_id',
+          as: 'resellerStore',
+        },
       },
       {
         $project: {
@@ -58,18 +139,32 @@ export async function GET(req: NextRequest) {
           phone: 1,
           addresses: 1,
           lastActive: 1,
+          registeredVia: 1,
+          storeOrigin: {
+            $cond: {
+              if: { $gt: [{ $size: '$resellerStore' }, 0] },
+              then: { $arrayElemAt: ['$resellerStore.storeName', 0] },
+              else: 'Mother Shop',
+            },
+          },
           totalOrders: { $size: '$userOrders' },
           totalSpent: { $sum: '$userOrders.totalAmount' },
-          lastOrderDate: { $max: '$userOrders.createdAt' }
-        }
-      }
+          lastOrderDate: { $max: '$userOrders.createdAt' },
+        },
+      },
     ]);
+
+    const activeResellers = await Reseller.find({ status: 'active' })
+      .select('_id storeName subdomain customDomain')
+      .lean();
 
     return NextResponse.json({
       users,
       totalCount,
       page,
       totalPages: Math.ceil(totalCount / limit),
+      activeResellers,
+      currentSource: sourceParam,
     });
   } catch (error) {
     console.error('Fetch Users Error:', error);

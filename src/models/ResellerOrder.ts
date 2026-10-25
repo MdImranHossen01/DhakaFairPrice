@@ -7,6 +7,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
  */
 export interface IResellerOrder extends Document {
   resellerId: mongoose.Types.ObjectId;
+  user?: mongoose.Types.ObjectId;
   motherOrderId?: mongoose.Types.ObjectId;   // Linked mother order (created after confirmation)
   customer: {
     name: string;
@@ -68,6 +69,7 @@ export interface IResellerOrder extends Document {
 const ResellerOrderSchema: Schema<IResellerOrder> = new Schema(
   {
     resellerId: { type: Schema.Types.ObjectId, ref: 'Reseller', required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User' },
     motherOrderId: { type: Schema.Types.ObjectId, ref: 'Order' },
     customer: {
       name: { type: String, required: true },
