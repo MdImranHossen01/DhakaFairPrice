@@ -71,17 +71,17 @@ export default function AdminResellersPage() {
   const [expiryDate, setExpiryDate] = useState<string>('');
   const [isNoExpiry, setIsNoExpiry] = useState<boolean>(false);
   const [savingActivation, setSavingActivation] = useState(false);
-  const [activationFee, setActivationFee] = useState<number>(10);
+  const [activationFee, setActivationFee] = useState<number>(15);
 
   // Fee Management Dialog state
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
   const [selectedFeeReseller, setSelectedFeeReseller] = useState<any>(null);
-  const [systemFeePercent, setSystemFeePercent] = useState<number>(10);
+  const [systemFeePercent, setSystemFeePercent] = useState<number>(15);
   const [savingFee, setSavingFee] = useState(false);
 
   const openFeeModal = (reseller: any) => {
     setSelectedFeeReseller(reseller);
-    const fee = reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 10);
+    const fee = reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 15);
     setSystemFeePercent(fee);
     setFeeDialogOpen(true);
   };
@@ -121,7 +121,7 @@ export default function AdminResellersPage() {
 
   const openActivationModal = (reseller: any) => {
     setTargetReseller(reseller);
-    setActivationFee(reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 10));
+    setActivationFee(reseller.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller.commissionRate ?? 15));
     if (reseller.expiresAt) {
       const d = new Date(reseller.expiresAt);
       setExpiryDate(d.toISOString().split('T')[0]);
@@ -550,7 +550,7 @@ export default function AdminResellersPage() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-sm block leading-tight truncate" title={r.storeName}>{r.storeName}</span>
                               <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 bg-indigo-50/80 text-indigo-700 border-indigo-200/80 shrink-0">
-                                Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10)}%
+                                Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 15)}%
                               </Badge>
                             </div>
                             {r.description && (
@@ -762,7 +762,7 @@ export default function AdminResellersPage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h4 className="font-bold text-sm text-foreground">{r.storeName}</h4>
                           <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 bg-indigo-50/80 text-indigo-700 border-indigo-200/80 shrink-0">
-                            Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 10)}%
+                            Fee: {r.systemFeePercent !== undefined ? r.systemFeePercent : (r.commissionRate ?? 15)}%
                           </Badge>
                         </div>
                         <p className="text-[11px] text-muted-foreground">{r.userId?.name || 'Unknown'} • {r.contact?.phone || r.userId?.email}</p>
@@ -1394,7 +1394,7 @@ export default function AdminResellersPage() {
                 <p className="text-muted-foreground text-[11px]">{selectedFeeReseller?.subdomain}.{ROOT_DOMAIN}</p>
               </div>
               <Badge variant="secondary" className="text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Current Fee: {selectedFeeReseller?.systemFeePercent !== undefined ? selectedFeeReseller.systemFeePercent : (selectedFeeReseller?.commissionRate ?? 10)}%
+                Current Fee: {selectedFeeReseller?.systemFeePercent !== undefined ? selectedFeeReseller.systemFeePercent : (selectedFeeReseller?.commissionRate ?? 15)}%
               </Badge>
             </div>
 
@@ -1414,7 +1414,7 @@ export default function AdminResellersPage() {
                     className="text-xs h-8 px-2 font-bold"
                     onClick={() => setSystemFeePercent(rate)}
                   >
-                    {rate}% {rate === 0 ? '(Free)' : rate === 10 ? '(Default)' : ''}
+                    {rate}% {rate === 0 ? '(Free)' : rate === 15 ? '(Default)' : ''}
                   </Button>
                 ))}
               </div>
@@ -1433,7 +1433,7 @@ export default function AdminResellersPage() {
                 step="0.5"
                 value={systemFeePercent}
                 onChange={(e) => setSystemFeePercent(e.target.value === '' ? '' as any : Number(e.target.value))}
-                placeholder="e.g. 10"
+                placeholder="e.g. 15"
                 className="h-10 text-sm font-bold"
               />
               <p className="text-[11px] text-muted-foreground leading-relaxed">

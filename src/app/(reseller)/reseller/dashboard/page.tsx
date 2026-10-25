@@ -945,7 +945,7 @@ export default function ResellerDashboard() {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Commission Profit Rate:</span>
                 <span className="font-bold text-emerald-600">
-                  {reseller?.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller?.commissionRate ?? 10)}%
+                  {reseller?.systemFeePercent !== undefined ? reseller.systemFeePercent : (reseller?.commissionRate ?? 15)}%
                 </span>
               </div>
             </div>

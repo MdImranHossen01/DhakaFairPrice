@@ -69,7 +69,7 @@ export async function POST(
 
     const resellerFeeRate = reseller.systemFeePercent !== undefined 
       ? reseller.systemFeePercent 
-      : (reseller.commissionRate ?? 10);
+      : (reseller.commissionRate ?? 15);
 
     for (const item of items) {
       const qty = parseInt(item.quantity, 10);

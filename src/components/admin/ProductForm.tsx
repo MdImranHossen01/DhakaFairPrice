@@ -370,7 +370,7 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
     toast.success('All variant SKUs have been auto-generated');
   };
 
-  const [platformCommissionRate, setPlatformCommissionRate] = useState<number>(10);
+  const [platformCommissionRate, setPlatformCommissionRate] = useState<number>(15);
 
   useEffect(() => {
     async function fetchData() {

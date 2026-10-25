@@ -133,7 +133,7 @@ const GlobalSettingsSchema: Schema<IGlobalSettings> = new Schema(
     logoUrl: { type: String, default: '/logo.webp' },
     socialLinks: { type: Object, default: {} },
     marqueeText: { type: String },
-    platformCommissionRate: { type: Number, default: 10, min: 0, max: 100 },
+    platformCommissionRate: { type: Number, default: 15, min: 0, max: 100 },
     freeDeliveryThreshold: { type: Number, default: 0 },
     deliveryChargeInsideDhaka: { type: Number, default: 60 },
     deliveryChargeOutsideDhaka: { type: Number, default: 120 },

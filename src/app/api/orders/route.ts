@@ -471,7 +471,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Compute reseller commission, system platform fee, and sales profit
-    const defaultPlatformCommissionRate = settings?.platformCommissionRate ?? 10;
+    const defaultPlatformCommissionRate = settings?.platformCommissionRate ?? 15;
     const uploaderResellerIds = Array.from(uploaderItemsMap.keys());
     const uploaderFeeMap = new Map<string, number>();
     if (uploaderResellerIds.length > 0) {
