@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
@@ -433,12 +434,12 @@ export default function SettingsPage() {
                   {/* Delivery Charges & Free Delivery Threshold */}
                   <div className="border-t border-gray-100 pt-5 mt-2 space-y-4">
                     <div className="space-y-1">
-                      <FormLabel className="text-sm font-bold flex items-center gap-2 text-gray-800">
+                      <Label className="text-sm font-bold flex items-center gap-2 text-gray-800">
                         <Truck className="h-4 w-4 text-primary" /> Delivery Charges & Free Delivery Threshold
-                      </FormLabel>
-                      <FormDescription className="text-xs text-muted-foreground">
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
                         Configure standard delivery charges and minimum order amount for automatic free delivery across the store. Set 0 to disable free delivery.
-                      </FormDescription>
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
