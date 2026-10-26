@@ -159,8 +159,9 @@ export async function GET(request: NextRequest) {
       );
 
       // Order value & delivery from mother order (or fallback to this order)
+      const isFreeDelivery = Boolean(motherOrder?.isFreeDelivery || order.isFreeDelivery);
       const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number(order.totalAmount) || 0);
-      const deliveryCharge = Math.round(Number(motherOrder?.deliveryCharge) || Number(order.deliveryCharge) || 0);
+      const deliveryCharge = Math.round(Number(motherOrder?.courierCharge || order.courierCharge || motherOrder?.deliveryCharge || order.deliveryCharge) || 0);
       const motherFee = Math.round(Number(motherOrder?.systemFee) || Number(order.systemFee) || 0);
 
       // Supplier
@@ -222,6 +223,8 @@ export async function GET(request: NextRequest) {
       const disbursement = {
         orderValue,
         deliveryCharge,
+        courierCharge: deliveryCharge,
+        isFreeDelivery,
         supplier: sanitizedSupplierPart,
         seller: sellerPart,
         isOwnProductSale,

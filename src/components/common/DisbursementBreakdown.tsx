@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 export interface DisbursementData {
   orderValue: number;
   deliveryCharge: number;
+  courierCharge?: number;
+  isFreeDelivery?: boolean;
   supplier?: {
     name: string;
     amount: number;
@@ -172,6 +174,11 @@ export function DisbursementBreakdown({
         <span className="flex items-center gap-1.5">
           <span>🚚</span>
           <span>Delivery Charge:</span>
+          {disbursement.isFreeDelivery && (
+            <span className="text-[9px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded" title="Free delivery offered by reseller, courier fee absorbed from sales margin">
+              Free Promo
+            </span>
+          )}
         </span>
         <span className="font-mono font-semibold text-slate-700 dark:text-zinc-300">৳{deliveryCharge}</span>
       </div>

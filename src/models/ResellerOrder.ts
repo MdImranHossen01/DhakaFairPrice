@@ -33,6 +33,8 @@ export interface IResellerOrder extends Document {
   }[];
   subtotal: number;
   deliveryCharge: number;
+  courierCharge?: number;
+  isFreeDelivery?: boolean;
   totalAmount: number;
   couponCode?: string;
   couponDiscount?: number;
@@ -97,6 +99,8 @@ const ResellerOrderSchema: Schema<IResellerOrder> = new Schema(
     ],
     subtotal: { type: Number, required: true, min: 0 },
     deliveryCharge: { type: Number, default: 0, min: 0 },
+    courierCharge: { type: Number, default: 0 },
+    isFreeDelivery: { type: Boolean, default: false },
     totalAmount: { type: Number, required: true, min: 0 },
     couponCode: { type: String },
     couponDiscount: { type: Number, default: 0, min: 0 },

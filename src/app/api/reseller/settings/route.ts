@@ -168,6 +168,7 @@ export async function PATCH(request: NextRequest) {
         ...deliveryConfig,
         insideDhaka: globalSettings?.deliveryChargeInsideDhaka ?? 60,
         outsideDhaka: globalSettings?.deliveryChargeOutsideDhaka ?? 120,
+        freeDeliveryThreshold: Math.max(0, Number(deliveryConfig.freeDeliveryThreshold) || 0),
       };
     }
 

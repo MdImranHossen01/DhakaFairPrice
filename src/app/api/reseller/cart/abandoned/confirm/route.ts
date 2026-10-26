@@ -95,9 +95,12 @@ export async function POST(req: NextRequest) {
     const outsideCharge = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
     const freeThreshold = reseller.deliveryConfig?.freeDeliveryThreshold ?? 0;
 
-    let calculatedDeliveryCharge = cart.deliveryArea === 'inside' ? insideCharge : outsideCharge;
-    if (freeThreshold > 0 && calculatedSubtotal >= freeThreshold) {
-      calculatedDeliveryCharge = 0;
+    const standardDeliveryCharge = cart.deliveryArea === 'inside' ? insideCharge : outsideCharge;
+    const isFreeDelivery = freeThreshold > 0 && calculatedSubtotal >= freeThreshold;
+    const calculatedDeliveryCharge = isFreeDelivery ? 0 : standardDeliveryCharge;
+
+    if (isFreeDelivery) {
+      totalCommission = Math.max(0, totalCommission - standardDeliveryCharge);
     }
 
     const calculatedTotalAmount = calculatedSubtotal + calculatedDeliveryCharge;
@@ -171,6 +174,8 @@ export async function POST(req: NextRequest) {
         })),
         totalAmount: calculatedTotalAmount,
         deliveryCharge: calculatedDeliveryCharge,
+        courierCharge: standardDeliveryCharge,
+        isFreeDelivery: Boolean(isFreeDelivery),
         shippingAddress: {
           fullName: cart.fullName || 'Customer',
           phone: customerPhone,
@@ -186,7 +191,9 @@ export async function POST(req: NextRequest) {
         status: 'Order Placed',
         resellerId: reseller._id,
         systemNote: `Recovered from Abandoned Cart by Reseller (${reseller.storeName})`,
-        internalNote: '',
+        internalNote: isFreeDelivery
+          ? `Storefront Free Delivery Promo: Courier charge of ৳${standardDeliveryCharge} subsidized by reseller.`
+          : '',
       }], { session: sessionConn });
 
       const customerDetails = {
@@ -208,6 +215,8 @@ export async function POST(req: NextRequest) {
         items: validatedItems,
         subtotal: calculatedSubtotal,
         deliveryCharge: calculatedDeliveryCharge,
+        courierCharge: standardDeliveryCharge,
+        isFreeDelivery: Boolean(isFreeDelivery),
         totalAmount: calculatedTotalAmount,
         paymentMethod: 'COD',
         paymentStatus: 'Pending',
@@ -216,7 +225,9 @@ export async function POST(req: NextRequest) {
         commissionStatus: 'pending',
         shortId,
         systemNote: 'Recovered from Abandoned Cart',
-        internalNote: '',
+        internalNote: isFreeDelivery
+          ? `Free Delivery Offered: Standard courier charge of ৳${standardDeliveryCharge} deducted from your margin.`
+          : '',
       }], { session: sessionConn });
 
       // Delete the abandoned cart

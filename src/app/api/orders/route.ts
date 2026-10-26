@@ -154,7 +154,6 @@ export async function POST(req: NextRequest) {
           ...(normalizedPhone ? [{ email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` }] : [])
         ]
       }).session(session);
-    }
 
       if (user) {
         // If user exists but lacks phone or address, update it
@@ -1141,8 +1140,9 @@ export async function GET(req: NextRequest) {
           r.shortId?.includes('-F') || (ro && r._id.toString() !== ro._id.toString())
         );
 
+        const isFreeDelivery = Boolean(orderObj.isFreeDelivery || ro?.isFreeDelivery);
         const orderValue = Math.round(Number(orderObj.totalAmount) || 0);
-        const deliveryCharge = Math.round(Number(orderObj.deliveryCharge) || 0);
+        const deliveryCharge = Math.round(Number(orderObj.courierCharge || ro?.courierCharge || orderObj.deliveryCharge) || 0);
         const motherFee = Math.round(Number(totalSystemFee) || 0);
 
         let supplierPart: { name: string; amount: number; status?: string } | null = null;
@@ -1186,6 +1186,8 @@ export async function GET(req: NextRequest) {
         const disbursement = {
           orderValue,
           deliveryCharge,
+          courierCharge: deliveryCharge,
+          isFreeDelivery,
           supplier: supplierPart,
           seller: sellerPart,
           isOwnProductSale,

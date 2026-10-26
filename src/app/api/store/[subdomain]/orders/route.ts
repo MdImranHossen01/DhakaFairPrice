@@ -164,11 +164,15 @@ export async function POST(
     const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
     const insideCharge = globalSettings?.deliveryChargeInsideDhaka ?? 60;
     const outsideCharge = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
-    const freeThreshold = reseller.deliveryConfig?.freeDeliveryThreshold ?? 0;
+    const freeThreshold = Number(reseller.deliveryConfig?.freeDeliveryThreshold) || 0;
 
-    let calculatedDeliveryCharge = deliveryArea === 'inside' ? insideCharge : outsideCharge;
-    if (freeThreshold > 0 && calculatedSubtotal >= freeThreshold) {
-      calculatedDeliveryCharge = 0;
+    const standardDeliveryCharge = deliveryArea === 'inside' ? insideCharge : outsideCharge;
+    const isFreeDelivery = freeThreshold > 0 && calculatedSubtotal >= freeThreshold;
+    const calculatedDeliveryCharge = isFreeDelivery ? 0 : standardDeliveryCharge;
+
+    if (isFreeDelivery) {
+      // Reseller absorbs free delivery: courier charge is deducted from reseller commission so Mother Shop retains it to pay courier
+      totalCommission = Math.max(0, totalCommission - standardDeliveryCharge);
     }
 
     let baseTotal = calculatedSubtotal + calculatedDeliveryCharge;
@@ -349,6 +353,8 @@ export async function POST(
         })),
         totalAmount: calculatedFinalTotal,
         deliveryCharge: calculatedDeliveryCharge,
+        courierCharge: standardDeliveryCharge,
+        isFreeDelivery: Boolean(isFreeDelivery),
         couponCode: appliedCouponCode,
         couponDiscountAmount: couponDiscountAmount,
         walletAmountUsed,
@@ -371,8 +377,12 @@ export async function POST(
         resellerCommission: totalCommission,
         commissionStatus: 'pending',
         customerNote: notes || '',
-        internalNote: '',
-        systemNote: `Reseller Order (${reseller.storeName})`,
+        internalNote: isFreeDelivery
+          ? `Storefront Free Delivery Promo: Courier charge of ৳${standardDeliveryCharge} subsidized by reseller (${reseller.storeName}).`
+          : '',
+        systemNote: isFreeDelivery
+          ? `Reseller Order (${reseller.storeName}) - Free Delivery Subsidized (৳${standardDeliveryCharge})`
+          : `Reseller Order (${reseller.storeName})`,
       }], { session: sessionConn })) as any[];
 
       // 5. Create Reseller Order
@@ -384,6 +394,8 @@ export async function POST(
         items: validatedItems,
         subtotal: calculatedSubtotal,
         deliveryCharge: calculatedDeliveryCharge,
+        courierCharge: standardDeliveryCharge,
+        isFreeDelivery: Boolean(isFreeDelivery),
         couponCode: appliedCouponCode,
         couponDiscount: couponDiscountAmount,
         totalAmount: calculatedFinalTotal,
@@ -395,10 +407,14 @@ export async function POST(
         systemFee: totalOwnProductSystemFee,
         commissionStatus: 'pending',
         customerNote: notes || '',
-        internalNote: '',
+        internalNote: isFreeDelivery
+          ? `Free Delivery Offered: Standard courier charge of ৳${standardDeliveryCharge} deducted from your margin.`
+          : '',
         systemNote: totalOwnProductSystemFee > 0
           ? `Storefront Order (${reseller.storeName}) - Own Product (Earnings: ৳${totalCommission}, System Fee: ৳${totalOwnProductSystemFee})`
-          : `Storefront Order (${reseller.storeName})`,
+          : (isFreeDelivery
+            ? `Storefront Order (${reseller.storeName}) - Free Delivery Subsidized (৳${standardDeliveryCharge})`
+            : `Storefront Order (${reseller.storeName})`),
         shortId,
       }], { session: sessionConn })) as any[];
 
@@ -426,7 +442,9 @@ export async function POST(
         type: 'commission_earned',
         amount: totalCommission,
         orderId: order._id,
-        description: `Commission from order ${shortId}`,
+        description: isFreeDelivery
+          ? `Commission from order ${shortId} (Courier fee ৳${standardDeliveryCharge} subsidized)`
+          : `Commission from order ${shortId}`,
         status: 'pending',
       }], { session: sessionConn });
 
@@ -447,6 +465,8 @@ export async function POST(
           items: fItems,
           subtotal: Math.max(0, calculatedFinalTotal - calculatedDeliveryCharge),
           deliveryCharge: calculatedDeliveryCharge,
+          courierCharge: standardDeliveryCharge,
+          isFreeDelivery: Boolean(isFreeDelivery),
           totalAmount: calculatedFinalTotal,
           paymentMethod: paymentMethod || 'COD',
           paymentStatus: 'Pending',

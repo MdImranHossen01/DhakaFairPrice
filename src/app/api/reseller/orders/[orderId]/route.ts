@@ -79,8 +79,9 @@ export async function GET(
       r.shortId?.includes('-F') || (storefrontRo && r._id.toString() !== storefrontRo._id.toString())
     );
 
+    const isFreeDelivery = Boolean(motherOrder?.isFreeDelivery || (order as any).isFreeDelivery);
     const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number((order as any).totalAmount) || 0);
-    const deliveryCharge = Math.round(Number(motherOrder?.deliveryCharge) || Number((order as any).deliveryCharge) || 0);
+    const deliveryCharge = Math.round(Number(motherOrder?.courierCharge || (order as any).courierCharge || motherOrder?.deliveryCharge || (order as any).deliveryCharge) || 0);
     const motherFee = Math.round(Number(motherOrder?.systemFee) || Number((order as any).systemFee) || 0);
 
     let supplierPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
@@ -140,6 +141,8 @@ export async function GET(
     const disbursement = {
       orderValue,
       deliveryCharge,
+      courierCharge: deliveryCharge,
+      isFreeDelivery,
       supplier: sanitizedSupplierPart,
       seller: sellerPart,
       isOwnProductSale,

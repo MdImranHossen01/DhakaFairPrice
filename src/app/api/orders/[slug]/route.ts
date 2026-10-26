@@ -95,7 +95,8 @@ export async function GET(
 
       // Compute full disbursement
       const orderValue = Math.round(Number(orderObj.totalAmount) || 0);
-      const deliveryCharge = Math.round(Number(orderObj.deliveryCharge) || 0);
+      const isFreeDelivery = Boolean(orderObj.isFreeDelivery || ro?.isFreeDelivery);
+      const deliveryCharge = Math.round(Number(orderObj.courierCharge || ro?.courierCharge || orderObj.deliveryCharge) || 0);
       const motherFee = Math.round(Number(totalSystemFee) || 0);
 
       let supplierPart: { name: string; amount: number; status?: string } | null = null;
@@ -136,9 +137,13 @@ export async function GET(
       const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
       const motherProfit = Math.max(0, orderValue - distributedSoFar);
 
+      orderObj.isFreeDelivery = isFreeDelivery;
+      orderObj.courierCharge = deliveryCharge;
       orderObj.disbursement = {
         orderValue,
         deliveryCharge,
+        courierCharge: deliveryCharge,
+        isFreeDelivery,
         supplier: supplierPart,
         seller: sellerPart,
         isOwnProductSale,
@@ -202,6 +207,8 @@ export async function GET(
         logoUrl: sfRes.logoUrl || '',
         isReseller: true,
       };
+    }
+
     // Enrich items with user review status if customer is logged in
     const currentUserId = (session?.user as any)?.id;
     if (currentUserId && Array.isArray(orderObj.items) && orderObj.items.length > 0) {

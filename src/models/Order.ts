@@ -17,6 +17,8 @@ export interface IOrder extends Document {
   shortId: string;
   totalAmount: number;
   deliveryCharge: number;
+  courierCharge?: number;
+  isFreeDelivery?: boolean;
   shippingAddress: {
     fullName: string;
     phone: string;
@@ -91,6 +93,8 @@ const OrderSchema: Schema<IOrder> = new Schema(
     ],
     totalAmount: { type: Number, required: true, min: [0, 'Total amount cannot be negative'] },
     deliveryCharge: { type: Number, required: true, default: 0, min: [0, 'Delivery charge cannot be negative'] },
+    courierCharge: { type: Number, default: 0 },
+    isFreeDelivery: { type: Boolean, default: false },
     shippingAddress: {
       type: {
         fullName: { type: String, required: true },
