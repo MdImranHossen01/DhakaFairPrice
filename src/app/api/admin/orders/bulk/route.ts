@@ -241,9 +241,24 @@ export async function DELETE(req: NextRequest) {
       console.error('[Bulk Delete] Error soft-deleting reseller orders:', roErr);
     }
 
+    // Inventory Protection Rule:
+    // Only restock products for orders that were NEVER Paid and NEVER Delivered!
+    const unpaidUnDelivered = ordersToDelete.filter((o: any) => o.paymentStatus !== 'Paid' && o.status !== 'Delivered');
+    if (unpaidUnDelivered.length > 0) {
+      try {
+        const { restoreStockForOrder } = await import('@/lib/stockHelper');
+        for (const unOrder of unpaidUnDelivered) {
+          if (!unOrder.isStockRestored) {
+            await restoreStockForOrder({ orderId: unOrder._id });
+          }
+        }
+      } catch (stockErr) {
+        console.error('[Bulk Delete] Error restoring stock for unpaid orders:', stockErr);
+      }
+    }
+
     // Accounting Protection Rule:
     // Only clean ledger & expenses for orders that were NEVER Paid and NEVER Delivered!
-    const unpaidUnDelivered = ordersToDelete.filter((o: any) => o.paymentStatus !== 'Paid' && o.status !== 'Delivered');
     if (unpaidUnDelivered.length > 0) {
       try {
         const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');

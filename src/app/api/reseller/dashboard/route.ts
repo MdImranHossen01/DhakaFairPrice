@@ -81,6 +81,11 @@ export async function GET(request: NextRequest) {
           $match: {
             resellerId,
             createdAt: { $gte: startDate, $lte: endDate },
+            $or: [
+              { deletedAt: null },
+              { commissionStatus: 'cleared' },
+              { status: 'Delivered' }
+            ]
           },
         },
         {
@@ -112,6 +117,11 @@ export async function GET(request: NextRequest) {
           $match: {
             resellerId,
             createdAt: { $gte: prevStartDate, $lte: prevEndDate },
+            $or: [
+              { deletedAt: null },
+              { commissionStatus: 'cleared' },
+              { status: 'Delivered' }
+            ]
           },
         },
         {
@@ -138,6 +148,11 @@ export async function GET(request: NextRequest) {
           $match: {
             resellerId,
             createdAt: { $gte: startDate, $lte: endDate },
+            $or: [
+              { deletedAt: null },
+              { commissionStatus: 'cleared' },
+              { status: 'Delivered' }
+            ]
           },
         },
         {

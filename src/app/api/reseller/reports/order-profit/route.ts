@@ -21,7 +21,11 @@ export async function GET(req: NextRequest) {
 
     const matchQuery: any = {
       resellerId: reseller._id,
-      deletedAt: null
+      $or: [
+        { deletedAt: null },
+        { commissionStatus: 'cleared' },
+        { status: 'Delivered' }
+      ]
     };
 
     if (statusFilter && statusFilter !== 'all') {

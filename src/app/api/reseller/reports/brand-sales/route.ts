@@ -31,7 +31,11 @@ export async function GET(req: NextRequest) {
           resellerId: reseller._id,
           status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
           createdAt: { $gte: startDate, $lte: endDate },
-          deletedAt: null
+          $or: [
+            { deletedAt: null },
+            { commissionStatus: 'cleared' },
+            { status: 'Delivered' }
+          ]
         }
       },
       { $unwind: '$items' },

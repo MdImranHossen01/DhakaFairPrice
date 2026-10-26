@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-            deletedAt: null
+            $or: [
+              { deletedAt: null },
+              { paymentStatus: 'Paid' },
+              { status: 'Delivered' }
+            ]
           }
         },
         { $unwind: '$items' },
@@ -64,7 +68,11 @@ export async function GET(req: NextRequest) {
         {
           $match: {
             status: { $in: ['Paid', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-            deletedAt: null
+            $or: [
+              { deletedAt: null },
+              { paymentStatus: 'Paid' },
+              { status: 'Delivered' }
+            ]
           }
         },
         { $unwind: '$items' },

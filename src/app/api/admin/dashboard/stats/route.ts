@@ -65,7 +65,11 @@ export async function GET(req: NextRequest) {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     const motherOrderFilter = {
-      deletedAt: null,
+      $or: [
+        { deletedAt: null },
+        { paymentStatus: 'Paid' },
+        { status: 'Delivered' }
+      ],
       orderSource: { $ne: 'reseller_storefront' },
       systemNote: { $not: /^Reseller Order/ }
     };

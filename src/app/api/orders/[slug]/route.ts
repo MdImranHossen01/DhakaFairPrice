@@ -621,6 +621,18 @@ export async function DELETE(
       console.error('[Delete Order] Error soft-deleting reseller orders:', roErr);
     }
 
+    // Inventory Protection Rule:
+    // If order was NEVER Paid and NEVER Delivered, restore product stock back to inventory.
+    // If order was Paid or Delivered, goods were already dispatched/delivered, so DO NOT restock!
+    if (!isPaidOrDelivered && !order.isStockRestored) {
+      try {
+        const { restoreStockForOrder } = await import('@/lib/stockHelper');
+        await restoreStockForOrder({ orderId: order._id });
+      } catch (stockErr) {
+        console.error('[Delete Order] Error restoring stock for unpaid order:', stockErr);
+      }
+    }
+
     // Accounting Protection Rule:
     // If order was Paid or Delivered, REAL MONEY was collected and disbursed.
     // NEVER clean its Bank, AP, Expense, or Income transactions, to preserve financial audit trail!

@@ -41,7 +41,16 @@ export async function GET(req: NextRequest) {
     // Grouped aggregation for all fetched resellers in two queries
     const [ordersAggList, payoutsAggList] = await Promise.all([
       ResellerOrder.aggregate([
-        { $match: { resellerId: { $in: resellerIds }, deletedAt: null } },
+        {
+          $match: {
+            resellerId: { $in: resellerIds },
+            $or: [
+              { deletedAt: null },
+              { commissionStatus: 'cleared' },
+              { status: 'Delivered' }
+            ]
+          }
+        },
         {
           $group: {
             _id: '$resellerId',
