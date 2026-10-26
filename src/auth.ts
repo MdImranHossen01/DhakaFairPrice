@@ -96,6 +96,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!isPasswordValid) {
             throw new Error('Incorrect password. Please try again.');
           }
+        } else if (password && password.trim().length >= 4) {
+          // If customer provided a password during login for an auto-created account, save it for future logins
+          user.password = await bcrypt.hash(password.trim(), 10);
+          await user.save();
         }
         // If user has no password set (e.g. auto-created from order / passwordless), allow direct login!
 

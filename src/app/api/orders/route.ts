@@ -137,10 +137,16 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = shippingAddress.email ? shippingAddress.email.toLowerCase().trim() : '';
 
     if (sessionUser?.user?.id) {
-      user = await User.findOne({ _id: sessionUser.user.id }).session(session);
-    } else {
+      const loggedUser = await User.findOne({ _id: sessionUser.user.id }).session(session);
+      if (loggedUser && loggedUser.role === 'user') {
+        user = loggedUser;
+      }
+    }
+
+    if (!user) {
       // Guest Checkout: Find or Create User by Phone or Email
       user = await User.findOne({
+        role: 'user',
         $or: [
           ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
           ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
@@ -148,6 +154,7 @@ export async function POST(req: NextRequest) {
           ...(normalizedPhone ? [{ email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}` }] : [])
         ]
       }).session(session);
+    }
 
       if (user) {
         // If user exists but lacks phone or address, update it

@@ -189,12 +189,19 @@ export async function POST(
       // 1. Find or auto-create customer user account
       const { auth } = await import('@/auth');
       const authSession = await auth();
-      let customerUser = authSession?.user?.id
-        ? await User.findById(authSession.user.id).session(sessionConn)
-        : null;
+      let customerUser = null;
+
+      // Only reuse authSession if the authenticated user is a regular customer ('user')
+      if (authSession?.user?.id) {
+        const loggedInUser = await User.findById(authSession.user.id).session(sessionConn);
+        if (loggedInUser && loggedInUser.role === 'user') {
+          customerUser = loggedInUser;
+        }
+      }
 
       if (!customerUser) {
         customerUser = await User.findOne({
+          role: 'user',
           $or: [
             ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
             ...(customer.email ? [{ email: customer.email.toLowerCase().trim() }] : []),
@@ -205,12 +212,23 @@ export async function POST(
       }
 
       if (!customerUser && normalizedPhone) {
+        let customerEmail = customer.email ? customer.email.toLowerCase().trim() : `${normalizedPhone}@store.com`;
+        const emailCollision = await User.findOne({ email: customerEmail }).session(sessionConn);
+        if (emailCollision) {
+          customerEmail = `${normalizedPhone}@store.com`;
+          const fallbackCollision = await User.findOne({ email: customerEmail }).session(sessionConn);
+          if (fallbackCollision) {
+            customerEmail = `${normalizedPhone}-${Date.now()}@store.com`;
+          }
+        }
+
         const [newUser] = (await User.create([{
           name: customer.name,
-          email: customer.email ? customer.email.toLowerCase().trim() : `${normalizedPhone}@store.com`,
+          email: customerEmail,
           phone: normalizedPhone,
           role: 'user',
           registeredVia: reseller._id,
+          resellerId: reseller._id,
           addresses: [{
             street: customer.address?.street || '',
             city: customer.address?.city || '',
