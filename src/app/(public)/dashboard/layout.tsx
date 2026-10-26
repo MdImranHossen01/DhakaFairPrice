@@ -20,6 +20,7 @@ import { handleSignOut } from '@/lib/logout';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -61,6 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="w-full px-[2px] py-2 md:container md:px-6 md:py-8">
       {/* Mobile Top Profile & Scrollable Navigation Bar */}
       <div className="lg:hidden mb-4 space-y-2.5">
+        <ImpersonationDropdownCard />
         <div className="flex items-center gap-3 p-3 bg-card border border-border/80 rounded-xl shadow-xs">
           <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 shrink-0 overflow-hidden relative">
             {session?.user?.image ? (
@@ -118,6 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         {/* Desktop Profile Sidebar */}
         <div className="hidden lg:block lg:col-span-1 space-y-6">
+          <ImpersonationDropdownCard />
           <Card className="border-border/80">
             <CardHeader className="flex flex-col items-center text-center pb-4">
               <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center border-4 border-background shadow-md mb-3 overflow-hidden relative">

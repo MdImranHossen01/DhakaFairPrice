@@ -25,6 +25,7 @@ import { MobileMenu } from '@/components/layout/MobileMenu';
 import { MobileNavbar } from '@/components/layout/MobileNavbar';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { useSettings } from '@/components/SettingsProvider';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 
 export default function NavbarV3() {
   const router = useRouter();
@@ -272,6 +273,7 @@ export default function NavbarV3() {
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 mt-2">
+                    <ImpersonationDropdownCard />
                     <DropdownMenuGroup>
                       <DropdownMenuLabel className="font-serif">
                         <div className="flex flex-col text-foreground">

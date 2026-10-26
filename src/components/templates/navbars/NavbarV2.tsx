@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import Swal from 'sweetalert2';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 
 import { CategoryNav } from '@/components/layout/CategoryNav';
 
@@ -358,6 +359,7 @@ export default function NavbarV2() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 mt-2">
+                      <ImpersonationDropdownCard />
                       <DropdownMenuGroup>
                         <DropdownMenuLabel className="font-serif">
                           <div className="flex flex-col">

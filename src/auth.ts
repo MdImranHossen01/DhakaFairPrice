@@ -16,8 +16,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: 'Email or Mobile Number', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        impersonationToken: { label: 'Impersonation Token', type: 'text' },
       },
       async authorize(credentials) {
+        const impersonationToken = credentials?.impersonationToken as string | undefined;
+        if (impersonationToken) {
+          const { verifyImpersonationToken } = await import('@/lib/impersonationHelper');
+          const targetUser = await verifyImpersonationToken(impersonationToken);
+          if (!targetUser) {
+            throw new Error('Invalid or expired impersonation token.');
+          }
+          return targetUser;
+        }
+
         const identifier = (credentials?.email as string)?.trim();
         const password = credentials?.password as string | undefined;
 
@@ -108,6 +119,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.role = (user as any).role ?? 'user';
         token.image = user.image || token.picture;
+        if ((user as any).isImpersonated) {
+          token.isImpersonated = true;
+          token.impersonatorAdminId = (user as any).impersonatorAdminId;
+        }
       }
 
       // 2. Add DB-specific logic & refresh role if user was promoted/approved
@@ -150,7 +165,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (session?.image !== undefined) token.image = session.image;
       }
       
-      if (token.email === 'imranshuvo101@gmail.com') {
+      if (token.email === 'imranshuvo101@gmail.com' && !token.isImpersonated) {
         token.role = 'super_admin';
       }
       

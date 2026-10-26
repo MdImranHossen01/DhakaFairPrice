@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 
 export default function ResellerTopbar() {
   const { data: session } = useSession();
@@ -73,7 +74,8 @@ export default function ResellerTopbar() {
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             } />
-            <DropdownMenuContent align="end" className="w-60">
+            <DropdownMenuContent align="end" className="w-64 p-2">
+              <ImpersonationDropdownCard />
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
                   <div className="flex items-center gap-3 py-1">

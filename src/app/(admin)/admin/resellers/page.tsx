@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useSession, signIn } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock, Percent } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock, Percent, KeyRound } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,8 @@ const ITEMS_PER_PAGE = 10;
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
 
 export default function AdminResellersPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as any)?.role === 'super_admin' || session?.user?.email === 'imranshuvo101@gmail.com';
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get('status') || 'all';
   const [resellers, setResellers] = useState<any[]>([]);
@@ -407,6 +410,63 @@ export default function AdminResellersPage() {
     }
   };
 
+  const handleImpersonateReseller = async (reseller: any) => {
+    const targetUserId = reseller.userId?._id || reseller.userId;
+    const targetName = reseller.userId?.name || reseller.storeName;
+    const storeInfo = reseller.storeName ? `Store: ${reseller.storeName}` : 'Reseller';
+
+    if (!targetUserId) {
+      toast.error('Reseller user account not found');
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: 'Login as Reseller?',
+      html: `Are you sure you want to log in as <b>${targetName}</b> (${storeInfo})?<br/><span class="text-xs text-muted-foreground mt-2 block">You will enter their Reseller Dashboard. You can return to Super Admin Panel at any time from the topbar profile dropdown.</span>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Login as Reseller',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#f59e0b',
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl font-bold px-5 py-2.5',
+        cancelButton: 'rounded-xl font-medium px-5 py-2.5',
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      toast.loading('Starting reseller session...', { id: 'impersonate-reseller' });
+      const res = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to start impersonation');
+      }
+
+      toast.loading(`Signing in as ${targetName}...`, { id: 'impersonate-reseller' });
+      const signInRes = await signIn('credentials', {
+        impersonationToken: data.token,
+        redirect: false,
+      });
+
+      if (signInRes?.error) {
+        throw new Error(signInRes.error);
+      }
+
+      toast.success(`Logged in as ${targetName}`, { id: 'impersonate-reseller' });
+      window.location.href = data.redirectUrl || '/reseller-dashboard';
+    } catch (err: any) {
+      toast.error(err.message || 'Error logging in as reseller', { id: 'impersonate-reseller' });
+    }
+  };
+
   const statusBadgeColor: Record<string, string> = {
     active: 'bg-green-500/10 text-green-600 border-green-500/20',
     pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -654,6 +714,18 @@ export default function AdminResellersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52">
+                              {isSuperAdmin && (
+                                <>
+                                  <DropdownMenuItem
+                                    className="cursor-pointer font-bold text-amber-600 focus:text-amber-700 bg-amber-50 hover:bg-amber-100 text-xs"
+                                    onClick={() => handleImpersonateReseller(r)}
+                                  >
+                                    <KeyRound className="mr-2 h-4 w-4 text-amber-600" />
+                                    Login as Reseller
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
                               {r.status === 'pending' && (
                                 <>
                                   <DropdownMenuItem
@@ -841,6 +913,18 @@ export default function AdminResellersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-52">
+                          {isSuperAdmin && (
+                            <>
+                              <DropdownMenuItem
+                                className="cursor-pointer font-bold text-amber-600 focus:text-amber-700 bg-amber-50 hover:bg-amber-100 text-xs"
+                                onClick={() => handleImpersonateReseller(r)}
+                              >
+                                <KeyRound className="mr-2 h-4 w-4 text-amber-600" />
+                                Login as Reseller
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
                           {r.status === 'pending' && (
                             <>
                               <DropdownMenuItem

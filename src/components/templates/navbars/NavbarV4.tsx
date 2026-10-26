@@ -35,6 +35,7 @@ import { AIChatbot } from '@/components/layout/AIChatbot';
 import { Logo } from '@/components/ui/logo';
 import { useSettings } from '@/components/SettingsProvider';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 import {
   Accordion,
   AccordionContent,
@@ -508,6 +509,7 @@ export default function NavbarV4() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 mt-2">
+                      <ImpersonationDropdownCard />
                       <DropdownMenuGroup>
                         <DropdownMenuLabel className="font-serif">
                           <div className="flex flex-col">

@@ -34,6 +34,7 @@ import { CartDrawer } from '@/components/layout/CartDrawer';
 import { Logo } from '@/components/ui/logo';
 import { useSettings } from '@/components/SettingsProvider';
 import { UserAvatar } from '@/components/ui/user-avatar';
+import { ImpersonationDropdownCard } from '@/components/admin/ImpersonationDropdownCard';
 import {
   Accordion,
   AccordionContent,
@@ -777,7 +778,8 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                           <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
                         </div>
                       </div>
-                      <DropdownMenuContent align="end" className="w-56 mt-2">
+                      <DropdownMenuContent align="end" className="w-64 mt-2 p-2">
+                        <ImpersonationDropdownCard />
                         <DropdownMenuGroup>
                           <DropdownMenuLabel className="font-serif">
                             <div className="flex flex-col">
@@ -1020,7 +1022,8 @@ export default function NavbarV1({ initialCategories = [], initialBrands = [] }:
                               <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45" />
                             </div>
                           </div>
-                          <DropdownMenuContent align="end" className="w-56 mt-2">
+                          <DropdownMenuContent align="end" className="w-64 mt-2 p-2">
+                            <ImpersonationDropdownCard />
                             <DropdownMenuGroup>
                               <DropdownMenuLabel className="font-serif">
                                 <div className="flex flex-col">

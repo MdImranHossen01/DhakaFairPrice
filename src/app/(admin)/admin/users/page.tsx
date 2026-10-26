@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -30,7 +30,8 @@ import {
   UserCog,
   Trash2,
   Search,
-  Store
+  Store,
+  KeyRound
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -111,7 +112,7 @@ function UsersContent() {
   const [isAssigning, setIsAssigning] = useState(false);
 
   const { data: session } = useSession();
-  const isSuperAdmin = (session?.user as any)?.role === 'super_admin';
+  const isSuperAdmin = (session?.user as any)?.role === 'super_admin' || session?.user?.email === 'imranshuvo101@gmail.com';
 
   const fetchUsers = async (page = currentPage) => {
     setLoading(true);
@@ -260,6 +261,54 @@ function UsersContent() {
       }
     } catch (error) {
       toast.error('Error deleting user');
+    }
+  };
+
+  const handleImpersonateUser = async (targetUserId: string, targetName: string, targetRole: string, contact?: string) => {
+    const result = await Swal.fire({
+      title: 'Login as ' + targetName + '?',
+      html: `Are you sure you want to log in as <b>${targetName}</b> (${contact || targetRole})?<br/><span class="text-xs text-muted-foreground mt-2 block">You can return to the Super Admin Panel at any time from the topbar profile dropdown.</span>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Login as User',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#f59e0b',
+      customClass: {
+        popup: 'rounded-2xl',
+        confirmButton: 'rounded-xl font-bold px-5 py-2.5',
+        cancelButton: 'rounded-xl font-medium px-5 py-2.5',
+      },
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      toast.loading('Starting user session...', { id: 'impersonate-user' });
+      const res = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUserId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to start impersonation');
+      }
+
+      toast.loading(`Signing in as ${targetName}...`, { id: 'impersonate-user' });
+      const signInRes = await signIn('credentials', {
+        impersonationToken: data.token,
+        redirect: false,
+      });
+
+      if (signInRes?.error) {
+        throw new Error(signInRes.error);
+      }
+
+      toast.success(`Logged in as ${targetName}`, { id: 'impersonate-user' });
+      window.location.href = data.redirectUrl || '/dashboard';
+    } catch (err: any) {
+      toast.error(err.message || 'Error logging in as user', { id: 'impersonate-user' });
     }
   };
 
@@ -442,6 +491,14 @@ function UsersContent() {
                             <DropdownMenuItem onClick={() => openUserDetails(user)} className="cursor-pointer text-xs">
                               <Eye className="mr-2 h-3.5 w-3.5" /> View Details
                             </DropdownMenuItem>
+                            {isSuperAdmin && (session?.user as any)?.id !== user._id && (
+                              <DropdownMenuItem
+                                onClick={() => handleImpersonateUser(user._id, user.name, user.role, user.phone || user.email)}
+                                className="cursor-pointer text-amber-600 focus:text-amber-700 font-bold text-xs"
+                              >
+                                <KeyRound className="mr-2 h-3.5 w-3.5 text-amber-600" /> Login as User
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuGroup>
                           
                           <DropdownMenuSeparator />
@@ -546,6 +603,14 @@ function UsersContent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {isSuperAdmin && (session?.user as any)?.id !== user._id && (
+                          <DropdownMenuItem
+                            onClick={() => handleImpersonateUser(user._id, user.name, user.role, user.phone || user.email)}
+                            className="text-amber-600 focus:text-amber-700 font-bold text-xs"
+                          >
+                            <KeyRound className="mr-1.5 h-3.5 w-3.5 text-amber-600" /> Login as User
+                          </DropdownMenuItem>
+                        )}
                         {user.role !== 'admin' && (
                           <DropdownMenuItem onClick={() => handleUpdateRole(user._id, 'admin')} className="text-blue-600 font-bold text-xs">
                             <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Make Admin
