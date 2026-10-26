@@ -173,11 +173,17 @@ export async function GET(
       const { getStorefrontReseller } = await import('@/lib/resellerStore');
       const storefrontReseller = await getStorefrontReseller(req);
       if (storefrontReseller) {
-        if (order.storefrontResellerId?.toString() !== storefrontReseller._id.toString()) {
+        const rawStorefront = order.storefrontResellerId || order.resellerId;
+        const orderStorefrontId = (rawStorefront as any)?._id
+          ? (rawStorefront as any)._id.toString()
+          : rawStorefront?.toString();
+
+        if (orderStorefrontId !== storefrontReseller._id.toString()) {
           return NextResponse.json({ message: 'Order not found' }, { status: 404 });
         }
       } else {
-        if (order.storefrontResellerId || order.orderSource === 'reseller_storefront') {
+        const rawStorefront = order.storefrontResellerId || order.resellerId;
+        if (rawStorefront || order.orderSource === 'reseller_storefront') {
           return NextResponse.json({ message: 'Order not found' }, { status: 404 });
         }
       }
