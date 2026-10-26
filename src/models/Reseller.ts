@@ -59,6 +59,7 @@ export interface IReseller extends Document {
     // Google
     googleTagManagerId?: string;
     googleAnalyticsId?: string;
+    googleSiteVerification?: string; // Google Search Console HTML verification tag / token
   };
   deliveryConfig?: {
     insideDhaka?: number;

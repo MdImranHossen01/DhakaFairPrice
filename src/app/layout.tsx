@@ -84,7 +84,7 @@ async function getResellerFromHeaders(headersList: Headers) {
     await dbConnect();
     if (resellerSubdomain) {
       const reseller = await Reseller.findOne({ subdomain: resellerSubdomain })
-        .select('storeName logoUrl faviconUrl description subdomain customDomain')
+        .select('storeName logoUrl faviconUrl description subdomain customDomain seoConfig')
         .lean();
       if (reseller) return reseller;
     }
@@ -98,7 +98,7 @@ async function getResellerFromHeaders(headersList: Headers) {
         const sub = cleanHost.replace(`.${rootDomain}`, '');
         if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'app') {
           return await Reseller.findOne({ subdomain: sub })
-            .select('storeName logoUrl faviconUrl description subdomain customDomain')
+            .select('storeName logoUrl faviconUrl description subdomain customDomain seoConfig')
             .lean();
         }
       } else if (!rootDomain || (cleanHost !== rootDomain && cleanHost !== `www.${rootDomain}`)) {
@@ -111,7 +111,7 @@ async function getResellerFromHeaders(headersList: Headers) {
           ],
           status: 'active'
         })
-        .select('storeName logoUrl faviconUrl description subdomain customDomain')
+        .select('storeName logoUrl faviconUrl description subdomain customDomain seoConfig')
         .lean();
       }
     }
@@ -129,7 +129,11 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const reseller = await getResellerFromHeaders(headersList);
     if (reseller) {
-      const favicon = reseller.faviconUrl || reseller.logoUrl || '/favicon.ico';
+      const favicon = (reseller as any).faviconUrl || (reseller as any).logoUrl || '/favicon.ico';
+      const rawVerification = (reseller as any).seoConfig?.googleSiteVerification?.trim() || '';
+      const match = rawVerification.match(/content=["']([^"']+)["']/i);
+      const googleVerification = match ? match[1] : rawVerification;
+
       return {
         metadataBase: new URL(baseUrl),
         title: {
@@ -137,6 +141,7 @@ export async function generateMetadata(): Promise<Metadata> {
           template: `%s | ${reseller.storeName || 'Store'}`,
         },
         description: reseller.description || `Shop at ${reseller.storeName}`,
+        verification: googleVerification ? { google: googleVerification } : undefined,
         icons: {
           icon: [
             { url: favicon },
@@ -146,14 +151,14 @@ export async function generateMetadata(): Promise<Metadata> {
             { url: favicon, sizes: '512x512' },
           ],
           shortcut: favicon,
-          apple: reseller.logoUrl || favicon,
+          apple: (reseller as any).logoUrl || favicon,
         },
         openGraph: {
           title: reseller.storeName,
           description: reseller.description || `Shop at ${reseller.storeName}`,
           url: baseUrl,
           siteName: reseller.storeName,
-          images: reseller.logoUrl ? [{ url: reseller.logoUrl }] : [],
+          images: (reseller as any).logoUrl ? [{ url: (reseller as any).logoUrl }] : [],
           type: 'website',
         },
       };
@@ -316,7 +321,7 @@ export default async function RootLayout({
             </Suspense>
           )}
 
-          {isValidGAId(gaId) && (
+          {!isResellerStorePage && isValidGAId(gaId) && (
             <>
               <Script
                 id="google-analytics"

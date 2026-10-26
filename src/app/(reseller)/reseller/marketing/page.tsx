@@ -22,6 +22,7 @@ export default function ResellerMarketingPage() {
   const [tracking, setTracking] = useState({
     metaPixelId: '', facebookAccessToken: '', facebookTestEventCode: '',
     facebookDomainVerification: '', tiktokPixelId: '', tiktokAccessToken: '',
+    googleAnalyticsId: '', googleSiteVerification: '', googleTagManagerId: '',
   });
 
   // Payment form state
@@ -54,6 +55,9 @@ export default function ResellerMarketingPage() {
         facebookDomainVerification: r.seoConfig?.facebookDomainVerification || '',
         tiktokPixelId: r.seoConfig?.tiktokPixelId || '',
         tiktokAccessToken: r.seoConfig?.tiktokAccessToken || '',
+        googleAnalyticsId: r.seoConfig?.googleAnalyticsId || '',
+        googleSiteVerification: r.seoConfig?.googleSiteVerification || '',
+        googleTagManagerId: r.seoConfig?.googleTagManagerId || '',
       });
       setPayment({
         bkashNumber: r.paymentConfig?.bkash?.number || '',
@@ -465,6 +469,50 @@ export default function ResellerMarketingPage() {
                       placeholder="tok..."
                       className="font-mono text-sm"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Google Analytics & Search Console Section */}
+              <div className="space-y-4">
+                <div className="border-b pb-2">
+                  <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                    Google Analytics & Search Console (SEO)
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Configure Google Analytics to track store traffic and verify domain with Google Search Console
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Google Analytics 4 Measurement ID</Label>
+                    <Input
+                      value={tracking.googleAnalyticsId}
+                      onChange={e => setTracking(t => ({ ...t, googleAnalyticsId: e.target.value.trim() }))}
+                      placeholder="G-XXXXXXXXXX"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-[11px] text-muted-foreground">From Google Analytics &gt; Admin &gt; Data Streams (e.g. G-1234567890)</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Google Search Console Verification Token / Tag</Label>
+                    <Input
+                      value={tracking.googleSiteVerification}
+                      onChange={e => setTracking(t => ({ ...t, googleSiteVerification: e.target.value.trim() }))}
+                      placeholder="e.g. google-site-verification token or full <meta> tag"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Paste HTML tag verification token or the entire &lt;meta&gt; tag from Search Console</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Google Tag Manager ID (Optional)</Label>
+                    <Input
+                      value={tracking.googleTagManagerId}
+                      onChange={e => setTracking(t => ({ ...t, googleTagManagerId: e.target.value.trim() }))}
+                      placeholder="GTM-XXXXXX"
+                      className="font-mono text-sm"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Optional: GTM Container ID for advanced tag management</p>
                   </div>
                 </div>
               </div>

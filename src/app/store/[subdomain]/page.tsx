@@ -39,11 +39,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const canonicalUrl = `https://${storeDomain}`;
 
+  const rawVerification = (reseller as any).seoConfig?.googleSiteVerification?.trim() || '';
+  const match = rawVerification.match(/content=["']([^"']+)["']/i);
+  const googleVerification = match ? match[1] : rawVerification;
+
   return {
     title: {
       absolute: reseller.storeName,
     },
     description: reseller.description || `Shop at ${reseller.storeName}`,
+    verification: googleVerification ? { google: googleVerification } : undefined,
     alternates: {
       canonical: canonicalUrl,
     },
