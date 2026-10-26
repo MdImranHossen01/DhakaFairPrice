@@ -182,8 +182,9 @@ export async function GET(
           return NextResponse.json({ message: 'Order not found' }, { status: 404 });
         }
       } else {
-        const rawStorefront = order.storefrontResellerId || order.resellerId;
-        if (rawStorefront || order.orderSource === 'reseller_storefront') {
+        // Mother Shop: exclude reseller storefront orders
+        const isStorefrontOrder = Boolean(order.storefrontResellerId || order.orderSource === 'reseller_storefront');
+        if (isStorefrontOrder) {
           return NextResponse.json({ message: 'Order not found' }, { status: 404 });
         }
       }
