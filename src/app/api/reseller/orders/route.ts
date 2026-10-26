@@ -211,8 +211,8 @@ export async function GET(request: NextRequest) {
         const firstF = fulfillmentRos[0];
         const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
           ? Number((firstF.resellerId as any).systemFeePercent)
-          : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
-        const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
+          : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 15);
+        const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.15 : (supplierRate / 100);
         const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
         if (computedFee > 0) {
           motherFee = computedFee;
