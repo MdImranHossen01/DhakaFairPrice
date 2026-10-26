@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
       const isFreeDelivery = Boolean(motherOrder?.isFreeDelivery || order.isFreeDelivery);
       const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number(order.totalAmount) || 0);
       const deliveryCharge = Math.round(Number(motherOrder?.courierCharge || order.courierCharge || motherOrder?.deliveryCharge || order.deliveryCharge) || 0);
-      const motherFee = Math.round(
+      let motherFee = Math.round(
         Number(motherOrder?.systemFee) ||
         Number(order.systemFee) ||
         relatedRos.reduce((sum: number, r: any) => sum + (Number(r.systemFee) || 0), 0) ||
@@ -205,6 +205,15 @@ export async function GET(request: NextRequest) {
       }
 
       const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number(order.systemFee) > 0);
+
+      // Fallback calculation for historical orders where motherFee is 0
+      if (motherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
+        const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * 0.15));
+        if (computedFee > 0) {
+          motherFee = computedFee;
+          sellerPart.amount = Math.max(0, sellerPart.amount - computedFee);
+        }
+      }
 
       const disbursement = {
         orderValue,

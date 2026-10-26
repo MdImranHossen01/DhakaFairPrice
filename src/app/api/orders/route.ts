@@ -1180,7 +1180,16 @@ export async function GET(req: NextRequest) {
 
         const isOwnProductSale = !supplierPart && !!sellerPart && (Number(finalSystemFee) > 0 || Number(orderObj.systemFee) > 0 || (ro && Number(ro.systemFee) > 0));
 
-        const distributedSoFar = deliveryCharge + motherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
+        let computedMotherFee = motherFee;
+        if (computedMotherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
+          const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * 0.15));
+          if (computedFee > 0) {
+            computedMotherFee = computedFee;
+            sellerPart.amount = Math.max(0, sellerPart.amount - computedFee);
+          }
+        }
+
+        const distributedSoFar = deliveryCharge + computedMotherFee + (supplierPart?.amount || 0) + (sellerPart?.amount || 0);
         const motherProfit = Math.max(0, orderValue - distributedSoFar);
 
         const disbursement = {
@@ -1191,7 +1200,7 @@ export async function GET(req: NextRequest) {
           supplier: supplierPart,
           seller: sellerPart,
           isOwnProductSale,
-          motherFee,
+          motherFee: computedMotherFee,
           motherProfit,
         };
 
