@@ -265,7 +265,37 @@ export async function DELETE(request: NextRequest) {
     }
     const resellerId = await getResellerId(session.user.id);
     const id = request.nextUrl.searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    const existingProduct = await Product.findOne({ _id: id, uploadedBy: resellerId });
+    if (!existingProduct) return NextResponse.json({ error: 'Product not found or not owned by you' }, { status: 404 });
+
+    // Guard: Prevent deleting product if there are active / pending orders
+    const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const pId = existingProduct._id;
+    const pIdStr = existingProduct._id.toString();
+    const resellerProductIds = (await ResellerProduct.find({ productId: pId }).distinct('_id')) || [];
+
+    const activeOrders = await Order.countDocuments({
+      'items.product': { $in: [pId, pIdStr] },
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const activeResellerOrders = await ResellerOrder.countDocuments({
+      $or: [
+        { 'items.productId': { $in: [pId, pIdStr] } },
+        { 'items.resellerProductId': { $in: [pId, pIdStr, ...resellerProductIds] } },
+      ],
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const totalActiveOrders = activeOrders + activeResellerOrders;
+    if (totalActiveOrders > 0) {
+      return NextResponse.json({
+        error: `Cannot delete product: There are ${totalActiveOrders} active/pending order(s) for this product. Please complete or cancel the pending orders first, or unpublish it instead.`
+      }, { status: 400 });
+    }
 
     const deleted = await Product.findOneAndDelete({ _id: id, uploadedBy: resellerId });
     if (!deleted) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -273,7 +303,7 @@ export async function DELETE(request: NextRequest) {
     // Also delete any associated ResellerProduct records to avoid orphaned entries
     await ResellerProduct.deleteMany({ productId: id });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Product deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

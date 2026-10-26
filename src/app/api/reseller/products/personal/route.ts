@@ -290,6 +290,35 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found or not owned by you' }, { status: 404 });
     }
 
+    // Guard: Prevent deleting product if there are active / pending orders
+    const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const pId = product._id;
+    const pIdStr = product._id.toString();
+    const resellerProductIds = (await ResellerProduct.find({ productId: pId }).distinct('_id')) || [];
+
+    const activeOrders = await Order.countDocuments({
+      'items.product': { $in: [pId, pIdStr] },
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const activeResellerOrders = await ResellerOrder.countDocuments({
+      $or: [
+        { 'items.productId': { $in: [pId, pIdStr] } },
+        { 'items.resellerProductId': { $in: [pId, pIdStr, ...resellerProductIds] } },
+      ],
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const totalActiveOrders = activeOrders + activeResellerOrders;
+    if (totalActiveOrders > 0) {
+      return NextResponse.json({
+        error: `Cannot delete product: There are ${totalActiveOrders} active/pending order(s) for this product. Please complete or cancel the pending orders first, or unpublish it instead.`
+      }, { status: 400 });
+    }
+
     await Product.deleteOne({ _id: productId });
     // Only delete the owner's own ResellerProduct record.
     // Other resellers who sourced this product will have their entries

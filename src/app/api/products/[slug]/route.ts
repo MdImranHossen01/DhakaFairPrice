@@ -305,6 +305,36 @@ export async function DELETE(
       }, { status: 403 });
     }
 
+    // Guard: Prevent deleting product if there are active / pending orders
+    const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const ResellerProduct = (await import('@/models/ResellerProduct')).default;
+    const pId = existingProduct._id;
+    const pIdStr = existingProduct._id.toString();
+    const resellerProductIds = (await ResellerProduct.find({ productId: pId }).distinct('_id')) || [];
+
+    const activeOrders = await Order.countDocuments({
+      'items.product': { $in: [pId, pIdStr] },
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const activeResellerOrders = await ResellerOrder.countDocuments({
+      $or: [
+        { 'items.productId': { $in: [pId, pIdStr] } },
+        { 'items.resellerProductId': { $in: [pId, pIdStr, ...resellerProductIds] } },
+      ],
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const totalActiveOrders = activeOrders + activeResellerOrders;
+    if (totalActiveOrders > 0) {
+      return NextResponse.json({
+        message: `Cannot delete product: There are ${totalActiveOrders} active/pending order(s) for this product. Please complete or cancel the pending orders first, or unpublish the product instead.`
+      }, { status: 400 });
+    }
+
     const deletedProduct = await Product.findOneAndDelete(query);
     if (deletedProduct) {
       // Mark unavailable on reseller storefronts

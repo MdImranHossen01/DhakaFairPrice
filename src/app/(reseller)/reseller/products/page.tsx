@@ -190,8 +190,13 @@ function ProductsContent() {
     });
     if (!result.isConfirmed) return;
     const res = await fetch(`/api/reseller/products?id=${id}`, { method: 'DELETE' });
-    if (res.ok) { toast.success('Product removed'); fetchProducts(); }
-    else toast.error('Failed to remove');
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast.success(data.message || 'Product removed');
+      fetchProducts();
+    } else {
+      toast.error(data.error || data.message || 'Failed to remove');
+    }
   };
 
   const togglePublish = async (id: string, current: boolean) => {

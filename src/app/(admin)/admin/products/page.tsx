@@ -248,13 +248,14 @@ function ProductsContent() {
         const response = await fetch(`/api/products/${id}`, {
           method: 'DELETE',
         });
+        const data = await response.json().catch(() => ({}));
 
         if (response.ok) {
-          toast.success('Product deleted successfully');
+          toast.success(data.message || 'Product deleted successfully');
           setProducts(products.filter(product => product._id !== id));
           fetchProducts(undefined, currentPage);
         } else {
-          toast.error('Failed to delete product');
+          toast.error(data.message || data.error || 'Failed to delete product');
         }
       } catch (error) {
         toast.error('An error occurred while deleting the product');
