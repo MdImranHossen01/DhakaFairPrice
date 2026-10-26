@@ -105,9 +105,59 @@ export async function POST(
         // Reseller keeps retail sales revenue minus Mother platform system fee
         const ownEarnings = (rp.retailPrice * qty) - itemSystemFee;
         totalCommission += ownEarnings;
+      } else if (uploaderId && uploaderId !== reseller._id.toString()) {
+        // Sourced from another reseller (Supplier)
+        if (!uploaderItemsMap.has(uploaderId)) {
+          uploaderItemsMap.set(uploaderId, []);
+        }
+        const uploaderRp = await ResellerProduct.findOne({
+          resellerId: uploaderId,
+          productId: productDoc?._id || rp.productId,
+        }).lean();
+
+        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
+          ? Number(productDoc.purchasePrice)
+          : (uploaderRp?.purchasePrice ?? 0);
+
+        let unitFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
+        if (unitFee === 0 && baseCost > 0) {
+          const uploaderReseller = await Reseller.findById(uploaderId).select('systemFeePercent').lean();
+          const feePct = uploaderReseller?.systemFeePercent ?? 15;
+          unitFee = Math.round(baseCost * (feePct / 100));
+        }
+
+        const effectiveWholesale = baseCost + unitFee;
+        const commission = Math.max(0, (rp.retailPrice - effectiveWholesale) * qty);
+        totalCommission += commission;
+
+        itemSystemFee = unitFee * qty;
+
+        const validatedItem = {
+          resellerProductId: rp._id,
+          productId: productDoc?._id || rp.productId,
+          name: rp.name,
+          quantity: qty,
+          retailPrice: rp.retailPrice,
+          purchasePrice: effectiveWholesale,
+          image: rp.images?.[0],
+          color: item.color || undefined,
+          size: item.size || undefined,
+          systemFee: itemSystemFee,
+        };
+
+        validatedItems.push(validatedItem);
+
+        uploaderItemsMap.get(uploaderId)!.push({
+          ...validatedItem,
+          resellerProductId: uploaderRp?._id || rp._id,
+          retailPrice: effectiveWholesale,
+          purchasePrice: baseCost,
+          systemFee: unitFee,
+        });
+        continue;
       } else {
-        // Dropshipping from mother catalog or another reseller
-        const commission = (rp.retailPrice - rp.purchasePrice) * qty;
+        // Dropshipping from Mother Catalog
+        const commission = Math.max(0, (rp.retailPrice - rp.purchasePrice) * qty);
         totalCommission += commission;
       }
 
@@ -127,30 +177,6 @@ export async function POST(
       };
 
       validatedItems.push(validatedItem);
-
-      if (uploaderId && uploaderId !== reseller._id.toString()) {
-        if (!uploaderItemsMap.has(uploaderId)) {
-          uploaderItemsMap.set(uploaderId, []);
-        }
-        const uploaderRp = await ResellerProduct.findOne({
-          resellerId: uploaderId,
-          productId: productDoc?._id || rp.productId,
-        }).lean();
-
-        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
-          ? Number(productDoc.purchasePrice)
-          : (uploaderRp?.purchasePrice ?? 0);
-
-        const itemFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
-
-        uploaderItemsMap.get(uploaderId)!.push({
-          ...validatedItem,
-          resellerProductId: uploaderRp?._id || rp._id,
-          retailPrice: rp.purchasePrice,
-          purchasePrice: baseCost,
-          systemFee: itemFee,
-        });
-      }
     }
 
     if (validatedItems.length === 0) {

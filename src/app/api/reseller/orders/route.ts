@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         .populate('resellerId', 'storeName subdomain customDomain')
         .populate({
           path: 'motherOrderId',
-          select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge systemFee resellerCommission',
+          select: 'storefrontResellerId resellerId orderSource shortId systemNote totalAmount deliveryCharge courierCharge isFreeDelivery systemFee resellerCommission',
           populate: [
             {
               path: 'storefrontResellerId',
@@ -162,7 +162,12 @@ export async function GET(request: NextRequest) {
       const isFreeDelivery = Boolean(motherOrder?.isFreeDelivery || order.isFreeDelivery);
       const orderValue = Math.round(Number(motherOrder?.totalAmount) || Number(order.totalAmount) || 0);
       const deliveryCharge = Math.round(Number(motherOrder?.courierCharge || order.courierCharge || motherOrder?.deliveryCharge || order.deliveryCharge) || 0);
-      const motherFee = Math.round(Number(motherOrder?.systemFee) || Number(order.systemFee) || 0);
+      const motherFee = Math.round(
+        Number(motherOrder?.systemFee) ||
+        Number(order.systemFee) ||
+        relatedRos.reduce((sum: number, r: any) => sum + (Number(r.systemFee) || 0), 0) ||
+        0
+      );
 
       // Supplier
       let supplierPart: { name: string; amount: number; isYou?: boolean; status?: string } | null = null;
@@ -201,34 +206,15 @@ export async function GET(request: NextRequest) {
 
       const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number(order.systemFee) > 0);
 
-      // PRIVACY & VENDOR CONFIDENTIALITY:
-      // Never expose another vendor's fee agreement or platform rate.
-      // If a reseller sells a third-party supplier's product, absorb the supplier's platform fee into
-      // the supplier wholesale cost so the seller only sees base cost without fee percentages.
-      let sanitizedSupplierPart = supplierPart ? { ...supplierPart } : null;
-      let sanitizedMotherFee = 0;
-
-      if (isOwnProductSale) {
-        // Reseller's own product -> fee is reseller's own platform agreement
-        sanitizedMotherFee = motherFee;
-      } else if (sanitizedSupplierPart && !sanitizedSupplierPart.isYou) {
-        // External supplier: absorb platform fee into product cost; hide mother fee
-        sanitizedSupplierPart.amount = sanitizedSupplierPart.amount + motherFee;
-        sanitizedMotherFee = 0;
-      } else if (sanitizedSupplierPart && sanitizedSupplierPart.isYou) {
-        // Supplier viewing own fulfillment order: only sees own fee if any
-        sanitizedMotherFee = Math.round(Number(order.systemFee) || 0);
-      }
-
       const disbursement = {
         orderValue,
         deliveryCharge,
         courierCharge: deliveryCharge,
         isFreeDelivery,
-        supplier: sanitizedSupplierPart,
+        supplier: supplierPart,
         seller: sellerPart,
         isOwnProductSale,
-        motherFee: sanitizedMotherFee,
+        motherFee,
         motherProfit: 0, // Never leak platform internal margins to reseller
       };
 

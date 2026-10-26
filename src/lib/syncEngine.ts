@@ -117,19 +117,25 @@ export async function addProductToReseller(
     const product = await Product.findById(productId).lean();
     if (!product) return { success: false, message: 'Product not found in catalog' };
 
-    const isPersonalProduct =
-      product.isMotherProduct === false ||
-      (product.uploadedBy && product.uploadedBy.toString() === resellerId.toString());
+    const isOwnProduct = Boolean(
+      product.uploadedBy && product.uploadedBy.toString() === resellerId.toString()
+    );
 
-    // Sourced mother products must be published on Mother shop catalog.
+    // Sourced products must be published on Mother shop catalog.
     // Personal products uploaded by the reseller do not need to be published on Mother site.
-    if (!isPersonalProduct && !product.isPublished) {
+    if (!isOwnProduct && !product.isPublished) {
       return { success: false, message: 'Product is not published on Mother site' };
     }
 
-    const isPublishedOnStore = isPersonalProduct
+    const isPublishedOnStore = isOwnProduct
       ? (product.isPublished !== undefined ? product.isPublished : true)
       : true;
+
+    // Sourced products receive wholesale resellerPrice (Base price + Mother Shop System Fee).
+    // Own products retain base purchasePrice.
+    const effectivePurchasePrice = isOwnProduct
+      ? (product.purchasePrice || 0)
+      : (product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * 1.15) : 0));
 
     await ResellerProduct.findOneAndUpdate(
       { resellerId, productId },
@@ -142,9 +148,9 @@ export async function addProductToReseller(
           slug: product.slug,
           images: product.images ?? [],
           stock: product.stock ?? 0,
-          purchasePrice: isPersonalProduct ? (product.purchasePrice || 0) : (product.resellerPrice || product.purchasePrice || 0),
+          purchasePrice: effectivePurchasePrice,
           motherPrice: product.price ?? 0,
-          isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
+          isAvailableOnMother: isOwnProduct ? true : (product.isPublished ?? true),
           isPublished: isPublishedOnStore,
           syncedAt: new Date(),
         },

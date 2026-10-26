@@ -81,21 +81,29 @@ export async function POST(request: NextRequest) {
     const currentSlug = slug || slugify(name);
     const uniqueSlug = await generateUniqueSlug(Product, currentSlug);
 
+    const commissionPct = reseller.systemFeePercent ?? 15;
+    const computedResellerPrice = numPurchasePrice > 0 ? Math.round(numPurchasePrice * (1 + commissionPct / 100)) : (numPrice || 0);
+
     // Coerce variant numeric fields
-    const coercedVariants = (variants || []).map((v: any) => ({
-      _id: v._id || v.id,
-      color: v.color,
-      size: v.size,
-      sku: v.sku,
-      barcode: v.barcode?.trim() || undefined,
-      image: v.image,
-      images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
-      price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
-      salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
-      purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
-      stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
-      discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
-    }));
+    const coercedVariants = (variants || []).map((v: any) => {
+      const vPurchase = Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined;
+      const vResellerPrice = vPurchase && vPurchase > 0 ? Math.round(vPurchase * (1 + commissionPct / 100)) : undefined;
+      return {
+        _id: v._id || v.id,
+        color: v.color,
+        size: v.size,
+        sku: v.sku,
+        barcode: v.barcode?.trim() || undefined,
+        image: v.image,
+        images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
+        price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
+        salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
+        purchasePrice: vPurchase,
+        resellerPrice: vResellerPrice,
+        stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
+        discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
+      };
+    });
 
     // Create the Product document
     const product = await Product.create({
@@ -105,6 +113,7 @@ export async function POST(request: NextRequest) {
       price: numPrice,
       salePrice: numSalePrice,
       purchasePrice: numPurchasePrice,
+      resellerPrice: computedResellerPrice,
       discountRate: numDiscountRate,
       sku,
       barcode: barcode?.trim() || undefined,
@@ -191,20 +200,25 @@ export async function PATCH(request: NextRequest) {
     if (images !== undefined) product.images = images;
     if (attributes !== undefined) product.attributes = attributes;
     if (variants !== undefined) {
-      product.variants = (variants || []).map((v: any) => ({
-        _id: v._id || v.id,
-        color: v.color,
-        size: v.size,
-        sku: v.sku,
-        barcode: v.barcode?.trim() || undefined,
-        image: v.image,
-        images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
-        price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
-        salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
-        purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
-        stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
-        discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
-      }));
+      product.variants = (variants || []).map((v: any) => {
+        const vPurchase = Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined;
+        const vResellerPrice = vPurchase && vPurchase > 0 ? Math.round(vPurchase * (1 + (reseller.systemFeePercent ?? 15) / 100)) : undefined;
+        return {
+          _id: v._id || v.id,
+          color: v.color,
+          size: v.size,
+          sku: v.sku,
+          barcode: v.barcode?.trim() || undefined,
+          image: v.image,
+          images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
+          price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
+          salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
+          purchasePrice: vPurchase,
+          resellerPrice: vResellerPrice,
+          stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
+          discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
+        };
+      });
     }
     if (isFeatured !== undefined) product.isFeatured = Boolean(isFeatured);
     if (isNewArrival !== undefined) product.isNewArrival = Boolean(isNewArrival);
@@ -212,7 +226,11 @@ export async function PATCH(request: NextRequest) {
     if (isPublished !== undefined) product.isPublished = Boolean(isPublished);
     if (price !== undefined) product.price = Number(price);
     if (salePrice !== undefined) product.salePrice = salePrice !== '' ? Number(salePrice) : undefined;
-    if (purchasePrice !== undefined) product.purchasePrice = Number(purchasePrice);
+    if (purchasePrice !== undefined) {
+      product.purchasePrice = Number(purchasePrice);
+      const commissionPct = reseller.systemFeePercent ?? 15;
+      product.resellerPrice = product.purchasePrice > 0 ? Math.round(product.purchasePrice * (1 + commissionPct / 100)) : product.price;
+    }
     if (discountRate !== undefined) product.discountRate = discountRate !== '' ? Number(discountRate) : undefined;
     if (stock !== undefined) product.stock = Number(stock);
     if (isShared !== undefined) product.isShared = Boolean(isShared);

@@ -147,8 +147,8 @@ export function DisbursementBreakdown({
         </div>
       )}
 
-      {/* 3. System Fee - Shown to Admin, or to Reseller for own product sales or product supplier */}
-      {motherFee > 0 && (perspective !== 'reseller' || isOwnProductSale || supplier?.isYou) && (
+      {/* 3. System Fee - Mother Shop Platform Revenue */}
+      {motherFee > 0 && (
         <div className="flex justify-between items-center px-2 py-0.5 text-slate-600 dark:text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span>⚙️</span>
