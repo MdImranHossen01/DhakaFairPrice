@@ -66,7 +66,7 @@ const resellerNav = [
     title: "Product Management",
     icon: ShoppingBag,
     items: [
-      { title: "My Store Products", url: "/reseller/products" },
+      { title: "Personal Products", url: "/reseller/products" },
       { title: "Add Personal Product", url: "/reseller/products/new" },
       { title: "Source B2B Products", url: "/reseller/products/source" },
       { title: "Upcoming Expire", url: "/reseller/upcoming-expiry" },

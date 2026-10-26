@@ -248,8 +248,8 @@ function ProductsContent() {
     <div className="flex-1 space-y-3 sm:space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">My Store Products</h2>
-          <p className="text-muted-foreground text-xs sm:text-sm">Manage your product catalog ({pagination.total} total)</p>
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Personal Products</h2>
+          <p className="text-muted-foreground text-xs sm:text-sm">Manage your personal product catalog ({pagination.total} total)</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
