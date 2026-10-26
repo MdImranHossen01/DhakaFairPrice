@@ -23,24 +23,46 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain, slug } = await params;
   await dbConnect();
-  const reseller = await Reseller.findOne({ subdomain, status: 'active' }).lean();
+  const reseller = await Reseller.findOne({ subdomain, status: 'active' }).select('storeName customDomain subdomain').lean() as any;
   if (!reseller) return { title: 'Not Found' };
+
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+  const storeDomain = reseller.customDomain || `${reseller.subdomain || subdomain}.${rootDomain}`;
+  const canonicalUrl = `https://${storeDomain}/product/${slug}`;
+
   let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).lean();
   if (!product) {
     const direct = await Product.findOne({ uploadedBy: reseller._id, slug, isPublished: true }).lean();
     if (direct) {
       return {
-        title: `${direct.name} — ${reseller.storeName}`,
-        description: direct.name,
-        openGraph: { images: direct.images?.[0] ? [direct.images[0]] : [] },
+        title: direct.name,
+        description: direct.description ? direct.description.slice(0, 160) : direct.name,
+        alternates: {
+          canonical: canonicalUrl,
+        },
+        openGraph: {
+          title: `${direct.name} | ${reseller.storeName}`,
+          description: direct.description ? direct.description.slice(0, 160) : direct.name,
+          url: canonicalUrl,
+          images: direct.images?.[0] ? [direct.images[0]] : [],
+        },
       };
     }
     return { title: 'Product Not Found' };
   }
+  const prodDesc = (product as any).description ? String((product as any).description).slice(0, 160) : product.name;
   return {
-    title: `${product.name} — ${reseller.storeName}`,
-    description: product.name,
-    openGraph: { images: product.images?.[0] ? [product.images[0]] : [] },
+    title: product.name,
+    description: prodDesc,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: `${product.name} | ${reseller.storeName}`,
+      description: prodDesc,
+      url: canonicalUrl,
+      images: product.images?.[0] ? [product.images[0]] : [],
+    },
   };
 }
 

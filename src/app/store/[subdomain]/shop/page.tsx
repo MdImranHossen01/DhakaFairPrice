@@ -29,12 +29,21 @@ export async function generateMetadata({ params }: { params: Promise<{ subdomain
   const { subdomain } = await params;
   const reseller = await getReseller(subdomain);
   if (!reseller) return { title: 'Store Not Found' };
+
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+  const storeDomain = (reseller as any).customDomain || `${subdomain}.${rootDomain}`;
+  const canonicalUrl = `https://${storeDomain}/shop`;
+
   return {
-    title: `Shop All Products | ${reseller.storeName}`,
+    title: 'Shop All Products',
     description: reseller.description || `Explore and buy products at ${reseller.storeName}`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
-      title: `Shop | ${reseller.storeName}`,
+      title: `Shop All Products | ${reseller.storeName}`,
       description: `Explore products at ${reseller.storeName}`,
+      url: canonicalUrl,
     },
   };
 }

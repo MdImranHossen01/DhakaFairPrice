@@ -10,17 +10,24 @@ interface Props {
 export async function generateMetadata({ params }: { params: Promise<{ subdomain: string }> }): Promise<Metadata> {
   const { subdomain } = await params;
   await dbConnect();
-  const reseller = await Reseller.findOne({ subdomain }).select('storeName logoUrl faviconUrl description').lean();
+  const reseller = await Reseller.findOne({ subdomain }).select('storeName logoUrl faviconUrl description customDomain').lean() as any;
   if (!reseller) return { title: 'Store Not Found' };
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+  const storeDomain = reseller.customDomain || `${subdomain}.${rootDomain}`;
+  const baseUrl = `https://${storeDomain}`;
   const favicon = reseller.faviconUrl || reseller.logoUrl || '/favicon.ico';
 
   return {
+    metadataBase: new URL(baseUrl),
     title: {
       default: reseller.storeName,
       template: `%s | ${reseller.storeName}`,
     },
     description: reseller.description || `Shop at ${reseller.storeName}`,
+    alternates: {
+      canonical: baseUrl,
+    },
     icons: {
       icon: [
         { url: favicon },
@@ -33,6 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ subdomain
     openGraph: {
       title: reseller.storeName,
       description: reseller.description || `Shop at ${reseller.storeName}`,
+      url: baseUrl,
       images: reseller.logoUrl ? [{ url: reseller.logoUrl }] : [],
     },
   };

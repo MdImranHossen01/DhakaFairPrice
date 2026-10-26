@@ -34,9 +34,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
   const reseller = await getReseller(subdomain);
   if (!reseller) return { title: 'Store Not Found' };
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+  const storeDomain = (reseller as any).customDomain || `${subdomain}.${rootDomain}`;
+  const canonicalUrl = `https://${storeDomain}`;
+
   return {
-    title: reseller.storeName,
+    title: {
+      absolute: reseller.storeName,
+    },
     description: reseller.description || `Shop at ${reseller.storeName}`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     icons: {
       icon: [
         { url: reseller.faviconUrl || reseller.logoUrl || '/favicon.ico' },
@@ -49,6 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: reseller.storeName,
       description: reseller.description || '',
+      url: canonicalUrl,
       images: reseller.logoUrl ? [reseller.logoUrl] : [],
     },
   };
