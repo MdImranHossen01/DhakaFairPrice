@@ -42,24 +42,69 @@ export async function syncProductToResellers(productId: string): Promise<SyncRes
       product.isMotherProduct === false ||
       Boolean(product.uploadedBy);
 
-    const syncPayload = {
-      name: product.name,
-      slug: product.slug,
-      images: product.images ?? [],
-      stock: product.stock ?? 0,
-      purchasePrice: product.resellerPrice || product.purchasePrice || 0,
-      motherPrice: product.price ?? 0,
-      isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
-      isPublished: product.isPublished !== undefined ? product.isPublished : true,
-      syncedAt: new Date(),
-    };
+    const defaultFeeRatio = 0.15;
+    const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
 
-    const result = await ResellerProduct.updateMany(
-      { productId: product._id },
-      { $set: syncPayload }
-    );
+    if (hasVariants) {
+      const existingRPs = await ResellerProduct.find({ productId: product._id });
+      for (const rp of existingRPs) {
+        const updatedVariants = (product.variants || []).map((pv: any) => {
+          const existingVar = (rp.variants || []).find((ev: any) =>
+            String(ev.color || '').trim().toLowerCase() === String(pv.color || '').trim().toLowerCase() &&
+            String(ev.size || '').trim().toLowerCase() === String(pv.size || '').trim().toLowerCase()
+          );
+          const vWholesale = Number(pv.resellerPrice) || (pv.purchasePrice ? Math.round(Number(pv.purchasePrice) * (1 + defaultFeeRatio)) : (product.resellerPrice || product.purchasePrice || 0));
+          const vRetail = existingVar?.retailPrice || Math.max(vWholesale, Math.round(vWholesale * 1.2));
+          return {
+            color: pv.color,
+            size: pv.size,
+            sku: pv.sku,
+            retailPrice: vRetail,
+            purchasePrice: vWholesale,
+            stock: Number(pv.stock) || 0,
+          };
+        });
 
-    resellersUpdated = result.modifiedCount;
+        const firstV = updatedVariants[0];
+        await ResellerProduct.updateOne(
+          { _id: rp._id },
+          {
+            $set: {
+              name: product.name,
+              slug: product.slug,
+              images: product.images ?? [],
+              stock: product.stock ?? 0,
+              purchasePrice: firstV ? firstV.purchasePrice : (product.resellerPrice || product.purchasePrice || 0),
+              motherPrice: (product.variants && product.variants[0]?.price) || product.price || 0,
+              retailPrice: firstV ? firstV.retailPrice : rp.retailPrice,
+              isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
+              isPublished: product.isPublished !== undefined ? product.isPublished : true,
+              variants: updatedVariants,
+              syncedAt: new Date(),
+            }
+          }
+        );
+      }
+      resellersUpdated = existingRPs.length;
+    } else {
+      const syncPayload = {
+        name: product.name,
+        slug: product.slug,
+        images: product.images ?? [],
+        stock: product.stock ?? 0,
+        purchasePrice: product.resellerPrice || product.purchasePrice || 0,
+        motherPrice: product.price ?? 0,
+        isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
+        isPublished: product.isPublished !== undefined ? product.isPublished : true,
+        syncedAt: new Date(),
+      };
+
+      const result = await ResellerProduct.updateMany(
+        { productId: product._id },
+        { $set: syncPayload }
+      );
+      resellersUpdated = result.modifiedCount;
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     errors.push(message);
@@ -104,12 +149,13 @@ export async function unpublishProductFromResellers(productId: string): Promise<
 
 /**
  * Add a product to a specific reseller's storefront.
- * Reseller sets their own `retailPrice`; snapshot data comes from Mother.
+ * Reseller sets their own `retailPrice` and optional variant retail prices; snapshot data comes from Mother.
  */
 export async function addProductToReseller(
   resellerId: string,
   productId: string,
-  retailPrice: number
+  retailPrice: number,
+  customVariants?: { color?: string; size?: string; sku?: string; retailPrice: number; purchasePrice?: number }[]
 ): Promise<{ success: boolean; message: string }> {
   try {
     await dbConnect();
@@ -131,11 +177,53 @@ export async function addProductToReseller(
       ? (product.isPublished !== undefined ? product.isPublished : true)
       : true;
 
+    const defaultFeeRatio = 0.15;
+
     // Sourced products receive wholesale resellerPrice (Base price + Mother Shop System Fee).
     // Own products retain base purchasePrice.
     const effectivePurchasePrice = isOwnProduct
       ? (product.purchasePrice || 0)
-      : (product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * 1.15) : 0));
+      : (product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : 0));
+
+    // Handle variant pricing if product has variants
+    const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
+    let mappedVariants: any[] = [];
+
+    if (hasVariants) {
+      const markupRatio = effectivePurchasePrice > 0 ? (retailPrice / effectivePurchasePrice) : 1.2;
+
+      mappedVariants = (product.variants || []).map((pv: any) => {
+        const matching = (customVariants || []).find((cv: any) =>
+          String(cv.color || '').trim().toLowerCase() === String(pv.color || '').trim().toLowerCase() &&
+          String(cv.size || '').trim().toLowerCase() === String(pv.size || '').trim().toLowerCase()
+        );
+
+        const vWholesale = isOwnProduct
+          ? (Number(pv.purchasePrice) || Number(product.purchasePrice) || 0)
+          : (Number(pv.resellerPrice) || (pv.purchasePrice ? Math.round(Number(pv.purchasePrice) * (1 + defaultFeeRatio)) : effectivePurchasePrice));
+
+        let vRetail: number;
+        if (matching && Number(matching.retailPrice) > 0) {
+          vRetail = Number(matching.retailPrice);
+        } else {
+          vRetail = Math.max(vWholesale, Math.round(vWholesale * markupRatio));
+        }
+
+        return {
+          color: pv.color,
+          size: pv.size,
+          sku: pv.sku,
+          retailPrice: vRetail,
+          purchasePrice: vWholesale,
+          stock: Number(pv.stock) || 0,
+        };
+      });
+    }
+
+    // First variant's retail price is ALWAYS the primary retailPrice for product cards!
+    const primaryRetailPrice = mappedVariants.length > 0 ? mappedVariants[0].retailPrice : retailPrice;
+    const primaryPurchasePrice = mappedVariants.length > 0 ? mappedVariants[0].purchasePrice : effectivePurchasePrice;
+    const primaryMotherPrice = (hasVariants && product.variants && product.variants[0]?.price) || product.price || 0;
 
     await ResellerProduct.findOneAndUpdate(
       { resellerId, productId },
@@ -143,15 +231,16 @@ export async function addProductToReseller(
         $set: {
           resellerId,
           productId,
-          retailPrice,
+          retailPrice: primaryRetailPrice,
           name: product.name,
           slug: product.slug,
           images: product.images ?? [],
           stock: product.stock ?? 0,
-          purchasePrice: effectivePurchasePrice,
-          motherPrice: product.price ?? 0,
+          purchasePrice: primaryPurchasePrice,
+          motherPrice: primaryMotherPrice,
           isAvailableOnMother: isOwnProduct ? true : (product.isPublished ?? true),
           isPublished: isPublishedOnStore,
+          ...(mappedVariants.length > 0 ? { variants: mappedVariants } : { $unset: { variants: 1 } }),
           syncedAt: new Date(),
         },
       },

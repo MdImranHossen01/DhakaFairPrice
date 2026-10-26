@@ -81,6 +81,24 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
     const isOwnProduct = parent.uploadedBy &&
       parent.uploadedBy.toString() === reseller._id.toString();
 
+    // Merge parent variants with reseller's custom variant pricing
+    const parentVariants = Array.isArray(parent.variants) ? parent.variants : [];
+    const rpVariants = Array.isArray(rp.variants) ? rp.variants : [];
+
+    const mergedVariants = parentVariants.map((v: any, idx: number) => {
+      const match = rpVariants.find((rv: any) =>
+        String(rv.color || '').trim().toLowerCase() === String(v.color || '').trim().toLowerCase() &&
+        String(rv.size || '').trim().toLowerCase() === String(v.size || '').trim().toLowerCase()
+      );
+      const varRetailPrice = match?.retailPrice || (idx === 0 ? finalPrice : (v.price || finalPrice));
+      return {
+        ...v,
+        price: regularPrice || varRetailPrice,
+        salePrice: varRetailPrice,
+        retailPrice: varRetailPrice,
+      };
+    });
+
     return {
       _id: rp._id.toString(),
       productId: parent._id ? parent._id.toString() : rp.productId?.toString(),
@@ -102,7 +120,7 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
       isFlashSale: Boolean(parent.isFlashSale),
       rating: parent.rating || 5,
       numReviews: parent.numReviews || 0,
-      variants: parent.variants || [],
+      variants: mergedVariants,
       createdAt: rp.createdAt || parent.createdAt,
     };
   });

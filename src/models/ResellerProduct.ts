@@ -5,10 +5,19 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
  * Resellers select products from the Mother catalog and set their own retail price.
  * When the Mother product is updated, `syncedAt` and the snapshot fields are refreshed.
  */
+export interface IResellerProductVariant {
+  color?: string;
+  size?: string;
+  sku?: string;
+  retailPrice: number;
+  purchasePrice: number;
+  stock?: number;
+}
+
 export interface IResellerProduct extends Document {
   resellerId: mongoose.Types.ObjectId;
   productId: mongoose.Types.ObjectId;       // Mother catalog product
-  retailPrice: number;                       // Reseller's selling price to their customers
+  retailPrice: number;                       // Reseller's selling price to their customers (or 1st variant's price)
   isPublished: boolean;                      // Reseller can hide products from their store
   // Snapshot fields (auto-synced from Mother)
   name: string;
@@ -18,6 +27,7 @@ export interface IResellerProduct extends Document {
   purchasePrice: number;                     // Mother's price to reseller (cost price)
   motherPrice: number;                       // Original retail price on Mother site
   isAvailableOnMother: boolean;              // Goes false when Mother unpublishes the product
+  variants?: IResellerProductVariant[];
   syncedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +47,16 @@ const ResellerProductSchema: Schema<IResellerProduct> = new Schema(
     purchasePrice: { type: Number, default: 0, min: 0 },
     motherPrice: { type: Number, default: 0, min: 0 },
     isAvailableOnMother: { type: Boolean, default: true },
+    variants: [
+      {
+        color: { type: String },
+        size: { type: String },
+        sku: { type: String },
+        retailPrice: { type: Number, required: true },
+        purchasePrice: { type: Number, default: 0 },
+        stock: { type: Number, default: 0 },
+      }
+    ],
     syncedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

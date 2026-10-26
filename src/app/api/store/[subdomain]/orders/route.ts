@@ -115,19 +115,32 @@ export async function POST(
           productId: productDoc?._id || rp.productId,
         }).lean();
 
-        const baseCost = (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
+        // Check variant-specific pricing
+        const matchedVariant = (rp.variants || []).find((v: any) =>
+          String(v.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase() &&
+          String(v.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
+        );
+        const docVariant = (productDoc?.variants || []).find((v: any) =>
+          String(v.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase() &&
+          String(v.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
+        );
+
+        const varBaseCost = (docVariant?.purchasePrice && Number(docVariant.purchasePrice) > 0)
+          ? Number(docVariant.purchasePrice)
+          : (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
           ? Number(productDoc.purchasePrice)
           : (uploaderRp?.purchasePrice ?? 0);
 
-        let unitFee = Math.max(0, (Number(rp.purchasePrice) || 0) - baseCost);
-        if (unitFee === 0 && baseCost > 0) {
+        let unitFee = Math.max(0, (Number(matchedVariant?.purchasePrice || rp.purchasePrice) || 0) - varBaseCost);
+        if (unitFee === 0 && varBaseCost > 0) {
           const uploaderReseller = await Reseller.findById(uploaderId).select('systemFeePercent').lean();
           const feePct = uploaderReseller?.systemFeePercent ?? 15;
-          unitFee = Math.round(baseCost * (feePct / 100));
+          unitFee = Math.round(varBaseCost * (feePct / 100));
         }
 
-        const effectiveWholesale = baseCost + unitFee;
-        const commission = Math.max(0, (rp.retailPrice - effectiveWholesale) * qty);
+        const effectiveWholesale = varBaseCost + unitFee;
+        const effectiveRetail = Number(matchedVariant?.retailPrice) || rp.retailPrice;
+        const commission = Math.max(0, (effectiveRetail - effectiveWholesale) * qty);
         totalCommission += commission;
 
         itemSystemFee = unitFee * qty;
@@ -137,9 +150,9 @@ export async function POST(
           productId: productDoc?._id || rp.productId,
           name: rp.name,
           quantity: qty,
-          retailPrice: rp.retailPrice,
+          retailPrice: effectiveRetail,
           purchasePrice: effectiveWholesale,
-          image: rp.images?.[0],
+          image: matchedVariant?.image || rp.images?.[0],
           color: item.color || undefined,
           size: item.size || undefined,
           systemFee: itemSystemFee,
@@ -151,32 +164,39 @@ export async function POST(
           ...validatedItem,
           resellerProductId: uploaderRp?._id || rp._id,
           retailPrice: effectiveWholesale,
-          purchasePrice: baseCost,
+          purchasePrice: varBaseCost,
           systemFee: unitFee,
         });
         continue;
       } else {
         // Dropshipping from Mother Catalog
-        const commission = Math.max(0, (rp.retailPrice - rp.purchasePrice) * qty);
+        const matchedVariant = (rp.variants || []).find((v: any) =>
+          String(v.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase() &&
+          String(v.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
+        );
+        const effectiveRetail = Number(matchedVariant?.retailPrice) || rp.retailPrice;
+        const effectivePurchase = Number(matchedVariant?.purchasePrice) || rp.purchasePrice;
+
+        const commission = Math.max(0, (effectiveRetail - effectivePurchase) * qty);
         totalCommission += commission;
+
+        const validatedItem = {
+          resellerProductId: rp._id,
+          productId: productDoc?._id || rp.productId,
+          name: rp.name,
+          quantity: qty,
+          retailPrice: effectiveRetail,
+          purchasePrice: isOwnProduct 
+            ? ((productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0) ? Number(productDoc.purchasePrice) : effectivePurchase) 
+            : effectivePurchase,
+          image: matchedVariant?.image || rp.images?.[0],
+          color: item.color || undefined,
+          size: item.size || undefined,
+          systemFee: itemSystemFee,
+        };
+
+        validatedItems.push(validatedItem);
       }
-
-      const validatedItem = {
-        resellerProductId: rp._id,
-        productId: productDoc?._id || rp.productId,
-        name: rp.name,
-        quantity: qty,
-        retailPrice: rp.retailPrice,
-        purchasePrice: isOwnProduct 
-          ? ((productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0) ? Number(productDoc.purchasePrice) : rp.purchasePrice) 
-          : rp.purchasePrice,
-        image: rp.images?.[0],
-        color: item.color || undefined,
-        size: item.size || undefined,
-        systemFee: itemSystemFee,
-      };
-
-      validatedItems.push(validatedItem);
     }
 
     if (validatedItems.length === 0) {

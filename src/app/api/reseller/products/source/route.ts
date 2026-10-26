@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
               _id: sourcedItem._id,
               retailPrice: sourcedItem.retailPrice,
               isPublished: sourcedItem.isPublished,
+              variants: sourcedItem.variants || [],
               syncedAt: sourcedItem.syncedAt,
             }
           : null,
@@ -166,13 +167,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { productId, retailPrice } = body;
+    const { productId, retailPrice, variants } = body;
 
     if (!productId || retailPrice === undefined || isNaN(Number(retailPrice)) || Number(retailPrice) <= 0) {
       return NextResponse.json({ error: 'Product ID and a valid retail price are required' }, { status: 400 });
     }
 
-    const result = await addProductToReseller(resellerId.toString(), productId, Number(retailPrice));
+    const result = await addProductToReseller(resellerId.toString(), productId, Number(retailPrice), variants);
     
     if (!result.success) {
       return NextResponse.json({ error: result.message }, { status: 400 });

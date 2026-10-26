@@ -29,6 +29,15 @@ const SOURCE_TABS: { key: SourceFilter; label: string; icon: any; color: string 
   { key: 'sourced',     label: 'In My Store',          icon: CheckCircle2, color: 'bg-green-600 text-white border-green-600' },
 ];
 
+interface VariantPricingState {
+  color?: string;
+  size?: string;
+  sku?: string;
+  wholesalePrice: number;
+  retailPrice: string;
+  stock: number;
+}
+
 function SourceProductsContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +51,8 @@ function SourceProductsContent() {
   // Sourcing Dialog
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [retailPrice, setRetailPrice] = useState<string>('');
+  const [variantPricing, setVariantPricing] = useState<VariantPricingState[]>([]);
+  const [bulkMarginPercent, setBulkMarginPercent] = useState<string>('20');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchProducts = async (currentPage = page, currentFilter = sourceFilter, currentSearch = search) => {
@@ -90,25 +101,120 @@ function SourceProductsContent() {
 
   const openSourcingDialog = (product: any) => {
     setSelectedProduct(product);
-    const wholesalePrice = product.resellerPrice || product.purchasePrice || product.price || 0;
-    const initialRetailPrice = product.isSourced && product.sourcedDetails?.retailPrice
-      ? String(product.sourcedDetails.retailPrice)
-      : String(Math.round(wholesalePrice * 1.2));
-    setRetailPrice(initialRetailPrice);
+    const defaultFeeRatio = 0.15;
+    const wholesalePrice = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
+
+    const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
+    if (hasVariants) {
+      const mapped: VariantPricingState[] = product.variants.map((v: any) => {
+        let wPrice = Number(v.resellerPrice) || 0;
+        if (wPrice <= 0 && Number(v.purchasePrice) > 0) {
+          wPrice = Math.round(Number(v.purchasePrice) * (1 + defaultFeeRatio));
+        }
+        if (wPrice <= 0) {
+          wPrice = wholesalePrice;
+        }
+
+        const savedVar = (product.sourcedDetails?.variants || []).find((sv: any) =>
+          String(sv.color || '').trim().toLowerCase() === String(v.color || '').trim().toLowerCase() &&
+          String(sv.size || '').trim().toLowerCase() === String(v.size || '').trim().toLowerCase()
+        );
+
+        const initialPrice = savedVar?.retailPrice
+          ? String(savedVar.retailPrice)
+          : String(Math.round(wPrice * 1.2));
+
+        return {
+          color: v.color,
+          size: v.size,
+          sku: v.sku,
+          wholesalePrice: wPrice,
+          retailPrice: initialPrice,
+          stock: Number(v.stock) || 0,
+        };
+      });
+
+      setVariantPricing(mapped);
+      setRetailPrice(mapped[0]?.retailPrice || String(Math.round(wholesalePrice * 1.2)));
+    } else {
+      setVariantPricing([]);
+      const initialRetailPrice = product.isSourced && product.sourcedDetails?.retailPrice
+        ? String(product.sourcedDetails.retailPrice)
+        : String(Math.round(wholesalePrice * 1.2));
+      setRetailPrice(initialRetailPrice);
+    }
+  };
+
+  const handleVariantPriceChange = (index: number, val: string) => {
+    setVariantPricing(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], retailPrice: val };
+      if (index === 0) {
+        setRetailPrice(val);
+      }
+      return updated;
+    });
+  };
+
+  const applyBulkMargin = () => {
+    const pct = parseFloat(bulkMarginPercent) || 0;
+    setVariantPricing(prev => {
+      const updated = prev.map(vp => ({
+        ...vp,
+        retailPrice: String(Math.max(vp.wholesalePrice, Math.round(vp.wholesalePrice * (1 + pct / 100))))
+      }));
+      if (updated.length > 0) {
+        setRetailPrice(updated[0].retailPrice);
+      }
+      return updated;
+    });
   };
 
   const handleSourceProduct = async () => {
     if (!selectedProduct) return;
-    const priceNum = parseFloat(retailPrice);
-    const wholesalePrice = selectedProduct.resellerPrice || selectedProduct.purchasePrice || selectedProduct.price || 0;
+    const hasVariants = variantPricing.length > 0;
 
-    if (isNaN(priceNum) || priceNum <= 0) {
-      toast.error('Please enter a valid retail price');
-      return;
-    }
-    if (priceNum < wholesalePrice) {
-      toast.error(`Retail price must be at least ৳${wholesalePrice}`);
-      return;
+    let finalRetailPrice = 0;
+    let payloadVariants: any[] | undefined = undefined;
+
+    if (hasVariants) {
+      for (let i = 0; i < variantPricing.length; i++) {
+        const vp = variantPricing[i];
+        const vNum = parseFloat(vp.retailPrice);
+        const label = [vp.color, vp.size].filter(Boolean).join(' / ') || `Variant ${i + 1}`;
+        if (isNaN(vNum) || vNum <= 0) {
+          toast.error(`Please enter a valid retail price for ${label}`);
+          return;
+        }
+        if (vNum < vp.wholesalePrice) {
+          toast.error(`Price for ${label} must be at least ৳${vp.wholesalePrice}`);
+          return;
+        }
+      }
+
+      finalRetailPrice = parseFloat(variantPricing[0].retailPrice);
+      payloadVariants = variantPricing.map(vp => ({
+        color: vp.color,
+        size: vp.size,
+        sku: vp.sku,
+        retailPrice: parseFloat(vp.retailPrice),
+        purchasePrice: vp.wholesalePrice,
+        stock: vp.stock,
+      }));
+    } else {
+      const priceNum = parseFloat(retailPrice);
+      const defaultFeeRatio = 0.15;
+      const wholesalePrice = selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * (1 + defaultFeeRatio)) : (selectedProduct.price || 0));
+
+      if (isNaN(priceNum) || priceNum <= 0) {
+        toast.error('Please enter a valid retail price');
+        return;
+      }
+      if (priceNum < wholesalePrice) {
+        toast.error(`Retail price must be at least ৳${wholesalePrice}`);
+        return;
+      }
+      finalRetailPrice = priceNum;
     }
 
     setSubmitting(true);
@@ -116,7 +222,11 @@ function SourceProductsContent() {
       const res = await fetch('/api/reseller/products/source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: selectedProduct._id, retailPrice: priceNum }),
+        body: JSON.stringify({
+          productId: selectedProduct._id,
+          retailPrice: finalRetailPrice,
+          ...(payloadVariants ? { variants: payloadVariants } : {}),
+        }),
       });
 
       if (res.ok) {
@@ -135,8 +245,13 @@ function SourceProductsContent() {
     }
   };
 
+  const defaultFeeRatio = 0.15;
+  const singleWholesaleCost = selectedProduct
+    ? (selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * (1 + defaultFeeRatio)) : (selectedProduct.price || 0)))
+    : 0;
+
   const profit = selectedProduct
-    ? Math.max(0, parseFloat(retailPrice || '0') - (selectedProduct.resellerPrice || selectedProduct.purchasePrice || selectedProduct.price || 0))
+    ? Math.max(0, parseFloat(retailPrice || '0') - singleWholesaleCost)
     : 0;
 
   return (
@@ -228,7 +343,33 @@ function SourceProductsContent() {
           <p className="text-xs text-muted-foreground">{total} products found</p>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
-              const wholesalePrice = product.resellerPrice || product.purchasePrice || product.price || 0;
+              const defaultFeeRatio = 0.15;
+              const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
+              let minWholesale = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
+              let maxWholesale = minWholesale;
+              let minYourPrice = product.sourcedDetails?.retailPrice || 0;
+              let maxYourPrice = minYourPrice;
+
+              if (hasVariants) {
+                const ws = product.variants.map((v: any) => {
+                  let w = Number(v.resellerPrice) || 0;
+                  if (w <= 0 && Number(v.purchasePrice) > 0) {
+                    w = Math.round(Number(v.purchasePrice) * (1 + defaultFeeRatio));
+                  }
+                  return w > 0 ? w : minWholesale;
+                });
+                minWholesale = Math.min(...ws);
+                maxWholesale = Math.max(...ws);
+
+                if (Array.isArray(product.sourcedDetails?.variants) && product.sourcedDetails.variants.length > 0) {
+                  const rs = product.sourcedDetails.variants.map((v: any) => Number(v.retailPrice) || 0).filter((p: number) => p > 0);
+                  if (rs.length > 0) {
+                    minYourPrice = Math.min(...rs);
+                    maxYourPrice = Math.max(...rs);
+                  }
+                }
+              }
+
               const isSourced = product.isSourced;
               const isAdmin = product.sourceType === 'admin';
               const resellerStore = product.uploadedBy?.storeName || product.sourceStoreName || 'Reseller';
@@ -287,25 +428,34 @@ function SourceProductsContent() {
                     <p className="text-xs md:text-sm font-bold line-clamp-2 leading-snug">{product.name}</p>
                     <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                       <span>SKU: {product.sku || '-'}</span>
-                      {Boolean(product.totalSales && product.totalSales > 0) && (
-                        <span className="flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400 font-sans">
-                          <Flame className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />
-                          {product.totalSales} Sold
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {hasVariants && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-primary/30 text-primary">
+                            {product.variants.length} Var
+                          </Badge>
+                        )}
+                        {Boolean(product.totalSales && product.totalSales > 0) && (
+                          <span className="flex items-center gap-0.5 font-bold text-amber-600 dark:text-amber-400 font-sans">
+                            <Flame className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />
+                            {product.totalSales} Sold
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Price row */}
                     <div className="flex items-center justify-between bg-muted/30 rounded-lg px-2 py-1.5 border text-xs mt-auto">
                       <div>
                         <span className="text-muted-foreground block text-[9px] uppercase font-bold">Wholesale</span>
-                        <span className="font-extrabold text-foreground">৳{wholesalePrice.toLocaleString()}</span>
+                        <span className="font-extrabold text-foreground">
+                          ৳{minWholesale.toLocaleString()}{minWholesale !== maxWholesale ? ` - ৳${maxWholesale.toLocaleString()}` : ''}
+                        </span>
                       </div>
                       {isSourced && (
                         <div className="text-right">
                           <span className="text-green-600 block text-[9px] uppercase font-bold">Your Price</span>
                           <span className="font-extrabold text-green-600">
-                            ৳{product.sourcedDetails?.retailPrice?.toLocaleString()}
+                            ৳{minYourPrice.toLocaleString()}{minYourPrice !== maxYourPrice ? ` - ৳${maxYourPrice.toLocaleString()}` : ''}
                           </span>
                         </div>
                       )}
@@ -344,18 +494,20 @@ function SourceProductsContent() {
 
       {/* Sourcing Modal */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
-        <DialogContent className="max-w-md rounded-xl">
+        <DialogContent className="max-w-md md:max-w-lg rounded-xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {selectedProduct?.isSourced ? '💰 Update Retail Price' : '🛒 Add to Store'}
             </DialogTitle>
             <DialogDescription>
-              Set your customer selling price for this product.
+              {variantPricing.length > 0
+                ? 'Set selling prices for each variant. The first variant price will be shown on product cards by default.'
+                : 'Set your customer selling price for this product.'}
             </DialogDescription>
           </DialogHeader>
 
           {selectedProduct && (
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 overflow-y-auto pr-1">
               {/* Product preview */}
               <div className="flex gap-3 items-center border p-3 rounded-lg bg-muted/20">
                 <div className="h-14 w-14 bg-muted relative rounded-md overflow-hidden border shrink-0">
@@ -368,54 +520,143 @@ function SourceProductsContent() {
                 <div className="min-w-0">
                   <p className="font-bold text-sm line-clamp-1">{selectedProduct.name}</p>
                   <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedProduct.sku || '-'}</p>
-                  <Badge className={`text-[9px] mt-1 ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>
-                    {selectedProduct.sourceType === 'admin'
-                      ? `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`
-                      : `Reseller: ${selectedProduct.uploadedBy?.storeName || selectedProduct.sourceStoreName || 'Reseller'}`}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Badge className={`text-[9px] ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>
+                      {selectedProduct.sourceType === 'admin'
+                        ? `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`
+                        : `Reseller: ${selectedProduct.uploadedBy?.storeName || selectedProduct.sourceStoreName || 'Reseller'}`}
+                    </Badge>
+                    {variantPricing.length > 0 && (
+                      <Badge variant="outline" className="text-[9px]">
+                        {variantPricing.length} Variants
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Cost / Profit display */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="border p-3 rounded-lg text-center bg-muted/40">
-                  <span className="text-[10px] text-muted-foreground block uppercase font-bold">Wholesale Cost</span>
-                  <span className="text-lg font-black text-foreground">
-                    ৳{(selectedProduct.resellerPrice || selectedProduct.purchasePrice || selectedProduct.price || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className={`border p-3 rounded-lg text-center ${profit > 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/40'}`}>
-                  <span className={`text-[10px] block uppercase font-bold ${profit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    Your Profit
-                  </span>
-                  <span className={`text-lg font-black ${profit > 0 ? 'text-green-600' : 'text-foreground'}`}>
-                    ৳{profit.toLocaleString()}
-                  </span>
-                </div>
-              </div>
+              {variantPricing.length > 0 ? (
+                <>
+                  {/* Bulk Margin Helper */}
+                  <div className="p-3 border rounded-lg bg-muted/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-foreground">Quick Profit Margin</Label>
+                      <span className="text-[11px] text-muted-foreground">Applies % markup to wholesale of all variants</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type="number"
+                          value={bulkMarginPercent}
+                          onChange={e => setBulkMarginPercent(e.target.value)}
+                          placeholder="e.g. 20"
+                          className="h-8 text-xs font-bold pl-3 pr-7"
+                        />
+                        <span className="absolute right-2.5 top-1.5 text-xs text-muted-foreground font-bold">%</span>
+                      </div>
+                      <Button type="button" size="sm" variant="secondary" className="h-8 text-xs font-bold" onClick={applyBulkMargin}>
+                        Apply to All
+                      </Button>
+                    </div>
+                  </div>
 
-              {/* Price input */}
-              <div className="space-y-1">
-                <Label htmlFor="retail-price" className="font-bold text-xs">Your Selling Price (৳)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-muted-foreground text-sm font-bold">৳</span>
-                  <Input
-                    id="retail-price"
-                    type="number"
-                    value={retailPrice}
-                    onChange={e => setRetailPrice(e.target.value)}
-                    placeholder="Enter retail price"
-                    className="pl-7 h-10 text-sm font-extrabold"
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Price must be equal to or higher than wholesale cost
-                </p>
-              </div>
+                  {/* Variants list */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold px-1">
+                      <span>Variant & Wholesale Cost</span>
+                      <span>Your Selling Price</span>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {variantPricing.map((vp, idx) => {
+                        const vNum = parseFloat(vp.retailPrice) || 0;
+                        const vProfit = Math.max(0, vNum - vp.wholesalePrice);
+                        const vName = [vp.color, vp.size].filter(Boolean).join(' / ') || `Variant #${idx + 1}`;
+                        const isFirst = idx === 0;
+
+                        return (
+                          <div key={idx} className={`p-2.5 border rounded-lg bg-card transition-colors ${isFirst ? 'border-primary/40 bg-primary/5' : ''}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-xs">{vName}</span>
+                                  {isFirst && (
+                                    <Badge variant="default" className="text-[9px] px-1.5 py-0 h-4 bg-primary text-primary-foreground font-bold">
+                                      Card Default
+                                    </Badge>
+                                  )}
+                                  {vp.stock !== undefined && (
+                                    <span className="text-[10px] text-muted-foreground font-mono">({vp.stock} in stock)</span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                                  <span>Wholesale: <strong className="text-foreground">৳{vp.wholesalePrice.toLocaleString()}</strong></span>
+                                  <span className={`font-bold ${vProfit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                    Profit: {vProfit > 0 ? `+৳${vProfit.toLocaleString()}` : '৳0'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="w-28 shrink-0">
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-2 text-muted-foreground text-xs font-bold">৳</span>
+                                  <Input
+                                    type="number"
+                                    value={vp.retailPrice}
+                                    onChange={e => handleVariantPriceChange(idx, e.target.value)}
+                                    className="h-8 pl-6 text-xs font-extrabold"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Single product Cost / Profit display */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border p-3 rounded-lg text-center bg-muted/40">
+                      <span className="text-[10px] text-muted-foreground block uppercase font-bold">Wholesale Cost</span>
+                      <span className="text-lg font-black text-foreground">
+                        ৳{(selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.15) : (selectedProduct.price || 0))).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className={`border p-3 rounded-lg text-center ${profit > 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/40'}`}>
+                      <span className={`text-[10px] block uppercase font-bold ${profit > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        Your Profit
+                      </span>
+                      <span className={`text-lg font-black ${profit > 0 ? 'text-green-600' : 'text-foreground'}`}>
+                        ৳{profit.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Single Price input */}
+                  <div className="space-y-1">
+                    <Label htmlFor="retail-price" className="font-bold text-xs">Your Selling Price (৳)</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-muted-foreground text-sm font-bold">৳</span>
+                      <Input
+                        id="retail-price"
+                        type="number"
+                        value={retailPrice}
+                        onChange={e => setRetailPrice(e.target.value)}
+                        placeholder="Enter retail price"
+                        className="pl-7 h-10 text-sm font-extrabold"
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Price must be equal to or higher than wholesale cost
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="pt-2 border-t">
             <Button variant="outline" onClick={() => setSelectedProduct(null)} disabled={submitting}>Cancel</Button>
             <Button onClick={handleSourceProduct} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
