@@ -651,10 +651,16 @@ export async function syncOrdersToLedger() {
       );
     }
 
-    // Fetch active/valid orders
+    // Fetch active/valid orders OR any paid/delivered orders (to maintain financial trail)
     const orders = await Order.find({
-      status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-      deletedAt: null
+      $or: [
+        {
+          status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+          deletedAt: null
+        },
+        { paymentStatus: 'Paid' },
+        { status: 'Delivered' }
+      ]
     }).lean();
 
     for (const order of orders) {
@@ -870,9 +876,11 @@ export async function syncOrdersToLedger() {
       }
     }
 
-    // 3. Clean AR, Payment, and Expense transactions for cancelled/deleted orders
+    // 3. Clean AR, Payment, and Expense transactions ONLY for cancelled/deleted orders that were NEVER Paid and NEVER Delivered
     const invalidOrders = await Order.find({
-      $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }]
+      $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }],
+      paymentStatus: { $ne: 'Paid' },
+      status: { $ne: 'Delivered' }
     } as any).select('shortId').lean();
 
     const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter(Boolean);
@@ -920,10 +928,13 @@ export async function syncPayablesToLedger() {
     });
     if (!apAccount) return;
 
-    // 1. Sync active reseller order liabilities
+    // 1. Sync active reseller order liabilities OR cleared/delivered liabilities
     const activeResellerOrders = await ResellerOrder.find({
-      status: { $nin: ['Cancelled', 'Failed'] },
-      deletedAt: null
+      $or: [
+        { status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null },
+        { commissionStatus: 'cleared' },
+        { status: 'Delivered' }
+      ]
     } as any).populate('resellerId', 'storeName').lean();
 
     for (const ro of activeResellerOrders) {
@@ -1012,9 +1023,11 @@ export async function syncPayablesToLedger() {
       }
     }
 
-    // 3. Remove AP liabilities for cancelled orders
+    // 3. Remove AP liabilities ONLY for cancelled/deleted orders that were NEVER Delivered and NEVER cleared
     const cancelledOrders = await ResellerOrder.find({
-      $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }]
+      $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }],
+      status: { $ne: 'Delivered' },
+      commissionStatus: { $ne: 'cleared' }
     } as any).select('shortId').lean();
 
     const cancelledRefs = cancelledOrders.map((o: any) => `AP-RO-${o.shortId}`).filter(Boolean);
@@ -1058,11 +1071,23 @@ export async function cleanOrphanLedgerTransactions() {
     // Fetch reference sets in parallel for high performance
     const [bills, activeOrders, loans, supplierBills, payouts, activeRos] = await Promise.all([
       Bill.find({}, { invoiceNo: 1 }).lean(),
-      Order.find({ deletedAt: null }, { _id: 1, shortId: 1 }).lean(),
+      Order.find({
+        $or: [
+          { deletedAt: null },
+          { paymentStatus: 'Paid' },
+          { status: 'Delivered' }
+        ]
+      }, { _id: 1, shortId: 1 }).lean(),
       BusinessLoan.find({}, { loanId: 1 }).lean(),
       SupplierBill.find({}, { billNo: 1 }).lean(),
       ResellerWalletTransaction.find({ type: 'payout_released' }, { _id: 1 }).lean(),
-      ResellerOrder.find({ status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null } as any, { shortId: 1 }).lean(),
+      ResellerOrder.find({
+        $or: [
+          { status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null },
+          { commissionStatus: 'cleared' },
+          { status: 'Delivered' }
+        ]
+      } as any, { shortId: 1 }).lean(),
     ]);
 
     const validBillInvoices = new Set(bills.map((b: any) => (b.invoiceNo || '').toUpperCase()));

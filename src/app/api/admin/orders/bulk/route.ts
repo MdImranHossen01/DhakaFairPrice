@@ -217,21 +217,52 @@ export async function DELETE(req: NextRequest) {
 
     await connectToDatabase();
 
+    const ordersToDelete = await Order.find({ _id: { $in: ids } }).lean();
+
     const result = await Order.updateMany(
       { _id: { $in: ids } },
       { $set: { deletedAt: new Date() } }
     );
 
+    // Also soft-delete associated ResellerOrders
     try {
-      const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
-      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
-      const shortIds = ids.map((id: string) => id.toString().slice(-8).toUpperCase());
-      const refs = shortIds.map((s: string) => `ORDER-${s}`);
-      await LedgerTransaction.deleteMany({ reference: { $in: refs } });
-      await recalculateLedgerBalance('CASH');
-      await recalculateLedgerBalance('BANK');
-    } catch (ledgerErr) {
-      console.error('[Ledger] Error cleaning bulk order ledger transactions:', ledgerErr);
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      const shortIds = ordersToDelete.map((o: any) => o.shortId).filter(Boolean);
+      await ResellerOrder.updateMany(
+        {
+          $or: [
+            { motherOrderId: { $in: ids } },
+            { shortId: { $in: shortIds } }
+          ]
+        },
+        { $set: { deletedAt: new Date() } }
+      );
+    } catch (roErr) {
+      console.error('[Bulk Delete] Error soft-deleting reseller orders:', roErr);
+    }
+
+    // Accounting Protection Rule:
+    // Only clean ledger & expenses for orders that were NEVER Paid and NEVER Delivered!
+    const unpaidUnDelivered = ordersToDelete.filter((o: any) => o.paymentStatus !== 'Paid' && o.status !== 'Delivered');
+    if (unpaidUnDelivered.length > 0) {
+      try {
+        const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+        const { default: Expense } = await import('@/models/Expense');
+        const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+        const cleanShortIds = unpaidUnDelivered.map((o: any) => o.shortId || o._id.toString().slice(-8).toUpperCase());
+        const cleanRefs: string[] = [];
+        for (const s of cleanShortIds) {
+          cleanRefs.push(`ORDER-${s}`, `ORD-${s}`, `SHIPPING-${s}`);
+        }
+        await LedgerTransaction.deleteMany({ reference: { $in: cleanRefs } });
+        await Expense.deleteMany({ reference: { $in: cleanRefs } });
+        await recalculateLedgerBalance('CASH');
+        await recalculateLedgerBalance('BANK');
+        await recalculateLedgerBalance('AR');
+        await recalculateLedgerBalance('AP');
+      } catch (ledgerErr) {
+        console.error('[Ledger] Error cleaning bulk order ledger transactions:', ledgerErr);
+      }
     }
 
     return NextResponse.json({

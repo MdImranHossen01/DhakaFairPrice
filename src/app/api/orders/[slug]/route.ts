@@ -593,21 +593,54 @@ export async function DELETE(
     }
 
     await connectToDatabase();
-    const deletedOrder = await Order.findOneAndDelete({ _id: slug });
+    const order = await Order.findById(slug);
 
-    if (!deletedOrder) {
+    if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
 
+    const isPaidOrDelivered = order.paymentStatus === 'Paid' || order.status === 'Delivered';
+
+    // Soft delete the order
+    order.deletedAt = new Date();
+    await order.save();
+
+    // Also soft-delete associated ResellerOrders
     try {
-      const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
-      const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
-      const shortId = slug.slice(-8).toUpperCase();
-      await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
-      await recalculateLedgerBalance('CASH');
-      await recalculateLedgerBalance('BANK');
-    } catch (ledgerErr) {
-      console.error('[Ledger] Error cleaning order ledger transaction on delete:', ledgerErr);
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      await ResellerOrder.updateMany(
+        {
+          $or: [
+            { motherOrderId: order._id },
+            ...(order.shortId ? [{ shortId: order.shortId }, { shortId: new RegExp(`^${order.shortId}-F`) }] : [])
+          ]
+        },
+        { $set: { deletedAt: new Date() } }
+      );
+    } catch (roErr) {
+      console.error('[Delete Order] Error soft-deleting reseller orders:', roErr);
+    }
+
+    // Accounting Protection Rule:
+    // If order was Paid or Delivered, REAL MONEY was collected and disbursed.
+    // NEVER clean its Bank, AP, Expense, or Income transactions, to preserve financial audit trail!
+    // ONLY clean ledger & expenses if the order was NEVER Paid and NEVER Delivered.
+    if (!isPaidOrDelivered) {
+      try {
+        const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+        const { default: Expense } = await import('@/models/Expense');
+        const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+        const shortId = order.shortId || slug.slice(-8).toUpperCase();
+        const refs = [`ORDER-${shortId}`, `ORD-${shortId}`, `SHIPPING-${shortId}`];
+        await LedgerTransaction.deleteMany({ reference: { $in: refs } });
+        await Expense.deleteMany({ reference: { $in: refs } });
+        await recalculateLedgerBalance('CASH');
+        await recalculateLedgerBalance('BANK');
+        await recalculateLedgerBalance('AR');
+        await recalculateLedgerBalance('AP');
+      } catch (ledgerErr) {
+        console.error('[Ledger] Error cleaning unpaid order ledger transactions on delete:', ledgerErr);
+      }
     }
 
     return NextResponse.json({ message: 'Order deleted successfully' });
