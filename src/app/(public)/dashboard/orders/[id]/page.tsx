@@ -20,6 +20,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { generateInvoicePDF } from '@/lib/invoice-generator';
 
@@ -30,6 +39,14 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     const [order, setOrder] = useState<any>(null);
     const [settings, setSettings] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    // Review Modal State
+    const [reviewItem, setReviewItem] = useState<any>(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [rating, setRating] = useState(5);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
@@ -65,6 +82,73 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         const statuses = ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'];
         const idx = statuses.indexOf(status);
         return idx === -1 ? 0 : idx;
+    };
+
+    const openReviewDialog = (item: any) => {
+        setReviewItem(item);
+        setRating(5);
+        setHoverRating(0);
+        setComment('');
+        setIsReviewModalOpen(true);
+    };
+
+    const handleReviewSubmit = async () => {
+        if (!reviewItem) return;
+        if (comment.trim().length < 5) {
+            toast.error('Comment must be at least 5 characters long');
+            return;
+        }
+
+        const productId = reviewItem.product?._id || reviewItem.product;
+        if (!productId) {
+            toast.error('Product not found for review');
+            return;
+        }
+
+        setIsSubmittingReview(true);
+        try {
+            const res = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productId: productId.toString(),
+                    rating,
+                    comment: comment.trim(),
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Failed to submit review');
+            }
+
+            toast.success('Thank you! Review submitted successfully.');
+
+            // Update item in local order state
+            setOrder((prev: any) => {
+                if (!prev || !Array.isArray(prev.items)) return prev;
+                const updatedItems = prev.items.map((it: any) => {
+                    const itPid = (it.product?._id || it.product)?.toString();
+                    if (itPid === productId.toString()) {
+                        return {
+                            ...it,
+                            isReviewed: true,
+                            userReview: { rating, comment: comment.trim() },
+                        };
+                    }
+                    return it;
+                });
+                return { ...prev, items: updatedItems };
+            });
+
+            setIsReviewModalOpen(false);
+            setReviewItem(null);
+            setComment('');
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to submit review');
+        } finally {
+            setIsSubmittingReview(false);
+        }
     };
 
     if (loading) {
@@ -176,49 +260,68 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     </Card>
 
                     {/* Order Items */}
-                    <Card className="border border-border/80 shadow-xs rounded-xl overflow-hidden">
-                        <CardHeader className="bg-muted/30 border-b p-3 md:p-4">
+                    <Card className="border border-border/80 shadow-xs rounded-xl overflow-hidden" id="order-items-card">
+                        <CardHeader className="bg-muted/30 border-b p-3 md:p-4 flex flex-row items-center justify-between">
                             <CardTitle className="text-sm md:text-base font-bold flex items-center gap-2">
                                 <Package className="h-4 w-4 text-primary" /> Order Items ({Array.isArray(order?.items) ? order.items.length : 0})
                             </CardTitle>
+                            {isReviewable && (
+                                <span className="text-[11px] text-muted-foreground hidden sm:inline-block">
+                                    Click &quot;Write Review&quot; on any item to review separately
+                                </span>
+                            )}
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border/60">
                                 {(Array.isArray(order?.items) ? order.items : []).map((item: any, idx: number) => (
-                                    <div key={idx} className="p-3 md:p-4 flex items-center gap-3 hover:bg-muted/20 transition-colors">
-                                        <div className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-lg bg-muted overflow-hidden shrink-0 border border-border/60">
-                                            <Image 
-                                                src={item.image || '/placeholder.png'} 
-                                                alt={item.name} 
-                                                width={80}
-                                                height={80}
-                                                className="h-full w-full object-cover" 
-                                            />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-xs sm:text-sm md:text-base truncate text-foreground">{item.name}</h4>
-                                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                                <span>Qty: {item.quantity}</span>
-                                                {item.size && <span>• Size: {item.size}</span>}
-                                                {item.color && <span>• Color: {item.color}</span>}
+                                    <div key={idx} className="p-3 md:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/20 transition-colors">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 rounded-lg bg-muted overflow-hidden shrink-0 border border-border/60">
+                                                <Image 
+                                                    src={item.image || '/placeholder.png'} 
+                                                    alt={item.name} 
+                                                    width={80}
+                                                    height={80}
+                                                    className="h-full w-full object-cover" 
+                                                />
                                             </div>
-                                            <p className="font-black text-primary text-xs sm:text-sm mt-1">৳{item.price}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-xs sm:text-sm md:text-base truncate text-foreground">{item.name}</h4>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                                    <span>Qty: {item.quantity}</span>
+                                                    {item.size && <span>• Size: {item.size}</span>}
+                                                    {item.color && <span>• Color: {item.color}</span>}
+                                                </div>
+                                                <p className="font-black text-primary text-xs sm:text-sm mt-1">৳{item.price}</p>
+                                            </div>
                                         </div>
-                                        <div className="shrink-0">
+
+                                        {/* Action / Review Status */}
+                                        <div className="shrink-0 flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                                             {isReviewable ? (
-                                                <Button 
-                                                    size="sm" 
-                                                    className="rounded-lg font-bold gap-1 text-xs h-7 sm:h-8 px-2.5 sm:px-3"
-                                                    onClick={() => {
-                                                        const slug = item.product?.slug || item.product?._id || item.product;
-                                                        router.push(`/product/${slug}?review=true`);
-                                                    }}
-                                                >
-                                                    <Star className="h-3 w-3 fill-current" /> Review
-                                                </Button>
+                                                item.isReviewed ? (
+                                                    <div className="flex flex-col sm:items-end gap-0.5">
+                                                        <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold gap-1 py-1 px-2.5 rounded-lg text-xs">
+                                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Rated {item.userReview?.rating || 5}★
+                                                        </Badge>
+                                                        {item.userReview?.comment && (
+                                                            <p className="text-[11px] text-muted-foreground italic max-w-[200px] truncate">
+                                                                &quot;{item.userReview.comment}&quot;
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="rounded-lg font-bold gap-1.5 text-xs h-8 px-3 shadow-xs bg-amber-500 hover:bg-amber-600 text-white cursor-pointer"
+                                                        onClick={() => openReviewDialog(item)}
+                                                    >
+                                                        <Star className="h-3.5 w-3.5 fill-white text-white" /> Write Review
+                                                    </Button>
+                                                )
                                             ) : (
-                                                <Badge variant="outline" className="text-[9px] uppercase font-semibold opacity-60">
-                                                    Pending
+                                                <Badge variant="outline" className="text-[10px] uppercase font-semibold opacity-60">
+                                                    {order.status}
                                                 </Badge>
                                             )}
                                         </div>
@@ -248,45 +351,49 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                                 </div>
                                 {order.couponDiscountAmount > 0 && (
                                     <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                                        <span>Discount ({order.couponCode})</span>
+                                        <span>Coupon Discount</span>
                                         <span>-৳{order.couponDiscountAmount}</span>
                                     </div>
                                 )}
-                                <Separator className="my-1.5" />
-                                <div className="flex justify-between text-sm sm:text-base">
-                                    <span className="font-black">Total</span>
-                                    <span className="font-black text-primary">৳{order.totalAmount}</span>
+                                {order.walletAmountUsed > 0 && (
+                                    <div className="flex justify-between text-amber-600 dark:text-amber-400 font-semibold">
+                                        <span>Wallet Applied</span>
+                                        <span>-৳{order.walletAmountUsed}</span>
+                                    </div>
+                                )}
+                                <Separator />
+                                <div className="flex justify-between text-sm sm:text-base font-black">
+                                    <span>Total Amount</span>
+                                    <span className="text-primary">৳{order.totalAmount - (order.walletAmountUsed || 0)}</span>
                                 </div>
                             </div>
-                            <Badge variant="secondary" className="w-full justify-center h-8 rounded-lg font-bold uppercase tracking-wider text-[10px]">
-                                Paid via {order.paymentMethod || 'Cash on Delivery'}
-                            </Badge>
+
+                            <div className="pt-2">
+                                <Badge variant="outline" className="w-full justify-center py-1.5 text-xs font-semibold">
+                                    Payment Method: {order.paymentMethod} ({order.paymentStatus || 'Pending'})
+                                </Badge>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    {/* Shipping */}
+                    {/* Shipping Address */}
                     <Card className="border border-border/80 shadow-xs rounded-xl overflow-hidden">
                         <CardHeader className="bg-muted/30 border-b p-3 md:p-4">
-                            <CardTitle className="text-sm md:text-base font-bold">Shipping Details</CardTitle>
+                            <CardTitle className="text-sm md:text-base font-bold flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-primary" /> Delivery Address
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-3 md:p-5 space-y-3 text-xs sm:text-sm">
-                            <div className="space-y-0.5">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground">Recipient</p>
-                                <p className="font-bold text-sm text-foreground">{order.shippingAddress?.fullName || 'N/A'}</p>
-                                <p className="text-xs font-medium text-muted-foreground">{order.shippingAddress?.phone || 'N/A'}</p>
-                            </div>
-                            <div className="space-y-0.5 pt-2 border-t border-border/60">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground">Address</p>
-                                <p className="text-xs leading-relaxed text-muted-foreground">
-                                    {order.shippingAddress?.street ? `${order.shippingAddress.street}, ` : ''}
-                                    {order.shippingAddress?.city ? `${order.shippingAddress.city}, ` : ''}
-                                    {order.shippingAddress?.state ? `${order.shippingAddress.state}, ` : ''}
-                                    {order.shippingAddress?.zipCode || ''}
-                                </p>
-                            </div>
+                        <CardContent className="p-3 md:p-5 space-y-1.5 text-xs sm:text-sm">
+                            <p className="font-bold text-foreground">{order.shippingAddress?.fullName}</p>
+                            <p className="text-muted-foreground">{order.shippingAddress?.phone}</p>
+                            <p className="text-muted-foreground">{order.shippingAddress?.street}</p>
+                            <p className="text-muted-foreground">
+                                {[order.shippingAddress?.city, order.shippingAddress?.division, order.shippingAddress?.country].filter(Boolean).join(', ')}
+                            </p>
+
                             {order.shippingDetails?.courierName && (
-                                <div className="pt-2 border-t border-border/60 space-y-1">
-                                    <p className="text-[10px] uppercase font-bold text-muted-foreground">Courier Service</p>
+                                <div className="mt-4 pt-3 border-t space-y-1">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Assigned Courier</span>
                                     <div className="flex items-center justify-between">
                                         <span className="font-bold text-xs text-primary">{order.shippingDetails.courierName}</span>
                                         {order.shippingDetails.trackingUrl && (
@@ -306,6 +413,107 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     </Card>
                 </div>
             </div>
+
+            {/* Individual Product Review Modal */}
+            <Dialog open={isReviewModalOpen} onOpenChange={setIsReviewModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl p-5 md:p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-base md:text-lg font-bold flex items-center gap-2">
+                            <Star className="h-5 w-5 fill-amber-400 text-amber-500" /> Write a Product Review
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Share your verified experience to help other customers.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {reviewItem && (
+                        <div className="space-y-4 py-2">
+                            {/* Product Info Preview */}
+                            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
+                                <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 border border-border/60">
+                                    <Image
+                                        src={reviewItem.image || '/placeholder.png'}
+                                        alt={reviewItem.name}
+                                        width={48}
+                                        height={48}
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h4 className="font-bold text-xs sm:text-sm truncate text-foreground">{reviewItem.name}</h4>
+                                    <p className="text-xs text-primary font-bold">৳{reviewItem.price}</p>
+                                </div>
+                            </div>
+
+                            {/* 5-Star Interactive Selector */}
+                            <div className="space-y-1 text-center py-1">
+                                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                                    Your Rating
+                                </label>
+                                <div className="flex items-center justify-center gap-1.5 pt-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            className="p-1 rounded-md transition-transform hover:scale-125 focus:outline-none cursor-pointer"
+                                            onMouseEnter={() => setHoverRating(star)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            onClick={() => setRating(star)}
+                                        >
+                                            <Star
+                                                className={`h-7 w-7 transition-colors ${
+                                                    (hoverRating || rating) >= star
+                                                        ? 'fill-amber-400 text-amber-500'
+                                                        : 'text-muted-foreground/30 stroke-muted-foreground'
+                                                }`}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 h-4">
+                                    {['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][(hoverRating || rating) - 1]}
+                                </p>
+                            </div>
+
+                            {/* Feedback Textarea */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-foreground">Your Review & Experience</label>
+                                <Textarea
+                                    rows={4}
+                                    placeholder="Write your honest thoughts about product quality, size, delivery, etc..."
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    className="text-xs sm:text-sm rounded-xl resize-none"
+                                />
+                                <p className="text-[11px] text-muted-foreground">Minimum 5 characters required.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isSubmittingReview}
+                            onClick={() => setIsReviewModalOpen(false)}
+                            className="rounded-xl font-medium"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            disabled={isSubmittingReview || comment.trim().length < 5}
+                            onClick={handleReviewSubmit}
+                            className="rounded-xl font-bold bg-primary text-primary-foreground gap-1.5 px-4 cursor-pointer"
+                        >
+                            {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Star className="h-4 w-4 fill-current" />}
+                            Submit Review
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

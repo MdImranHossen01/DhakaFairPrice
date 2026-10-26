@@ -201,6 +201,39 @@ export async function GET(
         logoUrl: sfRes.logoUrl || '',
         isReseller: true,
       };
+    // Enrich items with user review status if customer is logged in
+    const currentUserId = (session?.user as any)?.id;
+    if (currentUserId && Array.isArray(orderObj.items) && orderObj.items.length > 0) {
+      try {
+        const ReviewModel = (await import('@/models/Review')).default;
+        const productIds = orderObj.items
+          .map((it: any) => it.product?._id || it.product)
+          .filter((p: any) => p && mongoose.Types.ObjectId.isValid(p));
+
+        if (productIds.length > 0) {
+          const userReviews = await ReviewModel.find({
+            user: currentUserId,
+            product: { $in: productIds }
+          }).select('product rating comment createdAt').lean();
+
+          const reviewMap = new Map<string, any>();
+          userReviews.forEach((r: any) => {
+            reviewMap.set(r.product.toString(), r);
+          });
+
+          orderObj.items = orderObj.items.map((it: any) => {
+            const pid = (it.product?._id || it.product)?.toString();
+            const foundReview = pid ? reviewMap.get(pid) : null;
+            return {
+              ...it,
+              isReviewed: !!foundReview,
+              userReview: foundReview || null
+            };
+          });
+        }
+      } catch (revErr) {
+        console.error('Error enriching order items with reviews:', revErr);
+      }
     }
 
     return NextResponse.json(orderObj);

@@ -10,7 +10,8 @@ import {
     Package, 
     ChevronRight, 
     Loader2, 
-    FileText 
+    FileText,
+    Star 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -151,6 +152,17 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                        {order.status === 'Delivered' && (
+                          <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="h-8 text-xs font-bold text-amber-600 border-amber-300 dark:border-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 gap-1 cursor-pointer"
+                              onClick={() => router.push(`/dashboard/orders/${order._id}`)}
+                          >
+                              <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                              Review
+                          </Button>
+                        )}
                         <Button 
                             variant="outline" 
                             size="sm" 
@@ -226,6 +238,16 @@ export default function OrdersPage() {
               ]}
               footer={
                 <div className="flex items-center gap-2 pt-1">
+                  {order.status === 'Delivered' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-8 text-xs font-bold text-amber-600 border-amber-300 gap-1 cursor-pointer"
+                      onClick={() => router.push(`/dashboard/orders/${order._id}`)}
+                    >
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Review
+                    </Button>
+                  )}
                   {settings && (
                     <Button
                       variant="outline"
