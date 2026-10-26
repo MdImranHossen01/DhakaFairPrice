@@ -67,7 +67,7 @@ export async function GET(
         deletedAt: null
       })
       .select('motherOrderId shortId resellerId resellerCommission systemFee commissionStatus')
-      .populate('resellerId', 'storeName subdomain')
+      .populate('resellerId', 'storeName subdomain systemFeePercent commissionRate')
       .lean();
     }
 
@@ -126,7 +126,12 @@ export async function GET(
 
     // Fallback calculation for historical orders where motherFee is 0
     if (motherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
-      const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * 0.15));
+      const firstF = fulfillmentRos[0];
+      const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
+        ? Number((firstF.resellerId as any).systemFeePercent)
+        : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+      const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
+      const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
       if (computedFee > 0) {
         motherFee = computedFee;
         sellerPart.amount = Math.max(0, sellerPart.amount - computedFee);

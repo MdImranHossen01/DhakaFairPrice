@@ -55,7 +55,7 @@ export async function GET(
         ],
         deletedAt: null
       })
-      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact')
+      .populate('resellerId', 'storeName subdomain customDomain pickupAddress contact systemFeePercent commissionRate')
       .lean();
 
       const ro = matchingRos.find((r: any) => order.shortId && r.shortId === order.shortId)
@@ -135,7 +135,12 @@ export async function GET(
 
       let computedMotherFee = motherFee;
       if (computedMotherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
-        const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * 0.15));
+        const firstF = fulfillmentRos[0];
+        const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
+          ? Number((firstF.resellerId as any).systemFeePercent)
+          : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+        const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
+        const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
         if (computedFee > 0) {
           computedMotherFee = computedFee;
           sellerPart.amount = Math.max(0, sellerPart.amount - computedFee);

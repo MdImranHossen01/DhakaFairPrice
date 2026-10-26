@@ -1059,7 +1059,7 @@ export async function GET(req: NextRequest) {
         deletedAt: null
       })
       .select('motherOrderId shortId resellerCommission commissionStatus resellerId internalNote systemFee salesProfit')
-      .populate('resellerId', 'storeName subdomain customDomain')
+      .populate('resellerId', 'storeName subdomain customDomain systemFeePercent commissionRate')
       .lean();
 
       processedOrders = await Promise.all(orders.map(async (order: any) => {
@@ -1182,7 +1182,12 @@ export async function GET(req: NextRequest) {
 
         let computedMotherFee = motherFee;
         if (computedMotherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
-          const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * 0.15));
+          const firstF = fulfillmentRos[0];
+          const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
+            ? Number((firstF.resellerId as any).systemFeePercent)
+            : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+          const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
+          const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
           if (computedFee > 0) {
             computedMotherFee = computedFee;
             sellerPart.amount = Math.max(0, sellerPart.amount - computedFee);
