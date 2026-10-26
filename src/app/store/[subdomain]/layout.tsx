@@ -14,7 +14,8 @@ export async function generateMetadata({ params }: { params: Promise<{ subdomain
   if (!reseller) return { title: 'Store Not Found' };
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const storeDomain = reseller.customDomain || `${subdomain}.${rootDomain}`;
+  const rawDomain = reseller.customDomain || `${subdomain}.${rootDomain}`;
+  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const baseUrl = `https://${storeDomain}`;
   const favicon = reseller.faviconUrl || reseller.logoUrl || '/favicon.ico';
 

@@ -27,7 +27,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!reseller) return { title: 'Not Found' };
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const storeDomain = reseller.customDomain || `${reseller.subdomain || subdomain}.${rootDomain}`;
+  const rawDomain = reseller.customDomain || `${reseller.subdomain || subdomain}.${rootDomain}`;
+  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const canonicalUrl = `https://${storeDomain}/product/${slug}`;
 
   let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).lean();
