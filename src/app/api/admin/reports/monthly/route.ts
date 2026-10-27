@@ -59,13 +59,19 @@ export async function GET(req: NextRequest) {
             orderCount: { $sum: 1 },
             cogs: {
               $sum: {
-                $sum: {
-                  $map: {
-                    input: '$items',
-                    as: 'item',
-                    in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                $cond: [
+                  { $regexMatch: { input: { $ifNull: ['$systemNote', ''] }, regex: /own product/i } },
+                  0,
+                  {
+                    $sum: {
+                      $map: {
+                        input: '$items',
+                        as: 'item',
+                        in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                      }
+                    }
                   }
-                }
+                ]
               }
             }
           }

@@ -174,8 +174,32 @@ export async function POST(
           String(v.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase() &&
           String(v.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
         );
+        const docVariant = (productDoc?.variants || []).find((v: any) =>
+          String(v.color || '').trim().toLowerCase() === String(item.color || '').trim().toLowerCase() &&
+          String(v.size || '').trim().toLowerCase() === String(item.size || '').trim().toLowerCase()
+        );
+
         const effectiveRetail = Number(matchedVariant?.retailPrice) || rp.retailPrice;
-        const effectivePurchase = Number(matchedVariant?.purchasePrice) || rp.purchasePrice;
+        let effectivePurchase = Number(matchedVariant?.purchasePrice) || rp.purchasePrice;
+
+        // Base cost of product for Mother Shop
+        const motherBaseCost = (docVariant?.purchasePrice && Number(docVariant.purchasePrice) > 0)
+          ? Number(docVariant.purchasePrice)
+          : (productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0)
+          ? Number(productDoc.purchasePrice)
+          : effectivePurchase;
+
+        // Ensure wholesale price includes Mother Shop's platform fee margin
+        const feeRatePct = resellerFeeRate > 0 ? resellerFeeRate : 15;
+        const minWholesale = motherBaseCost > 0 ? Math.round(motherBaseCost * (1 + feeRatePct / 100)) : effectivePurchase;
+
+        if (effectivePurchase < minWholesale && !productDoc?.resellerPrice) {
+          effectivePurchase = minWholesale;
+        }
+
+        const unitSystemFee = Math.max(0, effectivePurchase - motherBaseCost);
+        itemSystemFee = unitSystemFee * qty;
+        totalOwnProductSystemFee += itemSystemFee;
 
         const commission = Math.max(0, (effectiveRetail - effectivePurchase) * qty);
         totalCommission += commission;
@@ -186,9 +210,7 @@ export async function POST(
           name: rp.name,
           quantity: qty,
           retailPrice: effectiveRetail,
-          purchasePrice: isOwnProduct 
-            ? ((productDoc?.purchasePrice && Number(productDoc.purchasePrice) > 0) ? Number(productDoc.purchasePrice) : effectivePurchase) 
-            : effectivePurchase,
+          purchasePrice: effectivePurchase,
           image: matchedVariant?.image || rp.images?.[0],
           color: item.color || undefined,
           size: item.size || undefined,
@@ -421,14 +443,19 @@ export async function POST(
         status: 'Order Placed',
         resellerId: reseller._id,
         resellerCommission: totalCommission,
+        systemFee: totalOwnProductSystemFee,
         commissionStatus: 'pending',
         customerNote: notes || '',
         internalNote: isFreeDelivery
           ? `Storefront Free Delivery Promo: Courier charge of ৳${standardDeliveryCharge} subsidized by reseller (${reseller.storeName}).`
           : '',
-        systemNote: isFreeDelivery
-          ? `Reseller Order (${reseller.storeName}) - Free Delivery Subsidized (৳${standardDeliveryCharge})`
-          : `Reseller Order (${reseller.storeName})`,
+        systemNote: totalOwnProductSystemFee > 0
+          ? (isFreeDelivery
+            ? `Reseller Order (${reseller.storeName}) - Free Delivery Subsidized (৳${standardDeliveryCharge}) - System Fee: ৳${totalOwnProductSystemFee}`
+            : `Reseller Order (${reseller.storeName}) - System Fee: ৳${totalOwnProductSystemFee}`)
+          : (isFreeDelivery
+            ? `Reseller Order (${reseller.storeName}) - Free Delivery Subsidized (৳${standardDeliveryCharge})`
+            : `Reseller Order (${reseller.storeName})`),
       }], { session: sessionConn })) as any[];
 
       // 5. Create Reseller Order

@@ -69,13 +69,19 @@ export async function GET(req: NextRequest) {
             resellerCommission: { $sum: { $ifNull: ['$resellerCommission', 0] } },
             cogs: {
               $sum: {
-                $sum: {
-                  $map: {
-                    input: '$items',
-                    as: 'item',
-                    in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                $cond: [
+                  { $regexMatch: { input: { $ifNull: ['$systemNote', ''] }, regex: /own product/i } },
+                  0,
+                  {
+                    $sum: {
+                      $map: {
+                        input: '$items',
+                        as: 'item',
+                        in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                      }
+                    }
                   }
-                }
+                ]
               }
             },
             orderCount: { $sum: 1 }

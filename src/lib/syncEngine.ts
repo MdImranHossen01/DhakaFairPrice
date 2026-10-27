@@ -74,7 +74,7 @@ export async function syncProductToResellers(productId: string): Promise<SyncRes
               slug: product.slug,
               images: product.images ?? [],
               stock: product.stock ?? 0,
-              purchasePrice: firstV ? firstV.purchasePrice : (product.resellerPrice || product.purchasePrice || 0),
+              purchasePrice: firstV ? firstV.purchasePrice : (product.resellerPrice || (product.purchasePrice ? Math.round(Number(product.purchasePrice) * (1 + defaultFeeRatio)) : 0)),
               motherPrice: (product.variants && product.variants[0]?.price) || product.price || 0,
               retailPrice: firstV ? firstV.retailPrice : rp.retailPrice,
               isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
@@ -86,13 +86,16 @@ export async function syncProductToResellers(productId: string): Promise<SyncRes
         );
       }
       resellersUpdated = existingRPs.length;
-    } else {
+      const wholesalePrice = isPersonalProduct
+        ? (product.purchasePrice || 0)
+        : (product.resellerPrice || (product.purchasePrice ? Math.round(Number(product.purchasePrice) * (1 + defaultFeeRatio)) : 0));
+
       const syncPayload = {
         name: product.name,
         slug: product.slug,
         images: product.images ?? [],
         stock: product.stock ?? 0,
-        purchasePrice: product.resellerPrice || product.purchasePrice || 0,
+        purchasePrice: wholesalePrice,
         motherPrice: product.price ?? 0,
         isAvailableOnMother: isPersonalProduct ? true : (product.isPublished ?? true),
         isPublished: product.isPublished !== undefined ? product.isPublished : true,
