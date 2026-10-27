@@ -812,19 +812,28 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Ensure any unlinked ResellerOrders are synced to Mother Order table
+    // Ensure any unlinked or missing ResellerOrders are synced to Mother Order table
     if (fetchAll && isAdmin) {
       try {
         const ResellerOrder = (await import('@/models/ResellerOrder')).default;
-        const unlinked = await ResellerOrder.find({
-          $or: [{ motherOrderId: { $exists: false } }, { motherOrderId: null }]
-        }).limit(20).lean();
+        const recentResellerOrders = await ResellerOrder.find({ deletedAt: null }).sort({ createdAt: -1 }).limit(50).lean();
 
-        for (const ro of unlinked) {
-          const existingOrder = await Order.findOne({ shortId: ro.shortId });
+        for (const ro of recentResellerOrders) {
+          let existingOrder = null;
+          if (ro.motherOrderId) {
+            existingOrder = await Order.findOne({ _id: ro.motherOrderId, deletedAt: null });
+          }
+          if (!existingOrder && ro.shortId) {
+            existingOrder = await Order.findOne({ shortId: ro.shortId, deletedAt: null });
+          }
+
           if (!existingOrder) {
             const created = await Order.create({
+              _id: ro.motherOrderId || new mongoose.Types.ObjectId(),
               shortId: ro.shortId,
+              orderSource: 'reseller_storefront',
+              storefrontResellerId: ro.resellerId,
+              resellerId: ro.resellerId,
               items: (ro.items || []).map((item: any) => ({
                 product: item.productId,
                 name: item.name,
@@ -837,27 +846,29 @@ export async function GET(req: NextRequest) {
               })),
               totalAmount: ro.totalAmount,
               deliveryCharge: ro.deliveryCharge || 0,
+              resellerCommission: ro.resellerCommission || 0,
+              commissionStatus: ro.commissionStatus || 'pending',
               shippingAddress: {
                 fullName: ro.customer?.name || 'Customer',
                 phone: ro.customer?.phone || '',
                 street: ro.customer?.address?.street || '',
                 city: ro.customer?.address?.city || '',
                 state: ro.customer?.address?.city || '',
-                division: ro.customer?.address?.division || '',
+                division: ro.customer?.address?.division || ro.customer?.address?.city || '',
                 zipCode: ro.customer?.address?.zipCode || '0000',
                 country: 'Bangladesh',
               },
               paymentMethod: ro.paymentMethod || 'COD',
               paymentStatus: ro.paymentStatus || 'Pending',
               status: (ro.status as any) || 'Order Placed',
-              resellerId: ro.resellerId,
               customerNote: ro.customerNote || '',
               internalNote: ro.internalNote || '',
               systemNote: ro.systemNote || 'Reseller Store Order',
+              deletedAt: null,
               createdAt: ro.createdAt,
             });
             await ResellerOrder.findByIdAndUpdate(ro._id, { motherOrderId: created._id });
-          } else {
+          } else if (!ro.motherOrderId || ro.motherOrderId.toString() !== existingOrder._id.toString()) {
             await ResellerOrder.findByIdAndUpdate(ro._id, { motherOrderId: existingOrder._id });
           }
         }
