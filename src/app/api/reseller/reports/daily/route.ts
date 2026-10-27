@@ -47,17 +47,39 @@ export async function GET(req: NextRequest) {
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: '+06:00' } },
-            totalSales: { $sum: '$totalAmount' },
-            deliveryCost: { $sum: '$deliveryCharge' },
+            totalSales: {
+              $sum: {
+                $cond: [
+                  { $regexMatch: { input: { $ifNull: ['$shortId', ''] }, regex: /-F\d+$/ } },
+                  { $ifNull: ['$resellerCommission', 0] },
+                  { $ifNull: ['$totalAmount', 0] }
+                ]
+              }
+            },
+            deliveryCost: {
+              $sum: {
+                $cond: [
+                  { $regexMatch: { input: { $ifNull: ['$shortId', ''] }, regex: /-F\d+$/ } },
+                  0,
+                  { $ifNull: ['$deliveryCharge', 0] }
+                ]
+              }
+            },
             cogs: {
               $sum: {
-                $sum: {
-                  $map: {
-                    input: '$items',
-                    as: 'item',
-                    in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                $cond: [
+                  { $regexMatch: { input: { $ifNull: ['$shortId', ''] }, regex: /-F\d+$/ } },
+                  0,
+                  {
+                    $sum: {
+                      $map: {
+                        input: '$items',
+                        as: 'item',
+                        in: { $multiply: ['$$item.quantity', { $ifNull: ['$$item.purchasePrice', 0] }] }
+                      }
+                    }
                   }
-                }
+                ]
               }
             },
             resellerCommission: { $sum: '$resellerCommission' },
