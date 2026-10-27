@@ -74,9 +74,19 @@ export async function GET(req: NextRequest) {
     ]);
 
     const formattedOrders = orders.map((order: any) => {
-      const totalAmount = order.totalAmount || 0;
-      const deliveryCharge = order.deliveryCharge || 0;
-      const netSales = Math.max(0, totalAmount - deliveryCharge);
+      const isFulfillmentOrder = order.shortId?.includes('-F') || /^Fulfillment/i.test(order.systemNote || '');
+
+      const totalAmount = isFulfillmentOrder
+        ? (Number(order.resellerCommission) || 0)
+        : (order.totalAmount || 0);
+
+      const deliveryCharge = isFulfillmentOrder
+        ? 0
+        : (order.deliveryCharge || 0);
+
+      const netSales = isFulfillmentOrder
+        ? totalAmount
+        : Math.max(0, totalAmount - deliveryCharge);
 
       let totalCOGS = 0;
       let totalQty = 0;
@@ -84,7 +94,7 @@ export async function GET(req: NextRequest) {
         order.items.forEach((item: any) => {
           const qty = item.quantity || 1;
           totalQty += qty;
-          const purchasePrice = item.purchasePrice || 0;
+          const purchasePrice = isFulfillmentOrder ? 0 : (item.purchasePrice || 0);
           totalCOGS += qty * purchasePrice;
         });
       }

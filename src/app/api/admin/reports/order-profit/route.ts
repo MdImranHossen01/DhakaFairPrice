@@ -87,8 +87,13 @@ export async function GET(req: NextRequest) {
         /^Reseller Order/i.test(order.systemNote || '') ||
         order.resellerId != null;
 
+      const storefrontResellerId = order.storefrontResellerId 
+        ? String(order.storefrontResellerId) 
+        : (order.resellerId ? String(order.resellerId) : null);
+
       let totalCOGS = 0;
-      let hasPersonalProducts = false;
+      let hasOwnProducts = false;
+      let hasSupplierProducts = false;
       let hasMotherProducts = false;
 
       if (Array.isArray(order.items)) {
@@ -96,15 +101,24 @@ export async function GET(req: NextRequest) {
           const qty = item.quantity || 1;
           const prod = item.product;
 
-          // Personal / own product uploaded by reseller
-          const isPersonal = prod && (prod.uploadedBy != null || prod.isMotherProduct === false);
+          const uploaderId = prod?.uploadedBy ? String(prod.uploadedBy) : null;
+          const isPersonal = prod && (uploaderId != null || prod.isMotherProduct === false);
 
           if (isPersonal) {
-            hasPersonalProducts = true;
-            // Mother shop COGS is 0 for personal products owned/fulfilled by resellers!
+            if (storefrontResellerId && uploaderId === storefrontResellerId) {
+              // Seller Reseller selling their OWN product
+              hasOwnProducts = true;
+              // Mother Shop pays 0 COGS for seller's own product
+            } else {
+              // Sourced from another reseller (Source/Supplier Reseller)
+              hasSupplierProducts = true;
+              // Mother Shop owes the Source Reseller the base product payout
+              const supplierBaseCost = prod?.purchasePrice ? Number(prod.purchasePrice) : (item.purchasePrice ? Number(item.purchasePrice) : 0);
+              totalCOGS += qty * supplierBaseCost;
+            }
           } else {
             hasMotherProducts = true;
-            // For Mother shop catalog products, Mother Shop's actual cost to acquire/produce
+            // Mother Catalog product: Mother Shop's actual cost to acquire/produce
             let motherItemCOGS = 0;
             if (prod && Number(prod.purchasePrice) > 0) {
               motherItemCOGS = Number(prod.purchasePrice);
@@ -119,8 +133,8 @@ export async function GET(req: NextRequest) {
       }
 
       // Resilient check for own-product orders
-      if (!hasPersonalProducts && isResellerOrder && (/own product/i.test(order.systemNote || '') || (systemFee > 0 && Math.abs(netSales - (resellerCommission + systemFee)) <= 5))) {
-        hasPersonalProducts = true;
+      if (!hasOwnProducts && !hasSupplierProducts && isResellerOrder && (/own product/i.test(order.systemNote || '') || (systemFee > 0 && Math.abs(netSales - (resellerCommission + systemFee)) <= 5))) {
+        hasOwnProducts = true;
         totalCOGS = 0;
       }
 
@@ -128,14 +142,14 @@ export async function GET(req: NextRequest) {
       if (!isResellerOrder) {
         // Direct Mother Shop Order
         profit = netSales - totalCOGS;
-      } else if (hasPersonalProducts && !hasMotherProducts) {
-        // Pure Reseller Personal-Product order (e.g. Farzaner Recipe Orange Tub Cake)
+      } else if (hasOwnProducts && !hasSupplierProducts && !hasMotherProducts) {
+        // Pure Reseller Own-Product order (Seller sells their own product)
         totalCOGS = 0;
         profit = systemFee > 0 ? systemFee : Math.max(0, netSales - resellerCommission);
       } else {
-        // Dropshipping from Mother Catalog (or mixed)
+        // Dropshipping (from Mother Catalog or from Supplier Reseller)
         const motherRevenue = Math.max(0, netSales - resellerCommission);
-        profit = motherRevenue - totalCOGS;
+        profit = systemFee > 0 ? systemFee : Math.max(0, motherRevenue - totalCOGS);
       }
 
       return {
