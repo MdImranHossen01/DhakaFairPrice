@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
         payoutMethod: method,
         payoutReference: number, // account number
         destinationAccountId,
+        balanceAfter: updatedReseller.walletBalance,
       }], { session: sessionConn });
 
       await sessionConn.commitTransaction();

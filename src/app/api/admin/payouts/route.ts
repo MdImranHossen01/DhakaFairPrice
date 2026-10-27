@@ -175,6 +175,10 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
+      // Reconcile and synchronize running balances for the reseller's wallet transactions
+      const { reconcileResellerWalletBalances } = await import('@/lib/resellerCommissionSync');
+      await reconcileResellerWalletBalances(transaction.resellerId);
+
       return NextResponse.json({ success: true, message: 'Payout updated successfully' });
     } catch (innerError) {
       await sessionConn.abortTransaction();

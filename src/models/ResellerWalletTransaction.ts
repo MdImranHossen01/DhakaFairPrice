@@ -21,6 +21,7 @@ export interface IResellerWalletTransaction extends Document {
   adminNote?: string;                        // Optional admin note
   destinationAccountId?: mongoose.Types.ObjectId; // Reseller's selected LedgerAccount
   processedBy?: mongoose.Types.ObjectId;     // Admin user who processed payout
+  balanceAfter?: number;                     // Running wallet balance after this transaction
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +52,7 @@ const ResellerWalletTransactionSchema: Schema<IResellerWalletTransaction> = new 
     adminNote: { type: String },
     destinationAccountId: { type: Schema.Types.ObjectId, ref: 'LedgerAccount' },
     processedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    balanceAfter: { type: Number },
   },
   { timestamps: true }
 );

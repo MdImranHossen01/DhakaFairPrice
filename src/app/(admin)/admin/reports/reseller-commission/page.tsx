@@ -153,7 +153,7 @@ export default function ResellerCommissionReportPage() {
                   <th className="p-2.5 font-bold text-foreground">Status</th>
                   <th className="p-2.5 font-bold text-emerald-600">Credit (+Commission)</th>
                   <th className="p-2.5 font-bold text-rose-600">Debit (-Withdrawal)</th>
-                  <th className="p-2.5 font-bold text-primary text-right">Wallet Balance</th>
+                  <th className="p-2.5 font-bold text-primary text-right">Running Balance (৳)</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,7 +204,7 @@ export default function ResellerCommissionReportPage() {
                         {tx.type === 'debit' ? `-${fmt(tx.amount)}` : '-'}
                       </td>
                       <td className="p-2.5 font-bold text-right text-primary">
-                        {fmt(tx.currentWallet || 0)}
+                        {fmt(tx.balanceAfter ?? tx.currentWallet ?? 0)}
                       </td>
                     </tr>
                   ))
@@ -239,8 +239,8 @@ export default function ResellerCommissionReportPage() {
                   }
                   footer={
                     <div className="flex items-center justify-between w-full font-bold text-xs">
-                      <span className="text-muted-foreground">Reseller Wallet:</span>
-                      <span className="text-primary text-sm">{fmt(tx.currentWallet || 0)}</span>
+                      <span className="text-muted-foreground">Running Balance:</span>
+                      <span className="text-primary text-sm">{fmt(tx.balanceAfter ?? tx.currentWallet ?? 0)}</span>
                     </div>
                   }
                 >

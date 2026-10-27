@@ -200,6 +200,28 @@ export async function reconcileResellerCommissions(resellerId?: string | mongoos
 export async function reconcileResellerWalletBalances(resellerId: string | mongoose.Types.ObjectId) {
   const rId = new mongoose.Types.ObjectId(resellerId.toString());
 
+  // 0. Chronologically calculate and persist balanceAfter (Running Balance) for all ledger transactions
+  const allTxs = await ResellerWalletTransaction.find({ resellerId: rId }).sort({ createdAt: 1, _id: 1 });
+  let running = 0;
+  for (const tx of allTxs) {
+    const isCredit = ['commission_earned', 'refund'].includes(tx.type) || (!['payout_released', 'order_cancelled'].includes(tx.type) && tx.amount > 0);
+    const absAmount = Math.abs(tx.amount || 0);
+
+    if (tx.type === 'payout_released') {
+      running = Math.max(0, running - absAmount);
+    } else if (tx.status === 'cleared') {
+      if (isCredit) {
+        running += absAmount;
+      } else {
+        running = Math.max(0, running - absAmount);
+      }
+    }
+
+    if (tx.balanceAfter !== running) {
+      await ResellerWalletTransaction.updateOne({ _id: tx._id }, { $set: { balanceAfter: running } });
+    }
+  }
+
   // 1. Cleared commission earnings
   const earningsAgg = await ResellerWalletTransaction.aggregate([
     {

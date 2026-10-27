@@ -48,6 +48,18 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Ensure all transactions have their running balance (balanceAfter) calculated
+    const hasUncalculated = await ResellerWalletTransaction.exists({ balanceAfter: { $exists: false } });
+    if (hasUncalculated) {
+      const { reconcileResellerWalletBalances } = await import('@/lib/resellerCommissionSync');
+      const targetResellerIds = matchQuery.resellerId 
+        ? [matchQuery.resellerId] 
+        : await ResellerWalletTransaction.distinct('resellerId');
+      for (const rId of targetResellerIds) {
+        if (rId) await reconcileResellerWalletBalances(rId);
+      }
+    }
+
     const [transactions, resellersList] = await Promise.all([
       ResellerWalletTransaction.find(matchQuery)
         .sort({ createdAt: -1 })
@@ -64,6 +76,7 @@ export async function GET(req: NextRequest) {
     const formattedTx = (transactions || []).map((tx: any) => {
       const isCredit = ['commission_earned', 'refund'].includes(tx.type) || (!['payout_released', 'order_cancelled'].includes(tx.type) && tx.amount > 0);
       const absAmount = Math.abs(tx.amount || 0);
+      const runningBalance = tx.balanceAfter !== undefined ? tx.balanceAfter : (tx.resellerId?.walletBalance || 0);
 
       return {
         _id: tx._id,
@@ -76,7 +89,8 @@ export async function GET(req: NextRequest) {
         amount: absAmount,
         payoutMethod: tx.payoutMethod || '',
         payoutReference: tx.payoutReference || '',
-        currentWallet: tx.resellerId?.walletBalance || 0,
+        balanceAfter: runningBalance,
+        currentWallet: runningBalance,
         description: tx.description || (isCredit ? 'Commission credit' : 'Payout withdrawal'),
         status: tx.status || 'cleared'
       };
