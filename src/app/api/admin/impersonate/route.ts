@@ -74,7 +74,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      token: impersonationToken,
       impersonationToken,
+      redirectUrl: targetUser.role === 'reseller' ? '/reseller-dashboard' : '/dashboard',
       targetUser: {
         id: targetUser._id.toString(),
         name: targetUser.name,

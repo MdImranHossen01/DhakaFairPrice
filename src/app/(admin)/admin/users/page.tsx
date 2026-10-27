@@ -295,9 +295,14 @@ function UsersContent() {
         throw new Error(data.error || 'Failed to start impersonation');
       }
 
+      const tokenToUse = data.impersonationToken || data.token;
+      if (!tokenToUse) {
+        throw new Error('No impersonation token returned by server');
+      }
+
       toast.loading(`Signing in as ${targetName}...`, { id: 'impersonate-user' });
       const signInRes = await signIn('credentials', {
-        impersonationToken: data.token,
+        impersonationToken: tokenToUse,
         redirect: false,
       });
 
