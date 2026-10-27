@@ -48,6 +48,7 @@ const PAGE_MAP: Record<string, React.ComponentType<any>> = {
   'coupons': dynamic(() => import('@/app/(reseller)/reseller/coupons/page'), { loading: Fallback }),
   'settings': dynamic(() => import('@/app/(reseller)/reseller/settings/page'), { loading: Fallback }),
   'marketing': dynamic(() => import('@/app/(reseller)/reseller/marketing/page'), { loading: Fallback }),
+  'landing-pages': dynamic(() => import('@/app/(reseller)/reseller/landing-pages/page'), { loading: Fallback }),
   'reports': ReportsRedirect,
   'reports/daily': dynamic(() => import('@/app/(reseller)/reseller/reports/daily/page'), { loading: Fallback }),
   'reports/monthly': dynamic(() => import('@/app/(reseller)/reseller/reports/monthly/page'), { loading: Fallback }),
@@ -61,6 +62,7 @@ const PAGE_MAP: Record<string, React.ComponentType<any>> = {
 
 const DynamicEditProduct = dynamic(() => import('@/app/(reseller)/reseller/products/[id]/edit/page'), { loading: Fallback });
 const DynamicEditBanner = dynamic(() => import('@/app/(reseller)/reseller/cms/banners/[id]/edit/page'), { loading: Fallback });
+const DynamicLandingPageBuilder = dynamic(() => import('@/app/(reseller)/reseller/landing-pages/[id]/builder/page'), { loading: Fallback });
 
 export default function ResellerPanelSubPage({
   params,
@@ -84,6 +86,11 @@ export default function ResellerPanelSubPage({
   // Handle dynamic cms/banners/[id]/edit
   if (slug.length === 4 && slug[0] === 'cms' && slug[1] === 'banners' && slug[3] === 'edit') {
     return <DynamicEditBanner />;
+  }
+
+  // Handle dynamic landing-pages/[id]/builder
+  if (slug.length === 3 && slug[0] === 'landing-pages' && slug[2] === 'builder') {
+    return <DynamicLandingPageBuilder params={Promise.resolve({ id: slug[1] })} />;
   }
 
   return notFound();

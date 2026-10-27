@@ -120,6 +120,7 @@ const resellerNav = [
     icon: ImageIcon,
     items: [
       { title: "Hero Banners", url: "/reseller/cms/banners" },
+      { title: "Landing Pages", url: "/reseller/landing-pages" },
     ],
   },
   {

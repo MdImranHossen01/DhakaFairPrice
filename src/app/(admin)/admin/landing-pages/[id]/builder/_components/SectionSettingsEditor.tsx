@@ -65,13 +65,15 @@ interface SectionSettingsEditorProps {
   onUpdateContent: (content: SectionContent) => void;
   onUpdateStyles: (styles: SectionStyles) => void;
   onClose: () => void;
+  productsApiUrl?: string;
 }
 
 export default function SectionSettingsEditor({
   section,
   onUpdateContent,
   onUpdateStyles,
-  onClose
+  onClose,
+  productsApiUrl = '/api/products'
 }: SectionSettingsEditorProps) {
   if (!section) return null;
 
@@ -117,7 +119,9 @@ export default function SectionSettingsEditor({
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(searchTerm)}&limit=10`);
+        const endpoint = productsApiUrl || '/api/products';
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const res = await fetch(`${endpoint}${sep}search=${encodeURIComponent(searchTerm)}&limit=10`);
         if (res.ok) {
           const data = await res.json();
           setSearchResults(data.products || []);

@@ -20,7 +20,7 @@ export async function GET() {
     }
 
     await connectToDatabase();
-    const pages = await LandingPage.find().sort({ createdAt: -1 });
+    const pages = await LandingPage.find({ resellerId: null }).sort({ createdAt: -1 });
     return NextResponse.json(pages);
   } catch (error) {
     console.error('Error fetching landing pages:', error);
@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Check if slug exists
-    const existing = await LandingPage.findOne({ slug });
+    // Check if slug exists for mother shop
+    const existing = await LandingPage.findOne({ slug, resellerId: null });
     if (existing) {
       return NextResponse.json({ message: 'Slug already exists' }, { status: 409 });
     }
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     const newPage = await LandingPage.create({
       title,
       slug,
+      resellerId: null,
       sections: [], // Start with empty sections
     });
 

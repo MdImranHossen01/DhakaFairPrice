@@ -1,6 +1,7 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export interface ILandingPage extends Document {
+  resellerId?: mongoose.Types.ObjectId | null;
   title: string;
   slug: string;
   description?: string;
@@ -29,11 +30,16 @@ export interface ILandingPage extends Document {
 
 const LandingPageSchema: Schema<ILandingPage> = new Schema(
   {
+    resellerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Reseller',
+      default: null,
+      index: true,
+    },
     title: { type: String, required: true },
     slug: { 
       type: String, 
       required: true, 
-      unique: true, 
       lowercase: true, 
       trim: true
     },
@@ -62,6 +68,8 @@ const LandingPageSchema: Schema<ILandingPage> = new Schema(
   },
   { timestamps: true }
 );
+
+LandingPageSchema.index({ slug: 1, resellerId: 1 }, { unique: true });
 
 
 const LandingPage: Model<ILandingPage> =

@@ -18,7 +18,7 @@ import FloatingLPBar from '@/app/(public)/lp/[slug]/_components/FloatingLPBar';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   await connectToDatabase();
   const { slug } = await params;
-  const page = await LandingPage.findOne({ slug });
+  const page = await LandingPage.findOne({ slug, resellerId: null });
   
   if (!page) return { title: 'Page Not Found' };
 
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function PublicLandingPage({ params }: { params: Promise<{ slug: string }> }) {
   await connectToDatabase();
   const { slug } = await params;
-  const page = await LandingPage.findOne({ slug });
+  const page = await LandingPage.findOne({ slug, resellerId: null });
   const settings = await getCachedSettings();
 
   if (!page || !page.isActive) {

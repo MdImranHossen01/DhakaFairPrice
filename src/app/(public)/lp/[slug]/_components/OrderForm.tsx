@@ -231,7 +231,15 @@ function CouponAndBillBreakdown({
   );
 }
 
-export default function OrderForm({ content, settings }: { content: any; settings: any }) {
+export default function OrderForm({ 
+  content, 
+  settings, 
+  resellerSubdomain 
+}: { 
+  content: any; 
+  settings: any; 
+  resellerSubdomain?: string;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -369,9 +377,16 @@ export default function OrderForm({ content, settings }: { content: any; setting
 
     const initiateUserData = { em: '', ph: watchedPhone, country: 'bd' };
 
-    fbEvent('InitiateCheckout', checkoutPayload, initiateUserData);
-    ttEvent('InitiateCheckout', checkoutPayload, initiateUserData);
-  }, [watchedPhone, watchedFullName, selectedProduct.productId, selectedProduct.price, quantity]);
+    if (resellerSubdomain) {
+      import('@/lib/reseller-pixel').then(({ resellerFbEvent, resellerTtEvent }) => {
+        resellerFbEvent(resellerSubdomain, 'InitiateCheckout', checkoutPayload, initiateUserData);
+        resellerTtEvent(resellerSubdomain, 'InitiateCheckout');
+      }).catch(() => {});
+    } else {
+      fbEvent('InitiateCheckout', checkoutPayload, initiateUserData);
+      ttEvent('InitiateCheckout', checkoutPayload, initiateUserData);
+    }
+  }, [watchedPhone, watchedFullName, selectedProduct.productId, selectedProduct.price, quantity, resellerSubdomain]);
 
   // Debounced sync of checkout info for abandoned carts tracking
   const submissionSucceededRef = useRef(false);
@@ -413,11 +428,11 @@ export default function OrderForm({ content, settings }: { content: any; setting
   // Pricing calculations
   const basePrice = selectedProduct.price || 0;
   const itemsTotal = basePrice * quantity;
-  const freeDeliveryThreshold = settings?.freeDeliveryThreshold || 0;
+  const freeDeliveryThreshold = settings?.deliveryConfig?.freeDeliveryThreshold ?? settings?.freeDeliveryThreshold ?? 0;
   const isFreeDelivery = freeDeliveryThreshold > 0 && itemsTotal >= freeDeliveryThreshold;
 
-  const chargeInsideDhaka = settings?.deliveryChargeInsideDhaka ?? 60;
-  const chargeOutsideDhaka = settings?.deliveryChargeOutsideDhaka ?? 120;
+  const chargeInsideDhaka = settings?.deliveryConfig?.insideDhaka ?? settings?.deliveryChargeInsideDhaka ?? 60;
+  const chargeOutsideDhaka = settings?.deliveryConfig?.outsideDhaka ?? settings?.deliveryChargeOutsideDhaka ?? 120;
   const deliveryCharge = isFreeDelivery ? 0 : (watchedDeliveryArea === 'inside' ? chargeInsideDhaka : chargeOutsideDhaka);
   
   const finalTotal = Math.max(0, itemsTotal + deliveryCharge - couponDiscount);
@@ -515,11 +530,42 @@ export default function OrderForm({ content, settings }: { content: any; setting
           transactionId: manualDetails.transactionId
         } : undefined
       };
+      const orderEndpoint = resellerSubdomain 
+        ? `/api/store/${resellerSubdomain}/orders` 
+        : '/api/orders';
 
-      const response = await fetch('/api/orders', {
+      const payloadToSend = resellerSubdomain ? {
+        customer: {
+          name: values.fullName,
+          phone: values.phone,
+          address: {
+            street: values.street,
+            city: values.deliveryArea === 'inside' ? 'Dhaka' : 'Outside Dhaka',
+            state: values.deliveryArea === 'inside' ? 'Dhaka' : 'Outside Dhaka',
+            zipCode: '0000',
+            country: 'Bangladesh'
+          }
+        },
+        items: [{
+          productId: selectedProduct.productId,
+          quantity: quantity,
+          price: basePrice,
+        }],
+        paymentMethod: values.paymentMethod,
+        deliveryArea: values.deliveryArea,
+        deliveryCharge: deliveryCharge,
+        couponCode: appliedCoupon || undefined,
+        manualPaymentDetails: values.paymentMethod === 'Manual' ? {
+          methodName: selectedMethod?.id,
+          senderNumber: manualDetails.senderNumber,
+          transactionId: manualDetails.transactionId
+        } : undefined
+      } : orderData;
+
+      const response = await fetch(orderEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(payloadToSend),
       });
 
       if (response.ok) {
@@ -555,8 +601,15 @@ export default function OrderForm({ content, settings }: { content: any; setting
             purchaseUserData.st = 'Dhaka';
           }
 
-          fbEvent('Purchase', purchaseEventData, purchaseUserData, order._id);
-          ttEvent('Purchase', purchaseEventData, purchaseUserData, order._id);
+          if (resellerSubdomain) {
+            import('@/lib/reseller-pixel').then(({ resellerFbEvent, resellerTtEvent }) => {
+              resellerFbEvent(resellerSubdomain, 'Purchase', purchaseEventData, purchaseUserData, order._id);
+              resellerTtEvent(resellerSubdomain, 'Purchase', purchaseEventData, purchaseUserData, order._id);
+            }).catch(() => {});
+          } else {
+            fbEvent('Purchase', purchaseEventData, purchaseUserData, order._id);
+            ttEvent('Purchase', purchaseEventData, purchaseUserData, order._id);
+          }
         } catch (trackingError) {
           console.error('Tracking error:', trackingError);
         }
