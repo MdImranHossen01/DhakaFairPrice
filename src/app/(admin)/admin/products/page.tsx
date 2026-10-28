@@ -801,7 +801,7 @@ function ProductsContent() {
                 <TableHead className="min-w-[150px]">Total Stock (Cumulative)</TableHead>
                 <TableHead>Views</TableHead>
                 <TableHead>Sales</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-center w-[100px]">Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -954,38 +954,52 @@ function ProductsContent() {
                         <TableCell>
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           {product.uploadedBy ? (
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={Boolean(product.isApprovedByAdmin)}
-                                onCheckedChange={() => handleDirectToggleApproval(product)}
+                            <div className="flex items-center justify-center">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={Boolean(product.isApprovedByAdmin)}
+                                onClick={() => handleDirectToggleApproval(product)}
                                 disabled={togglingApprovalId === product._id}
-                                aria-label="Toggle Approval"
-                                className="scale-90 data-[state=checked]:bg-emerald-600"
-                              />
-                              {product.isApprovedByAdmin ? (
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0.5">
-                                  Approved
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0.5" title="Click toggle to approve">
-                                  Pending Approval
-                                </Badge>
-                              )}
+                                title={product.isApprovedByAdmin ? 'Approved (Click to revoke)' : 'Pending Approval (Click to approve)'}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                                  product.isApprovedByAdmin
+                                    ? 'bg-emerald-600 border-emerald-600'
+                                    : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                                } ${togglingApprovalId === product._id ? 'opacity-50 cursor-wait' : ''}`}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    product.isApprovedByAdmin ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={Boolean(product.isPublished)}
-                                onCheckedChange={() => handleDirectTogglePublish(product)}
+                            <div className="flex items-center justify-center">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={Boolean(product.isPublished)}
+                                onClick={() => handleDirectTogglePublish(product)}
                                 disabled={togglingApprovalId === product._id}
-                                aria-label="Toggle Live / Draft"
-                                className="scale-90"
-                              />
-                              <span className={`text-[11px] font-semibold ${product.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
-                                {product.isPublished ? 'Active' : 'Draft'}
-                              </span>
+                                title={product.isPublished ? 'Live on Store (Click to hide)' : 'Draft (Click to publish)'}
+                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                                  product.isPublished
+                                    ? 'bg-primary border-primary'
+                                    : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                                } ${togglingApprovalId === product._id ? 'opacity-50 cursor-wait' : ''}`}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    product.isPublished ? 'translate-x-5' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
                             </div>
                           )}
                         </TableCell>
@@ -1243,38 +1257,49 @@ function ProductsContent() {
                   {/* Card Bottom Actions */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t gap-2">
                     <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">Status:</span>
                       {product.uploadedBy ? (
-                        <>
-                          <Switch
-                            checked={Boolean(product.isApprovedByAdmin)}
-                            onCheckedChange={() => handleDirectToggleApproval(product)}
-                            disabled={togglingApprovalId === product._id}
-                            aria-label="Toggle Approval"
-                            className="scale-90 data-[state=checked]:bg-emerald-600"
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={Boolean(product.isApprovedByAdmin)}
+                          onClick={() => handleDirectToggleApproval(product)}
+                          disabled={togglingApprovalId === product._id}
+                          title={product.isApprovedByAdmin ? 'Approved (Click to revoke)' : 'Pending Approval (Click to approve)'}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out ${
+                            product.isApprovedByAdmin
+                              ? 'bg-emerald-600 border-emerald-600'
+                              : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                          } ${togglingApprovalId === product._id ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              product.isApprovedByAdmin ? 'translate-x-5' : 'translate-x-0'
+                            }`}
                           />
-                          {product.isApprovedByAdmin ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0">
-                              Approved
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0">
-                              Pending Approval
-                            </Badge>
-                          )}
-                        </>
+                        </button>
                       ) : (
-                        <>
-                          <Switch
-                            checked={Boolean(product.isPublished)}
-                            onCheckedChange={() => handleDirectTogglePublish(product)}
-                            disabled={togglingApprovalId === product._id}
-                            aria-label="Toggle Live / Draft"
-                            className="scale-90"
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={Boolean(product.isPublished)}
+                          onClick={() => handleDirectTogglePublish(product)}
+                          disabled={togglingApprovalId === product._id}
+                          title={product.isPublished ? 'Live on Store (Click to hide)' : 'Draft (Click to publish)'}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out ${
+                            product.isPublished
+                              ? 'bg-primary border-primary'
+                              : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                          } ${togglingApprovalId === product._id ? 'opacity-50 cursor-wait' : ''}`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              product.isPublished ? 'translate-x-5' : 'translate-x-0'
+                            }`}
                           />
-                          <span className={`text-[10px] font-semibold ${product.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
-                            {product.isPublished ? 'Active' : 'Draft'}
-                          </span>
-                        </>
+                        </button>
                       )}
                     </div>
 
