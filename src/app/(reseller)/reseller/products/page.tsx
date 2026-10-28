@@ -409,7 +409,7 @@ function ProductsContent() {
                 <TableHead className="min-w-[140px] max-w-[200px]">Total Stock</TableHead>
                 <TableHead className="w-[70px] text-center">Views</TableHead>
                 <TableHead className="w-[70px] text-center">Sales</TableHead>
-                <TableHead className="w-[100px] text-center">Status</TableHead>
+                <TableHead className="w-[100px] text-center">Publish</TableHead>
                 <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -493,6 +493,15 @@ function ProductsContent() {
                               ) : (
                                 <span className="text-[10px] text-muted-foreground">Admin</span>
                               )}
+                              {product.isApprovedByAdmin ? (
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0">
+                                  Approved
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0" title="Mother Shop approval required before selling">
+                                  Not Approved
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -546,7 +555,7 @@ function ProductsContent() {
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
                         <TableCell className="w-[100px] text-center whitespace-nowrap">
-                          <div className="flex flex-col items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-center">
                             <button
                               type="button"
                               role="switch"
@@ -567,15 +576,6 @@ function ProductsContent() {
                                 }`}
                               />
                             </button>
-                            {product.isApprovedByAdmin ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0">
-                                Approved
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0" title="Mother Shop approval required before selling">
-                                Not Approved
-                              </Badge>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell className="w-[80px] text-right whitespace-nowrap">
@@ -677,6 +677,15 @@ function ProductsContent() {
                         ) : (
                           <span className="text-[10px] text-muted-foreground">• Admin</span>
                         )}
+                        {product.isApprovedByAdmin ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
+                            Approved
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
+                            Not Approved
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {product.salePrice && product.salePrice < product.price ? (
@@ -720,15 +729,6 @@ function ProductsContent() {
                           }`}
                         />
                       </button>
-                      {product.isApprovedByAdmin ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
-                          Approved
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
-                          Not Approved
-                        </Badge>
-                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
