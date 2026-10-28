@@ -604,32 +604,6 @@ export default function AdminDashboard() {
           </div>
         </Link>
 
-        {/* Total Products Card */}
-        <Link
-          href="/admin/products"
-          className="relative overflow-hidden bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-card border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-start justify-between">
-            <div className="p-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-              <Package className="h-6 w-6" />
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total Products</p>
-              <h3 className="text-2xl font-black text-foreground mt-1">
-                {stats?.totalProductsCount || 0}
-              </h3>
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-4 border-t border-emerald-500/20 mt-4">
-            <span className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Mother: {stats?.motherProductsCount || 0}</span>
-              <span className="text-muted-foreground">•</span>
-              <span className="text-teal-600 dark:text-teal-400 font-bold">Reseller: {stats?.resellerProductsCount || 0}</span>
-            </span>
-            <Store className="h-4 w-4 text-emerald-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </Link>
-
         {/* Pending Payouts Card */}
         <Link
           href="/admin/payouts"
@@ -705,6 +679,32 @@ export default function AdminDashboard() {
           </div>
         </Link>
 
+        {/* Total Products Card */}
+        <Link
+          href="/admin/products"
+          className="relative overflow-hidden bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-card border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-emerald-500/50 transition-all flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-3.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-xl shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+              <Package className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Total Products</p>
+              <h3 className="text-2xl font-black text-foreground mt-1">
+                {stats?.totalProductsCount || 0}
+              </h3>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-emerald-500/20 mt-4">
+            <span className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Mother: {stats?.motherProductsCount || 0}</span>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-teal-600 dark:text-teal-400 font-bold">Reseller: {stats?.resellerProductsCount || 0}</span>
+            </span>
+            <Store className="h-4 w-4 text-emerald-500 opacity-70 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </Link>
+
         {/* Product Pending For Approval Card */}
         <Link
           href="/admin/products?tab=pending"
@@ -715,7 +715,7 @@ export default function AdminDashboard() {
               <AlertCircle className="h-6 w-6" />
             </div>
             <div className="text-right">
-              <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending Approval</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending Products</p>
               <h3 className="text-2xl font-black text-foreground mt-1">
                 {stats?.pendingApprovalProductsCount || 0}
               </h3>
