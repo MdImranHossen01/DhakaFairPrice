@@ -56,6 +56,7 @@ function ProductsContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
 
   // Add Stock Modal State
   const [addStockModalOpen, setAddStockModalOpen] = useState(false);
@@ -217,13 +218,30 @@ function ProductsContent() {
   };
 
   const togglePublish = async (id: string, current: boolean) => {
-    const res = await fetch(`/api/reseller/products`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, isPublished: !current }),
-    });
-    if (res.ok) { toast.success(`Product ${!current ? 'published' : 'unpublished'}`); fetchProducts(undefined, currentPage, activeTab); }
-    else toast.error('Failed to update');
+    if (togglingPublishId) return;
+    setTogglingPublishId(id);
+    const nextState = !current;
+    // Optimistic UI update
+    setProducts(prev => prev.map(p => p._id === id ? { ...p, isPublished: nextState } : p));
+    try {
+      const res = await fetch(`/api/reseller/products`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, isPublished: nextState }),
+      });
+      if (res.ok) {
+        toast.success(`Product ${nextState ? 'published' : 'moved to draft'}`);
+        fetchProducts(undefined, currentPage, activeTab);
+      } else {
+        setProducts(prev => prev.map(p => p._id === id ? { ...p, isPublished: current } : p));
+        toast.error('Failed to update product status');
+      }
+    } catch {
+      setProducts(prev => prev.map(p => p._id === id ? { ...p, isPublished: current } : p));
+      toast.error('An error occurred while updating status');
+    } finally {
+      setTogglingPublishId(null);
+    }
   };
 
   const syncOwnProducts = async () => {
@@ -391,7 +409,7 @@ function ProductsContent() {
                 <TableHead className="min-w-[140px] max-w-[200px]">Total Stock</TableHead>
                 <TableHead className="w-[70px] text-center">Views</TableHead>
                 <TableHead className="w-[70px] text-center">Sales</TableHead>
-                <TableHead className="w-[90px] text-center">Status</TableHead>
+                <TableHead className="w-[100px] text-center">Status</TableHead>
                 <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -527,26 +545,34 @@ function ProductsContent() {
                         <TableCell className="w-[70px] text-center whitespace-nowrap">
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
-                        <TableCell className="w-[120px] text-center whitespace-nowrap">
-                          <div className="flex flex-col items-center gap-1">
+                        <TableCell className="w-[100px] text-center whitespace-nowrap">
+                          <div className="flex flex-col items-center justify-center gap-1.5">
                             <button
+                              type="button"
+                              role="switch"
+                              aria-checked={Boolean(product.isPublished)}
                               onClick={() => togglePublish(product._id, product.isPublished)}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+                              disabled={togglingPublishId === product._id}
+                              title={product.isPublished ? 'Published (Click to make Draft)' : 'Draft (Click to Publish)'}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
                                 product.isPublished
-                                  ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                              }`}
-                              title="Click to toggle Published / Draft"
+                                  ? 'bg-emerald-600 border-emerald-600'
+                                  : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                              } ${togglingPublishId === product._id ? 'opacity-50 cursor-wait' : ''}`}
                             >
-                              <span className={`w-1.5 h-1.5 rounded-full ${product.isPublished ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                              {product.isPublished ? 'Published' : 'Draft'}
+                              <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                  product.isPublished ? 'translate-x-5' : 'translate-x-0'
+                                }`}
+                              />
                             </button>
                             {product.isApprovedByAdmin ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-2 py-0">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0">
                                 Approved
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-2 py-0" title="Mother Shop approval required before selling">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0" title="Mother Shop approval required before selling">
                                 Not Approved
                               </Badge>
                             )}
@@ -675,16 +701,24 @@ function ProductsContent() {
                         </Badge>
                       )}
                       <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean(product.isPublished)}
                         onClick={() => togglePublish(product._id, product.isPublished)}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${
+                        disabled={togglingPublishId === product._id}
+                        title={product.isPublished ? 'Published (Click to make Draft)' : 'Draft (Click to Publish)'}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200 ease-in-out ${
                           product.isPublished
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                        title="Click to toggle Published / Draft"
+                            ? 'bg-emerald-600 border-emerald-600'
+                            : 'bg-slate-300 dark:bg-neutral-700 border-slate-400 dark:border-neutral-500'
+                        } ${togglingPublishId === product._id ? 'opacity-50 cursor-wait' : ''}`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${product.isPublished ? 'bg-primary' : 'bg-muted-foreground'}`} />
-                        {product.isPublished ? 'Published' : 'Draft'}
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            product.isPublished ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
                       </button>
                       {product.isApprovedByAdmin ? (
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
