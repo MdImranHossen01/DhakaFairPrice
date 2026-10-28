@@ -94,7 +94,11 @@ export async function GET(req: NextRequest) {
       chartData,
       sevenDaysOrders,
       sevenDaysExpenses,
-      activeLoansStats
+      activeLoansStats,
+      totalAllProductsCount,
+      motherProductsCount,
+      resellerProductsCount,
+      pendingApprovalProductsCount
     ] = await Promise.all([
       // 1. Revenue, COGS, Delivery charge stats (Current Period)
       Order.aggregate([
@@ -377,7 +381,20 @@ export async function GET(req: NextRequest) {
             totalActiveLoansDue: { $sum: '$dueAmount' }
           }
         }
-      ]).catch(() => [])
+      ]).catch(() => []),
+
+      // 16. Total Products Breakdown
+      Product.countDocuments({}),
+      Product.countDocuments({
+        $or: [{ uploadedBy: null }, { uploadedBy: { $exists: false } }]
+      }),
+      Product.countDocuments({
+        uploadedBy: { $ne: null, $exists: true }
+      }),
+      Product.countDocuments({
+        uploadedBy: { $ne: null, $exists: true },
+        isPublished: false
+      })
     ]);
 
     // Process Current Revenue Stats
@@ -606,7 +623,10 @@ export async function GET(req: NextRequest) {
         cancelledOrdersCount,
         totalStockQuantity: stockStats.totalStockQuantity,
         totalStockValue: stockStats.totalStockValue,
-        totalProductsCount: stockStats.totalProductsCount,
+        totalProductsCount: totalAllProductsCount,
+        motherProductsCount,
+        resellerProductsCount,
+        pendingApprovalProductsCount,
         cashBalance,
         bankBalance,
         mfsBalance,
