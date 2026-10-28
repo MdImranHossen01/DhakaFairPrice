@@ -801,7 +801,7 @@ function ProductsContent() {
                 <TableHead className="min-w-[150px]">Total Stock (Cumulative)</TableHead>
                 <TableHead>Views</TableHead>
                 <TableHead>Sales</TableHead>
-                <TableHead className="text-center w-[100px]">Status</TableHead>
+                <TableHead className="text-center w-[100px]">Approve</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -1257,7 +1257,7 @@ function ProductsContent() {
                   {/* Card Bottom Actions */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">Status:</span>
+                      <span className="text-xs font-semibold text-muted-foreground">Approve:</span>
                       {product.uploadedBy ? (
                         <button
                           type="button"
