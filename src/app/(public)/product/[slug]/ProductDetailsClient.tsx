@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addToCart } from '@/store/slices/cartSlice';
 import { toggleWishlist } from '@/store/slices/wishlistSlice';
@@ -356,6 +357,8 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
             </button>
           ))}
         </div>
+
+        <ProductVideoCard videoUrl={product.videoUrl} />
       </div>
 
       {/* Product Info Section */}

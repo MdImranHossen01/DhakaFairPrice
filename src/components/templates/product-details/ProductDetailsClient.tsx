@@ -19,6 +19,7 @@ import {
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import { RatingStars } from '@/components/ui/rating-stars';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -503,6 +504,8 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
             </button>
           ))}
         </div>
+
+        <ProductVideoCard videoUrl={product.videoUrl} />
       </div>
 
       {/* Product Info Section */}

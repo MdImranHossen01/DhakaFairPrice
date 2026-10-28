@@ -22,6 +22,7 @@ import Swal from 'sweetalert2';
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import { validateAndAddToCart } from '@/lib/cart-seller';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 
 interface ProductDetailsV3ClientProps {
   product: any;
@@ -231,6 +232,8 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                 </div>
               ))}
             </div>
+
+            <ProductVideoCard videoUrl={product.videoUrl} />
           </div>
 
           {/* Technical Data Sheet */}

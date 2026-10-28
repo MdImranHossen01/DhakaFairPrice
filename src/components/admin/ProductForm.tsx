@@ -28,7 +28,8 @@ import {
   PlusCircle,
   Sparkles,
   Barcode,
-  RefreshCw
+  RefreshCw,
+  Video
 } from 'lucide-react';
 
 const generateBaseSku = () => {
@@ -84,6 +85,9 @@ const NovelEditor = dynamic(() => import('@/components/editor/NovelEditor'), {
 const productSchema = z.object({
   name: z.string().min(3, 'Name is required'),
   slug: z.string().min(3, 'Slug is required'),
+  metaTitle: z.string().max(70, 'Meta title must not exceed 70 characters').optional(),
+  metaDescription: z.string().max(160, 'Meta description must not exceed 160 characters').optional(),
+  videoUrl: z.string().optional(),
   description: z.string().min(10, 'Description is required'),
   tags: z.array(z.string()).default([]),
   brand: z.string().optional(),
@@ -258,6 +262,9 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
   const defaultValues: ProductFormValues = {
     name: initialData?.name || '',
     slug: initialData?.slug || '',
+    metaTitle: initialData?.metaTitle || '',
+    metaDescription: initialData?.metaDescription || '',
+    videoUrl: initialData?.videoUrl || '',
     description: initialData?.description || '',
     tags: initialData?.tags || [],
     brand: initialData?.brand?._id || initialData?.brand || '',
@@ -855,6 +862,93 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                     )}
                   />
                 </div>
+
+                {/* SEO & Media Fields (Before Description) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="metaTitle"
+                    render={({ field }) => {
+                      const charCount = (field.value || '').length;
+                      return (
+                        <FormItem>
+                          <div className="flex items-center justify-between">
+                            <FormLabel className="flex items-center gap-1.5">
+                              Meta Title
+                              <span className="text-[11px] font-normal text-muted-foreground">(SEO)</span>
+                            </FormLabel>
+                            <span className={`text-[11px] font-mono ${charCount > 70 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                              {charCount}/70
+                            </span>
+                          </div>
+                          <FormControl>
+                            <Input
+                              placeholder="SEO title for search engines (max 70 chars)"
+                              maxLength={70}
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="videoUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <Video className="size-3.5 text-red-500" />
+                          YouTube Video Link
+                          <span className="text-[11px] font-normal text-muted-foreground">(Optional)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="metaDescription"
+                  render={({ field }) => {
+                    const charCount = (field.value || '').length;
+                    return (
+                      <FormItem>
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="flex items-center gap-1.5">
+                            Meta Description
+                            <span className="text-[11px] font-normal text-muted-foreground">(SEO)</span>
+                          </FormLabel>
+                          <span className={`text-[11px] font-mono ${charCount > 160 ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                            {charCount}/160
+                          </span>
+                        </div>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Brief summary shown in Google search results (max 160 chars)"
+                            maxLength={160}
+                            rows={2}
+                            className="resize-none"
+                            {...field}
+                            value={field.value || ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
                 <FormField
                   control={form.control}
                   name="description"

@@ -58,6 +58,9 @@ export interface IProduct extends Document {
   uploadedBy?: mongoose.Types.ObjectId | null;
   isShared?: boolean;
   isMotherProduct?: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
+  videoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -147,6 +150,9 @@ const ProductSchema: Schema<IProduct> = new Schema(
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'Reseller', default: null },
     isShared: { type: Boolean, default: false },
     isMotherProduct: { type: Boolean, default: false },
+    metaTitle: { type: String, maxlength: 70 },
+    metaDescription: { type: String, maxlength: 160 },
+    videoUrl: { type: String },
   },
   { timestamps: true }
 );

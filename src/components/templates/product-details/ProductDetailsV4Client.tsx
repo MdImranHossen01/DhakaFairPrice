@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import ReviewsSection from '@/components/storefront/ReviewsSection';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -223,6 +224,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
         <div className="bg-neutral-50 dark:bg-neutral-900 rounded-[3rem] p-6 shadow-sm">
           <ProductImageGallery images={allImages} />
         </div>
+        <ProductVideoCard videoUrl={product.videoUrl} />
         <div className="flex items-center justify-center gap-12 pt-4">
           <div className="flex flex-col items-center gap-2">
             <div className="h-12 w-12 rounded-full bg-primary/5 flex items-center justify-center text-primary">

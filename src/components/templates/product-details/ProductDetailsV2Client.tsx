@@ -18,6 +18,7 @@ import ShareDialog from '@/components/storefront/ShareDialog';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
 import { validateAndAddToCart } from '@/lib/cart-seller';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 
 interface ProductDetailsV2ClientProps {
   product: any;
@@ -414,6 +415,8 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
             ))}
           </div>
         )}
+
+        <ProductVideoCard videoUrl={product.videoUrl} className="max-w-[480px] xl:max-w-[500px]" />
       </div>
 
       {/* ── Right Half: Info with px-4 padding ── */}

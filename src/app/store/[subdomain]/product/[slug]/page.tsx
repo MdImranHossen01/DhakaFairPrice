@@ -31,19 +31,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
   const canonicalUrl = `https://${storeDomain}/product/${slug}`;
 
-  let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).lean();
+  let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).populate('productId').lean() as any;
   if (!product) {
-    const direct = await Product.findOne({ uploadedBy: reseller._id, slug, isPublished: true }).lean();
+    const direct = await Product.findOne({ uploadedBy: reseller._id, slug, isPublished: true }).lean() as any;
     if (direct) {
+      const cleanDesc = (direct.description || '')
+        .replace(/<[^>]*>?/gm, '')
+        .slice(0, 160);
+      const safeTitle = (direct.metaTitle?.trim() || direct.name || '').slice(0, 70);
+      const safeDesc = (direct.metaDescription?.trim() || cleanDesc || direct.name).slice(0, 160);
       return {
-        title: direct.name,
-        description: direct.description ? direct.description.slice(0, 160) : direct.name,
+        title: safeTitle,
+        description: safeDesc,
         alternates: {
           canonical: canonicalUrl,
         },
         openGraph: {
-          title: `${direct.name} | ${reseller.storeName}`,
-          description: direct.description ? direct.description.slice(0, 160) : direct.name,
+          title: `${safeTitle} | ${reseller.storeName}`,
+          description: safeDesc,
           url: canonicalUrl,
           images: direct.images?.[0] ? [direct.images[0]] : [],
         },
@@ -51,16 +56,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     return { title: 'Product Not Found' };
   }
-  const prodDesc = (product as any).description ? String((product as any).description).slice(0, 160) : product.name;
+
+  const motherProduct = product.productId || {};
+  const cleanDesc = ((product as any).description || motherProduct.description || '')
+    .replace(/<[^>]*>?/gm, '')
+    .slice(0, 160);
+  const safeTitle = (product.metaTitle?.trim() || motherProduct.metaTitle?.trim() || product.name || '').slice(0, 70);
+  const safeDesc = (product.metaDescription?.trim() || motherProduct.metaDescription?.trim() || cleanDesc || product.name).slice(0, 160);
+
   return {
-    title: product.name,
-    description: prodDesc,
+    title: safeTitle,
+    description: safeDesc,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: `${product.name} | ${reseller.storeName}`,
-      description: prodDesc,
+      title: `${safeTitle} | ${reseller.storeName}`,
+      description: safeDesc,
       url: canonicalUrl,
       images: product.images?.[0] ? [product.images[0]] : [],
     },

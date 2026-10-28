@@ -50,16 +50,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     })
     .slice(0, 160);
 
-  const safeDescription = cleanDescription;
+  const safeTitle = (product.metaTitle?.trim() || product.name || '').slice(0, 70);
+  const safeDescription = (product.metaDescription?.trim() || cleanDescription || '').slice(0, 160);
   const mainImage = product.images?.[0] ? [{ url: product.images[0] }] : [];
   const twitterImage = product.images?.[0] ? [product.images[0]] : [];
   const siteName = settings?.brandName || 'Online Shop';
 
   return {
-    title: product.name,
+    title: safeTitle,
     description: safeDescription,
     openGraph: {
-      title: product.name,
+      title: safeTitle,
       description: safeDescription,
       images: mainImage,
       type: 'website',
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     },
     twitter: {
       card: 'summary_large_image',
-      title: product.name,
+      title: safeTitle,
       description: safeDescription,
       images: twitterImage,
     }

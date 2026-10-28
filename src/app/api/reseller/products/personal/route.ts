@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
       purchasePrice,
       stock,
       isShared,
+      metaTitle,
+      metaDescription,
+      videoUrl,
     } = body;
 
     if (!name || !description) {
@@ -130,6 +133,9 @@ export async function POST(request: NextRequest) {
       isFeatured: Boolean(isFeatured),
       isNewArrival: Boolean(isNewArrival),
       isFlashSale: Boolean(isFlashSale),
+      metaTitle: metaTitle ? String(metaTitle).slice(0, 70) : undefined,
+      metaDescription: metaDescription ? String(metaDescription).slice(0, 160) : undefined,
+      videoUrl: videoUrl ? String(videoUrl).trim() : undefined,
     });
 
     // Automatically link this product to the creator's reseller storefront catalog
@@ -177,6 +183,9 @@ export async function PATCH(request: NextRequest) {
       purchasePrice,
       stock,
       isShared,
+      metaTitle,
+      metaDescription,
+      videoUrl,
     } = body;
 
     if (!productId) {
@@ -199,6 +208,9 @@ export async function PATCH(request: NextRequest) {
     if (tags !== undefined) product.tags = tags;
     if (images !== undefined) product.images = images;
     if (attributes !== undefined) product.attributes = attributes;
+    if (metaTitle !== undefined) product.metaTitle = metaTitle ? String(metaTitle).slice(0, 70) : '';
+    if (metaDescription !== undefined) product.metaDescription = metaDescription ? String(metaDescription).slice(0, 160) : '';
+    if (videoUrl !== undefined) product.videoUrl = videoUrl ? String(videoUrl).trim() : '';
     if (variants !== undefined) {
       product.variants = (variants || []).map((v: any) => {
         const vPurchase = Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined;

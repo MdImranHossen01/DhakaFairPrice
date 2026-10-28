@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import Swal from 'sweetalert2';
+import ProductVideoCard from '@/components/storefront/ProductVideoCard';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -355,6 +356,8 @@ export default function ResellerProductDetailsClient({
             </button>
           ))}
         </div>
+
+        <ProductVideoCard videoUrl={product.videoUrl || product.productId?.videoUrl} />
       </div>
 
       {/* Product Info */}

@@ -78,7 +78,8 @@ export async function PUT(
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'resellerPrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'brand', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'deliveryCharge'
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'deliveryCharge',
+      'metaTitle', 'metaDescription', 'videoUrl'
     ];
     const safeUpdate: any = {};
 
@@ -89,6 +90,17 @@ export async function PUT(
         // Boolean coercion
         if (['isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct'].includes(key)) {
           value = Boolean(value);
+        }
+
+        // String handling for SEO and media
+        if (key === 'metaTitle') {
+          value = value ? String(value).slice(0, 70) : '';
+        }
+        if (key === 'metaDescription') {
+          value = value ? String(value).slice(0, 160) : '';
+        }
+        if (key === 'videoUrl') {
+          value = value ? String(value).trim() : '';
         }
 
         // Numeric coercion for main fields

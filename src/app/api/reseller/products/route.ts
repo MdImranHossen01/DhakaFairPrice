@@ -138,6 +138,9 @@ export async function POST(request: NextRequest) {
       isShared: isShared !== undefined ? !!isShared : false,
       isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner
+      metaTitle: body.metaTitle ? String(body.metaTitle).slice(0, 70) : undefined,
+      metaDescription: body.metaDescription ? String(body.metaDescription).slice(0, 160) : undefined,
+      videoUrl: body.videoUrl ? String(body.videoUrl).trim() : undefined,
     });
 
     // Auto-link product to reseller's own storefront so it shows up in their store immediately
@@ -176,7 +179,8 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isShared', 'deliveryCharge'
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isShared', 'deliveryCharge',
+      'metaTitle', 'metaDescription', 'videoUrl'
     ];
     const updateData: any = {};
     Object.keys(body).forEach((key) => {
@@ -184,6 +188,16 @@ export async function PATCH(request: NextRequest) {
         updateData[key] = body[key];
       }
     });
+
+    if (updateData.metaTitle !== undefined) {
+      updateData.metaTitle = updateData.metaTitle ? String(updateData.metaTitle).slice(0, 70) : '';
+    }
+    if (updateData.metaDescription !== undefined) {
+      updateData.metaDescription = updateData.metaDescription ? String(updateData.metaDescription).slice(0, 160) : '';
+    }
+    if (updateData.videoUrl !== undefined) {
+      updateData.videoUrl = updateData.videoUrl ? String(updateData.videoUrl).trim() : '';
+    }
 
     const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
