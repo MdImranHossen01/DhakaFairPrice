@@ -76,6 +76,15 @@ export async function GET(req: NextRequest) {
         await Product.deleteMany({ _id: { $in: orphanIds } });
       }
 
+      // Exclude reseller draft products from admin catalog: only show published reseller products
+      andConditions.push({
+        $or: [
+          { uploadedBy: null },
+          { uploadedBy: { $exists: false } },
+          { uploadedBy: { $ne: null, $exists: true }, isPublished: true }
+        ]
+      });
+
       if (tab === 'mother') {
         andConditions.push({
           $or: [
@@ -86,7 +95,8 @@ export async function GET(req: NextRequest) {
         });
       } else if (tab === 'reseller') {
         andConditions.push({
-          uploadedBy: { $ne: null, $exists: true }
+          uploadedBy: { $ne: null, $exists: true },
+          isPublished: true
         });
       } else if (tab === 'pending') {
         andConditions.push({
@@ -126,7 +136,13 @@ export async function GET(req: NextRequest) {
     let counts = undefined;
     if (isAdmin) {
       const [allCount, motherCount, resellerCount, pendingCount] = await Promise.all([
-        Product.countDocuments(),
+        Product.countDocuments({
+          $or: [
+            { uploadedBy: null },
+            { uploadedBy: { $exists: false } },
+            { uploadedBy: { $ne: null, $exists: true }, isPublished: true }
+          ]
+        }),
         Product.countDocuments({
           $or: [
             { isMotherProduct: true },
@@ -134,7 +150,10 @@ export async function GET(req: NextRequest) {
             { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
           ]
         }),
-        Product.countDocuments({ uploadedBy: { $ne: null, $exists: true } }),
+        Product.countDocuments({
+          uploadedBy: { $ne: null, $exists: true },
+          isPublished: true
+        }),
         Product.countDocuments({
           uploadedBy: { $ne: null, $exists: true },
           isPublished: true,

@@ -57,6 +57,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 type TabType = 'all' | 'mother' | 'reseller' | 'pending';
 
@@ -114,6 +115,7 @@ function ProductsContent() {
   const [selectedResellerProduct, setSelectedResellerProduct] = useState<AdminProduct | null>(null);
   const [motherSellingPrice, setMotherSellingPrice] = useState<string>('');
   const [submittingToMother, setSubmittingToMother] = useState(false);
+  const [togglingApprovalId, setTogglingApprovalId] = useState<string | null>(null);
 
   const limit = 10;
 
@@ -352,6 +354,80 @@ function ProductsContent() {
       }
     } catch {
       toast.error('Network error while updating product approval status');
+    }
+  };
+
+  const handleDirectToggleApproval = async (product: AdminProduct) => {
+    const newApproval = !product.isApprovedByAdmin;
+    setTogglingApprovalId(product._id);
+
+    // Optimistic UI update
+    setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isApprovedByAdmin: newApproval } : p));
+    setCounts(prev => ({
+      ...prev,
+      pending: Math.max(0, prev.pending + (newApproval ? -1 : 1))
+    }));
+
+    try {
+      const res = await fetch(`/api/products/${product._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isApprovedByAdmin: newApproval }),
+      });
+
+      if (res.ok) {
+        toast.success(`"${product.name}" ${newApproval ? 'Approved' : 'Approval Revoked'}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.message || 'Failed to update approval status');
+        // Rollback
+        setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isApprovedByAdmin: !newApproval } : p));
+        setCounts(prev => ({
+          ...prev,
+          pending: Math.max(0, prev.pending + (newApproval ? 1 : -1))
+        }));
+      }
+    } catch {
+      toast.error('Network error updating approval status');
+      // Rollback
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isApprovedByAdmin: !newApproval } : p));
+      setCounts(prev => ({
+        ...prev,
+        pending: Math.max(0, prev.pending + (newApproval ? 1 : -1))
+      }));
+    } finally {
+      setTogglingApprovalId(null);
+    }
+  };
+
+  const handleDirectTogglePublish = async (product: AdminProduct) => {
+    const newStatus = !product.isPublished;
+    setTogglingApprovalId(product._id);
+
+    // Optimistic UI update
+    setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isPublished: newStatus } : p));
+
+    try {
+      const res = await fetch(`/api/products/${product._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublished: newStatus }),
+      });
+
+      if (res.ok) {
+        toast.success(`"${product.name}" ${newStatus ? 'Published' : 'Hidden'}`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.message || 'Failed to update product visibility');
+        // Rollback
+        setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isPublished: !newStatus } : p));
+      }
+    } catch {
+      toast.error('Network error updating product visibility');
+      // Rollback
+      setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isPublished: !newStatus } : p));
+    } finally {
+      setTogglingApprovalId(null);
     }
   };
 
@@ -879,22 +955,39 @@ function ProductsContent() {
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1 items-start">
-                            <Badge variant={product.isPublished ? 'default' : 'secondary'}>
-                              {product.isPublished ? 'Published' : 'Draft'}
-                            </Badge>
-                            {product.uploadedBy && (
-                              product.isApprovedByAdmin ? (
-                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0">
+                          {product.uploadedBy ? (
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={Boolean(product.isApprovedByAdmin)}
+                                onCheckedChange={() => handleDirectToggleApproval(product)}
+                                disabled={togglingApprovalId === product._id}
+                                aria-label="Toggle Approval"
+                                className="scale-90 data-[state=checked]:bg-emerald-600"
+                              />
+                              {product.isApprovedByAdmin ? (
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0.5">
                                   Approved
                                 </Badge>
                               ) : (
-                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0" title="Awaiting Admin Approval">
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0.5" title="Click toggle to approve">
                                   Pending Approval
                                 </Badge>
-                              )
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={Boolean(product.isPublished)}
+                                onCheckedChange={() => handleDirectTogglePublish(product)}
+                                disabled={togglingApprovalId === product._id}
+                                aria-label="Toggle Live / Draft"
+                                className="scale-90"
+                              />
+                              <span className={`text-[11px] font-semibold ${product.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                {product.isPublished ? 'Active' : 'Draft'}
+                              </span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -1149,20 +1242,39 @@ function ProductsContent() {
 
                   {/* Card Bottom Actions */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t gap-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant={product.isPublished ? 'default' : 'secondary'} className="text-[10px]">
-                        {product.isPublished ? 'Published' : 'Draft'}
-                      </Badge>
-                      {product.uploadedBy && (
-                        product.isApprovedByAdmin ? (
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0">
-                            Approved
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0">
-                            Pending Approval
-                          </Badge>
-                        )
+                    <div className="flex items-center gap-2">
+                      {product.uploadedBy ? (
+                        <>
+                          <Switch
+                            checked={Boolean(product.isApprovedByAdmin)}
+                            onCheckedChange={() => handleDirectToggleApproval(product)}
+                            disabled={togglingApprovalId === product._id}
+                            aria-label="Toggle Approval"
+                            className="scale-90 data-[state=checked]:bg-emerald-600"
+                          />
+                          {product.isApprovedByAdmin ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0">
+                              Approved
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0">
+                              Pending Approval
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Switch
+                            checked={Boolean(product.isPublished)}
+                            onCheckedChange={() => handleDirectTogglePublish(product)}
+                            disabled={togglingApprovalId === product._id}
+                            aria-label="Toggle Live / Draft"
+                            className="scale-90"
+                          />
+                          <span className={`text-[10px] font-semibold ${product.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                            {product.isPublished ? 'Active' : 'Draft'}
+                          </span>
+                        </>
                       )}
                     </div>
 
