@@ -306,7 +306,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
       }
       return mainImages;
     })(),
-    isPublished: initialData?.isPublished ?? true,
+    isPublished: initialData?.isPublished ?? false,
     isFeatured: initialData?.isFeatured ?? false,
     isNewArrival: initialData?.isNewArrival ?? false,
     isFlashSale: initialData?.isFlashSale ?? false,

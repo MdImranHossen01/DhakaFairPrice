@@ -436,12 +436,16 @@ function ProductsContent() {
                         <TableCell className="w-[70px] text-center whitespace-nowrap">
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
-                        <TableCell className="w-[90px] text-center whitespace-nowrap">
-                          <button onClick={() => togglePublish(product._id, product.isPublished)} className="hover:opacity-80 transition-opacity">
-                            <Badge variant={product.isPublished ? 'default' : 'secondary'} className="cursor-pointer">
-                              {product.isPublished ? 'Published' : 'Draft'}
+                        <TableCell className="w-[110px] text-center whitespace-nowrap">
+                          {product.isPublished ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-bold text-[11px] px-2.5 py-0.5 shadow-none">
+                              Approved
                             </Badge>
-                          </button>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-bold text-[11px] px-2.5 py-0.5 shadow-none" title="Awaiting Mother Shop approval">
+                              Not Approved
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="w-[80px] text-right whitespace-nowrap">
                           <DropdownMenu>
@@ -565,11 +569,15 @@ function ProductsContent() {
                           {product.variants.length} Var
                         </Badge>
                       )}
-                      <button onClick={() => togglePublish(product._id, product.isPublished)}>
-                        <Badge variant={product.isPublished ? 'default' : 'secondary'} className="cursor-pointer text-[10px] px-1.5 py-0">
-                          {product.isPublished ? 'Published' : 'Draft'}
+                      {product.isPublished ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-bold px-1.5 py-0 shadow-none">
+                          Approved
                         </Badge>
-                      </button>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-bold px-1.5 py-0 shadow-none">
+                          Not Approved
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button

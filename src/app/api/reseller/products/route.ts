@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       variants: processedVariants.length > 0 ? processedVariants : (variants || []),
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
-      isPublished: isPublished !== undefined ? !!isPublished : true,
+      isPublished: false, // Default unpublish globally until Mother Shop approves
       isShared: isShared !== undefined ? !!isShared : false,
       isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner
@@ -163,6 +163,12 @@ export async function PATCH(request: NextRequest) {
     const id = sp.get('id');
     const body = await request.json();
 
+    if (body.isPublished !== undefined) {
+      return NextResponse.json({
+        error: 'Resellers cannot publish or unpublish products directly. Approval from Mother Shop Admin is required.'
+      }, { status: 403 });
+    }
+
     // Support both body.id and query param id
     const targetId = id || body.id;
     if (!targetId) return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
@@ -170,7 +176,7 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isPublished', 'isShared', 'deliveryCharge'
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isShared', 'deliveryCharge'
     ];
     const updateData: any = {};
     Object.keys(body).forEach((key) => {

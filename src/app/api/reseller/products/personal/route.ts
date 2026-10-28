@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       uploadedBy: reseller._id,
       isShared: Boolean(isShared),
       isMotherProduct: false,
-      isPublished: isPublished !== undefined ? Boolean(isPublished) : true,
+      isPublished: false, // Default unpublish globally until Mother Shop approves
       isFeatured: Boolean(isFeatured),
       isNewArrival: Boolean(isNewArrival),
       isFlashSale: Boolean(isFlashSale),
