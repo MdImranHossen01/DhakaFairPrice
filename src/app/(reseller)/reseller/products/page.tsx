@@ -13,6 +13,7 @@ import {
 import {
   Plus, Edit, Trash, Loader2, Search, Package, RefreshCw,
   MoreHorizontal, ChevronDown, ChevronRight, PackagePlus, Store,
+  Layers, CheckCircle2, Clock, Eye, EyeOff
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
+type ResellerTabType = 'all' | 'approved' | 'pending' | 'published' | 'draft';
+
 function calculateCumulativeStock(product: any): number {
   if (product.variants && product.variants.length > 0) {
     return product.variants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
@@ -39,11 +42,15 @@ function calculateCumulativeStock(product: any): number {
 }
 
 function ProductsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get('tab') as ResellerTabType) || 'all';
+
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<ResellerTabType>(initialTab);
+  const [counts, setCounts] = useState({ all: 0, approved: 0, pending: 0, published: 0, draft: 0 });
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -150,16 +157,19 @@ function ProductsContent() {
     }
   };
 
-  const fetchProducts = async (signal?: AbortSignal, page = currentPage) => {
+  const fetchProducts = async (signal?: AbortSignal, page = currentPage, tab = activeTab) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      const params = new URLSearchParams({ page: String(page), limit: String(limit), tab });
       if (search) params.set('search', search);
       const res = await fetch(`/api/reseller/products?${params}`, { signal });
       if (!res.ok) { toast.error('Failed to fetch products'); return; }
       const d = await res.json();
       setProducts(d.products || []);
       setPagination(d.pagination || { total: 0, totalPages: 1 });
+      if (d.counts) {
+        setCounts(d.counts);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       toast.error('Failed to fetch products');
@@ -168,16 +178,23 @@ function ProductsContent() {
     }
   };
 
+  const handleTabChange = (tab: ResellerTabType) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+    router.push(`/reseller/products?tab=${tab}`);
+    fetchProducts(undefined, 1, tab);
+  };
+
   useEffect(() => {
     const controller = new AbortController();
-    fetchProducts(controller.signal, currentPage);
+    fetchProducts(controller.signal, currentPage, activeTab);
     return () => controller.abort();
   }, [currentPage]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    fetchProducts(undefined, 1);
+    fetchProducts(undefined, 1, activeTab);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -193,7 +210,7 @@ function ProductsContent() {
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       toast.success(data.message || 'Product removed');
-      fetchProducts();
+      fetchProducts(undefined, currentPage, activeTab);
     } else {
       toast.error(data.error || data.message || 'Failed to remove');
     }
@@ -205,7 +222,7 @@ function ProductsContent() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, isPublished: !current }),
     });
-    if (res.ok) { toast.success(`Product ${!current ? 'published' : 'unpublished'}`); fetchProducts(); }
+    if (res.ok) { toast.success(`Product ${!current ? 'published' : 'unpublished'}`); fetchProducts(undefined, currentPage, activeTab); }
     else toast.error('Failed to update');
   };
 
@@ -216,7 +233,7 @@ function ProductsContent() {
       const data = await res.json();
       if (res.ok) {
         toast.success(`Synced ${data.synced} products to your store!`);
-        fetchProducts();
+        fetchProducts(undefined, currentPage, activeTab);
       } else {
         toast.error(data.error || 'Sync failed');
       }
@@ -241,7 +258,7 @@ function ProductsContent() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    router.push(`/reseller/products?page=${page}`);
+    router.push(`/reseller/products?page=${page}&tab=${activeTab}`);
   };
 
   return (
@@ -266,6 +283,80 @@ function ProductsContent() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b pb-2">
+        <Button
+          variant={activeTab === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('all')}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>All</span>
+          {counts.all > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.all}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'approved' ? 'default' : 'outline'}
+          size="sm"
+          className={`h-8 text-xs font-semibold gap-1.5 ${activeTab === 'approved' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10'}`}
+          onClick={() => handleTabChange('approved')}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          <span>Approved</span>
+          {counts.approved > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.approved}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'pending' ? 'default' : 'outline'}
+          size="sm"
+          className={`h-8 text-xs font-semibold gap-1.5 ${activeTab === 'pending' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10'}`}
+          onClick={() => handleTabChange('pending')}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span>Pending Approval</span>
+          {counts.pending > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.pending}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'published' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('published')}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>Published</span>
+          {counts.published > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.published}
+            </Badge>
+          )}
+        </Button>
+        <Button
+          variant={activeTab === 'draft' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs font-semibold gap-1.5"
+          onClick={() => handleTabChange('draft')}
+        >
+          <EyeOff className="h-3.5 w-3.5" />
+          <span>Draft</span>
+          {counts.draft > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px]">
+              {counts.draft}
+            </Badge>
+          )}
+        </Button>
       </div>
 
       <form onSubmit={handleSearch} className="flex items-center gap-2">

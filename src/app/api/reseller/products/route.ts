@@ -28,19 +28,73 @@ export async function GET(request: NextRequest) {
     const sp = request.nextUrl.searchParams;
     const page = parseInt(sp.get('page') || '1');
     const limit = parseInt(sp.get('limit') || '10');
-    const search = sp.get('search') || '';
+    const search = sp.get('search')?.trim() || '';
+    const tab = sp.get('tab') || 'all';
 
-    // Filter by uploadedBy (since Products store the reseller ID in uploadedBy)
-    const query: Record<string, any> = { uploadedBy: resellerId };
-    if (search) query.name = { $regex: search, $options: 'i' };
+    const andConditions: any[] = [{ uploadedBy: resellerId }];
 
-    const [products, total] = await Promise.all([
-      Product.find(query).populate('uploadedBy', 'storeName subdomain').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    if (search) {
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { sku: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    if (tab === 'approved') {
+      andConditions.push({ isApprovedByAdmin: true });
+    } else if (tab === 'pending' || tab === 'not_approved') {
+      andConditions.push({
+        $or: [
+          { isApprovedByAdmin: false },
+          { isApprovedByAdmin: { $exists: false } }
+        ]
+      });
+    } else if (tab === 'published') {
+      andConditions.push({ isPublished: true });
+    } else if (tab === 'draft') {
+      andConditions.push({ isPublished: false });
+    }
+
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
+
+    const baseAnd: any[] = [{ uploadedBy: resellerId }];
+    if (search) {
+      baseAnd.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { sku: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const [products, total, allCount, approvedCount, pendingCount, publishedCount, draftCount] = await Promise.all([
+      Product.find(query)
+        .populate('uploadedBy', 'storeName subdomain')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       Product.countDocuments(query),
+      Product.countDocuments({ $and: baseAnd }),
+      Product.countDocuments({ $and: [...baseAnd, { isApprovedByAdmin: true }] }),
+      Product.countDocuments({ $and: [...baseAnd, { $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }] }] }),
+      Product.countDocuments({ $and: [...baseAnd, { isPublished: true }] }),
+      Product.countDocuments({ $and: [...baseAnd, { isPublished: false }] }),
     ]);
+
+    const counts = {
+      all: allCount,
+      approved: approvedCount,
+      pending: pendingCount,
+      published: publishedCount,
+      draft: draftCount,
+    };
 
     return NextResponse.json({
       products,
+      counts,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
   } catch (error: any) {
