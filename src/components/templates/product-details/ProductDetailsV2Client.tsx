@@ -18,7 +18,7 @@ import ShareDialog from '@/components/storefront/ShareDialog';
 import { fbEvent } from '@/lib/fpixel';
 import { ttEvent } from '@/lib/tiktok';
 import { validateAndAddToCart } from '@/lib/cart-seller';
-import ProductVideoCard from '@/components/storefront/ProductVideoCard';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 
 interface ProductDetailsV2ClientProps {
   product: any;
@@ -393,8 +393,14 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
         </div>
 
         {/* Thumbnails list */}
-        {allImages && allImages.length > 1 && (
+        {allImages && (allImages.length > 1 || product.videoUrl) && (
           <div className="flex gap-2.5 overflow-auto pt-3 pb-1 scrollbar-none w-full max-w-[480px] xl:max-w-[500px] justify-center">
+            <ProductVideoThumbnailModal
+              videoUrl={product.videoUrl}
+              thumbnailImage={allImages?.[0]}
+              className="h-16 w-12 flex-shrink-0"
+              title={product?.name}
+            />
             {allImages.map((img: string, i: number) => (
               <button
                 key={i}
@@ -415,8 +421,6 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
             ))}
           </div>
         )}
-
-        <ProductVideoCard videoUrl={product.videoUrl} className="max-w-[480px] xl:max-w-[500px]" />
       </div>
 
       {/* ── Right Half: Info with px-4 padding ── */}

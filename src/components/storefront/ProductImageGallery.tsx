@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 
 interface ProductImageGalleryProps {
   images: string[];
+  videoUrl?: string | null;
+  title?: string;
 }
 
-export function ProductImageGallery({ images }: ProductImageGalleryProps) {
+export function ProductImageGallery({ images, videoUrl, title }: ProductImageGalleryProps) {
   const [activeImage, setActiveImage] = useState(images?.[0] || '/placeholder.png');
   
   useEffect(() => {
@@ -33,8 +36,14 @@ export function ProductImageGallery({ images }: ProductImageGalleryProps) {
           priority
         />
       </div>
-      {images.length > 1 && (
+      {(images.length > 1 || Boolean(videoUrl)) && (
         <div className="grid grid-cols-4 gap-4">
+          <ProductVideoThumbnailModal
+            videoUrl={videoUrl}
+            thumbnailImage={images?.[0]}
+            className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
+            title={title}
+          />
           {images.map((img, i) => (
             <button
               key={i}

@@ -31,6 +31,7 @@ import {
 import Image from 'next/image';
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 import { validateAndAddToCart } from '@/lib/cart-seller';
 
 const CURRENCY_SYMBOL = '৳';
@@ -204,6 +205,12 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
         <div className="absolute inset-0 bg-black/10" />
 
         <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-4 p-4 bg-white/10 backdrop-blur-3xl rounded-[2.5rem] border border-white/20 shadow-2xl">
+          <ProductVideoThumbnailModal
+            videoUrl={product.videoUrl}
+            thumbnailImage={allImages?.[0]}
+            className="relative h-20 w-20 rounded-2xl overflow-hidden cursor-pointer"
+            title={product.name}
+          />
           {allImages?.slice(0, 6).map((img: string, i: number) => (
             <button
               key={img}

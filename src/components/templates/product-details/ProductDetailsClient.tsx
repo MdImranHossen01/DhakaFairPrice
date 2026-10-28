@@ -19,7 +19,7 @@ import {
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import { RatingStars } from '@/components/ui/rating-stars';
-import ProductVideoCard from '@/components/storefront/ProductVideoCard';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -492,6 +492,12 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
         </div>
 
         <div className="flex gap-4 overflow-auto pb-2 scrollbar-none">
+          <ProductVideoThumbnailModal
+            videoUrl={product.videoUrl}
+            thumbnailImage={allImages?.[0]}
+            className="h-20 w-20 flex-shrink-0 rounded-md"
+            title={product.name}
+          />
           {allImages?.map((img: string, i: number) => (
             <button
               key={i}
@@ -504,8 +510,6 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
             </button>
           ))}
         </div>
-
-        <ProductVideoCard videoUrl={product.videoUrl} />
       </div>
 
       {/* Product Info Section */}

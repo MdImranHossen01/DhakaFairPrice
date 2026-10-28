@@ -20,7 +20,7 @@ import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import Swal from 'sweetalert2';
-import ProductVideoCard from '@/components/storefront/ProductVideoCard';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -345,6 +345,12 @@ export default function ResellerProductDetailsClient({
 
         {/* Thumbnails */}
         <div className="flex gap-4 overflow-auto pb-2 scrollbar-none">
+          <ProductVideoThumbnailModal
+            videoUrl={product.videoUrl || product.productId?.videoUrl}
+            thumbnailImage={allImages?.[0]}
+            className="h-20 w-20 flex-shrink-0 rounded-md"
+            title={product.name}
+          />
           {allImages?.map((img: string, i: number) => (
             <button
               key={i}
@@ -356,8 +362,6 @@ export default function ResellerProductDetailsClient({
             </button>
           ))}
         </div>
-
-        <ProductVideoCard videoUrl={product.videoUrl || product.productId?.videoUrl} />
       </div>
 
       {/* Product Info */}

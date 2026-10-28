@@ -22,7 +22,7 @@ import Swal from 'sweetalert2';
 import { generateHtml } from '@/lib/server-html';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import { validateAndAddToCart } from '@/lib/cart-seller';
-import ProductVideoCard from '@/components/storefront/ProductVideoCard';
+import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
 
 interface ProductDetailsV3ClientProps {
   product: any;
@@ -222,6 +222,12 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
             </div>
 
             <div className="grid grid-cols-4 gap-4">
+              <ProductVideoThumbnailModal
+                videoUrl={product.videoUrl}
+                thumbnailImage={allImages?.[0]}
+                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
+                title={product.name}
+              />
               {allImages?.map((img: string, i: number) => (
                 <div
                   key={i}
@@ -232,8 +238,6 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                 </div>
               ))}
             </div>
-
-            <ProductVideoCard videoUrl={product.videoUrl} />
           </div>
 
           {/* Technical Data Sheet */}
