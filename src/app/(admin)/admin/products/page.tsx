@@ -30,7 +30,9 @@ import {
   EyeOff,
   ExternalLink,
   Users,
-  CheckCircle2
+  CheckCircle2,
+  XCircle,
+  Clock
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +58,8 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
+type TabType = 'all' | 'mother' | 'reseller' | 'pending';
+
 interface AdminProduct {
   _id: string;
   name: string;
@@ -64,6 +68,7 @@ interface AdminProduct {
   salePrice?: number;
   stock: number;
   isPublished: boolean;
+  isApprovedByAdmin?: boolean;
   images?: string[];
   slug: string;
   brand?: any;
@@ -100,8 +105,9 @@ function ProductsContent() {
   const [expiryDate, setExpiryDate] = useState('');
   const [submittingStock, setSubmittingStock] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<'all' | 'mother' | 'reseller'>('all');
-  const [counts, setCounts] = useState({ all: 0, mother: 0, reseller: 0 });
+  const initialTab = (searchParams.get('tab') as TabType) || 'all';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [counts, setCounts] = useState({ all: 0, mother: 0, reseller: 0, pending: 0 });
 
   // Add to Mother Shop Modal State
   const [addToMotherModalOpen, setAddToMotherModalOpen] = useState(false);
@@ -123,7 +129,12 @@ function ProductsContent() {
       setProducts(Array.isArray(data.products) ? data.products : []);
       setPagination(data.pagination || { total: 0, totalPages: 1 });
       if (data.counts) {
-        setCounts(data.counts);
+        setCounts({
+          all: data.counts.all || 0,
+          mother: data.counts.mother || 0,
+          reseller: data.counts.reseller || 0,
+          pending: data.counts.pending || 0,
+        });
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -133,9 +144,10 @@ function ProductsContent() {
     }
   };
 
-  const handleTabChange = (tab: 'all' | 'mother' | 'reseller') => {
+  const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setCurrentPage(1);
+    router.push(`/admin/products?tab=${tab}`);
     fetchProducts(undefined, 1, tab);
   };
 
@@ -297,6 +309,49 @@ function ProductsContent() {
       }
     } catch {
       toast.error('Network error while updating product visibility');
+    }
+  };
+
+  const handleToggleApproval = async (product: AdminProduct) => {
+    const newApproval = !product.isApprovedByAdmin;
+    const actionVerb = newApproval ? 'approve' : 'revoke approval for';
+    const actionTitle = newApproval ? 'Approve Reseller Product' : 'Revoke Product Approval';
+
+    const confirmResult = await Swal.fire({
+      title: `${actionTitle}?`,
+      text: newApproval 
+        ? `Are you sure you want to approve "${product.name}"? The reseller and other resellers will be able to sell this product on their storefronts.`
+        : `Are you sure you want to revoke approval for "${product.name}"? Resellers will no longer be able to sell or source this product.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: newApproval ? 'Yes, Approve' : 'Yes, Revoke',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: newApproval ? '#10b981' : '#f59e0b',
+      cancelButtonColor: '#6b7280',
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/products/${product._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isApprovedByAdmin: newApproval }),
+      });
+
+      if (res.ok) {
+        toast.success(`Product ${newApproval ? 'approved' : 'approval revoked'} successfully`);
+        setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isApprovedByAdmin: newApproval } : p));
+        setCounts(prev => ({
+          ...prev,
+          pending: Math.max(0, prev.pending + (newApproval ? -1 : 1))
+        }));
+      } else {
+        const err = await res.json();
+        toast.error(err.message || `Failed to ${actionVerb} product`);
+      }
+    } catch {
+      toast.error('Network error while updating product approval status');
     }
   };
 
@@ -622,6 +677,20 @@ function ProductsContent() {
             </Badge>
           )}
         </Button>
+        <Button
+          variant={activeTab === 'pending' ? 'default' : 'outline'}
+          size="sm"
+          className={`h-8 text-xs font-semibold gap-1.5 ${activeTab === 'pending' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10'}`}
+          onClick={() => handleTabChange('pending')}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          <span>Pending Approval</span>
+          {counts.pending > 0 && (
+            <Badge variant="secondary" className="ml-1 px-1.5 py-0 h-4 text-[10px] bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold">
+              {counts.pending}
+            </Badge>
+          )}
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -810,9 +879,22 @@ function ProductsContent() {
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={product.isPublished ? 'default' : 'secondary'}>
-                            {product.isPublished ? 'Published' : 'Draft'}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant={product.isPublished ? 'default' : 'secondary'}>
+                              {product.isPublished ? 'Published' : 'Draft'}
+                            </Badge>
+                            {product.uploadedBy && (
+                              product.isApprovedByAdmin ? (
+                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-1.5 py-0">
+                                  Approved
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-1.5 py-0" title="Awaiting Admin Approval">
+                                  Pending Approval
+                                </Badge>
+                              )
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -821,9 +903,22 @@ function ProductsContent() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuContent align="end" className="w-52">
                               {product.uploadedBy ? (
                                 <>
+                                  <DropdownMenuItem onClick={() => handleToggleApproval(product)} className={`gap-2 font-semibold ${product.isApprovedByAdmin ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                    {product.isApprovedByAdmin ? (
+                                      <>
+                                        <XCircle className="h-4 w-4" />
+                                        <span>Revoke Approval</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <span>Approve Product</span>
+                                      </>
+                                    )}
+                                  </DropdownMenuItem>
                                   {!product.isMotherProduct ? (
                                     <DropdownMenuItem onClick={() => openAddToMotherModal(product)} className="gap-2 font-semibold text-emerald-600 dark:text-emerald-400">
                                       <PackagePlus className="h-4 w-4" />
@@ -1053,21 +1148,36 @@ function ProductsContent() {
                   )}
 
                   {/* Card Bottom Actions */}
-                  <div className="flex items-center justify-between pt-2 border-t gap-1">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Badge variant={product.isPublished ? 'default' : 'secondary'} className="text-[10px]">
-                        {product.isPublished ? 'Published' : 'Draft/Hidden'}
+                        {product.isPublished ? 'Published' : 'Draft'}
                       </Badge>
                       {product.uploadedBy && (
-                        <span className="text-[10px] text-muted-foreground italic">
-                          (Reseller)
-                        </span>
+                        product.isApprovedByAdmin ? (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0">
+                            Approved
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0">
+                            Pending Approval
+                          </Badge>
+                        )
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       {product.uploadedBy ? (
                         <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={`h-7 px-2 text-xs font-semibold gap-1 ${product.isApprovedByAdmin ? 'text-amber-600 dark:text-amber-400 border-amber-500/30' : 'text-emerald-600 dark:text-emerald-400 border-emerald-500/30'}`}
+                            onClick={() => handleToggleApproval(product)}
+                          >
+                            {product.isApprovedByAdmin ? <XCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                            {product.isApprovedByAdmin ? 'Revoke' : 'Approve'}
+                          </Button>
                           {!product.isMotherProduct ? (
                             <Button
                               variant="outline"

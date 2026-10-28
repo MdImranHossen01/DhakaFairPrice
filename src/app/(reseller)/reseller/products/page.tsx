@@ -436,16 +436,30 @@ function ProductsContent() {
                         <TableCell className="w-[70px] text-center whitespace-nowrap">
                           <span className="font-bold text-primary">{product.totalSales ?? 0}</span>
                         </TableCell>
-                        <TableCell className="w-[110px] text-center whitespace-nowrap">
-                          {product.isPublished ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-bold text-[11px] px-2.5 py-0.5 shadow-none">
-                              Approved
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-bold text-[11px] px-2.5 py-0.5 shadow-none" title="Awaiting Mother Shop approval">
-                              Not Approved
-                            </Badge>
-                          )}
+                        <TableCell className="w-[120px] text-center whitespace-nowrap">
+                          <div className="flex flex-col items-center gap-1">
+                            <button
+                              onClick={() => togglePublish(product._id, product.isPublished)}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+                                product.isPublished
+                                  ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                              }`}
+                              title="Click to toggle Published / Draft"
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${product.isPublished ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                              {product.isPublished ? 'Published' : 'Draft'}
+                            </button>
+                            {product.isApprovedByAdmin ? (
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-semibold text-[10px] px-2 py-0">
+                                Approved
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-semibold text-[10px] px-2 py-0" title="Mother Shop approval required before selling">
+                                Not Approved
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="w-[80px] text-right whitespace-nowrap">
                           <DropdownMenu>
@@ -569,12 +583,24 @@ function ProductsContent() {
                           {product.variants.length} Var
                         </Badge>
                       )}
-                      {product.isPublished ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-bold px-1.5 py-0 shadow-none">
+                      <button
+                        onClick={() => togglePublish(product._id, product.isPublished)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold cursor-pointer transition-colors ${
+                          product.isPublished
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                        title="Click to toggle Published / Draft"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${product.isPublished ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                        {product.isPublished ? 'Published' : 'Draft'}
+                      </button>
+                      {product.isApprovedByAdmin ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
                           Approved
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-bold px-1.5 py-0 shadow-none">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 text-[10px] font-semibold px-1.5 py-0 shadow-none">
                           Not Approved
                         </Badge>
                       )}

@@ -134,7 +134,8 @@ export async function POST(request: NextRequest) {
       variants: processedVariants.length > 0 ? processedVariants : (variants || []),
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
-      isPublished: false, // Default unpublish globally until Mother Shop approves
+      isPublished: body.isPublished !== undefined ? Boolean(body.isPublished) : true,
+      isApprovedByAdmin: false, // Default unapproved until Mother Shop approves
       isShared: isShared !== undefined ? !!isShared : false,
       isMotherProduct: false,
       uploadedBy: resellerId, // Set reseller ID as the owner
@@ -166,11 +167,8 @@ export async function PATCH(request: NextRequest) {
     const id = sp.get('id');
     const body = await request.json();
 
-    if (body.isPublished !== undefined) {
-      return NextResponse.json({
-        error: 'Resellers cannot publish or unpublish products directly. Approval from Mother Shop Admin is required.'
-      }, { status: 403 });
-    }
+    // Prevent reseller from modifying admin approval
+    delete (body as any).isApprovedByAdmin;
 
     // Support both body.id and query param id
     const targetId = id || body.id;
@@ -179,7 +177,7 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isShared', 'deliveryCharge',
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isPublished', 'isShared', 'deliveryCharge',
       'metaTitle', 'metaDescription', 'videoUrl'
     ];
     const updateData: any = {};

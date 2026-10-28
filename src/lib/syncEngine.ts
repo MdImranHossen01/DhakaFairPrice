@@ -176,6 +176,11 @@ export async function addProductToReseller(
       return { success: false, message: 'Product is not published on Mother site' };
     }
 
+    // Sourced products from another reseller require Mother Shop Admin approval
+    if (!isOwnProduct && product.uploadedBy && !product.isApprovedByAdmin) {
+      return { success: false, message: 'This reseller product has not been approved by Mother Shop Admin yet' };
+    }
+
     const isPublishedOnStore = isOwnProduct
       ? (product.isPublished !== undefined ? product.isPublished : true)
       : true;

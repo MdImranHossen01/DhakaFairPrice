@@ -707,7 +707,7 @@ export default function AdminDashboard() {
 
         {/* Product Pending For Approval Card */}
         <Link
-          href="/admin/products?tab=reseller"
+          href="/admin/products?tab=pending"
           className="relative overflow-hidden bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-card border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 shadow-xs hover:shadow-md hover:border-amber-500/50 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-start justify-between">

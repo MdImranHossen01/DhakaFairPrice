@@ -393,7 +393,8 @@ export async function GET(req: NextRequest) {
       }),
       Product.countDocuments({
         uploadedBy: { $ne: null, $exists: true },
-        isPublished: false
+        isPublished: true,
+        $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }]
       })
     ]);
 

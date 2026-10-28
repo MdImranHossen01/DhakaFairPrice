@@ -78,7 +78,7 @@ export async function PUT(
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'resellerPrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'brand', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'deliveryCharge',
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'isApprovedByAdmin', 'deliveryCharge',
       'metaTitle', 'metaDescription', 'videoUrl'
     ];
     const safeUpdate: any = {};
@@ -88,7 +88,7 @@ export async function PUT(
         let value = body[key];
 
         // Boolean coercion
-        if (['isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct'].includes(key)) {
+        if (['isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'isMotherProduct', 'isApprovedByAdmin'].includes(key)) {
           value = Boolean(value);
         }
 
@@ -170,6 +170,7 @@ export async function PUT(
     if (existingProduct.uploadedBy) {
       const allowedKeysForResellerProducts = [
         'isMotherProduct',
+        'isApprovedByAdmin',
         'price',
         'salePrice',
         'discountRate',

@@ -47,24 +47,25 @@ export async function GET(request: NextRequest) {
         { uploadedBy: { $exists: false } },
       ];
     } else if (sourceFilter === 'reseller') {
-      // Only other resellers' shared products
+      // Only other resellers' shared products that have been approved by Mother Shop Admin
       query.uploadedBy = { $ne: resellerId };
       query.isShared = true;
+      query.isApprovedByAdmin = true;
       // Exclude products with no uploadedBy (admin)
       query['$and'] = [{ uploadedBy: { $ne: null } }, { uploadedBy: { $exists: true } }];
     } else if (sourceFilter === 'top_selling') {
       query.$or = [
         { uploadedBy: null },
         { uploadedBy: { $exists: false } },
-        { uploadedBy: { $ne: resellerId }, isShared: true },
+        { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
       ];
       sortOption = { totalSales: -1, views: -1, ratings: -1, createdAt: -1 };
     } else {
-      // 'all' or 'sourced' — default: show admin + other resellers' shared products
+      // 'all' or 'sourced' — default: show admin + other resellers' shared products that are approved
       query.$or = [
         { uploadedBy: null },
         { uploadedBy: { $exists: false } },
-        { uploadedBy: { $ne: resellerId }, isShared: true },
+        { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
       ];
     }
 
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
       $or: [
         { uploadedBy: null },
         { uploadedBy: { $exists: false } },
-        { uploadedBy: { $ne: resellerId }, isShared: true },
+        { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
       ],
     }).select('_id uploadedBy totalSales').lean()) as any[];
 

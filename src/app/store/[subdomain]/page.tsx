@@ -154,7 +154,15 @@ export default async function ResellerStorePage({ params }: Props) {
     .limit(200)
     .lean();
 
-  const allProducts = (rawProducts || []).map((rp: any) => {
+  const allProducts = (rawProducts || [])
+    .filter((rp: any) => {
+      const parent = rp.productId;
+      if (!parent) return false;
+      if (parent.isPublished === false) return false;
+      if (parent.uploadedBy && parent.isApprovedByAdmin !== true) return false;
+      return true;
+    })
+    .map((rp: any) => {
     const parent = rp.productId || {};
     const finalPrice = typeof rp.retailPrice === 'number' && !isNaN(rp.retailPrice)
       ? rp.retailPrice

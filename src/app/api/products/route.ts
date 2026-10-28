@@ -88,6 +88,12 @@ export async function GET(req: NextRequest) {
         andConditions.push({
           uploadedBy: { $ne: null, $exists: true }
         });
+      } else if (tab === 'pending') {
+        andConditions.push({
+          uploadedBy: { $ne: null, $exists: true },
+          isPublished: true,
+          $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }]
+        });
       }
     } else if (isReseller) {
       // Logged-in reseller querying products for order editing or catalog lookup
@@ -119,7 +125,7 @@ export async function GET(req: NextRequest) {
 
     let counts = undefined;
     if (isAdmin) {
-      const [allCount, motherCount, resellerCount] = await Promise.all([
+      const [allCount, motherCount, resellerCount, pendingCount] = await Promise.all([
         Product.countDocuments(),
         Product.countDocuments({
           $or: [
@@ -129,8 +135,13 @@ export async function GET(req: NextRequest) {
           ]
         }),
         Product.countDocuments({ uploadedBy: { $ne: null, $exists: true } }),
+        Product.countDocuments({
+          uploadedBy: { $ne: null, $exists: true },
+          isPublished: true,
+          $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }]
+        }),
       ]);
-      counts = { all: allCount, mother: motherCount, reseller: resellerCount };
+      counts = { all: allCount, mother: motherCount, reseller: resellerCount, pending: pendingCount };
     }
 
     return NextResponse.json({

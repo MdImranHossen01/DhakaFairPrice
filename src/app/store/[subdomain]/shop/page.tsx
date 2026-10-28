@@ -78,7 +78,15 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
   ]);
 
   // Format reseller products so they match the standard storefront Product shape
-  const allFormatted = (resellerProducts || []).map((rp: any) => {
+  const allFormatted = (resellerProducts || [])
+    .filter((rp: any) => {
+      const parent = rp.productId;
+      if (!parent) return false;
+      if (parent.isPublished === false) return false;
+      if (parent.uploadedBy && parent.isApprovedByAdmin !== true) return false;
+      return true;
+    })
+    .map((rp: any) => {
     const parent = rp.productId || {};
     const finalPrice = typeof rp.retailPrice === 'number' && !isNaN(rp.retailPrice) 
       ? rp.retailPrice 

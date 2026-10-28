@@ -142,6 +142,10 @@ export default async function ResellerProductPage({ params }: Props) {
   if (!productDoc || !productDoc.productId) notFound();
 
   const parent = productDoc.productId as any;
+  // Reseller products require Mother Shop Admin approval before they can be sold or viewed
+  if (parent.uploadedBy && parent.isApprovedByAdmin !== true) {
+    notFound();
+  }
   const isPersonal = parent.isMotherProduct === false || (parent.uploadedBy && parent.uploadedBy.toString() === reseller._id.toString());
   // If it's a mother catalog product and unpublished on mother site, 404
   if (!isPersonal && productDoc.isAvailableOnMother === false) {
