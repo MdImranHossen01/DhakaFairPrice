@@ -182,12 +182,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { email, emailOrPhone, name, password, image } = await req.json();
+    const { email, emailOrPhone, name, password, image, role } = await req.json();
     const identifier = (emailOrPhone || email || '').trim();
 
     if (!identifier) {
       return NextResponse.json({ message: 'Email or Mobile Number is required' }, { status: 400 });
     }
+
+    const allowedRoles = ['admin', 'manager', 'moderator', 'user'];
+    const targetRole = allowedRoles.includes(role) ? role : 'admin';
+    const roleLabels: Record<string, string> = {
+      admin: 'Admin',
+      manager: 'Manager',
+      moderator: 'Moderator',
+      user: 'User',
+    };
+    const roleDisplayName = roleLabels[targetRole] || targetRole;
 
     await connectToDatabase();
 
@@ -203,7 +213,10 @@ export async function POST(req: NextRequest) {
       user = await User.findOne({ email: normalizedEmail }).select('+password');
 
       if (user) {
-        user.role = 'admin';
+        if (user.role === 'super_admin' || user.email === 'imranshuvo101@gmail.com') {
+          return NextResponse.json({ message: 'Cannot modify super_admin user role' }, { status: 403 });
+        }
+        user.role = targetRole;
         if (name) user.name = name;
         if (image) user.image = image;
         if (password && password.length >= 6) user.password = password; // pre-save hook hashes password
@@ -212,7 +225,7 @@ export async function POST(req: NextRequest) {
         user = await User.create({
           name: name || normalizedEmail.split('@')[0],
           email: normalizedEmail,
-          role: 'admin',
+          role: targetRole,
           image: image || undefined,
           ...(password && password.length >= 6 ? { password } : {})
         });
@@ -233,7 +246,10 @@ export async function POST(req: NextRequest) {
       }).select('+password');
 
       if (user) {
-        user.role = 'admin';
+        if (user.role === 'super_admin' || user.email === 'imranshuvo101@gmail.com') {
+          return NextResponse.json({ message: 'Cannot modify super_admin user role' }, { status: 403 });
+        }
+        user.role = targetRole;
         user.phone = normalizedPhone;
         if (name) user.name = name;
         if (image) user.image = image;
@@ -241,10 +257,10 @@ export async function POST(req: NextRequest) {
         await user.save();
       } else {
         user = await User.create({
-          name: name || `Admin ${normalizedPhone.slice(-4)}`,
+          name: name || `${roleDisplayName} ${normalizedPhone.slice(-4)}`,
           email: `${normalizedPhone}@${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'guest.com'}`,
           phone: normalizedPhone,
-          role: 'admin',
+          role: targetRole,
           image: image || undefined,
           ...(password && password.length >= 6 ? { password } : {})
         });
@@ -252,7 +268,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ 
-      message: `Successfully assigned Admin role to ${identifier}`,
+      message: `Successfully assigned ${roleDisplayName} role to ${identifier}`,
       user: {
         _id: user._id,
         name: user.name,

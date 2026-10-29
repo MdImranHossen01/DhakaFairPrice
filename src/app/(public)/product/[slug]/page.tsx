@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { generateProductSchema, generateBreadcrumbSchema } from '@/lib/seo';
+import { generateProductSchema, generateBreadcrumbSchema, resolveRequestHost, getProductMeta } from '@/lib/seo';
 import { ProductDetailsSelector } from '@/components/templates/ServerRegistry';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { ViewTracker } from '@/components/common/ViewTracker';
@@ -29,29 +29,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   const headersList = await headers();
-  const hostname = headersList.get('host') || 'localhost';
-  const baseUrl = `${protocol}://${hostname}`;
+  const host = resolveRequestHost(headersList);
+  const baseUrl = `${protocol}://${host}`;
+  const canonicalUrl = `${baseUrl}/product/${slug}`;
 
-  // Strip HTML tags and JSON structure for a clean meta description
-  const cleanDescription = (product.description ?? '')
-    .replace(/<[^>]*>?/gm, '') // Remove HTML tags
-    .replace(/\{"type":"doc"[\s\S]*\}/g, (match: string) => {
-        try {
-            const parsed = JSON.parse(match);
-            const getText = (node: any): string => {
-                if (node.text) return node.text;
-                if (node.content) return node.content.map(getText).join(' ');
-                return '';
-            };
-            return getText(parsed);
-        } catch (e) {
-            return match;
-        }
-    })
-    .slice(0, 160);
+  const { safeTitle, safeDescription } = getProductMeta({
+    name: product.name,
+    metaTitle: product.metaTitle,
+    metaDescription: product.metaDescription,
+  });
 
-  const safeTitle = (product.metaTitle?.trim() || product.name || '').slice(0, 70);
-  const safeDescription = (product.metaDescription?.trim() || cleanDescription || '').slice(0, 160);
   const mainImage = product.images?.[0] ? [{ url: product.images[0] }] : [];
   const twitterImage = product.images?.[0] ? [product.images[0]] : [];
   const siteName = settings?.brandName || 'Online Shop';
@@ -59,12 +46,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: safeTitle,
     description: safeDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: safeTitle,
       description: safeDescription,
       images: mainImage,
       type: 'website',
-      url: `${baseUrl}/product/${slug}`,
+      url: canonicalUrl,
       siteName: siteName,
     },
     twitter: {
@@ -86,6 +76,26 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
   ]);
 
   if (!product) {
+    // If product is not in mother catalog, check if it is a reseller product and redirect to the reseller store!
+    try {
+      const conn = await (await import('@/lib/db')).default();
+      const ProductModel = (await import('@/models/Product')).default;
+      const resellerProduct = await ProductModel.findOne({ slug, isPublished: true })
+        .populate('uploadedBy', 'subdomain customDomain')
+        .lean() as any;
+
+      if (resellerProduct && resellerProduct.uploadedBy) {
+        const { redirect } = await import('next/navigation');
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+        const storeDomain = resellerProduct.uploadedBy.customDomain?.replace(/^https?:\/\//, '').replace(/\/+$/, '')
+          || `${resellerProduct.uploadedBy.subdomain}.${rootDomain}`;
+        const previewQuery = resellerProduct.isApprovedByAdmin ? '' : '?preview=true';
+        redirect(`https://${storeDomain}/product/${slug}${previewQuery}`);
+      }
+    } catch (e: any) {
+      if (e?.digest?.startsWith('NEXT_REDIRECT')) throw e;
+    }
+
     notFound();
   }
 

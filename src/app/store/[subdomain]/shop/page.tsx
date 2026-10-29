@@ -12,6 +12,7 @@ import { FooterSelector } from '@/components/templates/ServerRegistry';
 import { SettingsProvider } from '@/components/SettingsProvider';
 import { ResellerPixels } from '@/components/reseller/ResellerPixels';
 import type { Metadata } from 'next';
+import { resolveRequestHost } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +31,12 @@ export async function generateMetadata({ params }: { params: Promise<{ subdomain
   const reseller = await getReseller(subdomain);
   if (!reseller) return { title: 'Store Not Found' };
 
+  const headersList = await headers();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const rawDomain = (reseller as any).customDomain || `${subdomain}.${rootDomain}`;
-  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const canonicalUrl = `https://${storeDomain}/shop`;
+  const defaultSubdomainHost = `${(reseller as any).subdomain || subdomain}.${rootDomain}`;
+  const incomingHost = resolveRequestHost(headersList, defaultSubdomainHost);
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const canonicalUrl = `${protocol}://${incomingHost}/shop`;
 
   return {
     title: 'Shop All Products',

@@ -1,10 +1,13 @@
 import { notFound } from 'next/navigation';
+import { auth } from '@/auth';
 import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import ResellerProduct from '@/models/ResellerProduct';
 import Product from '@/models/Product';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { resolveRequestHost, getProductMeta } from '@/lib/seo';
 import { NavbarSelector } from '@/components/templates/Registry';
 import { FooterSelector } from '@/components/templates/ServerRegistry';
 import { SettingsProvider } from '@/components/SettingsProvider';
@@ -18,6 +21,7 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ subdomain: string; slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -26,29 +30,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const reseller = await Reseller.findOne({ subdomain, status: 'active' }).select('storeName customDomain subdomain').lean() as any;
   if (!reseller) return { title: 'Not Found' };
 
+  const headersList = await headers();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const rawDomain = reseller.customDomain || `${reseller.subdomain || subdomain}.${rootDomain}`;
-  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const canonicalUrl = `https://${storeDomain}/product/${slug}`;
+  const defaultSubdomainHost = `${reseller.subdomain || subdomain}.${rootDomain}`;
+  const incomingHost = resolveRequestHost(headersList, defaultSubdomainHost);
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const canonicalUrl = `${protocol}://${incomingHost}/product/${slug}`;
 
   let product = await ResellerProduct.findOne({ resellerId: reseller._id, slug, isPublished: true }).populate('productId').lean() as any;
   if (!product) {
     const direct = await Product.findOne({ uploadedBy: reseller._id, slug, isPublished: true }).lean() as any;
     if (direct) {
-      const cleanDesc = (direct.description || '')
-        .replace(/<[^>]*>?/gm, '')
-        .slice(0, 160);
-      const safeTitle = (direct.metaTitle?.trim() || direct.name || '').slice(0, 70);
-      const safeDesc = (direct.metaDescription?.trim() || cleanDesc || direct.name).slice(0, 160);
+      const { safeTitle, safeDescription } = getProductMeta({
+        name: direct.name,
+        metaTitle: direct.metaTitle,
+        metaDescription: direct.metaDescription,
+      });
+
       return {
         title: safeTitle,
-        description: safeDesc,
+        description: safeDescription,
         alternates: {
           canonical: canonicalUrl,
         },
         openGraph: {
           title: `${safeTitle} | ${reseller.storeName}`,
-          description: safeDesc,
+          description: safeDescription,
           url: canonicalUrl,
           images: direct.images?.[0] ? [direct.images[0]] : [],
         },
@@ -58,29 +65,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const motherProduct = product.productId || {};
-  const cleanDesc = ((product as any).description || motherProduct.description || '')
-    .replace(/<[^>]*>?/gm, '')
-    .slice(0, 160);
-  const safeTitle = (product.metaTitle?.trim() || motherProduct.metaTitle?.trim() || product.name || '').slice(0, 70);
-  const safeDesc = (product.metaDescription?.trim() || motherProduct.metaDescription?.trim() || cleanDesc || product.name).slice(0, 160);
+  const { safeTitle, safeDescription } = getProductMeta({
+    name: product.name || motherProduct.name,
+    metaTitle: product.metaTitle || motherProduct.metaTitle,
+    metaDescription: product.metaDescription || motherProduct.metaDescription,
+  });
 
   return {
     title: safeTitle,
-    description: safeDesc,
+    description: safeDescription,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
       title: `${safeTitle} | ${reseller.storeName}`,
-      description: safeDesc,
+      description: safeDescription,
       url: canonicalUrl,
       images: product.images?.[0] ? [product.images[0]] : [],
     },
   };
 }
 
-export default async function ResellerProductPage({ params }: Props) {
+export default async function ResellerProductPage({ params, searchParams }: Props) {
   const { subdomain, slug } = await params;
+  const sParams = searchParams ? await searchParams : {};
+  const isPreview = sParams.preview === 'true' || sParams.adminPreview === 'true';
   await dbConnect();
 
   const reseller = await Reseller.findOne({ subdomain, status: 'active' }).lean() as any;
@@ -142,8 +151,19 @@ export default async function ResellerProductPage({ params }: Props) {
   if (!productDoc || !productDoc.productId) notFound();
 
   const parent = productDoc.productId as any;
-  // Reseller products require Mother Shop Admin approval before they can be sold or viewed
-  if (parent.uploadedBy && parent.isApprovedByAdmin !== true) {
+
+  // Allow admins, super_admins, store owner, or preview token to view pending reseller products
+  let isAllowedToPreview = isPreview;
+  if (!isAllowedToPreview) {
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin' || session?.user?.email === 'imranshuvo101@gmail.com';
+    const isOwner = session?.user && ((session?.user as any)?.resellerId === reseller._id.toString() || session?.user?.id === reseller.userId?.toString());
+    isAllowedToPreview = !!(isAdmin || isOwner);
+  }
+
+  const isPendingApproval = parent.uploadedBy && parent.isApprovedByAdmin !== true;
+  if (isPendingApproval && !isAllowedToPreview) {
     notFound();
   }
   const isPersonal = parent.isMotherProduct === false || (parent.uploadedBy && parent.uploadedBy.toString() === reseller._id.toString());

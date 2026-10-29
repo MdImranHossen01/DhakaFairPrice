@@ -1,8 +1,40 @@
-﻿import { headers } from 'next/headers';
+import { headers } from 'next/headers';
+
+export function resolveRequestHost(headersList: Headers, fallbackDomain?: string): string {
+  const rawHost = headersList.get('x-forwarded-host') || headersList.get('host') || '';
+  const clean = rawHost.split(':')[0].trim().toLowerCase();
+  if (clean && clean !== 'localhost' && clean !== '127.0.0.1' && !/^\d+\.\d+\.\d+\.\d+$/.test(clean)) {
+    return clean;
+  }
+  return fallbackDomain || process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+}
+
+export function getProductMeta({
+  name,
+  metaTitle,
+  metaDescription,
+}: {
+  name?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+}) {
+  const safeTitle = (metaTitle?.trim() || name || '').slice(0, 70);
+  let safeDescription = safeTitle;
+
+  const rawDesc = metaDescription?.trim();
+  if (rawDesc && !rawDesc.startsWith('{"type":"doc"')) {
+    const cleaned = rawDesc.replace(/<[^>]*>?/gm, '').trim();
+    if (cleaned) {
+      safeDescription = cleaned.slice(0, 160);
+    }
+  }
+
+  return { safeTitle, safeDescription };
+}
 
 async function getBaseUrl() {
   const headersList = await headers();
-  const host = headersList.get('host') || 'localhost';
+  const host = resolveRequestHost(headersList);
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   return `${protocol}://${host}`;
 }
@@ -84,4 +116,3 @@ export async function generateBlogSchema(blog: any) {
     url: `${baseUrl}/blog/${blog.slug}`,
   };
 }
-

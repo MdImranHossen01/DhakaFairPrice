@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
       Product.find(query)
         .populate('categories')
         .populate('brand')
-        .populate('uploadedBy', 'storeName subdomain')
+        .populate('uploadedBy', 'storeName subdomain customDomain')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),

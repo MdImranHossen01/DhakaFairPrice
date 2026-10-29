@@ -5,6 +5,7 @@ import Reseller from '@/models/Reseller';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import { resolveRequestHost } from '@/lib/seo';
 import {
   NavbarSelector,
   HeroSelector,
@@ -34,10 +35,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
   const reseller = await getReseller(subdomain);
   if (!reseller) return { title: 'Store Not Found' };
+  const headersList = await headers();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const rawDomain = (reseller as any).customDomain || `${subdomain}.${rootDomain}`;
-  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const canonicalUrl = `https://${storeDomain}`;
+  const defaultSubdomainHost = `${(reseller as any).subdomain || subdomain}.${rootDomain}`;
+  const incomingHost = resolveRequestHost(headersList, defaultSubdomainHost);
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const canonicalUrl = `${protocol}://${incomingHost}`;
 
   const rawVerification = (reseller as any).seoConfig?.googleSiteVerification?.trim() || '';
   const match = rawVerification.match(/content=["']([^"']+)["']/i);

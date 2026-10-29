@@ -1,4 +1,6 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { resolveRequestHost } from '@/lib/seo';
 import { notFound } from 'next/navigation';
 import connectToDatabase from '@/lib/db';
 import LandingPage from '@/models/LandingPage';
@@ -31,10 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = await LandingPage.findOne({ slug, resellerId: reseller._id }).lean() as any;
   if (!page) return { title: 'Page Not Found' };
 
+  const headersList = await headers();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-  const rawDomain = reseller.customDomain || `${subdomain}.${rootDomain}`;
-  const storeDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const canonicalUrl = `https://${storeDomain}/lp/${slug}`;
+  const defaultSubdomainHost = `${reseller.subdomain || subdomain}.${rootDomain}`;
+  const incomingHost = resolveRequestHost(headersList, defaultSubdomainHost);
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const canonicalUrl = `${protocol}://${incomingHost}/lp/${slug}`;
 
   const title = page.seoConfig?.metaTitle || `${page.title} | ${reseller.storeName}`;
   const description = page.seoConfig?.metaDescription || page.description || `Special offer on ${reseller.storeName}`;

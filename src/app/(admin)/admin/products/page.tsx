@@ -81,11 +81,25 @@ interface AdminProduct {
   variants?: any[];
   purchasePrice?: number;
   resellerPrice?: number;
-  uploadedBy?: { _id: string; storeName: string; subdomain: string } | null;
+  uploadedBy?: { _id: string; storeName: string; subdomain: string; customDomain?: string } | null;
   isMotherProduct?: boolean;
 }
 
 function ProductsContent() {
+  const getProductStoreUrl = (product: AdminProduct) => {
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    if (product.uploadedBy && (product.uploadedBy.subdomain || product.uploadedBy.customDomain)) {
+      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const previewQuery = product.isApprovedByAdmin ? '' : '?preview=true';
+      if (isLocalhost) {
+        return `/store/${product.uploadedBy.subdomain}/product/${product.slug}${previewQuery}`;
+      }
+      const storeDomain = product.uploadedBy.customDomain?.replace(/^https?:\/\//, '').replace(/\/+$/, '')
+        || `${product.uploadedBy.subdomain}.${rootDomain}`;
+      return `https://${storeDomain}/product/${product.slug}${previewQuery}`;
+    }
+    return `/product/${product.slug}`;
+  };
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -864,7 +878,7 @@ function ProductsContent() {
                         <TableCell className="font-medium max-w-[240px]">
                           <div className="flex flex-col gap-0.5">
                             <Link 
-                              href={`/product/${product.slug}`} 
+                              href={getProductStoreUrl(product)} 
                               target="_blank"
                               className="hover:text-primary transition-colors hover:underline decoration-primary/30 underline-offset-4 truncate font-bold text-sm"
                             >
@@ -1051,7 +1065,7 @@ function ProductsContent() {
                                     )}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild className="gap-2">
-                                    <Link href={`/product/${product.slug}`} target="_blank" className="flex items-center gap-2 w-full">
+                                    <Link href={getProductStoreUrl(product)} target="_blank" className="flex items-center gap-2 w-full">
                                       <ExternalLink className="h-4 w-4 text-muted-foreground" />
                                       <span>View Storefront</span>
                                     </Link>
@@ -1173,7 +1187,7 @@ function ProductsContent() {
 
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/product/${product.slug}`}
+                        href={getProductStoreUrl(product)}
                         target="_blank"
                         className="font-bold text-foreground text-xs hover:text-primary transition-colors line-clamp-2"
                       >
@@ -1340,7 +1354,7 @@ function ProductsContent() {
                             className="h-7 px-2 text-xs text-muted-foreground"
                             asChild
                           >
-                            <Link href={`/product/${product.slug}`} target="_blank">
+                            <Link href={getProductStoreUrl(product)} target="_blank">
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>

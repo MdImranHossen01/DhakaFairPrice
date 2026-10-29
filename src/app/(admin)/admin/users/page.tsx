@@ -109,6 +109,7 @@ function UsersContent() {
   const [adminName, setAdminName] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminImage, setAdminImage] = useState('');
+  const [assignRole, setAssignRole] = useState<'admin' | 'manager' | 'moderator' | 'user'>('admin');
   const [isAssigning, setIsAssigning] = useState(false);
 
   const { data: session } = useSession();
@@ -204,24 +205,26 @@ function UsersContent() {
           name: adminName.trim() || undefined,
           password: adminPassword.trim() || undefined,
           image: adminImage || undefined,
+          role: assignRole,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(data.message || 'Admin access granted successfully');
+        toast.success(data.message || 'User role assigned successfully');
         setAdminEmail('');
         setAdminName('');
         setAdminPassword('');
         setAdminImage('');
+        setAssignRole('admin');
         setIsAssignAdminOpen(false);
         fetchUsers();
       } else {
-        toast.error(data.message || 'Failed to assign admin');
+        toast.error(data.message || 'Failed to assign role');
       }
     } catch (error) {
-      toast.error('Error assigning admin');
+      toast.error('Error assigning user role');
     } finally {
       setIsAssigning(false);
     }
@@ -333,11 +336,14 @@ function UsersContent() {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {(isSuperAdmin || (session?.user as any)?.role === 'admin') && (
             <Button 
-              onClick={() => setIsAssignAdminOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full px-4 h-9 text-xs shadow-md shadow-blue-200 border-none"
+              onClick={() => {
+                setAssignRole('admin');
+                setIsAssignAdminOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full px-4 h-9 text-xs shadow-md shadow-blue-200 border-none flex items-center gap-1.5"
             >
-              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-              Assign Admin
+              <UserCog className="h-3.5 w-3.5" />
+              Assign Role / Add User
             </Button>
           )}
           <div className="bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20">
@@ -750,17 +756,62 @@ function UsersContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Admin Modal */}
+      {/* Assign Role / Add User Modal */}
       <Dialog open={isAssignAdminOpen} onOpenChange={setIsAssignAdminOpen}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col max-h-[90vh]">
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col max-h-[92vh]">
           <div className="bg-blue-600 p-5 text-white relative overflow-hidden shrink-0">
             <DialogHeader className="relative z-10">
-              <DialogTitle className="text-xl font-black tracking-tight text-white">Assign Admin Access</DialogTitle>
-              <p className="text-blue-100 text-xs mt-0.5">Grant admin access using email or phone number.</p>
+              <DialogTitle className="text-xl font-black tracking-tight text-white flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                Assign Role & Access
+              </DialogTitle>
+              <p className="text-blue-100 text-xs mt-0.5">
+                Grant admin, manager, moderator, or user access using email or phone number.
+              </p>
             </DialogHeader>
           </div>
 
-          <form onSubmit={handleAssignAdmin} className="p-4 space-y-3 bg-white overflow-y-auto flex-1 text-xs">
+          <form onSubmit={handleAssignAdmin} className="p-4 space-y-3.5 bg-white overflow-y-auto flex-1 text-xs">
+            {/* Role Selection */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                <span>Assign Role <span className="text-red-500">*</span></span>
+                <span className="text-blue-600 capitalize font-bold text-[11px]">Selected: {assignRole}</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'admin', label: 'Admin', desc: 'Full admin access' },
+                  { id: 'manager', label: 'Manager', desc: 'Products & Orders' },
+                  { id: 'moderator', label: 'Moderator', desc: 'Order review & CMS' },
+                  { id: 'user', label: 'User / Customer', desc: 'Standard account' },
+                ].map((r) => {
+                  const isSelected = assignRole === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setAssignRole(r.id as any)}
+                      className={`p-2.5 rounded-xl border text-left transition-all relative ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/70 text-blue-950 font-bold shadow-xs ring-1 ring-blue-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/80 text-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold leading-tight">{r.label}</span>
+                        {isSelected && (
+                          <span className="h-2 w-2 rounded-full bg-blue-600 ring-2 ring-blue-200" />
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-normal leading-tight mt-1">
+                        {r.desc}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase">Full Name</label>
               <input
