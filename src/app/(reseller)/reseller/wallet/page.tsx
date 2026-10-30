@@ -198,7 +198,14 @@ export default function ResellerWalletPage() {
                     {transactions.map((t: any) => (
                       <div key={t._id} className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 border-b last:border-0 gap-2">
                         <div className="space-y-1">
-                          <p className="text-xs md:text-sm font-medium">{t.description}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs md:text-sm font-medium">{t.description}</p>
+                            {t.type === 'courier_return_loss' && (
+                              <Badge variant="destructive" className="text-[9px] px-1.5 py-0 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 font-semibold">
+                                Return Loss
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs text-muted-foreground">
                             <span>{format(new Date(t.createdAt), 'dd MMM yyyy, hh:mm a')}</span>
                             {/* Admin Payment Details (Trx ID & Paid From Account) */}

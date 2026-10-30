@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const formattedTx = (transactions || []).map((tx: any) => {
-      const isCredit = ['commission_earned', 'refund'].includes(tx.type) || (!['payout_released', 'order_cancelled'].includes(tx.type) && tx.amount > 0);
+      const isCredit = ['commission_earned', 'refund'].includes(tx.type) || (!['payout_released', 'order_cancelled', 'courier_return_loss'].includes(tx.type) && tx.amount > 0);
       const absAmount = Math.abs(tx.amount || 0);
       const runningBalance = tx.balanceAfter !== undefined ? tx.balanceAfter : (tx.resellerId?.walletBalance || 0);
 

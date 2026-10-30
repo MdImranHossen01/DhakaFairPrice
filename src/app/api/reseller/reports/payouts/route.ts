@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
     summaryAgg.forEach((item: any) => {
       if (item._id === 'commission_earned') totalCommissionEarned = item.totalAmount;
       else if (item._id === 'payout_released') totalPayoutReleased = Math.abs(item.totalAmount);
-      else if (item._id === 'adjustment' || item._id === 'order_cancelled') totalAdjustments += item.totalAmount;
+      else if (item._id === 'adjustment' || item._id === 'order_cancelled' || item._id === 'courier_return_loss') totalAdjustments += item.totalAmount;
     });
 
     const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;

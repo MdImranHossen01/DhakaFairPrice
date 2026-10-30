@@ -6,7 +6,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
  */
 export interface IResellerWalletTransaction extends Document {
   resellerId: mongoose.Types.ObjectId;
-  type: 'commission_earned' | 'payout_released' | 'order_cancelled' | 'adjustment' | 'refund';
+  type: 'commission_earned' | 'payout_released' | 'order_cancelled' | 'adjustment' | 'refund' | 'courier_return_loss';
   amount: number;                            // positive = credit, negative = debit
   orderId?: mongoose.Types.ObjectId;         // Related reseller order
   description: string;
@@ -31,7 +31,7 @@ const ResellerWalletTransactionSchema: Schema<IResellerWalletTransaction> = new 
     resellerId: { type: Schema.Types.ObjectId, ref: 'Reseller', required: true },
     type: {
       type: String,
-      enum: ['commission_earned', 'payout_released', 'order_cancelled', 'adjustment', 'refund'],
+      enum: ['commission_earned', 'payout_released', 'order_cancelled', 'adjustment', 'refund', 'courier_return_loss'],
       required: true,
     },
     amount: { type: Number, required: true },

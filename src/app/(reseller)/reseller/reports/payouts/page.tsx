@@ -116,6 +116,7 @@ export default function ResellerPayoutsReportPage() {
               <SelectItem value="payout_released" className="text-xs">Payout Released</SelectItem>
               <SelectItem value="adjustment" className="text-xs">Adjustment</SelectItem>
               <SelectItem value="order_cancelled" className="text-xs">Cancelled Reversal</SelectItem>
+              <SelectItem value="courier_return_loss" className="text-xs">Courier Return Loss</SelectItem>
             </SelectContent>
           </Select>
 
@@ -210,6 +211,8 @@ export default function ResellerPayoutsReportPage() {
                               ? 'Commission'
                               : t.type === 'payout_released'
                               ? 'Payout'
+                              : t.type === 'courier_return_loss'
+                              ? 'Courier Return Loss'
                               : t.type}
                           </span>
                         </td>

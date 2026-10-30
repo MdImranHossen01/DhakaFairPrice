@@ -63,6 +63,8 @@ export interface IResellerOrder extends Document {
   customerNote?: string;
   systemNote?: string;
   shortId?: string;
+  courierReturnLossDeducted?: boolean;
+  courierReturnLossAmount?: number;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -135,6 +137,8 @@ const ResellerOrderSchema: Schema<IResellerOrder> = new Schema(
     customerNote: { type: String, default: '' },
     systemNote: { type: String, default: '' },
     shortId: { type: String, unique: true, sparse: true, index: true },
+    courierReturnLossDeducted: { type: Boolean, default: false },
+    courierReturnLossAmount: { type: Number, default: 0 },
     deletedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }

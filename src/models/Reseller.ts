@@ -120,7 +120,7 @@ const ResellerSchema: Schema<IReseller> = new Schema(
     },
     commissionRate: { type: Number, default: 15, min: 0, max: 100 },
     systemFeePercent: { type: Number, default: 15, min: 0, max: 100 },
-    walletBalance: { type: Number, default: 0, min: 0 },
+    walletBalance: { type: Number, default: 0 },
     pendingBalance: { type: Number, default: 0, min: 0 },
     contact: { type: Object, default: {} },
     pickupAddress: {
