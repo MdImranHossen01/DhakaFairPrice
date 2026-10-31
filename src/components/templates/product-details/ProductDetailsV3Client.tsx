@@ -5,7 +5,10 @@ import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { ShoppingCart, Heart, Share2, Minus, Plus, LayoutDashboard, Settings, Trash2 } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, Minus, Plus, LayoutDashboard, Settings, Trash2, Loader2 } from 'lucide-react';
+import { Suspense } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ReviewsSection from '@/components/storefront/ReviewsSection';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -361,10 +364,35 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                   <p className="text-xs font-bold uppercase tracking-tighter italic">Boutique Atelier_01</p>
                 </div>
               </div>
-              <div
-                className="ProseMirror max-w-none text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: generateHtml(product.description) }}
-              />
+              <Tabs defaultValue="description" className="w-full">
+                <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 mb-6 h-auto">
+                  <TabsTrigger
+                    value="description"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 font-mono font-bold uppercase tracking-wider text-xs text-muted-foreground data-[state=active]:text-foreground"
+                  >
+                    Description
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="reviews"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 font-mono font-bold uppercase tracking-wider text-xs text-muted-foreground data-[state=active]:text-foreground"
+                  >
+                    Reviews ({product.numReviews || 0})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="description" className="animate-in fade-in-50 duration-500">
+                  <div
+                    className="ProseMirror max-w-none text-muted-foreground"
+                    dangerouslySetInnerHTML={{ __html: generateHtml(product.description) }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="reviews" className="animate-in fade-in-50 duration-500">
+                  <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+                    <ReviewsSection productId={product._id} />
+                  </Suspense>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>

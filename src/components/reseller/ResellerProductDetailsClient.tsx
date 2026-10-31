@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ShareDialog from '@/components/storefront/ShareDialog';
 import Swal from 'sweetalert2';
 import ProductVideoThumbnailModal from '@/components/storefront/ProductVideoThumbnailModal';
+import ReviewsSection from '@/components/storefront/ReviewsSection';
 
 const CURRENCY_SYMBOL = '৳';
 
@@ -579,10 +580,10 @@ export default function ResellerProductDetailsClient({
               Description
             </TabsTrigger>
             <TabsTrigger
-              value="delivery"
+              value="reviews"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 md:px-6 py-3 md:py-4 font-bold uppercase tracking-wider text-xs md:text-sm text-muted-foreground data-[state=active]:text-foreground"
             >
-              Delivery
+              Reviews ({product.numReviews || 0})
             </TabsTrigger>
           </TabsList>
 
@@ -597,21 +598,10 @@ export default function ResellerProductDetailsClient({
             )}
           </TabsContent>
 
-          <TabsContent value="delivery" className="animate-in fade-in-50 duration-500">
-            <div className="max-w-md space-y-4 text-sm">
-              <div className="rounded-xl border p-4 space-y-3">
-                <h3 className="font-bold text-base">📦 Delivery Information</h3>
-                <div className="flex justify-between items-center py-2 border-b">
-                  <span className="text-muted-foreground">Inside Dhaka</span>
-                  <span className="font-bold text-primary">{CURRENCY_SYMBOL}{deliveryInside}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-muted-foreground">Outside Dhaka</span>
-                  <span className="font-bold text-primary">{CURRENCY_SYMBOL}{deliveryOutside}</span>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Delivery usually takes 2-5 working days.</p>
-            </div>
+          <TabsContent value="reviews" className="animate-in fade-in-50 duration-500">
+            <Suspense fallback={<div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+              <ReviewsSection productId={product.productId || product._id} />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>
