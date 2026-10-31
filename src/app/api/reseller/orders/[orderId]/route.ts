@@ -503,19 +503,35 @@ export async function PATCH(
             });
           }
 
-          const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
-          await syncResellerCommissionForMotherOrder({
-            motherOrderId: order.motherOrderId,
-            newStatus: status,
-            newPaymentStatus: paymentStatus,
-          });
+          if (order.motherOrderId) {
+            const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
+            await syncResellerCommissionForMotherOrder({
+              motherOrderId: order.motherOrderId,
+              newStatus: status,
+              newPaymentStatus: paymentStatus,
+            });
+          } else if (status === 'Cancelled') {
+            const ResellerWalletTransaction = (await import('@/models/ResellerWalletTransaction')).default;
+            await ResellerWalletTransaction.updateMany(
+              { orderId: order._id, type: 'commission_earned', status: { $ne: 'cancelled' } },
+              { $set: { status: 'cancelled' } }
+            );
+            const pendingAgg = await ResellerWalletTransaction.aggregate([
+              { $match: { resellerId: reseller._id, type: 'commission_earned', status: 'pending' } },
+              { $group: { _id: null, total: { $sum: '$amount' } } }
+            ]);
+            const accuratePending = Math.max(0, pendingAgg[0]?.total || 0);
+            await Reseller.findByIdAndUpdate(reseller._id, { $set: { pendingBalance: accuratePending } });
+          }
 
-          const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
-          const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
-          const shortId = order.motherOrderId.toString().slice(-8).toUpperCase();
-          await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
-          await recalculateLedgerBalance('CASH');
-          await recalculateLedgerBalance('BANK');
+          if (order.motherOrderId) {
+            const { default: LedgerTransaction } = await import('@/models/LedgerTransaction');
+            const { recalculateLedgerBalance } = await import('@/lib/ledgerHelper');
+            const shortId = order.motherOrderId.toString().slice(-8).toUpperCase();
+            await LedgerTransaction.deleteMany({ reference: `ORDER-${shortId}` });
+            await recalculateLedgerBalance('CASH');
+            await recalculateLedgerBalance('BANK');
+          }
         } catch (syncErr) {
           console.error('[Reseller Order Cancel Sync Error]', syncErr);
         }

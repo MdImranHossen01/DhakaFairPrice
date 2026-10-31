@@ -54,14 +54,13 @@ export async function GET(request: NextRequest) {
         for (const ro of resellerOrdersWithMother) {
           const mother = ro.motherOrderId ? motherMap.get(ro.motherOrderId.toString()) : null;
           if (mother && (ro.status !== mother.status || ro.paymentStatus !== mother.paymentStatus)) {
-            const syncUpdate: any = { status: mother.status, paymentStatus: mother.paymentStatus };
-            if (mother.status === 'Cancelled') {
-              syncUpdate.commissionStatus = 'cancelled';
-            } else if (mother.status === 'Delivered' || mother.status === 'Paid') {
-              syncUpdate.commissionStatus = 'cleared';
-            }
+            const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
             updatesToRun.push(
-              ResellerOrder.updateOne({ _id: ro._id }, { $set: syncUpdate })
+              syncResellerCommissionForMotherOrder({
+                motherOrderId: mother._id,
+                newStatus: mother.status,
+                newPaymentStatus: mother.paymentStatus,
+              })
             );
           }
         }

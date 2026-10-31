@@ -49,7 +49,8 @@ export async function syncResellerCommissionForMotherOrder({
     const shouldClear = finalStatus === 'Delivered' || finalStatus === 'Paid' || finalPaymentStatus === 'Paid';
     const isCancelled = finalStatus === 'Cancelled';
 
-    if (isCancelled && currentCommissionStatus !== 'cancelled') {
+    if (isCancelled) {
+      const wasCleared = currentCommissionStatus === 'cleared';
       rOrder.commissionStatus = 'cancelled';
       if (newStatus) rOrder.status = newStatus as any;
       if (newPaymentStatus) rOrder.paymentStatus = newPaymentStatus as any;
@@ -62,21 +63,33 @@ export async function syncResellerCommissionForMotherOrder({
       if (session) txQuery.session(session);
       await txQuery;
 
-      if (commission > 0) {
-        const incUpdate: any = { totalEarnings: -commission };
-        if (currentCommissionStatus === 'cleared') {
-          incUpdate.walletBalance = -commission;
-        } else {
-          incUpdate.pendingBalance = -commission;
-        }
-
+      if (wasCleared && commission > 0) {
         const resUpdate = Reseller.findByIdAndUpdate(
           rOrder.resellerId,
-          { $inc: incUpdate }
+          { $inc: { walletBalance: -commission, totalEarnings: -commission } }
         );
         if (session) resUpdate.session(session);
         await resUpdate;
       }
+
+      // Accurate reconciliation of pendingBalance from active pending transactions
+      const pendingAgg = await ResellerWalletTransaction.aggregate([
+        {
+          $match: {
+            resellerId: rOrder.resellerId,
+            type: 'commission_earned',
+            status: 'pending'
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]);
+      const accuratePending = Math.max(0, pendingAgg[0]?.total || 0);
+      const syncPending = Reseller.findByIdAndUpdate(
+        rOrder.resellerId,
+        { $set: { pendingBalance: accuratePending } }
+      );
+      if (session) syncPending.session(session);
+      await syncPending;
     } else if (shouldClear && currentCommissionStatus === 'pending') {
       rOrder.commissionStatus = 'cleared';
       if (newStatus) rOrder.status = newStatus as any;
