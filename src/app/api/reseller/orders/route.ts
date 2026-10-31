@@ -204,10 +204,39 @@ export async function GET(request: NextRequest) {
         };
       }
 
-      const isOwnProductSale = !supplierPart && !!sellerPart && (motherFee > 0 || Number(order.systemFee) > 0);
+      // Determine if the product was actually uploaded by the logged-in reseller
+      const isActualOwnProduct = (order.items || []).some((item: any) => {
+        const uploader = item.productId?.uploadedBy?._id || item.productId?.uploadedBy;
+        return uploader && uploader.toString() === resellerId.toString();
+      });
 
-      // Fallback calculation for historical orders where motherFee is 0
-      if (motherFee === 0 && supplierPart && sellerPart && sellerPart.amount > 0) {
+      let isOwnProductSale = false;
+
+      if (isActualOwnProduct && !order.shortId?.includes('-F')) {
+        isOwnProductSale = true;
+        // Reseller uploaded their own product: they see their system fee deducted by platform
+      } else if (sellerPart?.isYou) {
+        // Current reseller is the SELLER (Storefront Retailer) selling a sourced product
+        // Confidentiality Rule: Storefront reseller should NEVER see the platform system fee percentage or fee charged to the supplier.
+        // Product Cost to the selling reseller = Base Price + System Fee.
+        if (supplierPart && !supplierPart.isYou) {
+          supplierPart.amount = supplierPart.amount + motherFee;
+          motherFee = 0;
+        } else if (!supplierPart && !isActualOwnProduct) {
+          // Sourced from Mother Catalog
+          const motherProductCost = Math.max(0, (orderValue - deliveryCharge) - (sellerPart?.amount || 0));
+          supplierPart = {
+            name: 'Mother Shop',
+            amount: motherProductCost,
+            isYou: false,
+            status: 'cleared'
+          };
+          motherFee = 0;
+        }
+      }
+
+      // Fallback calculation for historical orders where motherFee is 0 and it's a supplier order
+      if (motherFee === 0 && supplierPart?.isYou && sellerPart && sellerPart.amount > 0) {
         const firstF = fulfillmentRos[0];
         const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
           ? Number((firstF.resellerId as any).systemFeePercent)

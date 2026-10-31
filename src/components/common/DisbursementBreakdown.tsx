@@ -68,7 +68,7 @@ export function DisbursementBreakdown({
             </Badge>
           )}
         </div>
-        {fee > 0 && <span className="text-[11px] text-primary">System Fee: ৳{fee}</span>}
+        {fee > 0 && perspective !== 'reseller' && <span className="text-[11px] text-primary">System Fee: ৳{fee}</span>}
         {del > 0 && <span className="text-[10px] text-muted-foreground">Delivery: ৳{del}</span>}
       </div>
     );
@@ -84,6 +84,21 @@ export function DisbursementBreakdown({
     motherProfit
   } = disbursement;
   const isCard = mode === 'card';
+
+  // Confidentiality Rule: Storefront selling reseller must NEVER see the platform system fee taken from another supplier.
+  // To the selling reseller, Product Cost = Base Price + System Fee.
+  let displaySupplier = supplier;
+  let displayMotherFee = motherFee;
+
+  if (perspective === 'reseller' && seller?.isYou && supplier && !supplier.isYou) {
+    if (displayMotherFee && displayMotherFee > 0) {
+      displaySupplier = {
+        ...supplier,
+        amount: Math.round(supplier.amount + displayMotherFee),
+      };
+      displayMotherFee = 0;
+    }
+  }
 
   return (
     <div className={`flex flex-col gap-1.5 leading-tight rounded-xl border transition-all ${
@@ -102,24 +117,24 @@ export function DisbursementBreakdown({
       )}
 
       {/* 1. Supplier / Product Owner */}
-      {supplier && (
+      {displaySupplier && (
         <div className={`flex justify-between items-center px-2 py-1 rounded-md transition-colors ${
-          supplier.isYou
+          displaySupplier.isYou
             ? 'bg-emerald-100/90 dark:bg-emerald-950/70 border border-emerald-300/80 dark:border-emerald-800'
             : 'hover:bg-slate-100/60 dark:hover:bg-zinc-800/40'
         }`}>
-          <span className={`flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 ${!isCard ? 'truncate max-w-[115px]' : ''}`} title={supplier.name}>
+          <span className={`flex items-center gap-1.5 text-slate-700 dark:text-zinc-300 ${!isCard ? 'truncate max-w-[115px]' : ''}`} title={displaySupplier.name}>
             <span>📦</span>
-            <span className="font-semibold truncate">{supplier.name}</span>
-            {supplier.isYou && (
+            <span className="font-semibold truncate">{displaySupplier.name}</span>
+            {displaySupplier.isYou && (
               <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full">You</span>
             )}
-            {!supplier.isYou && perspective === 'reseller' && (
+            {!displaySupplier.isYou && perspective === 'reseller' && (
               <span className="text-[9px] bg-slate-200/80 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-medium px-1 py-0.2 rounded">Product Cost</span>
             )}
           </span>
-          <span className={`font-mono font-bold ${supplier.isYou ? 'text-emerald-700 dark:text-emerald-300 font-black' : 'text-slate-800 dark:text-zinc-200'}`}>
-            ৳{supplier.amount}
+          <span className={`font-mono font-bold ${displaySupplier.isYou ? 'text-emerald-700 dark:text-emerald-300 font-black' : 'text-slate-800 dark:text-zinc-200'}`}>
+            ৳{displaySupplier.amount}
           </span>
         </div>
       )}
@@ -147,14 +162,14 @@ export function DisbursementBreakdown({
         </div>
       )}
 
-      {/* 3. System Fee - Mother Shop Platform Revenue */}
-      {(motherFee !== undefined && motherFee !== null) && (
+      {/* 3. System Fee - Platform Revenue (Only shown if fee > 0) */}
+      {(displayMotherFee !== undefined && displayMotherFee !== null && displayMotherFee > 0) && (
         <div className="flex justify-between items-center px-2 py-0.5 text-slate-600 dark:text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span>⚙️</span>
             <span>System Fee:</span>
           </span>
-          <span className="font-mono font-bold text-primary">৳{motherFee}</span>
+          <span className="font-mono font-bold text-primary">৳{displayMotherFee}</span>
         </div>
       )}
 
