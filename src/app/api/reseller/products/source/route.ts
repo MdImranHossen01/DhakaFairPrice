@@ -4,7 +4,33 @@ import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
+import GlobalSettings from '@/models/GlobalSettings';
 import { addProductToReseller } from '@/lib/syncEngine';
+
+function parseWhatsAppInfo(targetNumber: string) {
+  let sellerWhatsAppNumber = '';
+  let sellerWhatsAppUrl = '';
+  if (!targetNumber) return { sellerWhatsAppNumber, sellerWhatsAppUrl };
+
+  const trimmed = targetNumber.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.includes('wa.me/')) {
+    sellerWhatsAppUrl = trimmed;
+    const digits = trimmed.replace(/\D/g, '');
+    sellerWhatsAppNumber = digits.length >= 10
+      ? (digits.startsWith('880') ? '0' + digits.slice(3) : (digits.startsWith('88') ? '0' + digits.slice(2) : digits))
+      : trimmed;
+  } else {
+    sellerWhatsAppNumber = trimmed;
+    let digits = trimmed.replace(/\D/g, '');
+    if (digits.startsWith('01') && digits.length === 11) {
+      digits = '88' + digits;
+    } else if (!digits.startsWith('880') && digits.length === 10) {
+      digits = '880' + digits;
+    }
+    sellerWhatsAppUrl = `https://wa.me/${digits}`;
+  }
+  return { sellerWhatsAppNumber, sellerWhatsAppUrl };
+}
 
 async function getResellerInfo(userId: string) {
   await dbConnect();
@@ -20,7 +46,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const currentReseller = await getResellerInfo(session.user.id);
+    const [currentReseller, globalSettings] = await Promise.all([
+      getResellerInfo(session.user.id),
+      GlobalSettings.findOne({}).select('contact socialLinks brandName').lean(),
+    ]);
+
     if (!currentReseller) {
       return NextResponse.json({ error: 'Reseller profile not found' }, { status: 404 });
     }
@@ -138,26 +168,16 @@ export async function GET(request: NextRequest) {
           const sourceReseller = product.uploadedBy;
           const rawWhatsApp = sourceReseller?.socialLinks?.whatsapp?.trim() || '';
           const rawPhone = sourceReseller?.contact?.phone?.trim() || sourceReseller?.pickupAddress?.phone?.trim() || '';
-          const targetNumber = rawWhatsApp || rawPhone;
-
-          if (targetNumber) {
-            if (targetNumber.startsWith('http://') || targetNumber.startsWith('https://') || targetNumber.includes('wa.me/')) {
-              sellerWhatsAppUrl = targetNumber;
-              const digits = targetNumber.replace(/\D/g, '');
-              sellerWhatsAppNumber = digits.length >= 10
-                ? (digits.startsWith('880') ? '0' + digits.slice(3) : (digits.startsWith('88') ? '0' + digits.slice(2) : digits))
-                : targetNumber;
-            } else {
-              sellerWhatsAppNumber = targetNumber;
-              let digits = targetNumber.replace(/\D/g, '');
-              if (digits.startsWith('01') && digits.length === 11) {
-                digits = '88' + digits;
-              } else if (!digits.startsWith('880') && digits.length === 10) {
-                digits = '880' + digits;
-              }
-              sellerWhatsAppUrl = `https://wa.me/${digits}`;
-            }
-          }
+          const parsed = parseWhatsAppInfo(rawWhatsApp || rawPhone);
+          sellerWhatsAppNumber = parsed.sellerWhatsAppNumber;
+          sellerWhatsAppUrl = parsed.sellerWhatsAppUrl;
+        } else {
+          // Main Store / Mother Shop product
+          const rawWhatsApp = (globalSettings as any)?.socialLinks?.whatsapp?.trim() || '';
+          const rawPhone = (globalSettings as any)?.contact?.phone?.trim() || '';
+          const parsed = parseWhatsAppInfo(rawWhatsApp || rawPhone);
+          sellerWhatsAppNumber = parsed.sellerWhatsAppNumber;
+          sellerWhatsAppUrl = parsed.sellerWhatsAppUrl;
         }
 
         return {
