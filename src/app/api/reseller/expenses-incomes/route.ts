@@ -24,9 +24,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Reseller profile not found' }, { status: 404 });
     }
 
-    // Auto-sync any cleared commission payout withdrawals to Expenses & Incomes
-    const { syncResellerPayoutsToExpenses } = await import('@/lib/ledgerHelper');
+    // Auto-sync any cleared commission payout withdrawals and courier return losses to Expenses & Incomes
+    const { syncResellerPayoutsToExpenses, syncResellerCourierReturnLosses } = await import('@/lib/ledgerHelper');
     await syncResellerPayoutsToExpenses(reseller._id);
+    await syncResellerCourierReturnLosses(reseller._id);
 
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');

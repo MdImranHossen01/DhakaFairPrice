@@ -210,6 +210,15 @@ export async function syncResellerCommissionForMotherOrder({
               motherOrder.courierReturnLossAmount = returnFee;
               await motherOrder.save({ session });
             }
+
+            // Sync Reseller Expenses & Ledger immediately
+            try {
+              const { syncResellerCourierReturnLosses, syncOrdersToLedger } = await import('@/lib/ledgerHelper');
+              await syncResellerCourierReturnLosses(rOrder.resellerId);
+              await syncOrdersToLedger();
+            } catch (syncLossErr) {
+              console.error('[Reseller Return Loss Ledger Sync Error]', syncLossErr);
+            }
           }
         }
       }
@@ -248,6 +257,15 @@ export async function syncResellerCommissionForMotherOrder({
         motherOrder.courierReturnLossDeducted = false;
         motherOrder.courierReturnLossAmount = 0;
         await motherOrder.save({ session });
+      }
+
+      // Sync Reseller Expenses & Ledger Reversal
+      try {
+        const { syncResellerCourierReturnLosses, syncOrdersToLedger } = await import('@/lib/ledgerHelper');
+        await syncResellerCourierReturnLosses(rOrder.resellerId);
+        await syncOrdersToLedger();
+      } catch (syncLossErr) {
+        console.error('[Reseller Return Loss Ledger Reversal Sync Error]', syncLossErr);
       }
     }
   }

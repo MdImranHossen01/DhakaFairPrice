@@ -876,11 +876,72 @@ export async function syncOrdersToLedger() {
       }
     }
 
-    // 3. Clean AR, Payment, and Expense transactions ONLY for cancelled/deleted orders that were NEVER Paid and NEVER Delivered
+    // 2.5 Handle Cancelled Orders with Courier Return Losses (Mother Shop pays courier, recovered from Reseller)
+    const returnLossOrders = await Order.find({
+      courierReturnLossDeducted: true,
+      deletedAt: null
+    }).lean();
+
+    for (const ro of returnLossOrders) {
+      if (!ro.shortId) continue;
+      const shipFee = Number(ro.courierReturnLossAmount) || Number(ro.courierCharge) || Number(ro.deliveryCharge) || 120;
+      if (shipFee <= 0) continue;
+
+      const shippingRef = `SHIPPING-${ro.shortId}`;
+      const recRef = `REC-SHIPPING-${ro.shortId}`;
+      const txDate = ro.updatedAt ? new Date(ro.updatedAt) : (ro.createdAt ? new Date(ro.createdAt) : new Date());
+
+      // 1. Mother Shop Courier Delivery Charge (Expense: Paid to Courier)
+      const shipTx = await LedgerTransaction.findOne({ reference: shippingRef });
+      const shipDesc = `Courier delivery charge deducted for Order #${ro.shortId}`;
+      if (!shipTx) {
+        await logLedgerTransaction('BANK', 'credit', shipFee, shipDesc, shippingRef, txDate);
+      }
+
+      const shipExp = await Expense.findOne({ reference: shippingRef });
+      if (!shipExp) {
+        await Expense.create({
+          title: `Courier Delivery Charge #${ro.shortId}`,
+          amount: shipFee,
+          category: 'Courier & Shipping',
+          type: 'expense',
+          paymentAccountId: bankAccount._id,
+          date: txDate,
+          description: `Courier shipping fee deducted for Order #${ro.shortId}`,
+          reference: shippingRef,
+          resellerId: null
+        });
+      }
+
+      // 2. Mother Shop Recovery from Reseller (Income: Recovered from Reseller Wallet)
+      const recTx = await LedgerTransaction.findOne({ reference: recRef });
+      const recDesc = `Courier return loss recovered from Reseller for Order #${ro.shortId}`;
+      if (!recTx) {
+        await logLedgerTransaction('BANK', 'debit', shipFee, recDesc, recRef, new Date(txDate.getTime() + 1000));
+      }
+
+      const recExp = await Expense.findOne({ reference: recRef });
+      if (!recExp) {
+        await Expense.create({
+          title: `Courier Return Loss Recovered from Reseller #${ro.shortId}`,
+          amount: shipFee,
+          category: 'Other Income',
+          type: 'income',
+          paymentAccountId: bankAccount._id,
+          date: new Date(txDate.getTime() + 1000),
+          description: `Courier return loss recovered from Reseller for Cancelled Order #${ro.shortId}`,
+          reference: recRef,
+          resellerId: null
+        });
+      }
+    }
+
+    // 3. Clean AR, Payment, and Expense transactions ONLY for cancelled/deleted orders that were NEVER Paid, NEVER Delivered, and NO courier return loss
     const invalidOrders = await Order.find({
       $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }],
       paymentStatus: { $ne: 'Paid' },
-      status: { $ne: 'Delivered' }
+      status: { $ne: 'Delivered' },
+      courierReturnLossDeducted: { $ne: true }
     } as any).select('shortId').lean();
 
     const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter(Boolean);
@@ -1128,9 +1189,9 @@ export async function cleanOrphanLedgerTransactions() {
         }
       }
 
-      // 3. Check Order references (e.g. ORDER-XXXX, ORD-XXXX, SHIPPING-XXXX, DELIVERY-XXXX)
-      if (tx.reference && (tx.reference.startsWith('ORDER-') || tx.reference.startsWith('ORD-') || tx.reference.startsWith('SHIPPING-') || tx.reference.startsWith('DELIVERY-'))) {
-        const shortId = tx.reference.replace(/^(ORD(ER)?|SHIPPING|DELIVERY)-/i, '').trim().toUpperCase();
+      // 3. Check Order references (e.g. ORDER-XXXX, ORD-XXXX, SHIPPING-XXXX, DELIVERY-XXXX, REC-SHIPPING-XXXX)
+      if (tx.reference && (tx.reference.startsWith('ORDER-') || tx.reference.startsWith('ORD-') || tx.reference.startsWith('SHIPPING-') || tx.reference.startsWith('DELIVERY-') || tx.reference.startsWith('REC-SHIPPING-'))) {
+        const shortId = tx.reference.replace(/^(ORD(ER)?|SHIPPING|DELIVERY|REC-SHIPPING)-/i, '').trim().toUpperCase();
         if (!validOrderShortIds.has(shortId)) {
           await LedgerTransaction.findByIdAndDelete(tx._id);
           deletedCount++;
@@ -1537,6 +1598,9 @@ export async function syncResellerOrdersToLedger(resellerId?: any) {
         });
       }
 
+      // Sync courier return losses (Expenses & Accounts Payable) for this reseller
+      await syncResellerCourierReturnLosses(rId);
+
       // Recalculate running balances for this reseller's accounts
       await recalculateLedgerBalanceByAccountId(arAccount._id);
       if (bankAccount) await recalculateLedgerBalanceByAccountId(bankAccount._id);
@@ -1544,6 +1608,143 @@ export async function syncResellerOrdersToLedger(resellerId?: any) {
     }
   } catch (err) {
     console.error('Error syncing reseller orders to ledger:', err);
+  }
+}
+
+/**
+ * Synchronize courier return delivery losses to reseller Expenses and Accounts Payable ledger
+ */
+export async function syncResellerCourierReturnLosses(resellerId?: any) {
+  try {
+    await connectToDatabase();
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const Reseller = (await import('@/models/Reseller')).default;
+    const Expense = (await import('@/models/Expense')).default;
+    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+    const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+
+    const resellerQuery: any = {};
+    if (resellerId) resellerQuery._id = resellerId;
+
+    const resellers = await Reseller.find(resellerQuery).select('_id').lean();
+
+    for (const r of resellers) {
+      const rId = r._id;
+      await seedResellerLedgerAccounts(rId);
+
+      const apAccount = await LedgerAccount.findOne({ resellerId: rId, code: 'AP' });
+      if (!apAccount) continue;
+
+      // Find all ResellerOrders where courierReturnLossDeducted is true
+      const lossOrders = await ResellerOrder.find({
+        resellerId: rId,
+        courierReturnLossDeducted: true,
+        deletedAt: null,
+      }).lean();
+
+      const validOrderRefs = new Set<string>();
+
+      for (const ro of lossOrders) {
+        if (!ro.shortId) continue;
+        const lossAmount = Number(ro.courierReturnLossAmount) || Number(ro.courierCharge) || Number(ro.deliveryCharge) || 120;
+        if (lossAmount <= 0) continue;
+
+        const ref = `RET-LOSS-${ro.shortId}`;
+        const apRef = `AP-RET-LOSS-${ro.shortId}`;
+        validOrderRefs.add(ro.shortId);
+
+        const txDate = ro.updatedAt ? new Date(ro.updatedAt) : (ro.createdAt ? new Date(ro.createdAt) : new Date());
+
+        // 1. Sync to Expense (for Expenses & Incomes page)
+        const existingExp = await Expense.findOne({ resellerId: rId, reference: ref });
+        if (!existingExp) {
+          await Expense.create({
+            title: `Courier Return Delivery Loss #${ro.shortId}`,
+            amount: lossAmount,
+            category: 'Courier & Shipping',
+            type: 'expense',
+            paymentAccountId: apAccount._id,
+            resellerId: rId,
+            date: txDate,
+            description: `Courier return delivery loss for Cancelled Order #${ro.shortId}`,
+            reference: ref,
+          });
+        } else {
+          let expChanged = false;
+          if (Math.abs(existingExp.amount - lossAmount) > 0.01) {
+            existingExp.amount = lossAmount;
+            expChanged = true;
+          }
+          if (existingExp.paymentAccountId?.toString() !== apAccount._id.toString()) {
+            existingExp.paymentAccountId = apAccount._id;
+            expChanged = true;
+          }
+          if (expChanged) await existingExp.save();
+        }
+
+        // 2. Sync to LedgerTransaction in Accounts Payable (for Ledger & Accounts pages)
+        const apTx = await LedgerTransaction.findOne({
+          account: apAccount._id,
+          resellerId: rId,
+          reference: apRef,
+        });
+
+        const apDesc = `Courier Return Delivery Loss Payable for Order #${ro.shortId}`;
+
+        if (!apTx) {
+          await LedgerTransaction.create({
+            account: apAccount._id,
+            resellerId: rId,
+            date: txDate,
+            description: apDesc,
+            type: 'credit',
+            amount: lossAmount,
+            reference: apRef,
+            balanceAfter: 0,
+          });
+        } else {
+          let apChanged = false;
+          if (Math.abs(apTx.amount - lossAmount) > 0.01) {
+            apTx.amount = lossAmount;
+            apChanged = true;
+          }
+          if (apTx.description !== apDesc) {
+            apTx.description = apDesc;
+            apChanged = true;
+          }
+          if (apChanged) await apTx.save();
+        }
+      }
+
+      // Clean up any stale return loss entries that are no longer valid
+      const staleExpenses = await Expense.find({
+        resellerId: rId,
+        reference: { $regex: '^RET-LOSS-' }
+      }).lean();
+
+      for (const se of staleExpenses) {
+        const orderShortId = (se.reference || '').replace(/^RET-LOSS-/, '');
+        if (!validOrderRefs.has(orderShortId)) {
+          await Expense.findByIdAndDelete(se._id);
+        }
+      }
+
+      const staleApTxs = await LedgerTransaction.find({
+        resellerId: rId,
+        reference: { $regex: '^AP-RET-LOSS-' }
+      }).lean();
+
+      for (const st of staleApTxs) {
+        const orderShortId = (st.reference || '').replace(/^AP-RET-LOSS-/, '');
+        if (!validOrderRefs.has(orderShortId)) {
+          await LedgerTransaction.findByIdAndDelete(st._id);
+        }
+      }
+
+      await recalculateLedgerBalanceByAccountId(apAccount._id);
+    }
+  } catch (err) {
+    console.error('[Ledger] Error syncing reseller courier return losses:', err);
   }
 }
 
