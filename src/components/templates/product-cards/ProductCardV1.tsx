@@ -328,7 +328,7 @@ export default function ProductCardV1({ product: initialProduct, isFlashSale, pr
             <span className="text-sm sm:text-[16px] font-black text-primary">
               Tk {Math.round(product.salePrice ?? product.price ?? 0).toLocaleString()}
             </span>
-            {product.salePrice != null && product.price != null && product.salePrice !== product.price && (
+            {product.salePrice != null && product.price != null && product.price > product.salePrice && (
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through decoration-primary/20">
                 Tk {Math.round(product.price ?? 0).toLocaleString()}
               </span>

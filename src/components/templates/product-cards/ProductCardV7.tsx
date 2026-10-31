@@ -133,7 +133,7 @@ export default function ProductCardV7({ product: initialProduct, isFlashSale, pr
         </Link>
 
         <div className="flex items-center gap-2">
-          {product.salePrice ? (
+          {product.salePrice && product.price && product.price > product.salePrice ? (
             <>
               <span className="text-xs sm:text-sm font-black text-foreground">Tk {Math.round(product.salePrice).toLocaleString()}</span>
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through font-normal">Tk {Math.round(product.price).toLocaleString()}</span>

@@ -170,13 +170,25 @@ export default async function ResellerStorePage({ params }: Props) {
     const finalPrice = typeof rp.retailPrice === 'number' && !isNaN(rp.retailPrice)
       ? rp.retailPrice
       : (typeof parent.price === 'number' ? parent.price : 0);
-    const regularPrice = typeof parent.price === 'number' && parent.price > 0
-      ? parent.price
-      : (typeof rp.motherPrice === 'number' && rp.motherPrice > 0 ? rp.motherPrice : finalPrice);
 
     // isOwnProduct: uploaded directly by this reseller
-    const isOwnProduct = parent.uploadedBy &&
-      parent.uploadedBy.toString() === reseller._id.toString();
+    const isOwnProduct = Boolean(parent.uploadedBy &&
+      parent.uploadedBy.toString() === reseller._id.toString());
+
+    let regularPrice = finalPrice;
+    let salePrice: number | undefined = undefined;
+
+    if (isOwnProduct) {
+      if (typeof parent.price === 'number' && typeof parent.salePrice === 'number' && parent.price > parent.salePrice) {
+        regularPrice = parent.price;
+        salePrice = parent.salePrice;
+      }
+    } else if (!parent.uploadedBy) {
+      if (typeof parent.price === 'number' && parent.price > finalPrice && typeof parent.salePrice === 'number') {
+        regularPrice = parent.price;
+        salePrice = finalPrice;
+      }
+    }
 
     // Merge parent variants with reseller's custom variant pricing
     const parentVariants = Array.isArray(parent.variants) ? parent.variants : [];
@@ -188,10 +200,25 @@ export default async function ResellerStorePage({ params }: Props) {
         String(rv.size || '').trim().toLowerCase() === String(v.size || '').trim().toLowerCase()
       );
       const varRetailPrice = match?.retailPrice || (idx === 0 ? finalPrice : (v.price || finalPrice));
+      let varRegularPrice = varRetailPrice;
+      let varSalePrice: number | undefined = undefined;
+
+      if (isOwnProduct) {
+        if (typeof v.price === 'number' && typeof v.salePrice === 'number' && v.price > v.salePrice) {
+          varRegularPrice = v.price;
+          varSalePrice = v.salePrice;
+        }
+      } else if (!parent.uploadedBy) {
+        if (typeof v.price === 'number' && v.price > varRetailPrice && typeof v.salePrice === 'number') {
+          varRegularPrice = v.price;
+          varSalePrice = varRetailPrice;
+        }
+      }
+
       return {
         ...v,
-        price: regularPrice || varRetailPrice,
-        salePrice: varRetailPrice,
+        price: varRegularPrice,
+        salePrice: varSalePrice,
         retailPrice: varRetailPrice,
       };
     });
@@ -202,7 +229,7 @@ export default async function ResellerStorePage({ params }: Props) {
       name: rp.name || parent.name || 'Product',
       slug: rp.slug || parent.slug,
       price: regularPrice,
-      salePrice: finalPrice !== regularPrice ? finalPrice : undefined,
+      salePrice: salePrice,
       retailPrice: rp.retailPrice,
       uploadedBy: parent.uploadedBy,
       isOwnProduct,

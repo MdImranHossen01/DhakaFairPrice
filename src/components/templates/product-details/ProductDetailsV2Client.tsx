@@ -433,7 +433,7 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
 
           {/* Price */}
           <div className="flex items-center gap-2 pt-2">
-            {displaySalePrice && displaySalePrice !== displayPrice ? (
+            {displaySalePrice && displayPrice > displaySalePrice ? (
               <>
                 <span className="text-base sm:text-lg font-medium text-foreground">Tk {Math.round(displaySalePrice).toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground line-through font-normal">Tk {Math.round(displayPrice ?? 0).toLocaleString()}</span>

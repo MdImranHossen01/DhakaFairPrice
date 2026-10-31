@@ -140,7 +140,7 @@ export function QuickAddModal({ product, isOpen, onClose }: QuickAddModalProps) 
               <span className="font-bold text-primary">
                 ৳{Math.round(activeVariant?.salePrice ?? activeVariant?.price ?? product.salePrice ?? product.price)}
               </span>
-              {(activeVariant?.salePrice ?? product.salePrice) != null && (
+              {(activeVariant?.salePrice ?? product.salePrice) != null && (activeVariant?.price ?? product.price) != null && (activeVariant?.price ?? product.price) > (activeVariant?.salePrice ?? product.salePrice) && (
                 <span className="text-xs line-through text-muted-foreground">
                   ৳{Math.round(activeVariant?.price ?? product.price)}
                 </span>

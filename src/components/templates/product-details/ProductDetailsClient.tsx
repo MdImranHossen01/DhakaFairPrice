@@ -582,7 +582,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
             <span className="text-3xl font-extrabold text-primary">
               {CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}
             </span>
-            {displaySalePrice && displaySalePrice !== displayPrice && (
+            {displaySalePrice && displayPrice > displaySalePrice && (
               <span className="text-xl text-muted-foreground line-through font-medium">
                 {CURRENCY_SYMBOL}{Math.round(displayPrice)}
               </span>

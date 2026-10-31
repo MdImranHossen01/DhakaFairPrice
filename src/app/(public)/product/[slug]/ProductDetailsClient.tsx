@@ -414,7 +414,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
             <span className="text-3xl font-extrabold text-primary">
               ৳{Math.round(displaySalePrice || displayPrice)}
             </span>
-            {displaySalePrice && displaySalePrice !== displayPrice && (
+            {displaySalePrice && displayPrice > displaySalePrice && (
               <span className="text-xl text-muted-foreground line-through font-medium">
                 ৳{Math.round(displayPrice)}
               </span>

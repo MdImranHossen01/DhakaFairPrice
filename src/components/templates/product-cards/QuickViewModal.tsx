@@ -273,7 +273,7 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
               <span className="text-3xl font-bold text-primary">
                 ৳{Math.round(displaySalePrice || displayPrice)}
               </span>
-              {displaySalePrice != null && (
+              {displaySalePrice != null && displayPrice > displaySalePrice && (
                 <span className="text-lg line-through text-gray-400">
                   ৳{Math.round(displayPrice)}
                 </span>

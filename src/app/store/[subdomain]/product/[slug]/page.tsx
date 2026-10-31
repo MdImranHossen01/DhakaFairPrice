@@ -172,10 +172,38 @@ export default async function ResellerProductPage({ params, searchParams }: Prop
     notFound();
   }
 
-  // Format product to match the shape expected by ResellerProductDetailsClient
-  const regularPrice = typeof parent.price === 'number' && parent.price > 0
-    ? parent.price
-    : (typeof productDoc.motherPrice === 'number' && productDoc.motherPrice > 0 ? productDoc.motherPrice : productDoc.retailPrice);
+  // isOwnProduct: uploaded directly by this reseller
+  const isOwnProduct = Boolean(parent.uploadedBy && parent.uploadedBy.toString() === reseller._id.toString());
+
+  // Determine regular vs sale pricing
+  // For sourced products (from another reseller or mother catalog without explicit discount),
+  // NEVER use the supplier's personal retail price as regularPrice or strikethrough!
+  let regularPrice = productDoc.retailPrice;
+  let salePrice: number | undefined = undefined;
+
+  if (isOwnProduct) {
+    if (typeof parent.price === 'number' && typeof parent.salePrice === 'number' && parent.price > parent.salePrice) {
+      regularPrice = parent.price;
+      salePrice = parent.salePrice;
+    } else {
+      regularPrice = productDoc.retailPrice || (typeof parent.price === 'number' ? parent.price : 0);
+      salePrice = undefined;
+    }
+  } else if (!parent.uploadedBy) {
+    // Mother catalog item: only show strikethrough if mother price was genuinely higher than reseller selling price
+    if (typeof parent.price === 'number' && parent.price > productDoc.retailPrice && typeof parent.salePrice === 'number') {
+      regularPrice = parent.price;
+      salePrice = productDoc.retailPrice;
+    } else {
+      regularPrice = productDoc.retailPrice;
+      salePrice = undefined;
+    }
+  } else {
+    // Sourced from another reseller (e.g. B2B supplier reseller):
+    // The reseller's selling price is cleanly shown with no foreign retail price or fake strikethrough
+    regularPrice = productDoc.retailPrice;
+    salePrice = undefined;
+  }
 
   // Merge parent variants with reseller's custom variant pricing
   const parentVariants = Array.isArray(parent.variants) ? parent.variants : [];
@@ -187,10 +215,26 @@ export default async function ResellerProductPage({ params, searchParams }: Prop
       String(rv.size || '').trim().toLowerCase() === String(v.size || '').trim().toLowerCase()
     );
     const varRetailPrice = match?.retailPrice || (idx === 0 ? productDoc.retailPrice : (v.price || productDoc.retailPrice));
+    
+    let varRegularPrice = varRetailPrice;
+    let varSalePrice: number | undefined = undefined;
+
+    if (isOwnProduct) {
+      if (typeof v.price === 'number' && typeof v.salePrice === 'number' && v.price > v.salePrice) {
+        varRegularPrice = v.price;
+        varSalePrice = v.salePrice;
+      }
+    } else if (!parent.uploadedBy) {
+      if (typeof v.price === 'number' && v.price > varRetailPrice && typeof v.salePrice === 'number') {
+        varRegularPrice = v.price;
+        varSalePrice = varRetailPrice;
+      }
+    }
+
     return {
       ...v,
-      price: regularPrice || varRetailPrice,
-      salePrice: varRetailPrice,
+      price: varRegularPrice,
+      salePrice: varSalePrice,
       retailPrice: varRetailPrice,
     };
   });
@@ -202,8 +246,9 @@ export default async function ResellerProductPage({ params, searchParams }: Prop
     slug: productDoc.slug || parent.slug,
     retailPrice: productDoc.retailPrice,
     price: regularPrice,
-    salePrice: productDoc.retailPrice,
+    salePrice: salePrice,
     uploadedBy: parent.uploadedBy,
+    isOwnProduct,
     images: productDoc.images?.length > 0 ? productDoc.images : parent.images || [],
     description: parent.description,
     categories: parent.categories || [],

@@ -256,7 +256,7 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                   <span className="text-[8px] font-mono text-muted-foreground uppercase mb-1">Base_Val</span>
                   <span className="text-4xl font-black">৳{Math.round(displaySalePrice || displayPrice)}</span>
                 </div>
-                {displaySalePrice && displaySalePrice !== displayPrice && (
+                {displaySalePrice && displayPrice > displaySalePrice && (
                   <div className="flex flex-col">
                     <span className="text-[8px] font-mono text-muted-foreground uppercase mb-1">Prev_Val</span>
                     <span className="text-2xl font-bold text-muted-foreground line-through opacity-30">৳{Math.round(displayPrice)}</span>

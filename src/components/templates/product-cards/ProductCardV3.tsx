@@ -294,7 +294,7 @@ export default function ProductCardV3({ product: initialProduct, isFlashSale }: 
               <span className="text-lg md:text-xl font-black text-primary">
                 ৳{Math.round(product.salePrice ?? product.price ?? 0).toLocaleString()}
               </span>
-              {product.salePrice != null && product.price != null && product.salePrice !== product.price && (
+              {product.salePrice != null && product.price != null && product.price > product.salePrice && (
                 <span className="text-xs text-muted-foreground line-through opacity-60">
                   ৳{Math.round(product.price ?? 0).toLocaleString()}
                 </span>

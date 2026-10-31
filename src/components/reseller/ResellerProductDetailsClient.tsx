@@ -140,8 +140,8 @@ export default function ResellerProductDetailsClient({
     ? (currentVariant?.price ?? currentVariant?.retailPrice ?? product.retailPrice ?? product.price ?? 0)
     : (product.price ?? product.retailPrice ?? 0);
   const displaySalePrice = hasVariants
-    ? (currentVariant?.retailPrice ?? currentVariant?.salePrice ?? undefined)
-    : (product.salePrice != null && product.salePrice !== product.price ? product.salePrice : undefined);
+    ? (currentVariant?.salePrice != null && currentVariant?.price != null && currentVariant.price > currentVariant.salePrice ? currentVariant.salePrice : undefined)
+    : (product.salePrice != null && product.price != null && product.price > product.salePrice ? product.salePrice : undefined);
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const discount = (displayPrice > 0 && displaySalePrice && displaySalePrice < displayPrice)
@@ -394,9 +394,9 @@ export default function ResellerProductDetailsClient({
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-4">
             <span className="text-3xl font-extrabold text-primary">
-              {CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}
+              {CURRENCY_SYMBOL}{Math.round(displaySalePrice ?? displayPrice)}
             </span>
-            {displaySalePrice && displaySalePrice !== displayPrice && (
+            {displaySalePrice && displayPrice > displaySalePrice && (
               <span className="text-xl text-muted-foreground line-through font-medium">
                 {CURRENCY_SYMBOL}{Math.round(displayPrice)}
               </span>
