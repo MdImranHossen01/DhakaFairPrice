@@ -380,13 +380,19 @@ function SourceProductsContent() {
                   className="bg-card border rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow group"
                 >
                   {/* Image */}
-                  <div className="aspect-[4/3] bg-muted relative w-full overflow-hidden border-b">
+                  <a
+                    href={product.storefrontUrl || `/product/${product.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="aspect-[4/3] bg-muted relative w-full overflow-hidden border-b block group/img"
+                    title={`View ${product.name}`}
+                  >
                     {product.images?.[0] ? (
                       <Image
                         src={product.images[0]}
                         alt={product.name}
                         fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="object-cover group-hover/img:scale-105 group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <Package className="h-10 w-10 absolute inset-0 m-auto text-muted-foreground" />
@@ -413,7 +419,7 @@ function SourceProductsContent() {
                         <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                       </div>
                     )}
-                  </div>
+                  </a>
 
                   {/* Info */}
                   <div className="p-2.5 md:p-3 flex flex-col flex-1 gap-1.5">
@@ -425,7 +431,15 @@ function SourceProductsContent() {
                         {isAdmin ? (process.env.NEXT_PUBLIC_STORE_NAME || 'Main Store') : resellerStore}
                       </span>
                     </div>
-                    <p className="text-xs md:text-sm font-bold line-clamp-2 leading-snug">{product.name}</p>
+                    <a
+                      href={product.storefrontUrl || `/product/${product.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs md:text-sm font-bold line-clamp-2 leading-snug hover:text-primary hover:underline transition-colors"
+                      title="View product details"
+                    >
+                      {product.name}
+                    </a>
                     <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
                       <span>SKU: {product.sku || '-'}</span>
                       <div className="flex items-center gap-1">
@@ -518,7 +532,15 @@ function SourceProductsContent() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-sm line-clamp-1">{selectedProduct.name}</p>
+                  <a
+                    href={selectedProduct.storefrontUrl || `/product/${selectedProduct.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-sm line-clamp-1 hover:text-primary hover:underline transition-colors block"
+                    title="View product details"
+                  >
+                    {selectedProduct.name}
+                  </a>
                   <p className="text-[11px] text-muted-foreground font-mono">SKU: {selectedProduct.sku || '-'}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Badge className={`text-[9px] ${selectedProduct.sourceType === 'admin' ? 'bg-blue-600' : 'bg-purple-600'}`}>

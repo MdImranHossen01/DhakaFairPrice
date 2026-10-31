@@ -6,10 +6,10 @@ import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
 import { addProductToReseller } from '@/lib/syncEngine';
 
-async function getResellerId(userId: string) {
+async function getResellerInfo(userId: string) {
   await dbConnect();
-  const reseller = await Reseller.findOne({ userId });
-  return reseller?._id || null;
+  const reseller = await Reseller.findOne({ userId }).select('_id subdomain customDomain storeName').lean();
+  return reseller || null;
 }
 
 // GET: Fetch products available for sourcing (Admin or other Resellers' shared products)
@@ -20,10 +20,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const resellerId = await getResellerId(session.user.id);
-    if (!resellerId) {
+    const currentReseller = await getResellerInfo(session.user.id);
+    if (!currentReseller) {
       return NextResponse.json({ error: 'Reseller profile not found' }, { status: 404 });
     }
+    const resellerId = currentReseller._id;
 
     const searchParams = request.nextUrl.searchParams;
     let page = parseInt(searchParams.get('page') || '1', 10);
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
       const [products, total] = await Promise.all([
         Product.find(query)
           .populate('categories', 'name slug')
-          .populate('uploadedBy', 'storeName subdomain logoUrl')
+          .populate('uploadedBy', 'storeName subdomain customDomain logoUrl')
           .sort(sortOption)
           .skip((page - 1) * limit)
           .limit(limit)
@@ -97,29 +98,56 @@ export async function GET(request: NextRequest) {
 
       const sourcedMap = new Map(sourced.map((s) => [s.productId.toString(), s]));
 
-        const mappedProducts = products.map((product: any) => {
-          const sourcedItem: any = sourcedMap.get(product._id.toString());
-          const isFromReseller = Boolean(product.uploadedBy);
-          const resellerName = typeof product.uploadedBy === 'object' && product.uploadedBy !== null
-            ? (product.uploadedBy.storeName || product.uploadedBy.name)
-            : null;
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+      const isDev = process.env.NODE_ENV !== 'production';
+      const protocol = isDev ? 'http' : 'https';
+      const mainStoreBaseUrl = `${protocol}://www.${rootDomain}`;
 
-          return {
-            ...product,
-            isSourced: !!sourcedItem,
-            sourceType: (!product.uploadedBy) ? 'admin' : 'reseller',
-            sourceStoreName: isFromReseller ? (resellerName || 'Reseller') : `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`,
-            sourcedDetails: sourcedItem
-              ? {
-                _id: sourcedItem._id,
-                retailPrice: sourcedItem.retailPrice,
-                isPublished: sourcedItem.isPublished,
-                variants: sourcedItem.variants || [],
-                syncedAt: sourcedItem.syncedAt,
-              }
-              : null,
-          };
-        });
+      const mappedProducts = products.map((product: any) => {
+        const sourcedItem: any = sourcedMap.get(product._id.toString());
+        const isSourced = Boolean(sourcedItem);
+        const isFromReseller = Boolean(product.uploadedBy);
+        const resellerName = typeof product.uploadedBy === 'object' && product.uploadedBy !== null
+          ? (product.uploadedBy.storeName || product.uploadedBy.name)
+          : null;
+
+        let storefrontUrl = `${mainStoreBaseUrl}/product/${product.slug}`;
+        if (isSourced) {
+          // Product is added to the current reseller's store -> use current reseller's store link
+          if ((currentReseller as any).customDomain) {
+            storefrontUrl = `${protocol}://${(currentReseller as any).customDomain}/product/${product.slug}`;
+          } else if ((currentReseller as any).subdomain) {
+            storefrontUrl = `${protocol}://${(currentReseller as any).subdomain}.${rootDomain}/product/${product.slug}`;
+          }
+        } else {
+          // Product is NOT added to current reseller's store -> use source's link
+          if (isFromReseller && typeof product.uploadedBy === 'object') {
+            const sourceReseller = product.uploadedBy;
+            if (sourceReseller.customDomain) {
+              storefrontUrl = `${protocol}://${sourceReseller.customDomain}/product/${product.slug}`;
+            } else if (sourceReseller.subdomain) {
+              storefrontUrl = `${protocol}://${sourceReseller.subdomain}.${rootDomain}/product/${product.slug}`;
+            }
+          }
+        }
+
+        return {
+          ...product,
+          isSourced,
+          storefrontUrl,
+          sourceType: (!product.uploadedBy) ? 'admin' : 'reseller',
+          sourceStoreName: isFromReseller ? (resellerName || 'Reseller') : `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`,
+          sourcedDetails: sourcedItem
+            ? {
+              _id: sourcedItem._id,
+              retailPrice: sourcedItem.retailPrice,
+              isPublished: sourcedItem.isPublished,
+              variants: sourcedItem.variants || [],
+              syncedAt: sourcedItem.syncedAt,
+            }
+            : null,
+        };
+      });
 
         // Count totals for tab badges
         const [allProducts, sourcedCount] = await Promise.all([
@@ -167,10 +195,11 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const resellerId = await getResellerId(session.user.id);
-        if (!resellerId) {
+        const currentReseller = await getResellerInfo(session.user.id);
+        if (!currentReseller) {
           return NextResponse.json({ error: 'Reseller profile not found' }, { status: 404 });
         }
+        const resellerId = currentReseller._id;
 
         const body = await request.json();
         const { productId, retailPrice, variants } = body;
