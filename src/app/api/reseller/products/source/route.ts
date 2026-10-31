@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
     let query: Record<string, any> = { isPublished: true };
     let sortOption: Record<string, any> = { createdAt: -1 };
 
-    if (sourceFilter === 'admin') {
+    if (sourceFilter === 'sourced') {
+      const sourcedProductIds = await ResellerProduct.find({ resellerId }).distinct('productId');
+      query._id = { $in: sourcedProductIds };
+    } else if (sourceFilter === 'admin') {
       // Only Main Store / Admin products
       query.$or = [
         { uploadedBy: null },
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
       ];
       sortOption = { totalSales: -1, views: -1, ratings: -1, createdAt: -1 };
     } else {
-      // 'all' or 'sourced' — default: show admin + other resellers' shared products that are approved
+      // 'all' — default: show admin + other resellers' shared products that are approved
       query.$or = [
         { uploadedBy: null },
         { uploadedBy: { $exists: false } },
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
       Product.countDocuments(query),
     ]);
 
-    // Find already sourced products by this reseller
+    // Find already sourced products by this reseller for current page products
     const productIds = products.map((p) => p._id);
     const sourced = await ResellerProduct.find({
       resellerId,
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const sourcedMap = new Map(sourced.map((s) => [s.productId.toString(), s]));
 
-    let mappedProducts = products.map((product: any) => {
+    const mappedProducts = products.map((product: any) => {
       const sourcedItem: any = sourcedMap.get(product._id.toString());
       const isFromReseller = Boolean(product.uploadedBy);
       const resellerName = typeof product.uploadedBy === 'object' && product.uploadedBy !== null
@@ -118,29 +121,31 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // If filter = 'sourced', only return products already added to store
-    if (sourceFilter === 'sourced') {
-      mappedProducts = mappedProducts.filter((p: any) => p.isSourced);
-    }
-
     // Count totals for tab badges
-    const allProducts = (await Product.find({
-      isPublished: true,
-      $or: [
-        { uploadedBy: null },
-        { uploadedBy: { $exists: false } },
-        { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
-      ],
-    }).select('_id uploadedBy totalSales').lean()) as any[];
+    const [allProducts, sourcedCount] = await Promise.all([
+      Product.find({
+        isPublished: true,
+        $or: [
+          { uploadedBy: null },
+          { uploadedBy: { $exists: false } },
+          { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
+        ],
+      }).select('_id uploadedBy totalSales').lean(),
+      ResellerProduct.countDocuments({ resellerId }),
+    ]);
 
-    const adminCount = allProducts.filter((p: any) => !p.uploadedBy).length;
-    const resellerCount = allProducts.filter((p: any) => p.uploadedBy).length;
-    const topSellingCount = allProducts.filter((p: any) => (p.totalSales || 0) > 0).length || allProducts.length;
-    const sourcedCount = sourced.length;
+    const adminCount = (allProducts as any[]).filter((p: any) => !p.uploadedBy).length;
+    const resellerCount = (allProducts as any[]).filter((p: any) => p.uploadedBy).length;
+    const topSellingCount = (allProducts as any[]).filter((p: any) => (p.totalSales || 0) > 0).length || allProducts.length;
 
     return NextResponse.json({
       products: mappedProducts,
-      pagination: { total: sourceFilter === 'sourced' ? mappedProducts.length : total, page, limit, totalPages: sourceFilter === 'sourced' ? 1 : Math.ceil(total / limit) },
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
       counts: {
         all: allProducts.length,
         top_selling: topSellingCount,
