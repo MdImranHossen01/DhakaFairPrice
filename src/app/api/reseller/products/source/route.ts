@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       const [products, total] = await Promise.all([
         Product.find(query)
           .populate('categories', 'name slug')
-          .populate('uploadedBy', 'storeName subdomain customDomain logoUrl')
+          .populate('uploadedBy', 'storeName subdomain customDomain logoUrl contact socialLinks pickupAddress')
           .sort(sortOption)
           .skip((page - 1) * limit)
           .limit(limit)
@@ -131,10 +131,41 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Compute Source Seller WhatsApp details
+        let sellerWhatsAppNumber = '';
+        let sellerWhatsAppUrl = '';
+        if (isFromReseller && typeof product.uploadedBy === 'object' && product.uploadedBy !== null) {
+          const sourceReseller = product.uploadedBy;
+          const rawWhatsApp = sourceReseller?.socialLinks?.whatsapp?.trim() || '';
+          const rawPhone = sourceReseller?.contact?.phone?.trim() || sourceReseller?.pickupAddress?.phone?.trim() || '';
+          const targetNumber = rawWhatsApp || rawPhone;
+
+          if (targetNumber) {
+            if (targetNumber.startsWith('http://') || targetNumber.startsWith('https://') || targetNumber.includes('wa.me/')) {
+              sellerWhatsAppUrl = targetNumber;
+              const digits = targetNumber.replace(/\D/g, '');
+              sellerWhatsAppNumber = digits.length >= 10
+                ? (digits.startsWith('880') ? '0' + digits.slice(3) : (digits.startsWith('88') ? '0' + digits.slice(2) : digits))
+                : targetNumber;
+            } else {
+              sellerWhatsAppNumber = targetNumber;
+              let digits = targetNumber.replace(/\D/g, '');
+              if (digits.startsWith('01') && digits.length === 11) {
+                digits = '88' + digits;
+              } else if (!digits.startsWith('880') && digits.length === 10) {
+                digits = '880' + digits;
+              }
+              sellerWhatsAppUrl = `https://wa.me/${digits}`;
+            }
+          }
+        }
+
         return {
           ...product,
           isSourced,
           storefrontUrl,
+          sellerWhatsAppNumber,
+          sellerWhatsAppUrl,
           sourceType: (!product.uploadedBy) ? 'admin' : 'reseller',
           sourceStoreName: isFromReseller ? (resellerName || 'Reseller') : `Main Store (${process.env.NEXT_PUBLIC_STORE_NAME || 'Mother Store'})`,
           sourcedDetails: sourcedItem

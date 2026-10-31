@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
-  Loader2, Search, Package, CheckCircle2, Store, Users, ShoppingBag, Filter, Flame,
+  Loader2, Search, Package, CheckCircle2, Store, Users, ShoppingBag, Filter, Flame, MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -457,6 +457,23 @@ function SourceProductsContent() {
                       </div>
                     </div>
 
+                    {/* Contact Seller WhatsApp */}
+                    {!isAdmin && (product.sellerWhatsAppUrl || product.sellerWhatsAppNumber) && (
+                      <div className="flex items-center justify-between gap-1 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-[11px]">
+                        <span className="text-muted-foreground font-medium text-[10px]">Contact Seller:</span>
+                        <a
+                          href={product.sellerWhatsAppUrl || 'https://wa.me/' + (product.sellerWhatsAppNumber || '').replace(/\D/g, '')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 hover:underline transition-colors shrink-0"
+                          title="Chat with source seller on WhatsApp"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5 text-emerald-600 fill-emerald-600/20" />
+                          <span>{product.sellerWhatsAppNumber || 'WhatsApp'}</span>
+                        </a>
+                      </div>
+                    )}
+
                     {/* Price row */}
                     <div className="flex items-center justify-between bg-muted/30 rounded-lg px-2 py-1.5 border text-xs mt-auto">
                       <div>
@@ -554,6 +571,21 @@ function SourceProductsContent() {
                       </Badge>
                     )}
                   </div>
+                  {selectedProduct.sourceType !== 'admin' && (selectedProduct.sellerWhatsAppUrl || selectedProduct.sellerWhatsAppNumber) && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 text-xs mt-2">
+                      <span className="font-medium text-muted-foreground text-[11px]">Contact Seller (WhatsApp):</span>
+                      <a
+                        href={selectedProduct.sellerWhatsAppUrl || 'https://wa.me/' + (selectedProduct.sellerWhatsAppNumber || '').replace(/\D/g, '')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                        title="Chat with source seller on WhatsApp"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>{selectedProduct.sellerWhatsAppNumber}</span>
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 

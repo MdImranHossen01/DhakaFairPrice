@@ -259,7 +259,7 @@ export default function ResellerRegisterPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Contact Phone Number</Label>
+                  <Label className="text-xs font-semibold">Contact WhatsApp Number</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input {...form.register('phone')} placeholder="017XXXXXXXX" type="tel" className="pl-9" />
