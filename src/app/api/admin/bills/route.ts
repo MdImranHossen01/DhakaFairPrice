@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const {
       clientName,
       clientPhone,
+      clientEmail,
       clientAddress,
       items,
       subtotal,
@@ -63,6 +64,9 @@ export async function POST(req: NextRequest) {
       currentBillDue,
       status,
       expectedReceivableDate,
+      expectedDeliveryDate,
+      termsAndConditions,
+      vatTaxIncluded,
       documentType,
       convertedFrom
     } = body;
@@ -100,6 +104,7 @@ export async function POST(req: NextRequest) {
     const newBill = new Bill({
       clientName,
       clientPhone,
+      clientEmail: clientEmail || undefined,
       clientAddress,
       invoiceNo,
       items,
@@ -116,6 +121,9 @@ export async function POST(req: NextRequest) {
       currentBillDue,
       status,
       expectedReceivableDate: status === 'Due' && expectedReceivableDate ? new Date(expectedReceivableDate) : undefined,
+      expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : undefined,
+      termsAndConditions: termsAndConditions || undefined,
+      vatTaxIncluded: vatTaxIncluded !== undefined ? Boolean(vatTaxIncluded) : true,
       documentType: docType,
       convertedFrom: convertedFrom || undefined
     });

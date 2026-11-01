@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -17,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
   Plus,
@@ -28,16 +30,19 @@ import {
   Eye,
   MapPin,
   Phone,
+  User,
+  Mail,
   CalendarDays,
   Hash,
   ArrowRight,
   MoreHorizontal,
-  Edit
+  Edit,
+  CreditCard
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
-import { generateBillPDF } from '@/lib/bill-invoice-generator';
+import { generateBillPDF, generateDescriptionHtml } from '@/lib/bill-invoice-generator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,9 +53,37 @@ import { Pagination } from '@/components/ui/pagination';
 
 interface BillItemInput {
   name: string;
+  description?: string;
   quantity: number;
   price: number;
 }
+
+const extractTextFromDescription = (description?: string): string => {
+  if (!description) return '';
+  const trimmed = description.trim();
+  // Try to parse as TipTap JSON directly
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const BLOCK_TYPES = new Set(['paragraph','heading','blockquote','bulletList','orderedList','listItem','codeBlock','horizontalRule']);
+      const getText = (node: any, isBlock?: boolean): string => {
+        if (node.type === 'text') return node.text || '';
+        if (node.type === 'hardBreak') return '\n';
+        if (node.content && Array.isArray(node.content)) {
+          const inner = node.content.map((n: any) => getText(n)).join('');
+          if (BLOCK_TYPES.has(node.type)) return inner + '\n';
+          return inner;
+        }
+        return '';
+      };
+      return getText(parsed).trim();
+    } catch (e) {
+      // Not valid JSON, fall through
+    }
+  }
+  // Strip any HTML tags and return
+  return trimmed.replace(/<[^>]*>?/gm, '').trim();
+};
 
 function ClientOffersContent() {
   const router = useRouter();
@@ -60,10 +93,10 @@ function ClientOffersContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const initialPage = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const [currentPage, setCurrentPage] = useState(initialPage);
-  
+
   const [settings, setSettings] = useState<any>(null);
 
   // Sync state changes to URL query parameters
@@ -77,13 +110,7 @@ function ClientOffersContent() {
     router.push(`/admin/offers?${params.toString()}`);
   }, [currentPage]);
 
-  // Reset page when search term changes
-  useEffect(() => {
-    setCurrentPage(1);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('page');
-    router.push(`/admin/offers?${params.toString()}`);
-  }, [searchTerm]);
+
 
   // Offer detail view state
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
@@ -96,14 +123,23 @@ function ClientOffersContent() {
   // Form states
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [clientAddress, setClientAddress] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
+  const [termsAndConditions, setTermsAndConditions] = useState<string>('');
+  const [vatTaxIncluded, setVatTaxIncluded] = useState<boolean>(true);
   const [billItems, setBillItems] = useState<BillItemInput[]>([
-    { name: '', quantity: 1, price: 0 }
+    { name: '', description: '', quantity: 1, price: 0 }
   ]);
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [serviceFee, setServiceFee] = useState<number>(0);
   const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
   const [discountValue, setDiscountValue] = useState<number>(0);
+
+  // Auto suggestion states
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [activeSuggestions, setActiveSuggestions] = useState<any[]>([]);
+  const [showSuggestionsFor, setShowSuggestionsFor] = useState<'name' | 'email' | 'phone' | null>(null);
 
   // Product multi-select state
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -113,14 +149,46 @@ function ClientOffersContent() {
   // Phone validation
   const [phoneError, setPhoneError] = useState('');
 
-  useEffect(() => {
-    fetchOffers();
-    fetchProducts();
-    fetchSettings();
-  }, []);
+  // ── Convert to Client Bill modal state ──
+  const [isConvertBillOpen, setIsConvertBillOpen] = useState(false);
+  const [convertBillLoading, setConvertBillLoading] = useState(false);
+  const [convertingFromOffer, setConvertingFromOffer] = useState<any>(null);
+  const [cbClientName, setCbClientName] = useState('');
+  const [cbClientPhone, setCbClientPhone] = useState('');
+  const [cbClientEmail, setCbClientEmail] = useState('');
+  const [cbClientAddress, setCbClientAddress] = useState('');
+  const [cbItems, setCbItems] = useState<BillItemInput[]>([{ name: '', description: '', quantity: 1, price: 0 }]);
+  const [cbDeliveryCharge, setCbDeliveryCharge] = useState<number>(0);
+  const [cbServiceFee, setCbServiceFee] = useState<number>(0);
+  const [cbDiscountType, setCbDiscountType] = useState<'fixed' | 'percentage'>('fixed');
+  const [cbDiscountValue, setCbDiscountValue] = useState<number>(0);
+  const [cbPrevDue, setCbPrevDue] = useState<number>(0);
+  const [cbCashIn, setCbCashIn] = useState<number>(0);
+  const [cbExpectedDate, setCbExpectedDate] = useState('');
+  const [cbVatTaxIncluded, setCbVatTaxIncluded] = useState<boolean>(true);
+  const [cbPhoneError, setCbPhoneError] = useState('');
+  const [cbProductPickerOpen, setCbProductPickerOpen] = useState(false);
+  const [cbProductSearchTerm, setCbProductSearchTerm] = useState('');
+  const [cbSelectedVariants, setCbSelectedVariants] = useState<Record<string, string | null>>({});
+
+  const fetchSuggestions = async () => {
+    try {
+      const res = await fetch('/api/admin/suggest-clients');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success) {
+          setSuggestions(result.data || []);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching client suggestions:', err);
+    }
+  };
 
   const fetchOffers = async () => {
     try {
+      // Defer state update to microtask queue to avoid synchronous setState inside useEffect warning
+      await Promise.resolve();
       setLoading(true);
       const res = await fetch('/api/admin/bills?type=offer');
       if (!res.ok) throw new Error('Failed to fetch offers');
@@ -157,8 +225,75 @@ function ClientOffersContent() {
     }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOffers();
+      fetchProducts();
+      fetchSettings();
+      fetchSuggestions();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleNameChange = (val: string) => {
+    setClientName(val);
+    if (!val.trim()) {
+      setActiveSuggestions([]);
+      setShowSuggestionsFor(null);
+      return;
+    }
+    const filtered = suggestions.filter(s =>
+      s.name?.toLowerCase().includes(val.toLowerCase())
+    );
+    setActiveSuggestions(filtered);
+    setShowSuggestionsFor('name');
+  };
+
+  const handleEmailChange = (val: string) => {
+    setClientEmail(val);
+    if (!val.trim()) {
+      setActiveSuggestions([]);
+      setShowSuggestionsFor(null);
+      return;
+    }
+    const filtered = suggestions.filter(s =>
+      s.email?.toLowerCase().includes(val.toLowerCase())
+    );
+    setActiveSuggestions(filtered);
+    setShowSuggestionsFor('email');
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setClientPhone(val);
+    if (phoneError) validatePhone(val);
+    if (!val.trim()) {
+      setActiveSuggestions([]);
+      setShowSuggestionsFor(null);
+      return;
+    }
+    const filtered = suggestions.filter(s =>
+      s.phone?.includes(val)
+    );
+    setActiveSuggestions(filtered);
+    setShowSuggestionsFor('phone');
+  };
+
+  const handleSelectSuggestion = (suggestion: any) => {
+    setClientName(suggestion.name || '');
+    setClientPhone(suggestion.phone || '');
+    setClientEmail(suggestion.email || '');
+    setClientAddress(suggestion.address || '');
+    if (phoneError) setPhoneError('');
+    setActiveSuggestions([]);
+    setShowSuggestionsFor(null);
+  };
+
   // Calculations
-  const subtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = billItems.reduce((sum, item) => {
+    const qty = parseInt(item.quantity as any) || 0;
+    const price = parseFloat(item.price as any) || 0;
+    return sum + (price * qty);
+  }, 0);
   const discount = discountType === 'percentage'
     ? Math.round((subtotal * discountValue) / 100)
     : discountValue;
@@ -200,12 +335,12 @@ function ClientOffersContent() {
       if (!prod) return;
 
       if (variantId === null) {
-        newItems.push({ name: prod.name, price: prod.salePrice || prod.price || 0, quantity: 1 });
+        newItems.push({ name: prod.name, description: extractTextFromDescription(prod.description), price: prod.salePrice || prod.price || 0, quantity: 1 });
       } else {
         const variant = (prod.variants || []).find((v: any) => v._id === variantId);
         if (!variant) return;
         const label = [prod.name, variant.color, variant.size].filter(Boolean).join(' — ');
-        newItems.push({ name: label, price: variant.salePrice || variant.price || 0, quantity: 1 });
+        newItems.push({ name: label, description: extractTextFromDescription(prod.description), price: variant.salePrice || variant.price || 0, quantity: 1 });
       }
     });
 
@@ -222,12 +357,12 @@ function ClientOffersContent() {
   };
 
   const handleAddItemRow = () => {
-    setBillItems([...billItems, { name: '', quantity: 1, price: 0 }]);
+    setBillItems([...billItems, { name: '', description: '', quantity: 1, price: 0 }]);
   };
 
   const handleRemoveItemRow = (index: number) => {
     if (billItems.length === 1) {
-      setBillItems([{ name: '', quantity: 1, price: 0 }]);
+      setBillItems([{ name: '', description: '', quantity: 1, price: 0 }]);
     } else {
       setBillItems(billItems.filter((_, i) => i !== index));
     }
@@ -236,9 +371,11 @@ function ClientOffersContent() {
   const handleItemChange = (index: number, field: keyof BillItemInput, value: any) => {
     const updated = [...billItems];
     if (field === 'quantity') {
-      updated[index].quantity = Math.max(1, parseInt(value) || 1);
+      updated[index].quantity = value === '' ? '' as any : Math.max(1, parseInt(value) || 1);
     } else if (field === 'price') {
-      updated[index].price = Math.max(0, parseFloat(value) || 0);
+      updated[index].price = value === '' ? '' as any : Math.max(0, parseFloat(value) || 0);
+    } else if (field === 'description') {
+      updated[index].description = value;
     } else {
       updated[index].name = value;
     }
@@ -256,7 +393,13 @@ function ClientOffersContent() {
       return;
     }
 
-    const validItems = billItems.filter(item => item.name.trim() !== '');
+    const validItems = billItems
+      .filter(item => item.name.trim() !== '')
+      .map(item => ({
+        ...item,
+        quantity: Math.max(1, parseInt(item.quantity as any) || 1),
+        price: Math.max(0, parseFloat(item.price as any) || 0)
+      }));
     if (validItems.length === 0) {
       toast.error('At least one item with a name is required');
       return;
@@ -267,6 +410,7 @@ function ClientOffersContent() {
       const offerData = {
         clientName,
         clientPhone,
+        clientEmail: clientEmail.trim() || undefined,
         clientAddress,
         items: validItems,
         subtotal,
@@ -281,7 +425,10 @@ function ClientOffersContent() {
         cashIn: 0,
         currentBillDue: total,
         status: 'Due',
-        documentType: 'offer'
+        documentType: 'offer',
+        expectedDeliveryDate: expectedDeliveryDate || '',
+        termsAndConditions: termsAndConditions || '',
+        vatTaxIncluded: vatTaxIncluded !== undefined ? vatTaxIncluded : true
       };
 
       const url = editingOffer ? `/api/admin/bills/${editingOffer._id}` : '/api/admin/bills';
@@ -304,6 +451,7 @@ function ClientOffersContent() {
       setIsCreateOpen(false);
       resetForm();
       fetchOffers();
+      fetchSuggestions();
     } catch (error: any) {
       toast.error(error.message || 'Error creating quotation');
     } finally {
@@ -314,9 +462,10 @@ function ClientOffersContent() {
   const resetForm = () => {
     setClientName('');
     setClientPhone('');
+    setClientEmail('');
     setPhoneError('');
     setClientAddress('');
-    setBillItems([{ name: '', quantity: 1, price: 0 }]);
+    setBillItems([{ name: '', description: '', quantity: 1, price: 0 }]);
     setDeliveryCharge(0);
     setServiceFee(0);
     setDiscountType('fixed');
@@ -325,6 +474,11 @@ function ClientOffersContent() {
     setProductSearchTerm('');
     setProductPickerOpen(false);
     setEditingOffer(null);
+    setExpectedDeliveryDate('');
+    setTermsAndConditions('');
+    setVatTaxIncluded(true);
+    setActiveSuggestions([]);
+    setShowSuggestionsFor(null);
   };
 
   const handleConvertToChalan = async (offer: any) => {
@@ -342,6 +496,7 @@ function ClientOffersContent() {
         const challanData = {
           clientName: offer.clientName,
           clientPhone: offer.clientPhone,
+          clientEmail: offer.clientEmail || undefined,
           clientAddress: offer.clientAddress,
           items: offer.items,
           subtotal: offer.subtotal,
@@ -355,6 +510,7 @@ function ClientOffersContent() {
           cashIn: 0,
           currentBillDue: offer.total,
           status: 'Due',
+          vatTaxIncluded: offer.vatTaxIncluded !== undefined ? offer.vatTaxIncluded : true,
           documentType: 'chalan',
           convertedFrom: offer._id
         };
@@ -386,10 +542,130 @@ function ClientOffersContent() {
     }
   };
 
+  const handleConvertToBill = (offer: any) => {
+    // Pre-fill convert bill form with offer data
+    setConvertingFromOffer(offer);
+    setCbClientName(offer.clientName || '');
+    setCbClientPhone(offer.clientPhone || '');
+    setCbClientEmail(offer.clientEmail || '');
+    setCbClientAddress(offer.clientAddress || '');
+    setCbItems(
+      Array.isArray(offer.items) && offer.items.length > 0
+        ? offer.items.map((it: any) => ({ name: it.name || '', description: it.description || '', quantity: it.quantity || 1, price: it.price || 0 }))
+        : [{ name: '', description: '', quantity: 1, price: 0 }]
+    );
+    setCbDeliveryCharge(offer.deliveryCharge || 0);
+    setCbServiceFee(offer.serviceFee || 0);
+    setCbDiscountType(offer.discountType || 'fixed');
+    setCbDiscountValue(offer.discountValue || 0);
+    setCbPrevDue(0);
+    setCbCashIn(0);
+    setCbExpectedDate('');
+    setCbVatTaxIncluded(offer.vatTaxIncluded !== undefined ? offer.vatTaxIncluded : true);
+    setCbPhoneError('');
+    setCbSelectedVariants({});
+    setCbProductSearchTerm('');
+    setCbProductPickerOpen(false);
+    setIsConvertBillOpen(true);
+  };
+
+  const resetConvertBillForm = () => {
+    setConvertingFromOffer(null);
+    setCbClientName('');
+    setCbClientPhone('');
+    setCbClientEmail('');
+    setCbClientAddress('');
+    setCbItems([{ name: '', description: '', quantity: 1, price: 0 }]);
+    setCbDeliveryCharge(0);
+    setCbServiceFee(0);
+    setCbDiscountType('fixed');
+    setCbDiscountValue(0);
+    setCbPrevDue(0);
+    setCbCashIn(0);
+    setCbExpectedDate('');
+    setCbVatTaxIncluded(true);
+    setCbPhoneError('');
+    setCbSelectedVariants({});
+    setCbProductSearchTerm('');
+    setCbProductPickerOpen(false);
+  };
+
+  const cbSubtotal = cbItems.reduce((sum, item) => sum + ((parseFloat(item.price as any) || 0) * (parseInt(item.quantity as any) || 1)), 0);
+  const cbDiscount = cbDiscountType === 'percentage' ? Math.round((cbSubtotal * cbDiscountValue) / 100) : cbDiscountValue;
+  const cbTotal = Math.max(0, cbSubtotal + cbDeliveryCharge + cbServiceFee - cbDiscount);
+  const cbGTotal = cbTotal + cbPrevDue;
+  const cbCurrentDue = Math.max(0, cbGTotal - cbCashIn);
+  const cbCalculatedStatus = cbCurrentDue <= 0 ? 'Paid' : 'Due';
+
+  const validateCbPhone = (phone: string) => {
+    const bdPhoneRegex = /^(?:\+?88)?01[3-9]\d{8}$/;
+    if (!phone.trim()) { setCbPhoneError('Phone number is required'); return false; }
+    if (!bdPhoneRegex.test(phone.replace(/\s/g, ''))) { setCbPhoneError('Enter a valid BD number (e.g. 017XXXXXXXX)'); return false; }
+    setCbPhoneError('');
+    return true;
+  };
+
+  const handleConvertBillSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cbClientName.trim() || !cbClientAddress.trim()) { toast.error('Client details are required'); return; }
+    if (!validateCbPhone(cbClientPhone)) { toast.error('Please enter a valid Bangladesh phone number'); return; }
+    const validItems = cbItems.filter(it => it.name.trim() !== '').map(it => ({ ...it, quantity: Math.max(1, parseInt(it.quantity as any) || 1), price: Math.max(0, parseFloat(it.price as any) || 0) }));
+    if (validItems.length === 0) { toast.error('At least one item is required'); return; }
+    if (cbCalculatedStatus === 'Due' && !cbExpectedDate) { toast.error('Expected receivable date is required for due bills'); return; }
+    try {
+      setConvertBillLoading(true);
+      const billData = {
+        clientName: cbClientName,
+        clientPhone: cbClientPhone,
+        clientEmail: cbClientEmail.trim() || undefined,
+        clientAddress: cbClientAddress,
+        items: validItems,
+        subtotal: cbSubtotal,
+        deliveryCharge: cbDeliveryCharge,
+        serviceFee: cbServiceFee,
+        discountType: cbDiscountType,
+        discountValue: cbDiscountValue,
+        discount: cbDiscount,
+        total: cbTotal,
+        prevDue: cbPrevDue,
+        gTotal: cbGTotal,
+        cashIn: cbCashIn,
+        currentBillDue: cbCurrentDue,
+        status: cbCalculatedStatus,
+        expectedReceivableDate: cbCalculatedStatus === 'Due' ? cbExpectedDate : undefined,
+        vatTaxIncluded: cbVatTaxIncluded,
+        documentType: 'bill',
+        convertedFrom: convertingFromOffer?._id
+      };
+      const res = await fetch('/api/admin/bills', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(billData) });
+      if (!res.ok) throw new Error('Failed to create bill');
+      const createdBill = await res.json();
+      setIsConvertBillOpen(false);
+      resetConvertBillForm();
+      // Show success with print option (direct user click avoids popup blocker)
+      await Swal.fire({
+        title: 'Bill Generated!',
+        text: `Client Bill ${createdBill.invoiceNo} has been created successfully.`,
+        icon: 'success',
+        showCancelButton: true,
+        confirmButtonText: 'Print Bill Now',
+        cancelButtonText: 'Close'
+      }).then((printRes) => {
+        if (printRes.isConfirmed) {
+          generateBillPDF(createdBill, settings, 'print');
+        }
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create bill');
+    } finally {
+      setConvertBillLoading(false);
+    }
+  };
+
   const handleDeleteOffer = async (offerId: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text:"You won't be able to revert this!",
+      text: "You won't be able to revert this!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -425,7 +701,7 @@ function ClientOffersContent() {
   );
 
   return (
-    <div className="flex-1 space-y-6">
+    <div className="flex-1 space-y-6 px-[2px] md:px-4 py-4">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Client Quotations / Offers</h2>
@@ -438,7 +714,7 @@ function ClientOffersContent() {
 
       {/* Offers Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <CardTitle>Quotations List</CardTitle>
             <div className="relative w-full md:w-72">
@@ -447,12 +723,17 @@ function ClientOffersContent() {
                 placeholder="Search by client or invoice..."
                 className="pl-8"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  if (currentPage !== 1) {
+                    setCurrentPage(1);
+                  }
+                }}
               />
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4">
           {loading ? (
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -467,23 +748,25 @@ function ClientOffersContent() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Quotation No</TableHead>
-                    <TableHead>Client Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Total Offer (৳)</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[130px]">Quotation No</TableHead>
+                    <TableHead className="min-w-[280px]">Client Name</TableHead>
+                    <TableHead className="w-[130px]">Phone</TableHead>
+                    <TableHead className="w-[110px]">Date</TableHead>
+                    <TableHead className="text-right w-[140px]">Total Offer (৳)</TableHead>
+                    <TableHead className="text-right w-[90px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedOffers.map((offer) => (
                     <TableRow key={offer._id}>
-                      <TableCell className="font-semibold">{offer.invoiceNo}</TableCell>
-                      <TableCell>{offer.clientName}</TableCell>
-                      <TableCell>{offer.clientPhone}</TableCell>
-                      <TableCell>{format(new Date(offer.date), 'dd MMM yyyy')}</TableCell>
-                      <TableCell className="text-right font-medium">৳{Math.round(offer.total)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-semibold whitespace-nowrap">{offer.invoiceNo}</TableCell>
+                      <TableCell className="whitespace-normal break-words leading-snug">
+                        {offer.clientName}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{offer.clientPhone}</TableCell>
+                      <TableCell className="whitespace-nowrap w-[110px]">{format(new Date(offer.date), 'dd MMM yyyy')}</TableCell>
+                      <TableCell className="text-right font-medium whitespace-nowrap w-[140px]">৳{Math.round(offer.total)}</TableCell>
+                      <TableCell className="text-right w-[90px]">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="ghost"
@@ -500,45 +783,60 @@ function ClientOffersContent() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSelectedOffer(offer)}>
-                              <Eye className="mr-2 h-4 w-4" /> View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditingOffer(offer);
-                                setClientName(offer.clientName);
-                                setClientPhone(offer.clientPhone);
-                                setClientAddress(offer.clientAddress);
-                                setBillItems(offer.items);
-                                setDeliveryCharge(offer.deliveryCharge);
-                                setServiceFee(offer.serviceFee || 0);
-                                setDiscountType(offer.discountType || 'fixed');
-                                setDiscountValue(offer.discountValue || 0);
-                                setIsCreateOpen(true);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" /> Edit Offer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => generateBillPDF(offer, settings, 'download')}>
-                              <Download className="mr-2 h-4 w-4" /> Download PDF
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => generateBillPDF(offer, settings, 'print')}>
-                              <Printer className="mr-2 h-4 w-4" /> Print PDF
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleConvertToChalan(offer)}>
-                              <ArrowRight className="mr-2 h-4 w-4" /> Convert to Challan
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDeleteOffer(offer._id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setSelectedOffer(offer)}>
+                                <Eye className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setEditingOffer(offer);
+                                  setClientName(offer.clientName);
+                                  setClientPhone(offer.clientPhone);
+                                  setClientEmail(offer.clientEmail || '');
+                                  setClientAddress(offer.clientAddress);
+                                  setBillItems(offer.items);
+                                  setDeliveryCharge(offer.deliveryCharge);
+                                  setServiceFee(offer.serviceFee || 0);
+                                  setDiscountType(offer.discountType || 'fixed');
+                                  setDiscountValue(offer.discountValue || 0);
+                                  let formattedExpDate = '';
+                                  if (offer.expectedDeliveryDate) {
+                                    try {
+                                      formattedExpDate = format(new Date(offer.expectedDeliveryDate), 'yyyy-MM-dd');
+                                    } catch (e) {
+                                      formattedExpDate = String(offer.expectedDeliveryDate).substring(0, 10);
+                                    }
+                                  }
+                                  setExpectedDeliveryDate(formattedExpDate);
+                                  setTermsAndConditions(offer.termsAndConditions || '');
+                                  setVatTaxIncluded(offer.vatTaxIncluded !== undefined ? offer.vatTaxIncluded : true);
+                                  setIsCreateOpen(true);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit Offer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => generateBillPDF(offer, settings, 'download')}>
+                                <Download className="mr-2 h-4 w-4" /> Download PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => generateBillPDF(offer, settings, 'print')}>
+                                <Printer className="mr-2 h-4 w-4" /> Print PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleConvertToChalan(offer)}>
+                                <ArrowRight className="mr-2 h-4 w-4" /> Convert to Challan
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleConvertToBill(offer)}>
+                                <FileText className="mr-2 h-4 w-4" /> Convert to Client Bill
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteOffer(offer._id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -558,45 +856,128 @@ function ClientOffersContent() {
       </Card>
 
       {/* Create Dialog */}
-      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if(!open) resetForm(); }}>
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingOffer ? 'Edit' : 'Create New'} Quotation / Offer</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Client Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cName">Client Name *</Label>
+            {/* Client Info with Auto Suggestion (2 rows x 2 cols) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-xl border">
+              {/* Client Name */}
+              <div className="space-y-1.5 relative">
+                <Label htmlFor="cName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <User className="h-3.5 w-3.5" /> Client Name *
+                </Label>
                 <Input
                   id="cName"
                   placeholder="e.g. Rahim & Bros"
                   value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestionsFor(null), 250)}
+                  className="h-10 text-sm bg-background"
                   required
+                  autoComplete="off"
                 />
+                {showSuggestionsFor === 'name' && activeSuggestions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-xl max-h-56 overflow-y-auto divide-y">
+                    {activeSuggestions.map((s, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="p-2.5 text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                      >
+                        <div className="font-bold">{s.name}</div>
+                        <div className="text-muted-foreground">
+                          {s.phone ? `Phone: ${s.phone}` : ''} {s.email ? `| Email: ${s.email}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cPhone">Client Phone *</Label>
+
+              {/* Client Phone */}
+              <div className="space-y-1.5 relative">
+                <Label htmlFor="cPhone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> Client Phone *
+                </Label>
                 <Input
                   id="cPhone"
                   placeholder="e.g. 017XXXXXXXX"
                   value={clientPhone}
-                  onChange={(e) => {
-                    setClientPhone(e.target.value);
-                    if (e.target.value) validatePhone(e.target.value);
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={(e) => {
+                    validatePhone(e.target.value);
+                    setTimeout(() => setShowSuggestionsFor(null), 250);
                   }}
+                  className={`h-10 text-sm bg-background ${phoneError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                   required
+                  autoComplete="off"
                 />
-                {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
+                {phoneError && <p className="text-[11px] text-destructive mt-0.5">{phoneError}</p>}
+                {showSuggestionsFor === 'phone' && activeSuggestions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-xl max-h-56 overflow-y-auto divide-y">
+                    {activeSuggestions.map((s, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="p-2.5 text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                      >
+                        <div className="font-bold">{s.phone}</div>
+                        <div className="text-muted-foreground">
+                          {s.name} {s.email ? `| ${s.email}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cAddr">Client Address *</Label>
+
+              {/* Client Email (Optional) */}
+              <div className="space-y-1.5 relative">
+                <Label htmlFor="cEmail" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5" /> Email (Optional)
+                </Label>
+                <Input
+                  id="cEmail"
+                  type="email"
+                  placeholder="e.g. client@example.com"
+                  value={clientEmail}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestionsFor(null), 250)}
+                  className="h-10 text-sm bg-background"
+                  autoComplete="off"
+                />
+                {showSuggestionsFor === 'email' && activeSuggestions.length > 0 && (
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-xl max-h-56 overflow-y-auto divide-y">
+                    {activeSuggestions.map((s, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectSuggestion(s)}
+                        className="p-2.5 text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                      >
+                        <div className="font-bold">{s.email}</div>
+                        <div className="text-muted-foreground">
+                          {s.name} {s.phone ? `| ${s.phone}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Client Address */}
+              <div className="space-y-1.5">
+                <Label htmlFor="cAddr" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" /> Client Address *
+                </Label>
                 <Input
                   id="cAddr"
                   placeholder="e.g. Banani, Dhaka"
                   value={clientAddress}
                   onChange={(e) => setClientAddress(e.target.value)}
+                  className="h-10 text-sm bg-background"
                   required
                 />
               </div>
@@ -624,12 +1005,18 @@ function ClientOffersContent() {
             <div className="space-y-3">
               {billItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-1">
                     <Input
-                      placeholder="Item name / Description"
+                      placeholder="Title"
                       value={item.name}
                       onChange={(e) => handleItemChange(index, 'name', e.target.value)}
                       required
+                    />
+                    <Input
+                      placeholder="Description (Optional)"
+                      value={item.description || ''}
+                      onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                      className="text-xs h-8 text-muted-foreground"
                     />
                   </div>
                   <div className="w-24">
@@ -692,31 +1079,68 @@ function ClientOffersContent() {
                       id="discVal"
                       type="number"
                       min="0"
-                      value={discountValue}
+                      placeholder="0"
+                      value={discountValue || ''}
                       onChange={(e) => setDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="delCharge">Delivery Charge (৳)</Label>
-                  <Input
-                    id="delCharge"
-                    type="number"
-                    min="0"
-                    value={deliveryCharge}
-                    onChange={(e) => setDeliveryCharge(Math.max(0, parseFloat(e.target.value) || 0))}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="delCharge">Delivery Charge (৳)</Label>
+                    <Input
+                      id="delCharge"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={deliveryCharge || ''}
+                      onChange={(e) => setDeliveryCharge(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceFeeOffer">Service Fee (৳) <span className="text-muted-foreground font-normal text-xs">— Optional</span></Label>
+                    <Input
+                      id="serviceFeeOffer"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={serviceFee || ''}
+                      onChange={(e) => setServiceFee(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedDeliveryDate">Expected Delivery Date <span className="text-muted-foreground font-normal text-xs">— Optional</span></Label>
+                    <Input
+                      id="expectedDeliveryDate"
+                      type="date"
+                      value={expectedDeliveryDate}
+                      onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 pt-8">
+                    <Checkbox
+                      id="vatTaxIncluded"
+                      checked={vatTaxIncluded}
+                      onCheckedChange={(checked) => setVatTaxIncluded(checked === true)}
+                    />
+                    <Label htmlFor="vatTaxIncluded" className="text-sm font-medium leading-none cursor-pointer">
+                      VAT & Tax Included
+                    </Label>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="serviceFeeOffer">Service Fee (৳) <span className="text-muted-foreground font-normal text-xs">— Optional</span></Label>
-                  <Input
-                    id="serviceFeeOffer"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={serviceFee || ''}
-                    onChange={(e) => setServiceFee(Math.max(0, parseFloat(e.target.value) || 0))}
+                  <Label htmlFor="termsAndConditions">Terms & Conditions <span className="text-muted-foreground font-normal text-xs">— Optional</span></Label>
+                  <textarea
+                    id="termsAndConditions"
+                    placeholder="Enter terms and conditions..."
+                    value={termsAndConditions}
+                    onChange={(e) => setTermsAndConditions(e.target.value)}
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -852,7 +1276,7 @@ function ClientOffersContent() {
 
       {/* Offer Detail View Dialog */}
       <Dialog open={!!selectedOffer} onOpenChange={(open) => { if (!open) setSelectedOffer(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Quotation Details — {selectedOffer?.invoiceNo}</DialogTitle>
           </DialogHeader>
@@ -861,34 +1285,60 @@ function ClientOffersContent() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <h4 className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider text-xs">Quotation To</h4>
-                  <p className="font-medium text-base">{selectedOffer.clientName}</p>
-                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground"><Phone className="h-3.5 w-3.5" /> {selectedOffer.clientPhone}</p>
-                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {selectedOffer.clientAddress}</p>
+                  <p className="font-medium text-base break-words">{selectedOffer.clientName}</p>
+                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground"><Phone className="h-3.5 w-3.5 shrink-0" /> {selectedOffer.clientPhone}</p>
+                  {selectedOffer.clientEmail && (
+                    <p className="flex items-center gap-1.5 mt-1 text-muted-foreground break-all"><Mail className="h-3.5 w-3.5 shrink-0" /> {selectedOffer.clientEmail}</p>
+                  )}
+                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground break-words"><MapPin className="h-3.5 w-3.5 shrink-0" /> {selectedOffer.clientAddress}</p>
                 </div>
                 <div>
                   <h4 className="font-semibold text-muted-foreground mb-1 uppercase tracking-wider text-xs">Document Info</h4>
-                  <p className="flex items-center gap-1.5 font-medium"><Hash className="h-3.5 w-3.5 text-primary" /> {selectedOffer.invoiceNo}</p>
-                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> {format(new Date(selectedOffer.date), 'dd MMM yyyy')}</p>
+                  <p className="flex items-center gap-1.5 font-medium"><Hash className="h-3.5 w-3.5 text-primary shrink-0" /> {selectedOffer.invoiceNo}</p>
+                  <p className="flex items-center gap-1.5 mt-1 text-muted-foreground"><CalendarDays className="h-3.5 w-3.5 shrink-0" /> {format(new Date(selectedOffer.date), 'dd MMM yyyy')}</p>
+                  {selectedOffer.expectedDeliveryDate && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <strong>Exp. Delivery:</strong> {format(new Date(selectedOffer.expectedDeliveryDate), 'dd MMM yyyy')}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <strong>VAT & Tax:</strong> {selectedOffer.vatTaxIncluded !== false ? 'Included' : 'Excluded'}
+                  </p>
                 </div>
               </div>
 
-              <div className="border rounded-md overflow-hidden">
-                <Table>
+              {selectedOffer.termsAndConditions && (
+                <div className="text-xs bg-muted/50 p-2.5 rounded border">
+                  <span className="font-semibold text-muted-foreground block mb-1">Terms & Conditions:</span>
+                  <p className="whitespace-pre-wrap break-words">{selectedOffer.termsAndConditions}</p>
+                </div>
+              )}
+
+              <div className="border rounded-md overflow-x-auto">
+                <Table className="w-full">
                   <TableHeader>
                     <TableRow className="bg-muted hover:bg-muted">
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-center w-16">Qty</TableHead>
-                      <TableHead className="text-right w-24">Rate</TableHead>
-                      <TableHead className="text-right w-28">Amount</TableHead>
+                      <TableHead className="min-w-[200px]">Title/Description</TableHead>
+                      <TableHead className="text-center w-16 whitespace-nowrap">Qty</TableHead>
+                      <TableHead className="text-right w-24 whitespace-nowrap">Rate</TableHead>
+                      <TableHead className="text-right w-28 whitespace-nowrap">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedOffer.items.map((item: any, i: number) => (
                       <TableRow key={i}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">৳{Math.round(item.price)}</TableCell>
-                        <TableCell className="text-right font-medium">৳{Math.round(item.price * item.quantity)}</TableCell>
+                        <TableCell className="max-w-md whitespace-normal break-words">
+                          <div className="font-medium leading-snug">{item.name}</div>
+                          {item.description && (
+                            <div 
+                              className="text-xs text-muted-foreground mt-1 break-words leading-relaxed [&_p]:my-0.5 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:pl-4 [&_ol]:list-decimal"
+                              dangerouslySetInnerHTML={{ __html: generateDescriptionHtml(item.description) }}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center whitespace-nowrap">{item.quantity}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">৳{Math.round(item.price)}</TableCell>
+                        <TableCell className="text-right font-medium whitespace-nowrap">৳{Math.round(item.price * item.quantity)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -934,6 +1384,17 @@ function ClientOffersContent() {
                   <Printer className="mr-2 h-4 w-4" /> Print Quotation
                 </Button>
                 <Button
+                  variant="outline"
+                  className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                  onClick={() => {
+                    const off = selectedOffer;
+                    setSelectedOffer(null);
+                    handleConvertToBill(off);
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Convert to Client Bill
+                </Button>
+                <Button
                   className="bg-primary text-primary-foreground"
                   onClick={() => {
                     const off = selectedOffer;
@@ -946,6 +1407,210 @@ function ClientOffersContent() {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Convert to Client Bill Dialog ── */}
+      <Dialog open={isConvertBillOpen} onOpenChange={(open) => { setIsConvertBillOpen(open); if (!open) resetConvertBillForm(); }}>
+        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate Client Bill{convertingFromOffer ? ` — from ${convertingFromOffer.invoiceNo}` : ''}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleConvertBillSubmit} className="space-y-6">
+            {/* Client Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-xl border">
+              <div className="space-y-1.5">
+                <Label htmlFor="cb-clientName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <User className="h-3.5 w-3.5" /> Client Name *
+                </Label>
+                <input
+                  id="cb-clientName"
+                  value={cbClientName}
+                  onChange={(e) => setCbClientName(e.target.value)}
+                  placeholder="e.g. Rahim Khan"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cb-clientPhone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> Client Phone *
+                </Label>
+                <input
+                  id="cb-clientPhone"
+                  value={cbClientPhone}
+                  onChange={(e) => { setCbClientPhone(e.target.value); if (cbPhoneError) validateCbPhone(e.target.value); }}
+                  onBlur={(e) => validateCbPhone(e.target.value)}
+                  placeholder="e.g. 01712345678"
+                  className={`h-10 w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cbPhoneError ? 'border-destructive' : 'border-input'}`}
+                  required
+                />
+                {cbPhoneError && <p className="text-[11px] text-destructive mt-0.5">{cbPhoneError}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cb-clientEmail" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-3.5 w-3.5" /> Email (Optional)
+                </Label>
+                <input
+                  id="cb-clientEmail"
+                  type="email"
+                  value={cbClientEmail}
+                  onChange={(e) => setCbClientEmail(e.target.value)}
+                  placeholder="e.g. client@example.com"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cb-clientAddress" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" /> Client Address *
+                </Label>
+                <input
+                  id="cb-clientAddress"
+                  value={cbClientAddress}
+                  onChange={(e) => setCbClientAddress(e.target.value)}
+                  placeholder="e.g. Nawabpur, Dhaka"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Bill Items */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="font-bold text-sm">Bill Items</h4>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCbItems(prev => [...prev, { name: '', description: '', quantity: 1, price: 0 }])} className="font-bold">
+                  <Plus className="h-3 w-3 mr-1" /> Add Item
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                {cbItems.map((item, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="flex-1 space-y-1">
+                      <input
+                        placeholder="Title"
+                        value={item.name}
+                        onChange={(e) => { const u = [...cbItems]; u[index].name = e.target.value; setCbItems(u); }}
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        required
+                      />
+                      <input
+                        placeholder="Description (Optional)"
+                        value={item.description || ''}
+                        onChange={(e) => { const u = [...cbItems]; u[index].description = e.target.value; setCbItems(u); }}
+                        className="h-8 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+                    </div>
+                    <input
+                      type="number" placeholder="Qty"
+                      value={item.quantity}
+                      onChange={(e) => { const u = [...cbItems]; u[index].quantity = Math.max(1, parseInt(e.target.value) || 1); setCbItems(u); }}
+                      className="w-20 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      min="1"
+                    />
+                    <input
+                      type="number" placeholder="Rate"
+                      value={item.price || ''}
+                      onChange={(e) => { const u = [...cbItems]; u[index].price = Math.max(0, parseFloat(e.target.value) || 0); setCbItems(u); }}
+                      className="w-28 h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      min="0"
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => { if (cbItems.length === 1) { setCbItems([{ name: '', description: '', quantity: 1, price: 0 }]); } else { setCbItems(cbItems.filter((_, i) => i !== index)); } }} className="text-destructive hover:bg-destructive/10 shrink-0 h-9 w-9">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Totals & Adjustments */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cb-deliveryCharge">Delivery Charge (৳)</Label>
+                    <input id="cb-deliveryCharge" type="number" value={cbDeliveryCharge || ''} onChange={(e) => setCbDeliveryCharge(Math.max(0, parseFloat(e.target.value) || 0))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cb-serviceFee">Service Fee (৳) <span className="text-muted-foreground font-normal text-xs">— Optional</span></Label>
+                    <input id="cb-serviceFee" type="number" value={cbServiceFee || ''} placeholder="0" onChange={(e) => setCbServiceFee(Math.max(0, parseFloat(e.target.value) || 0))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cb-prevDue">Previous Due (৳)</Label>
+                  <input id="cb-prevDue" type="number" value={cbPrevDue || ''} onChange={(e) => setCbPrevDue(Math.max(0, parseFloat(e.target.value) || 0))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                </div>
+                <div className="grid grid-cols-3 gap-2 items-end">
+                  <div className="space-y-2 col-span-1">
+                    <Label>Discount Type</Label>
+                    <Select value={cbDiscountType} onValueChange={(val: any) => { setCbDiscountType(val); setCbDiscountValue(0); }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed (৳)</SelectItem>
+                        <SelectItem value="percentage">Percent (%)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Discount Value</Label>
+                    <input type="number" value={cbDiscountValue || ''} onChange={(e) => setCbDiscountValue(Math.max(0, parseFloat(e.target.value) || 0))} placeholder={cbDiscountType === 'percentage' ? '%' : '৳'} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cb-cashIn">Cash-in (Paid) (৳)</Label>
+                    <input id="cb-cashIn" type="number" value={cbCashIn || ''} onChange={(e) => setCbCashIn(Math.max(0, parseFloat(e.target.value) || 0))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <div className="pt-2">
+                      <Badge variant={cbCalculatedStatus === 'Paid' ? 'default' : 'destructive'} className={cbCalculatedStatus === 'Paid' ? 'bg-green-600 text-white border-none' : ''}>{cbCalculatedStatus}</Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  {cbCalculatedStatus === 'Due' ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="cb-expectedDate">Expected Date of Receivable *</Label>
+                      <input id="cb-expectedDate" type="date" value={cbExpectedDate} onChange={(e) => setCbExpectedDate(e.target.value)} required className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    </div>
+                  ) : <div />}
+                  <div className={`flex items-center space-x-2 ${cbCalculatedStatus === 'Due' ? 'pt-6' : 'pt-2'}`}>
+                    <Checkbox
+                      id="cb-vatTaxIncluded"
+                      checked={cbVatTaxIncluded}
+                      onCheckedChange={(checked) => setCbVatTaxIncluded(checked === true)}
+                    />
+                    <Label htmlFor="cb-vatTaxIncluded" className="text-sm font-medium leading-none cursor-pointer">
+                      VAT & Tax Included
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-muted/40 p-4 rounded-lg space-y-3 border h-fit text-sm">
+                <h4 className="font-bold border-b pb-2 mb-2 text-base">Bill Summary</h4>
+                <div className="flex justify-between"><span>Subtotal:</span><span className="font-semibold">৳{cbSubtotal.toLocaleString()}</span></div>
+                {cbDeliveryCharge > 0 && <div className="flex justify-between"><span>Delivery Charge:</span><span>+ ৳{cbDeliveryCharge.toLocaleString()}</span></div>}
+                {cbServiceFee > 0 && <div className="flex justify-between"><span>Service Fee:</span><span>+ ৳{cbServiceFee.toLocaleString()}</span></div>}
+                {cbDiscount > 0 && <div className="flex justify-between text-green-600 font-medium"><span>Discount {cbDiscountType === 'percentage' && `(${cbDiscountValue}%)`}:</span><span>- ৳{cbDiscount.toLocaleString()}</span></div>}
+                <div className="flex justify-between border-t pt-2 font-bold text-base"><span>Total Bill:</span><span>৳{cbTotal.toLocaleString()}</span></div>
+                {cbPrevDue > 0 && <div className="flex justify-between text-muted-foreground"><span>Previous Due:</span><span>+ ৳{cbPrevDue.toLocaleString()}</span></div>}
+                <div className="flex justify-between border-t pt-2 font-bold text-lg text-primary"><span>Grand Total:</span><span>৳{cbGTotal.toLocaleString()}</span></div>
+                <div className="flex justify-between text-green-700 border-t pt-2"><span>Cash-in:</span><span>৳{cbCashIn.toLocaleString()}</span></div>
+                <div className="flex justify-between border-t pt-2 font-bold text-base text-destructive"><span>Remaining Due:</span><span>৳{cbCurrentDue.toLocaleString()}</span></div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsConvertBillOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={convertBillLoading} className="font-bold">
+                {convertBillLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                Generate Bill
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

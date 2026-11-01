@@ -48,10 +48,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const {
       clientName,
       clientPhone,
+      clientEmail,
       clientAddress,
       items,
       subtotal,
       deliveryCharge,
+      serviceFee,
       discountType,
       discountValue,
       discount,
@@ -62,16 +64,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       currentBillDue,
       status,
       expectedReceivableDate,
+      expectedDeliveryDate,
+      termsAndConditions,
+      vatTaxIncluded,
       documentType,
       convertedFrom,
     } = body;
 
     if (clientName !== undefined) bill.clientName = clientName;
     if (clientPhone !== undefined) bill.clientPhone = clientPhone;
+    if (clientEmail !== undefined) bill.clientEmail = clientEmail;
     if (clientAddress !== undefined) bill.clientAddress = clientAddress;
     if (items !== undefined) bill.items = items;
     if (subtotal !== undefined) bill.subtotal = subtotal;
     if (deliveryCharge !== undefined) bill.deliveryCharge = deliveryCharge;
+    if (serviceFee !== undefined) bill.serviceFee = serviceFee;
     if (discountType !== undefined) bill.discountType = discountType;
     if (discountValue !== undefined) bill.discountValue = discountValue;
     if (discount !== undefined) bill.discount = discount;
@@ -83,6 +90,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (status !== undefined) bill.status = status;
     if (documentType !== undefined) bill.documentType = documentType;
     if (convertedFrom !== undefined) bill.convertedFrom = convertedFrom;
+    if (vatTaxIncluded !== undefined) bill.vatTaxIncluded = Boolean(vatTaxIncluded);
+    if (termsAndConditions !== undefined) bill.termsAndConditions = termsAndConditions;
+    if (expectedDeliveryDate !== undefined) {
+      bill.expectedDeliveryDate = expectedDeliveryDate ? new Date(expectedDeliveryDate) : undefined;
+    }
     
     if (status === 'Paid') {
       bill.currentBillDue = 0;

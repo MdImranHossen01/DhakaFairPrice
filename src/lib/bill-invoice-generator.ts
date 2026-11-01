@@ -354,6 +354,12 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
                   </div>
                 ` : ''}
               ` : ''}
+              ${bill.expectedDeliveryDate ? `
+                <div class="info-row">
+                  <span class="info-label">Expected Delivery</span>
+                  <span>${format(new Date(bill.expectedDeliveryDate), "dd MMM yyyy")}</span>
+                </div>
+              ` : ''}
             </div>
           </div>
 
@@ -372,12 +378,15 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
             <tbody>
               ${items.map((item: any, index: number) => `
                 <tr>
-                  <td>${index + 1}</td>
-                  <td><strong>${item.name || ""}</strong></td>
-                  <td class="text-center">${item.quantity || 1}</td>
+                  <td style="vertical-align: top;">${index + 1}</td>
+                  <td style="vertical-align: top;">
+                    <div style="font-weight: 700; color: var(--foreground);">${item.name || ""}</div>
+                    ${item.description ? `<div style="font-size: 11px; color: var(--muted-foreground); margin-top: 2px; white-space: pre-wrap; line-height: 1.35;">${item.description}</div>` : ''}
+                  </td>
+                  <td class="text-center" style="vertical-align: top;">${item.quantity || 1}</td>
                   ${docType !== 'chalan' ? `
-                    <td class="text-right">৳${Math.round(item.price || 0)}</td>
-                    <td class="text-right">৳${Math.round((item.price || 0) * (item.quantity || 1))}</td>
+                    <td class="text-right" style="vertical-align: top;">৳${Math.round(item.price || 0)}</td>
+                    <td class="text-right" style="vertical-align: top;">৳${Math.round((item.price || 0) * (item.quantity || 1))}</td>
                   ` : ''}
                 </tr>
               `).join('')}
@@ -438,7 +447,15 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
             </div>
             
             <div style="margin-top: 15px; margin-bottom: 25px; font-size: 13px; border-top: 1px dashed var(--border); padding-top: 10px;">
-              <strong>Amount in Words:</strong> ${numberToWords(amountToConvert)} Taka Only
+              <div>
+                <strong>Amount in Words:</strong> ${numberToWords(amountToConvert)} Taka Only ${bill.vatTaxIncluded !== undefined ? `(${bill.vatTaxIncluded ? 'VAT & Tax Included' : 'VAT & Tax Excluded'})` : ''}
+              </div>
+              ${bill.termsAndConditions ? `
+                <div style="margin-top: 8px;">
+                  <strong>Terms &amp; Conditions:</strong>
+                  <div style="white-space: pre-wrap; font-style: italic; color: #555; margin-top: 3px; font-size: 12px; line-height: 1.4;">${bill.termsAndConditions}</div>
+                </div>
+              ` : ''}
             </div>
           ` : ''}
 
@@ -501,6 +518,12 @@ function renderDescriptionNode(node: any): string {
   }
 }
 
+export function generateDescriptionHtml(description?: string): string {
+  const lines = getDescriptionLines(description);
+  if (lines.length === 0) return '';
+  return lines.map(l => `<div style="margin:1px 0;line-height:1.4;">${l}</div>`).join('');
+}
+
 export function getDescriptionLines(description?: string): string[] {
   if (!description) return [];
   const trimmed = description.trim();
@@ -545,7 +568,7 @@ export async function generatePaymentReceiptPDF(
   txId?: string,
   isInitialBill?: boolean
 ) {
-  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
   const brandEmail = settings?.contact?.email || '';
   const brandPhone = settings?.contact?.phone || '';
   const brandAddress = settings?.contact?.address || '';
@@ -1052,7 +1075,7 @@ export async function generateSupplierPaymentReceiptPDF(
   txId?: string,
   isInitialBill?: boolean
 ) {
-  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
   const brandEmail = settings?.contact?.email || '';
   const brandPhone = settings?.contact?.phone || '';
   const brandAddress = settings?.contact?.address || '';

@@ -58,6 +58,7 @@ import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCar
 
 interface BillItemInput {
   name: string;
+  description?: string;
   quantity: number;
   price: number;
 }
@@ -121,9 +122,10 @@ function ClientBillsContent() {
   // Form states
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   const [billItems, setBillItems] = useState<BillItemInput[]>([
-    { name: '', quantity: 1, price: 0 }
+    { name: '', description: '', quantity: 1, price: 0 }
   ]);
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [serviceFee, setServiceFee] = useState<number>(0);
@@ -132,6 +134,9 @@ function ClientBillsContent() {
   const [prevDue, setPrevDue] = useState<number>(0);
   const [cashIn, setCashIn] = useState<number>(0);
   const [expectedReceivableDate, setExpectedReceivableDate] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
+  const [termsAndConditions, setTermsAndConditions] = useState('');
+  const [vatTaxIncluded, setVatTaxIncluded] = useState<boolean>(true);
 
   // Product multi-select state
   const [productSearchTerm, setProductSearchTerm] = useState('');
@@ -231,12 +236,12 @@ function ClientBillsContent() {
       if (!prod) return;
 
       if (variantId === null) {
-        newItems.push({ name: prod.name, price: prod.salePrice || prod.price || 0, quantity: 1 });
+        newItems.push({ name: prod.name, description: '', price: prod.salePrice || prod.price || 0, quantity: 1 });
       } else {
         const variant = (prod.variants || []).find((v: any) => v._id === variantId);
         if (!variant) return;
         const label = [prod.name, variant.color, variant.size].filter(Boolean).join(' — ');
-        newItems.push({ name: label, price: variant.salePrice || variant.price || 0, quantity: 1 });
+        newItems.push({ name: label, description: '', price: variant.salePrice || variant.price || 0, quantity: 1 });
       }
     });
 
@@ -253,12 +258,12 @@ function ClientBillsContent() {
   };
 
   const handleAddItemRow = () => {
-    setBillItems([...billItems, { name: '', quantity: 1, price: 0 }]);
+    setBillItems([...billItems, { name: '', description: '', quantity: 1, price: 0 }]);
   };
 
   const handleRemoveItemRow = (index: number) => {
     if (billItems.length === 1) {
-      setBillItems([{ name: '', quantity: 1, price: 0 }]);
+      setBillItems([{ name: '', description: '', quantity: 1, price: 0 }]);
     } else {
       setBillItems(billItems.filter((_, i) => i !== index));
     }
@@ -270,6 +275,8 @@ function ClientBillsContent() {
       updated[index].quantity = Math.max(1, parseInt(value) || 1);
     } else if (field === 'price') {
       updated[index].price = Math.max(0, parseFloat(value) || 0);
+    } else if (field === 'description') {
+      updated[index].description = value;
     } else {
       updated[index].name = value;
     }
@@ -303,6 +310,7 @@ function ClientBillsContent() {
       const billData = {
         clientName,
         clientPhone,
+        clientEmail: clientEmail.trim() || undefined,
         clientAddress,
         items: validItems,
         subtotal,
@@ -318,6 +326,9 @@ function ClientBillsContent() {
         currentBillDue,
         status: calculatedStatus,
         expectedReceivableDate: calculatedStatus === 'Due' ? expectedReceivableDate : undefined,
+        expectedDeliveryDate: expectedDeliveryDate || undefined,
+        termsAndConditions: termsAndConditions.trim() || undefined,
+        vatTaxIncluded: Boolean(vatTaxIncluded),
         documentType: 'bill'
       };
 
@@ -350,9 +361,10 @@ function ClientBillsContent() {
   const resetForm = () => {
     setClientName('');
     setClientPhone('');
+    setClientEmail('');
     setPhoneError('');
     setClientAddress('');
-    setBillItems([{ name: '', quantity: 1, price: 0 }]);
+    setBillItems([{ name: '', description: '', quantity: 1, price: 0 }]);
     setDeliveryCharge(0);
     setServiceFee(0);
     setDiscountType('fixed');
@@ -360,6 +372,9 @@ function ClientBillsContent() {
     setPrevDue(0);
     setCashIn(0);
     setExpectedReceivableDate('');
+    setExpectedDeliveryDate('');
+    setTermsAndConditions('');
+    setVatTaxIncluded(true);
     setSelectedProductVariants({});
     setProductSearchTerm('');
     setProductPickerOpen(false);
@@ -700,8 +715,9 @@ function ClientBillsContent() {
                                   setEditingBill(bill);
                                   setClientName(bill.clientName);
                                   setClientPhone(bill.clientPhone);
+                                  setClientEmail(bill.clientEmail || '');
                                   setClientAddress(bill.clientAddress);
-                                  setBillItems(bill.items);
+                                  setBillItems(bill.items && bill.items.length > 0 ? bill.items : [{ name: '', description: '', quantity: 1, price: 0 }]);
                                   setDeliveryCharge(bill.deliveryCharge);
                                   setServiceFee(bill.serviceFee || 0);
                                   setDiscountType(bill.discountType || 'fixed');
@@ -709,6 +725,9 @@ function ClientBillsContent() {
                                   setPrevDue(bill.prevDue || 0);
                                   setCashIn(bill.cashIn || 0);
                                   setExpectedReceivableDate(bill.expectedReceivableDate ? format(new Date(bill.expectedReceivableDate), 'yyyy-MM-dd') : '');
+                                  setExpectedDeliveryDate(bill.expectedDeliveryDate ? format(new Date(bill.expectedDeliveryDate), 'yyyy-MM-dd') : '');
+                                  setTermsAndConditions(bill.termsAndConditions || '');
+                                  setVatTaxIncluded(bill.vatTaxIncluded !== undefined ? bill.vatTaxIncluded : true);
                                   setIsCreateOpen(true);
                                 }}
                               >
@@ -820,8 +839,9 @@ function ClientBillsContent() {
                             setEditingBill(bill);
                             setClientName(bill.clientName);
                             setClientPhone(bill.clientPhone);
+                            setClientEmail(bill.clientEmail || '');
                             setClientAddress(bill.clientAddress);
-                            setBillItems(bill.items);
+                            setBillItems(bill.items && bill.items.length > 0 ? bill.items : [{ name: '', description: '', quantity: 1, price: 0 }]);
                             setDeliveryCharge(bill.deliveryCharge);
                             setServiceFee(bill.serviceFee || 0);
                             setDiscountType(bill.discountType || 'fixed');
@@ -829,6 +849,9 @@ function ClientBillsContent() {
                             setPrevDue(bill.prevDue || 0);
                             setCashIn(bill.cashIn || 0);
                             setExpectedReceivableDate(bill.expectedReceivableDate ? format(new Date(bill.expectedReceivableDate), 'yyyy-MM-dd') : '');
+                            setExpectedDeliveryDate(bill.expectedDeliveryDate ? format(new Date(bill.expectedDeliveryDate), 'yyyy-MM-dd') : '');
+                            setTermsAndConditions(bill.termsAndConditions || '');
+                            setVatTaxIncluded(bill.vatTaxIncluded !== undefined ? bill.vatTaxIncluded : true);
                             setIsCreateOpen(true);
                           }}
                         >
@@ -871,7 +894,7 @@ function ClientBillsContent() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             {/* Client Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="clientName" className="text-xs">Client Name *</Label>
                 <Input
@@ -898,6 +921,17 @@ function ClientBillsContent() {
                   required
                 />
                 {phoneError && <p className="text-[10px] text-destructive">{phoneError}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="clientEmail" className="text-xs">Client Email <span className="text-muted-foreground font-normal text-[10px]">— Optional</span></Label>
+                <Input
+                  id="clientEmail"
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                  placeholder="e.g. client@example.com"
+                  className="h-8 text-xs"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="clientAddress" className="text-xs">Client Address *</Label>
@@ -931,34 +965,46 @@ function ClientBillsContent() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                 {billItems.map((item, index) => (
-                  <div key={index} className="flex gap-1.5 items-center">
-                    <Input
-                      placeholder="Item Description"
-                      value={item.name}
-                      onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      className="flex-1 h-8 text-xs"
-                      required
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                      className="w-16 h-8 text-xs text-center"
-                      min="1"
-                      required
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Rate"
-                      value={item.price || ''}
-                      onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                      className="w-24 h-8 text-xs text-right"
-                      min="0"
-                      required
-                    />
+                  <div key={index} className="flex gap-2 items-center bg-muted/20 p-1.5 rounded-md border">
+                    <div className="flex-1 space-y-1">
+                      <Input
+                        placeholder="Title"
+                        value={item.name}
+                        onChange={(e) => handleItemChange(index, 'name', e.target.value)}
+                        className="h-8 text-xs font-medium"
+                        required
+                      />
+                      <Input
+                        placeholder="Description (Optional)"
+                        value={item.description || ''}
+                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                        className="h-7 text-[11px] text-muted-foreground"
+                      />
+                    </div>
+                    <div className="w-16">
+                      <Input
+                        type="number"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                        className="h-8 text-xs text-center"
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        placeholder="Rate"
+                        value={item.price || ''}
+                        onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                        className="h-8 text-xs text-right"
+                        min="0"
+                        required
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -1057,19 +1103,54 @@ function ClientBillsContent() {
                   </div>
                 </div>
 
-                {calculatedStatus === 'Due' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
+                  {calculatedStatus === 'Due' ? (
+                    <div className="space-y-1">
+                      <Label htmlFor="expectedReceivableDate" className="text-xs">Expected Receivable Date *</Label>
+                      <Input
+                        id="expectedReceivableDate"
+                        type="date"
+                        value={expectedReceivableDate}
+                        onChange={(e) => setExpectedReceivableDate(e.target.value)}
+                        required
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  ) : <div />}
+                  <div className={`flex items-center space-x-2 ${calculatedStatus === 'Due' ? 'pt-4' : 'pt-2'}`}>
+                    <Checkbox
+                      id="vatTaxIncluded"
+                      checked={vatTaxIncluded}
+                      onCheckedChange={(checked) => setVatTaxIncluded(checked === true)}
+                    />
+                    <Label htmlFor="vatTaxIncluded" className="text-xs font-medium leading-none cursor-pointer">
+                      VAT &amp; Tax Included
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1">
                   <div className="space-y-1">
-                    <Label htmlFor="expectedReceivableDate" className="text-xs">Expected Receivable Date *</Label>
+                    <Label htmlFor="expectedDeliveryDate" className="text-xs">Expected Delivery Date <span className="text-muted-foreground font-normal text-[10px]">— Optional</span></Label>
                     <Input
-                      id="expectedReceivableDate"
+                      id="expectedDeliveryDate"
                       type="date"
-                      value={expectedReceivableDate}
-                      onChange={(e) => setExpectedReceivableDate(e.target.value)}
-                      required
+                      value={expectedDeliveryDate}
+                      onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                       className="h-8 text-xs"
                     />
                   </div>
-                )}
+                  <div className="space-y-1">
+                    <Label htmlFor="termsAndConditions" className="text-xs">Terms &amp; Conditions <span className="text-muted-foreground font-normal text-[10px]">— Optional</span></Label>
+                    <textarea
+                      id="termsAndConditions"
+                      placeholder="Enter terms and conditions (optional)..."
+                      value={termsAndConditions}
+                      onChange={(e) => setTermsAndConditions(e.target.value)}
+                      className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Summary calculations view */}
@@ -1271,6 +1352,15 @@ function ClientBillsContent() {
                         <span className="text-orange-600">Due by: {format(new Date(selectedBill.expectedReceivableDate), 'dd MMM yyyy')}</span>
                       </div>
                     )}
+                    {selectedBill.expectedDeliveryDate && (
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                        <span className="text-teal-700">Delivery by: {format(new Date(selectedBill.expectedDeliveryDate), 'dd MMM yyyy')}</span>
+                      </div>
+                    )}
+                    <div className="text-[11px] text-muted-foreground pt-0.5">
+                      VAT &amp; Tax: <span className="font-semibold">{selectedBill.vatTaxIncluded !== false ? 'Included' : 'Excluded'}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1293,11 +1383,16 @@ function ClientBillsContent() {
                     <tbody className="divide-y">
                       {(selectedBill.items || []).map((item: any, idx: number) => (
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                          <td className="px-3 py-1.5 text-muted-foreground">{idx + 1}</td>
-                          <td className="px-3 py-1.5 font-medium">{item.name}</td>
-                          <td className="px-3 py-1.5 text-center">{item.quantity}</td>
-                          <td className="px-3 py-1.5 text-right">{Math.round(item.price).toLocaleString()}</td>
-                          <td className="px-3 py-1.5 text-right font-semibold">{Math.round(item.price * item.quantity).toLocaleString()}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground align-top">{idx + 1}</td>
+                          <td className="px-3 py-1.5 align-top">
+                            <div className="font-medium">{item.name}</div>
+                            {item.description && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5 whitespace-pre-wrap">{item.description}</div>
+                            )}
+                          </td>
+                          <td className="px-3 py-1.5 text-center align-top">{item.quantity}</td>
+                          <td className="px-3 py-1.5 text-right align-top">{Math.round(item.price).toLocaleString()}</td>
+                          <td className="px-3 py-1.5 text-right font-semibold align-top">{Math.round(item.price * item.quantity).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1359,6 +1454,13 @@ function ClientBillsContent() {
                     <span>৳{Math.round(selectedBill.currentBillDue || 0).toLocaleString()}</span>
                   </div>
                 </div>
+
+                {selectedBill.termsAndConditions && (
+                  <div className="bg-muted/20 border rounded-lg p-3 space-y-1 text-xs">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Terms &amp; Conditions</p>
+                    <div className="text-muted-foreground whitespace-pre-wrap italic">{selectedBill.termsAndConditions}</div>
+                  </div>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2 pt-1">
