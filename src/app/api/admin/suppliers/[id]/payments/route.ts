@@ -23,7 +23,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { amount, paymentMethod = 'Cash', description, date } = body;
+    const { amount, paymentMethod = 'Cash', paymentAccountId, description, date } = body;
 
     const paymentAmount = Number(amount);
     if (!paymentAmount || paymentAmount <= 0) {
@@ -50,6 +50,9 @@ export async function POST(
       bill.paidAmount = (bill.paidAmount || 0) + payToBill;
       bill.dueAmount = Math.max(0, bill.total - bill.paidAmount);
       bill.status = bill.dueAmount === 0 ? 'Paid' : 'Due';
+      if (!bill.paymentAccountId && paymentAccountId) {
+        bill.paymentAccountId = paymentAccountId;
+      }
       await bill.save();
       remainingPayment -= payToBill;
     }
@@ -60,16 +63,19 @@ export async function POST(
 
     // Log to Ledger if account exists
     try {
-      const defaultAccount = await LedgerAccount.findOne({ isDefault: true }) || await LedgerAccount.findOne();
-      if (defaultAccount) {
-        const balanceAfter = (defaultAccount.currentBalance || 0) - paymentAmount;
-        defaultAccount.currentBalance = balanceAfter;
-        await defaultAccount.save();
+      const payAccount = paymentAccountId
+        ? await LedgerAccount.findById(paymentAccountId)
+        : (await LedgerAccount.findOne({ isDefault: true }) || await LedgerAccount.findOne());
+
+      if (payAccount) {
+        const balanceAfter = (payAccount.currentBalance || 0) - paymentAmount;
+        payAccount.currentBalance = balanceAfter;
+        await payAccount.save();
 
         await LedgerTransaction.create({
-          account: defaultAccount._id,
+          account: payAccount._id,
           date: date ? new Date(date) : new Date(),
-          description: description || `Payment to Supplier: ${supplier.name} (${paymentMethod})`,
+          description: description || `Payment to Supplier: ${supplier.name} (${payAccount.name || paymentMethod})`,
           type: 'debit',
           amount: paymentAmount,
           reference: `Supplier:${supplier._id}`,

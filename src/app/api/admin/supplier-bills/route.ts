@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const {
-      supplier,
+      supplierId,
+      supplier: directSupplier,
       date,
       items,
       discount = 0,
@@ -64,6 +65,8 @@ export async function POST(req: NextRequest) {
       expectedPaymentDate,
       paymentAccountId
     } = body;
+
+    const supplier = supplierId || directSupplier;
 
     if (!supplier || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ message: 'Supplier and bill items are required' }, { status: 400 });

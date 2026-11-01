@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { Pagination } from '@/components/ui/pagination';
+import { isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 function SuppliersContent() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -76,13 +77,35 @@ function SuppliersContent() {
   // Record Payment Dialog State
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [payAmount, setPayAmount] = useState('');
-  const [payMethod, setPayMethod] = useState<'Cash' | 'Bank'>('Cash');
+  const [payMethod, setPayMethod] = useState<string>('Cash');
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [payDescription, setPayDescription] = useState('');
   const [payDate, setPayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   useEffect(() => {
     fetchSuppliers();
+    fetchAccounts();
   }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/admin/accounts');
+      if (res.ok) {
+        const json = await res.json();
+        const accs = json.accounts || [];
+        setAccounts(accs);
+        const liquid = accs.filter(isTransferableAccount);
+        const defaultAcc = liquid.find((a: any) => a.isDefault) || liquid[0];
+        if (defaultAcc) {
+          setSelectedAccountId((prev) => prev || defaultAcc._id);
+          setPayMethod((prev) => prev || cleanAccountName(defaultAcc.name));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
 
   const fetchSuppliers = async () => {
     try {
@@ -202,7 +225,10 @@ function SuppliersContent() {
   const openPaymentDialog = () => {
     setPayAmount('');
     setPayDescription('');
-    setPayMethod('Cash');
+    const liquid = accounts.filter(isTransferableAccount);
+    const defaultAcc = liquid.find((a: any) => a.isDefault) || liquid[0];
+    setSelectedAccountId(defaultAcc?._id || '');
+    setPayMethod(defaultAcc ? cleanAccountName(defaultAcc.name) : 'Cash');
     setPayDate(format(new Date(), 'yyyy-MM-dd'));
     setIsPaymentOpen(true);
   };
@@ -216,12 +242,16 @@ function SuppliersContent() {
     }
 
     try {
+      const selectedAcc = accounts.find(a => a._id === selectedAccountId);
+      const finalMethod = selectedAcc ? cleanAccountName(selectedAcc.name) : (payMethod || 'Cash');
+
       const res = await fetch(`/api/admin/suppliers/${selectedSupplier._id}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amountNum,
-          paymentMethod: payMethod,
+          paymentMethod: finalMethod,
+          paymentAccountId: selectedAccountId || undefined,
           description: payDescription || undefined,
           date: payDate
         })
@@ -604,15 +634,32 @@ function SuppliersContent() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="payMethod">Payment Method *</Label>
+                <Label htmlFor="payMethod">Payment Method / Account *</Label>
                 <select
                   id="payMethod"
-                  value={payMethod}
-                  onChange={(e: any) => setPayMethod(e.target.value)}
+                  value={selectedAccountId}
+                  onChange={(e: any) => {
+                    const accId = e.target.value;
+                    setSelectedAccountId(accId);
+                    const acc = accounts.find(a => a._id === accId);
+                    if (acc) {
+                      setPayMethod(cleanAccountName(acc.name));
+                    }
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="Bank">Bank</option>
+                  {accounts.filter(isTransferableAccount).length > 0 ? (
+                    accounts.filter(isTransferableAccount).map((acc) => (
+                      <option key={acc._id} value={acc._id}>
+                        {cleanAccountName(acc.name)} ({acc.category || acc.type || 'Account'})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank">Bank</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>

@@ -54,7 +54,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { items, discount, paidAmount, paymentMethod, expectedPaymentDate, date } = body;
+    const { items, discount, paidAmount, paymentMethod, paymentAccountId, expectedPaymentDate, date } = body;
 
     await connectToDatabase();
 
@@ -88,6 +88,7 @@ export async function PUT(
     existingBill.status = existingBill.dueAmount === 0 ? 'Paid' : 'Due';
 
     if (paymentMethod !== undefined) existingBill.paymentMethod = paymentMethod;
+    if (paymentAccountId !== undefined) existingBill.paymentAccountId = paymentAccountId || undefined;
     if (expectedPaymentDate !== undefined) existingBill.expectedPaymentDate = expectedPaymentDate ? new Date(expectedPaymentDate) : undefined;
     if (date !== undefined) existingBill.date = date ? new Date(date) : existingBill.date;
 

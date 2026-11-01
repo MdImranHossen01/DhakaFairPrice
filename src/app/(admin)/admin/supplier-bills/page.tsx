@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Pagination } from '@/components/ui/pagination';
 import { MobileDataCard, MobileDataRow } from '@/components/common/MobileDataCard';
+import { isTransferableAccount, cleanAccountName } from '@/lib/utils';
 
 interface BillItemInput {
   name: string;
@@ -91,7 +92,9 @@ function SupplierBillsContent() {
   ]);
   const [discountValue, setDiscountValue] = useState<number>(0);
   const [paidAmount, setPaidAmount] = useState<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Bank'>('Cash');
+  const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
 
   // Detail View State
   const [selectedBill, setSelectedBill] = useState<any>(null);
@@ -103,8 +106,28 @@ function SupplierBillsContent() {
   useEffect(() => {
     fetchBills();
     fetchSuppliers();
+    fetchAccounts();
     fetchSettings();
   }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch('/api/admin/accounts');
+      if (res.ok) {
+        const json = await res.json();
+        const accs = json.accounts || [];
+        setAccounts(accs);
+        const liquid = accs.filter(isTransferableAccount);
+        const defaultAcc = liquid.find((a: any) => a.isDefault) || liquid[0];
+        if (defaultAcc) {
+          setSelectedAccountId((prev) => prev || defaultAcc._id);
+          setPaymentMethod((prev) => prev || cleanAccountName(defaultAcc.name));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching accounts:', err);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -178,7 +201,10 @@ function SupplierBillsContent() {
     setBillItems([{ name: '', quantity: 1, price: 0 }]);
     setDiscountValue(0);
     setPaidAmount(0);
-    setPaymentMethod('Cash');
+    const liquid = accounts.filter(isTransferableAccount);
+    const defaultAcc = liquid.find((a: any) => a.isDefault) || liquid[0];
+    setSelectedAccountId(defaultAcc?._id || '');
+    setPaymentMethod(defaultAcc ? cleanAccountName(defaultAcc.name) : 'Cash');
     setEditingBill(null);
     setIsCreateOpen(true);
   };
@@ -226,18 +252,23 @@ function SupplierBillsContent() {
       const url = editingBill ? `/api/admin/supplier-bills/${editingBill._id}` : '/api/admin/supplier-bills';
       const method = editingBill ? 'PUT' : 'POST';
 
+      const selectedAcc = accounts.find(a => a._id === selectedAccountId);
+      const finalMethod = selectedAcc ? cleanAccountName(selectedAcc.name) : (paymentMethod || 'Cash');
+
       const res = await fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           supplierId: selectedSupplierId,
+          supplier: selectedSupplierId,
           date: billDate,
           items: billItems,
           subtotal,
           discount: discountValue,
           total,
           paidAmount,
-          paymentMethod
+          paymentMethod: finalMethod,
+          paymentAccountId: selectedAccountId || undefined
         })
       });
 
@@ -491,6 +522,7 @@ function SupplierBillsContent() {
                                   setDiscountValue(bill.discount || 0);
                                   setPaidAmount(bill.paidAmount || 0);
                                   setPaymentMethod(bill.paymentMethod || 'Cash');
+                                  setSelectedAccountId(bill.paymentAccountId?._id || bill.paymentAccountId || '');
                                   setIsCreateOpen(true);
                                 }}
                               >
@@ -589,6 +621,7 @@ function SupplierBillsContent() {
                             setDiscountValue(bill.discount || 0);
                             setPaidAmount(bill.paidAmount || 0);
                             setPaymentMethod(bill.paymentMethod || 'Cash');
+                            setSelectedAccountId(bill.paymentAccountId?._id || bill.paymentAccountId || '');
                             setIsCreateOpen(true);
                           }}
                         >
@@ -721,15 +754,32 @@ function SupplierBillsContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t">
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="paymentMethod" className="text-xs">Payment Method</Label>
+                  <Label htmlFor="paymentMethod" className="text-xs">Payment Method / Account</Label>
                   <select
                     id="paymentMethod"
-                    value={paymentMethod}
-                    onChange={(e: any) => setPaymentMethod(e.target.value)}
+                    value={selectedAccountId}
+                    onChange={(e: any) => {
+                      const accId = e.target.value;
+                      setSelectedAccountId(accId);
+                      const acc = accounts.find(a => a._id === accId);
+                      if (acc) {
+                        setPaymentMethod(cleanAccountName(acc.name));
+                      }
+                    }}
                     className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="Cash">Cash</option>
-                    <option value="Bank">Bank</option>
+                    {accounts.filter(isTransferableAccount).length > 0 ? (
+                      accounts.filter(isTransferableAccount).map((acc) => (
+                        <option key={acc._id} value={acc._id}>
+                          {cleanAccountName(acc.name)} ({acc.category || acc.type || 'Account'})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank">Bank</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
