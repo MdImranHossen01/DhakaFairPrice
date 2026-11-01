@@ -4,17 +4,18 @@ import { auth } from '@/auth';
 import connectToDatabase from '@/lib/db';
 import Bill from '@/models/Bill';
 import User from '@/models/User';
+import Order from '@/models/Order';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session || !(['admin', 'super_admin'].includes((session?.user as any)?.role))) {
+    if (!session || !(['admin', 'super_admin', 'manager', 'moderator'].includes((session?.user as any)?.role))) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    // 1. Get unique clients from Bill collection (sorted by newest)
+    // 1. Get unique clients from Bill collection (sorted by newest, includes bills, offers, chalans)
     const billClients = await Bill.aggregate([
       {
         $sort: { createdAt: -1 }
@@ -39,6 +40,15 @@ export async function GET(req: NextRequest) {
     // 2. Get registered users (role: 'user')
     const users = await User.find({ role: 'user' }).lean();
 
+    // 3. Get recent orders with shipping addresses
+    const recentOrders = await Order.find(
+      { 'shippingAddress.fullName': { $exists: true, $ne: '' } },
+      { shippingAddress: 1, createdAt: 1 }
+    )
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
     const registryMap = new Map<string, {
       name: string;
       phone: string;
@@ -57,6 +67,27 @@ export async function GET(req: NextRequest) {
         email: bc.email || '',
         address: bc.address || ''
       });
+    });
+
+    // Merge recent order clients
+    recentOrders.forEach((ord: any) => {
+      const sa = ord.shippingAddress;
+      if (!sa) return;
+      const key = (sa.phone || sa.fullName || '').trim().toLowerCase();
+      if (!key) return;
+
+      const fullAddr = [sa.street, sa.city, sa.state, sa.division].filter(Boolean).join(', ');
+      const existing = registryMap.get(key);
+      if (existing) {
+        if (!existing.address && fullAddr) existing.address = fullAddr;
+      } else {
+        registryMap.set(key, {
+          name: sa.fullName || '',
+          phone: sa.phone || '',
+          email: '',
+          address: fullAddr || ''
+        });
+      }
     });
 
     // Merge registered users
