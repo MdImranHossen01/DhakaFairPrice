@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import {
-  Loader2, Search, Package, CheckCircle2, Store, Users, ShoppingBag, Filter, Flame, MessageCircle,
+  Loader2, Search, Package, CheckCircle2, Store, Users, ShoppingBag, Filter, Flame, MessageCircle, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -18,6 +18,13 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuGroup,
+} from '@/components/ui/dropdown-menu';
 
 type SourceFilter = 'all' | 'top_selling' | 'admin' | 'reseller' | 'sourced';
 
@@ -29,15 +36,6 @@ const SOURCE_TABS: { key: SourceFilter; label: string; icon: any; color: string 
   { key: 'sourced',     label: 'In My Store',          icon: CheckCircle2, color: 'bg-green-600 text-white border-green-600' },
 ];
 
-interface VariantPricingState {
-  color?: string;
-  size?: string;
-  sku?: string;
-  wholesalePrice: number;
-  retailPrice: string;
-  stock: number;
-}
-
 function SourceProductsContent() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +45,31 @@ function SourceProductsContent() {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [counts, setCounts] = useState({ all: 0, top_selling: 0, admin: 0, reseller: 0, sourced: 0 });
+  const [resellers, setResellers] = useState<any[]>([]);
+  const [resellerFilter, setResellerFilter] = useState<string>('all');
 
   // Sourcing Dialog
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [retailPrice, setRetailPrice] = useState<string>('');
   const [variantPricing, setVariantPricing] = useState<VariantPricingState[]>([]);
-  const [bulkMarginPercent, setBulkMarginPercent] = useState<string>('20');
+  const [bulkMarginPercent, setBulkMarginPercent] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchProducts = async (currentPage = page, currentFilter = sourceFilter, currentSearch = search) => {
+  interface VariantPricingState {
+    color?: string;
+    size?: string;
+    sku?: string;
+    wholesalePrice: number;
+    retailPrice: string;
+    stock?: number;
+  }
+
+  const fetchProducts = async (
+    currentPage = page,
+    currentFilter = sourceFilter,
+    currentSearch = search,
+    currentReseller = resellerFilter
+  ) => {
     setLoading(true);
     const params = new URLSearchParams({
       page: String(currentPage),
@@ -63,6 +77,9 @@ function SourceProductsContent() {
       source: currentFilter,
     });
     if (currentSearch) params.set('search', currentSearch);
+    if (currentReseller && currentReseller !== 'all') {
+      params.set('resellerId', currentReseller);
+    }
 
     try {
       const res = await fetch(`/api/reseller/products/source?${params}`);
@@ -72,6 +89,9 @@ function SourceProductsContent() {
         setTotalPages(d.pagination?.totalPages || 1);
         setTotal(d.pagination?.total || 0);
         if (d.counts) setCounts(d.counts);
+        if (d.resellers && Array.isArray(d.resellers)) {
+          setResellers(d.resellers);
+        }
       } else {
         toast.error('Failed to load products');
       }
@@ -84,24 +104,56 @@ function SourceProductsContent() {
   };
 
   useEffect(() => {
-    fetchProducts(page, sourceFilter, search);
+    fetchProducts(page, sourceFilter, search, resellerFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sourceFilter]);
+  }, [page, sourceFilter, resellerFilter]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchProducts(1, sourceFilter, search);
+    fetchProducts(1, sourceFilter, search, resellerFilter);
   };
 
   const handleFilterChange = (filter: SourceFilter) => {
     setSourceFilter(filter);
     setPage(1);
+
+    let targetReseller = resellerFilter;
+    if (filter === 'admin' && resellerFilter !== 'all' && resellerFilter !== 'main') {
+      targetReseller = 'main';
+      setResellerFilter('main');
+    } else if (filter === 'reseller' && resellerFilter === 'main') {
+      targetReseller = 'all';
+      setResellerFilter('all');
+    }
+
+    fetchProducts(1, filter, search, targetReseller);
+  };
+
+  const handleResellerChange = (val: string) => {
+    setResellerFilter(val);
+    setPage(1);
+
+    let targetFilter = sourceFilter;
+    if (val === 'main') {
+      if (sourceFilter === 'reseller') {
+        targetFilter = 'admin';
+        setSourceFilter('admin');
+      }
+    } else if (val !== 'all') {
+      if (sourceFilter === 'admin') {
+        targetFilter = 'reseller';
+        setSourceFilter('reseller');
+      }
+    }
+
+    fetchProducts(1, targetFilter, search, val);
   };
 
   const openSourcingDialog = (product: any) => {
     setSelectedProduct(product);
-    const defaultFeeRatio = 0.15;
+    // In Swapnobaz, default system fee is 10% (0.10)
+    const defaultFeeRatio = 0.10;
     const wholesalePrice = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
 
     const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
@@ -135,6 +187,7 @@ function SourceProductsContent() {
       });
 
       setVariantPricing(mapped);
+      // Guarantee the first variant price is set as base retailPrice for the product card
       setRetailPrice(mapped[0]?.retailPrice || String(Math.round(wholesalePrice * 1.2)));
     } else {
       setVariantPricing([]);
@@ -149,6 +202,7 @@ function SourceProductsContent() {
     setVariantPricing(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], retailPrice: val };
+      // Keep retailPrice synced with 1st variant for product card display
       if (index === 0) {
         setRetailPrice(val);
       }
@@ -192,6 +246,7 @@ function SourceProductsContent() {
         }
       }
 
+      // First variant price is used for product card default
       finalRetailPrice = parseFloat(variantPricing[0].retailPrice);
       payloadVariants = variantPricing.map(vp => ({
         color: vp.color,
@@ -203,7 +258,8 @@ function SourceProductsContent() {
       }));
     } else {
       const priceNum = parseFloat(retailPrice);
-      const defaultFeeRatio = 0.15;
+      // In Swapnobaz, default system fee is 10%
+      const defaultFeeRatio = 0.10;
       const wholesalePrice = selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * (1 + defaultFeeRatio)) : (selectedProduct.price || 0));
 
       if (isNaN(priceNum) || priceNum <= 0) {
@@ -225,7 +281,7 @@ function SourceProductsContent() {
         body: JSON.stringify({
           productId: selectedProduct._id,
           retailPrice: finalRetailPrice,
-          ...(payloadVariants ? { variants: payloadVariants } : {}),
+          variants: payloadVariants,
         }),
       });
 
@@ -245,13 +301,8 @@ function SourceProductsContent() {
     }
   };
 
-  const defaultFeeRatio = 0.15;
-  const singleWholesaleCost = selectedProduct
-    ? (selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * (1 + defaultFeeRatio)) : (selectedProduct.price || 0)))
-    : 0;
-
   const profit = selectedProduct
-    ? Math.max(0, parseFloat(retailPrice || '0') - singleWholesaleCost)
+    ? Math.max(0, parseFloat(retailPrice || '0') - (selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.10) : (selectedProduct.price || 0))))
     : 0;
 
   return (
@@ -290,19 +341,78 @@ function SourceProductsContent() {
         })}
       </div>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2 max-w-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-8 h-9 text-xs md:text-sm"
-            placeholder="Search by name or SKU..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+      {/* Search & Reseller Filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px] max-w-sm">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="pl-8 h-9 text-xs md:text-sm bg-background"
+              placeholder="Search by name or SKU..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <Button type="submit" variant="outline" size="sm" className="h-9 text-xs">Search</Button>
+        </form>
+
+        {/* Reseller / Shop Filter Dropdown */}
+        <div className="w-full sm:w-48 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-9 w-full justify-between px-3 text-xs sm:text-sm font-normal bg-background">
+                <span className="truncate">
+                  {resellerFilter === 'all' 
+                    ? 'All' 
+                    : resellerFilter === 'main'
+                    ? 'Main Store'
+                    : resellers.find(r => r._id === resellerFilter)?.storeName || 'Select Shop'}
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => handleResellerChange('all')}
+                  className={resellerFilter === 'all' ? "bg-accent font-bold" : ""}
+                >
+                  All
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleResellerChange('main')}
+                  className={resellerFilter === 'main' ? "bg-accent font-bold" : ""}
+                >
+                  Main Store
+                </DropdownMenuItem>
+                {resellers.map((r) => (
+                  <DropdownMenuItem
+                    key={r._id}
+                    onClick={() => handleResellerChange(r._id)}
+                    className={resellerFilter === r._id ? "bg-accent font-bold" : ""}
+                  >
+                    {r.storeName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <Button type="submit" variant="outline" size="sm" className="h-9 text-xs">Search</Button>
-      </form>
+
+        {(resellerFilter !== 'all' || search) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              handleResellerChange('all');
+            }}
+            className="text-xs text-muted-foreground hover:text-primary shrink-0 h-9 px-2.5"
+          >
+            Clear Filter
+          </Button>
+        )}
+      </div>
 
       {/* Source type badge description */}
       {sourceFilter !== 'all' && (
@@ -343,7 +453,7 @@ function SourceProductsContent() {
           <p className="text-xs text-muted-foreground">{total} products found</p>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
-              const defaultFeeRatio = 0.15;
+              const defaultFeeRatio = 0.10;
               const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
               let minWholesale = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
               let maxWholesale = minWholesale;
@@ -460,9 +570,11 @@ function SourceProductsContent() {
                     {/* Contact Seller WhatsApp */}
                     {(product.sellerWhatsAppUrl || product.sellerWhatsAppNumber) && (
                       <div className="flex items-center justify-between gap-1 py-1 px-2 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-[11px]">
-                        <span className="text-muted-foreground font-medium text-[10px]">{isAdmin ? 'Main Store:' : 'Contact Seller:'}</span>
+                        <span className="text-muted-foreground font-medium text-[10px]">
+                          {isAdmin ? 'Main Store:' : 'Contact Seller:'}
+                        </span>
                         <a
-                          href={product.sellerWhatsAppUrl || 'https://wa.me/' + (product.sellerWhatsAppNumber || '').replace(/\D/g, '')}
+                          href={product.sellerWhatsAppUrl || `https://wa.me/${(product.sellerWhatsAppNumber || '').replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 hover:underline transition-colors shrink-0"
@@ -573,13 +685,15 @@ function SourceProductsContent() {
                   </div>
                   {(selectedProduct.sellerWhatsAppUrl || selectedProduct.sellerWhatsAppNumber) && (
                     <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 text-xs mt-2">
-                      <span className="font-medium text-muted-foreground text-[11px]">{selectedProduct.sourceType === 'admin' ? 'Main Store WhatsApp:' : 'Contact Seller (WhatsApp):'}</span>
+                      <span className="font-medium text-muted-foreground text-[11px]">
+                        {selectedProduct.sourceType === 'admin' ? 'Main Store WhatsApp:' : 'Contact Seller (WhatsApp):'}
+                      </span>
                       <a
-                        href={selectedProduct.sellerWhatsAppUrl || 'https://wa.me/' + (selectedProduct.sellerWhatsAppNumber || '').replace(/\D/g, '')}
+                        href={selectedProduct.sellerWhatsAppUrl || `https://wa.me/${(selectedProduct.sellerWhatsAppNumber || '').replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
-                        title="Chat with source seller on WhatsApp"
+                        title={selectedProduct.sourceType === 'admin' ? 'Chat with Main Store on WhatsApp' : 'Chat with source seller on WhatsApp'}
                       >
                         <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
                         <span>{selectedProduct.sellerWhatsAppNumber}</span>
@@ -674,7 +788,7 @@ function SourceProductsContent() {
                     <div className="border p-3 rounded-lg text-center bg-muted/40">
                       <span className="text-[10px] text-muted-foreground block uppercase font-bold">Wholesale Cost</span>
                       <span className="text-lg font-black text-foreground">
-                        ৳{(selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.15) : (selectedProduct.price || 0))).toLocaleString()}
+                        ৳{(selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.10) : (selectedProduct.price || 0))).toLocaleString()}
                       </span>
                     </div>
                     <div className={`border p-3 rounded-lg text-center ${profit > 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-muted/40'}`}>
