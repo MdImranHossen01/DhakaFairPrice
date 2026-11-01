@@ -896,7 +896,7 @@ function SupplierBillsContent() {
                     {accounts.filter(isTransferableAccount).length > 0 ? (
                       accounts.filter(isTransferableAccount).map((acc) => (
                         <option key={acc._id} value={acc._id}>
-                          {cleanAccountName(acc.name)} ({acc.category || acc.type || 'Account'})
+                          {cleanAccountName(acc.name)} (৳{Math.round(acc.currentBalance || 0).toLocaleString()})
                         </option>
                       ))
                     ) : (
@@ -906,6 +906,11 @@ function SupplierBillsContent() {
                       </>
                     )}
                   </select>
+                  {selectedAccountId && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Available Balance: <strong className="text-emerald-600 font-bold">৳{Math.round(accounts.find(a => a._id === selectedAccountId)?.currentBalance || 0).toLocaleString()}</strong>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="paidAmount" className="text-xs">Upfront Payment Amount (BDT)</Label>
