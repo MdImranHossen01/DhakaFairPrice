@@ -440,38 +440,15 @@ export default function ResellerSalesReportPage() {
                 ) : resellers.length > 0 ? (
                   resellers.map((r: any, idx: number) => {
                     const rank = idx + 1;
-                    const isTop1 = rank === 1 && r.totalSales > 0;
-                    const isTop2 = rank === 2 && r.totalSales > 0;
-                    const isTop3 = rank === 3 && r.totalSales > 0;
 
                     return (
                       <tr
                         key={r._id}
-                        className={`border-b border-muted/30 transition-colors ${
-                          isTop1
-                            ? 'bg-amber-500/5 hover:bg-amber-500/10'
-                            : 'hover:bg-muted/30'
-                        }`}
+                        className="border-b border-muted/30 hover:bg-muted/30 transition-colors"
                       >
-                        {/* Rank Badge */}
-                        <td className="p-2.5 text-center">
-                          {isTop1 ? (
-                            <span className="inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full bg-amber-500/20 text-amber-700 font-bold text-xs border border-amber-500/30">
-                              🥇 #1
-                            </span>
-                          ) : isTop2 ? (
-                            <span className="inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full bg-slate-300/40 text-slate-700 font-bold text-xs border border-slate-400/30">
-                              🥈 #2
-                            </span>
-                          ) : isTop3 ? (
-                            <span className="inline-flex items-center justify-center h-6 min-w-6 px-1.5 rounded-full bg-orange-400/20 text-orange-700 font-bold text-xs border border-orange-500/30">
-                              🥉 #3
-                            </span>
-                          ) : (
-                            <span className="inline-block text-xs font-semibold text-muted-foreground">
-                              #{rank}
-                            </span>
-                          )}
+                        {/* Rank */}
+                        <td className="p-2.5 text-center text-xs font-semibold text-muted-foreground">
+                          #{rank}
                         </td>
 
                         {/* Store Info */}
