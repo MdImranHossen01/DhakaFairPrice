@@ -441,7 +441,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const { stats, lowStockProducts, last7DaysStats } = data || {};
+  const { stats, lowStockProducts, last7DaysStats, topSellers } = data || {};
 
   return (
     <div className="flex-1 space-y-6">
@@ -1347,6 +1347,126 @@ export default function AdminDashboard() {
             ))
           ) : (
             <div className="p-4 text-center text-muted-foreground italic text-xs">No data recorded.</div>
+          )}
+        </div>
+      </div>
+
+      {/* 8. Top 5 Sellers */}
+      <div className="bg-card rounded-2xl border shadow-xs overflow-hidden">
+        <div className="bg-muted/40 py-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <Store className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                Top 5 Sellers
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Top performing drop-shipping resellers based on total sales and delivered orders.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" className="h-8 text-xs font-semibold self-start sm:self-auto" asChild>
+            <Link href="/admin/reports/reseller-sales">
+              View All Resellers →
+            </Link>
+          </Button>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto p-3">
+          <table className="w-full min-w-[650px] border-collapse text-xs md:text-sm text-center">
+            <thead>
+              <tr className="border-b bg-muted/20 text-muted-foreground font-semibold">
+                <th className="p-2.5 text-center w-12 font-bold text-foreground">Rank</th>
+                <th className="p-2.5 text-left font-bold text-foreground">Reseller Store</th>
+                <th className="p-2.5 text-left font-bold text-foreground">Owner</th>
+                <th className="p-2.5 font-bold text-foreground">Orders</th>
+                <th className="p-2.5 font-bold text-emerald-600">Delivered</th>
+                <th className="p-2.5 font-bold text-primary text-right">Sales Volume</th>
+                <th className="p-2.5 font-bold text-right text-foreground">Earned</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topSellers && topSellers.length > 0 ? (
+                topSellers.map((seller: any) => (
+                  <tr key={seller._id || seller.rank} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
+                    <td className="p-2.5 text-center text-xs font-semibold text-muted-foreground">
+                      #{seller.rank}
+                    </td>
+                    <td className="p-2.5 text-left">
+                      <div className="font-bold text-foreground flex items-center gap-1.5">
+                        <Store className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>{seller.storeName}</span>
+                      </div>
+                      {seller.subdomain && (
+                        <span className="text-[11px] text-muted-foreground">
+                          {seller.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-2.5 text-left">
+                      <div className="font-medium text-foreground">{seller.ownerName || '—'}</div>
+                      {seller.ownerPhone && (
+                        <div className="text-[11px] text-muted-foreground">{seller.ownerPhone}</div>
+                      )}
+                    </td>
+                    <td className="p-2.5 font-bold text-foreground">
+                      {seller.totalOrders || 0}
+                    </td>
+                    <td className="p-2.5 font-semibold text-emerald-600">
+                      {seller.deliveredOrders || 0}
+                    </td>
+                    <td className="p-2.5 font-bold text-right text-primary">
+                      ৳{Math.round(seller.totalSales || 0).toLocaleString()}
+                    </td>
+                    <td className="p-2.5 font-semibold text-right text-foreground">
+                      ৳{Math.round(seller.totalCommission || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="p-4 text-center text-muted-foreground italic">
+                    No reseller sales data available for this period.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="sm:hidden p-2.5 space-y-2">
+          {topSellers && topSellers.length > 0 ? (
+            topSellers.map((seller: any) => (
+              <div key={seller._id || seller.rank} className="bg-background border border-border/80 rounded-xl p-3 text-xs space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between border-b pb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground">#{seller.rank}</span>
+                    <span className="font-bold text-foreground">{seller.storeName}</span>
+                  </div>
+                  <span className="font-bold text-primary">
+                    ৳{Math.round(seller.totalSales || 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Owner:</span>
+                    <span className="font-medium text-foreground">{seller.ownerName || '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivered:</span>
+                    <span className="font-semibold text-emerald-600">{seller.deliveredOrders || 0} / {seller.totalOrders || 0}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-muted-foreground italic text-xs">
+              No reseller sales data available.
+            </div>
           )}
         </div>
       </div>

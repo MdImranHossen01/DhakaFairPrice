@@ -380,6 +380,8 @@ export default function ResellerDashboard() {
     ];
   }, [data?.stats?.cashBalance, data?.stats?.bankBalance, data?.stats?.mfsBalance]);
 
+  const topSellers = data?.topSellers || [];
+
   if (loading && !data) {
     return (
       <div className="space-y-6 p-2 md:p-6">
@@ -1227,6 +1229,136 @@ export default function ResellerDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Top 5 Sellers Leaderboard */}
+      <Card className="shadow-xs rounded-2xl border overflow-hidden mt-6">
+        <CardHeader className="bg-muted/40 py-3.5 px-4 flex flex-row items-center justify-between border-b">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                Top 5 Sellers
+              </CardTitle>
+              <CardDescription className="text-[11px] text-muted-foreground mt-0.5">
+                Leaderboard of top performing seller stores across the platform.
+              </CardDescription>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-semibold">
+            Platform Leaderboard
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-0">
+          {/* Desktop View */}
+          <div className="hidden sm:block overflow-x-auto p-3">
+            <table className="w-full min-w-[550px] border-collapse text-xs md:text-sm text-center">
+              <thead>
+                <tr className="border-b bg-muted/20 text-muted-foreground font-semibold">
+                  <th className="p-2.5 text-center w-12 font-bold text-foreground">Rank</th>
+                  <th className="p-2.5 text-left font-bold text-foreground">Seller Store</th>
+                  <th className="p-2.5 font-bold text-foreground">Total Orders</th>
+                  <th className="p-2.5 font-bold text-emerald-600">Delivered Orders</th>
+                  <th className="p-2.5 font-bold text-primary text-right">Sales Volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topSellers && topSellers.length > 0 ? (
+                  topSellers.map((seller: any) => {
+                    const isYou = seller.isCurrent;
+                    return (
+                      <tr
+                        key={seller._id || seller.rank}
+                        className={`border-b border-muted/30 transition-colors ${
+                          isYou ? 'bg-primary/5 font-semibold' : 'hover:bg-muted/30'
+                        }`}
+                      >
+                        <td className="p-2.5 text-center text-xs font-semibold text-muted-foreground">
+                          #{seller.rank}
+                        </td>
+                        <td className="p-2.5 text-left">
+                          <div className="font-bold text-foreground flex items-center gap-1.5">
+                            <Store className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>{seller.storeName}</span>
+                            {isYou && (
+                              <Badge className="text-[10px] h-4.5 px-1.5 bg-primary/20 text-primary border-primary/30">
+                                You
+                              </Badge>
+                            )}
+                          </div>
+                          {seller.subdomain && (
+                            <span className="text-[11px] text-muted-foreground">
+                              {seller.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 font-bold text-foreground">
+                          {seller.totalOrders || 0}
+                        </td>
+                        <td className="p-2.5 font-semibold text-emerald-600">
+                          {seller.deliveredOrders || 0}
+                        </td>
+                        <td className="p-2.5 font-bold text-right text-primary">
+                          ৳{Math.round(seller.totalSales || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-muted-foreground italic">
+                      No seller data recorded yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="sm:hidden p-2.5 space-y-2">
+            {topSellers && topSellers.length > 0 ? (
+              topSellers.map((seller: any) => {
+                const isYou = seller.isCurrent;
+                return (
+                  <div
+                    key={seller._id || seller.rank}
+                    className={`border rounded-xl p-3 text-xs space-y-2 shadow-2xs ${
+                      isYou ? 'bg-primary/5 border-primary/40' : 'bg-background border-border/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between border-b pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-muted-foreground">#{seller.rank}</span>
+                        <span className="font-bold text-foreground">{seller.storeName}</span>
+                        {isYou && (
+                          <Badge className="text-[9px] h-4 px-1 bg-primary/20 text-primary border-primary/30">
+                            You
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="font-bold text-primary">
+                        ৳{Math.round(seller.totalSales || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">Delivered / Orders:</span>
+                      <span className="font-semibold text-foreground">
+                        {seller.deliveredOrders || 0} / {seller.totalOrders || 0}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-4 text-center text-muted-foreground italic text-xs">
+                No seller data recorded yet.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

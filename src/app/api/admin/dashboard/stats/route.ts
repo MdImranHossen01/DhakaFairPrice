@@ -12,6 +12,7 @@ import Subscriber from '@/models/Subscriber';
 import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 import BusinessLoan from '@/models/BusinessLoan';
 import { syncPayablesToLedger } from '@/lib/ledgerHelper';
+import { getTopSellers } from '@/lib/topSellersHelper';
 
 export async function GET(req: NextRequest) {
   try {
@@ -645,7 +646,8 @@ export async function GET(req: NextRequest) {
       },
       lowStockProducts,
       chartData: completeChartData,
-      last7DaysStats: last7DaysList
+      last7DaysStats: last7DaysList,
+      topSellers: await getTopSellers(startDate, endDate)
     });
   } catch (error) {
     console.error('Dashboard Stats Error:', error);

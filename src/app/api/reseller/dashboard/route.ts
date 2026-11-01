@@ -9,6 +9,7 @@ import ResellerProduct from '@/models/ResellerProduct';
 import Expense from '@/models/Expense';
 import LedgerAccount from '@/models/LedgerAccount';
 import { seedResellerLedgerAccounts } from '@/lib/ledgerHelper';
+import { getTopSellers } from '@/lib/topSellersHelper';
 
 // Comprehensive Reseller Dashboard Stats API
 export async function GET(request: NextRequest) {
@@ -451,6 +452,7 @@ export async function GET(request: NextRequest) {
       chartData,
       recentOrders,
       recentTransactions,
+      topSellers: await getTopSellers(startDate, endDate, resellerId.toString()),
     });
   } catch (error: any) {
     console.error('Error fetching reseller dashboard stats:', error);
