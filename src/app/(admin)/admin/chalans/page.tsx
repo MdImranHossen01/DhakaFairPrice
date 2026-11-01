@@ -34,7 +34,9 @@ import {
   Hash,
   ArrowRight,
   MoreHorizontal,
-  Edit
+  Edit,
+  Check,
+  Package
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -139,6 +141,8 @@ function ClientChalansContent() {
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [selectedProductVariants, setSelectedProductVariants] = useState<Record<string, string | null>>({});
   const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [inlineProductSearch, setInlineProductSearch] = useState('');
+  const [showInlineSearchDropdown, setShowInlineSearchDropdown] = useState(false);
 
   // Phone validation
   const [phoneError, setPhoneError] = useState('');
@@ -313,6 +317,37 @@ function ClientChalansContent() {
     setSelectedProductVariants({});
     setProductPickerOpen(false);
     setProductSearchTerm('');
+  };
+
+  const handleAddProductDirect = (prod: any, variant?: any) => {
+    let name = prod.name;
+    let price = prod.salePrice || prod.price || 0;
+    const description = extractTextFromDescription(prod.description);
+
+    if (variant) {
+      const vLabel = [variant.color, variant.size].filter(Boolean).join(' / ');
+      if (vLabel) name = `${prod.name} (${vLabel})`;
+      if (variant.salePrice || variant.price) {
+        price = variant.salePrice || variant.price;
+      }
+    }
+
+    const newItem: BillItemInput = {
+      name,
+      description,
+      quantity: 1,
+      price
+    };
+
+    if (billItems.length === 1 && !billItems[0].name.trim() && (billItems[0].price === 0 || !billItems[0].price)) {
+      setBillItems([newItem]);
+    } else {
+      setBillItems(prev => [...prev, newItem]);
+    }
+
+    setInlineProductSearch('');
+    setShowInlineSearchDropdown(false);
+    toast.success(`Added "${name}"`);
   };
 
   const handleAddItemRow = () => {
@@ -782,21 +817,121 @@ function ClientChalansContent() {
               </div>
             </div>
 
-            {/* Product Picker */}
-            <div className="flex items-center justify-between">
-              <Label className="text-lg font-semibold">Items List</Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setProductPickerOpen(true)}
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Select Products
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddItemRow} className="font-bold">
-                  <Plus className="h-3 w-3 mr-1" /> Add Custom Item
-                </Button>
+            {/* Product Picker & Smart Search */}
+            <div className="space-y-3 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-bold text-foreground">Items List</Label>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setProductPickerOpen(true)}
+                    className="font-bold text-xs h-8"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" /> Select Products
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddItemRow} className="font-bold text-xs h-8">
+                    <Plus className="h-3 w-3 mr-1" /> Add Custom Item
+                  </Button>
+                </div>
+              </div>
+
+              {/* Smart Search & Add Product (Manual Order Style) */}
+              <div className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search product by name or SKU to add..."
+                    value={inlineProductSearch}
+                    onChange={(e) => {
+                      setInlineProductSearch(e.target.value);
+                      setShowInlineSearchDropdown(true);
+                    }}
+                    onFocus={() => setShowInlineSearchDropdown(true)}
+                    className="pl-9 h-9 text-xs bg-background"
+                  />
+                  {inlineProductSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInlineProductSearch('');
+                        setShowInlineSearchDropdown(false);
+                      }}
+                      className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground text-sm font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {showInlineSearchDropdown && inlineProductSearch.trim() && (
+                  <div className="absolute z-50 left-0 right-0 mt-1 bg-popover text-popover-foreground border rounded-lg shadow-xl max-h-60 overflow-y-auto divide-y">
+                    {products.filter(p =>
+                      p.name?.toLowerCase().includes(inlineProductSearch.toLowerCase()) ||
+                      p.sku?.toLowerCase().includes(inlineProductSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        No products found matching &quot;{inlineProductSearch}&quot;
+                      </div>
+                    ) : (
+                      products.filter(p =>
+                        p.name?.toLowerCase().includes(inlineProductSearch.toLowerCase()) ||
+                        p.sku?.toLowerCase().includes(inlineProductSearch.toLowerCase())
+                      ).map((prod) => (
+                        <div
+                          key={prod._id}
+                          className="p-2.5 hover:bg-accent/60 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-xs text-foreground truncate">{prod.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {prod.sku ? `SKU: ${prod.sku}` : ''} {prod.stock !== undefined ? `| Stock: ${prod.stock}` : ''}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-bold text-primary block">৳{prod.salePrice || prod.price || 0}</span>
+                              {(!prod.variants || prod.variants.length === 0) && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleAddProductDirect(prod)}
+                                  className="h-6 text-[10px] px-2 mt-1 bg-primary text-primary-foreground font-bold"
+                                >
+                                  <Plus className="h-3 w-3 mr-0.5" /> Add
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {prod.variants && prod.variants.length > 0 && (
+                            <div className="mt-2 pt-1.5 border-t border-border/40 flex flex-wrap gap-1 items-center">
+                              <span className="text-[10px] text-muted-foreground mr-1">Variants:</span>
+                              {prod.variants.map((v: any) => {
+                                const vLabel = [v.color, v.size].filter(Boolean).join(' / ') || 'Option';
+                                const vPrice = v.salePrice || v.price || prod.salePrice || prod.price || 0;
+                                return (
+                                  <Button
+                                    key={v._id}
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAddProductDirect(prod, v)}
+                                    className="h-6 text-[10px] px-2 hover:bg-primary hover:text-primary-foreground"
+                                  >
+                                    <Plus className="h-2.5 w-2.5 mr-0.5" />
+                                    {vLabel} (৳{vPrice})
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -854,82 +989,160 @@ function ClientChalansContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Product Selection Dialog */}
+      {/* Product Selection Dialog - Card System (Fits inside modal) */}
       <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Select Products</DialogTitle>
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[85vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="text-base font-bold flex items-center justify-between">
+              <span>Select Products</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                {products.length} products available
+              </span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+
+          <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search products..."
-                className="pl-8"
+                placeholder="Search products by title or SKU..."
+                className="pl-9 h-9 text-xs"
                 value={productSearchTerm}
                 onChange={(e) => setProductSearchTerm(e.target.value)}
               />
             </div>
-            <div className="border rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">Select</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Options / Variants</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products
-                    .filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()))
-                    .map((prod) => {
-                      const hasVariants = prod.variants && prod.variants.length > 0;
-                      return (
-                        <TableRow key={prod._id}>
-                          <TableCell>
-                            {!hasVariants && (
-                              <Checkbox
-                                checked={selectedProductVariants[prod._id] === null}
-                                onCheckedChange={() => toggleProductVariant(prod._id, null)}
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="font-medium">{prod.name}</TableCell>
-                          <TableCell>
-                            {hasVariants ? (
-                              <div className="flex flex-wrap gap-2 py-1">
-                                {prod.variants.map((v: any) => {
-                                  const label = [v.color, v.size].filter(Boolean).join(' / ');
-                                  const isSelected = selectedProductVariants[prod._id] === v._id;
-                                  return (
-                                    <Button
-                                      key={v._id}
-                                      type="button"
-                                      variant={isSelected ? 'default' : 'outline'}
-                                      size="sm"
-                                      onClick={() => toggleProductVariant(prod._id, v._id)}
-                                      className="text-xs py-0.5 px-2 h-7"
-                                    >
-                                      {label}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Standard Item</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
+
+            {/* Product Cards List - Fits 100% inside modal without horizontal scroll */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
+              {products
+                .filter(p =>
+                  p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                  p.sku?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                )
+                .length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground text-xs border rounded-lg bg-muted/10">
+                  <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/60 stroke-1" />
+                  No products found matching &quot;{productSearchTerm}&quot;
+                </div>
+              ) : (
+                products
+                  .filter(p =>
+                    p.name.toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                    p.sku?.toLowerCase().includes(productSearchTerm.toLowerCase())
+                  )
+                  .map((prod) => {
+                    const hasVariants = prod.variants && prod.variants.length > 0;
+                    const isBaseSelected = selectedProductVariants[prod._id] === null;
+                    const selectedVariantId = selectedProductVariants[prod._id];
+                    const isCardActive = isBaseSelected || (hasVariants && selectedVariantId);
+
+                    return (
+                      <div
+                        key={prod._id}
+                        className={`p-3 rounded-lg border transition-all text-xs ${
+                          isCardActive
+                            ? 'border-primary/60 bg-primary/5 shadow-xs'
+                            : 'border-border bg-card hover:border-primary/30 hover:bg-muted/30'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <h4 className="font-semibold text-foreground text-sm leading-tight break-words">
+                              {prod.name}
+                            </h4>
+                            <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                              {prod.sku && <span>SKU: {prod.sku}</span>}
+                              <span>Base Rate:</span>
+                              <span className="font-bold text-foreground">৳{Math.round(prod.salePrice || prod.price || 0).toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          {!hasVariants && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={isBaseSelected ? 'default' : 'outline'}
+                              onClick={() => toggleProductVariant(prod._id, null)}
+                              className={`h-8 text-xs font-semibold shrink-0 sm:self-center ${
+                                isBaseSelected ? 'bg-primary text-primary-foreground' : ''
+                              }`}
+                            >
+                              {isBaseSelected ? (
+                                <>
+                                  <Check className="h-3.5 w-3.5 mr-1" /> Selected
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-3.5 w-3.5 mr-1" /> Select (৳{Math.round(prod.salePrice || prod.price || 0)})
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+
+                        {hasVariants && (
+                          <div className="mt-2.5 pt-2 border-t border-border/50">
+                            <span className="text-[11px] font-medium text-muted-foreground block mb-1.5">
+                              Available Variants:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {prod.variants.map((v: any) => {
+                                const variantSelected = selectedVariantId === v._id;
+                                const label = [v.color, v.size].filter(Boolean).join(' / ') || 'Option';
+                                const price = Math.round(v.salePrice || v.price || prod.salePrice || prod.price || 0);
+
+                                return (
+                                  <Button
+                                    key={v._id}
+                                    type="button"
+                                    variant={variantSelected ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => toggleProductVariant(prod._id, v._id)}
+                                    className={`h-7 text-xs px-2.5 font-medium transition-all ${
+                                      variantSelected
+                                        ? 'bg-primary text-primary-foreground shadow-xs'
+                                        : 'bg-background hover:bg-muted text-foreground'
+                                    }`}
+                                  >
+                                    {variantSelected && <Check className="h-3 w-3 mr-1" />}
+                                    <span>{label}</span>
+                                    <span className="ml-1.5 font-bold opacity-90">৳{price.toLocaleString()}</span>
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+              )}
             </div>
-            <div className="flex items-center justify-between border-t pt-4">
-              <span className="text-sm text-muted-foreground">{selectedCount} items selected</span>
-              <div className="space-x-2">
-                <Button variant="outline" size="sm" onClick={() => setProductPickerOpen(false)}>Cancel</Button>
-                <Button size="sm" onClick={handleAddSelectedProducts} className="bg-primary text-primary-foreground">Add Selected</Button>
+
+            {/* Bottom Footer Actions */}
+            <div className="flex items-center justify-between border-t pt-3 mt-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                <span className="font-bold text-foreground">{selectedCount}</span> item{selectedCount === 1 ? '' : 's'} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setProductPickerOpen(false)}
+                  className="h-8 text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddSelectedProducts}
+                  disabled={selectedCount === 0}
+                  className="h-8 text-xs font-bold bg-primary text-primary-foreground"
+                >
+                  Add Selected ({selectedCount})
+                </Button>
               </div>
             </div>
           </div>
