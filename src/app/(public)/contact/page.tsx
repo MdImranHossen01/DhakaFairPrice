@@ -8,7 +8,8 @@ import {
   MessageCircleMore, 
   Store, 
   Truck, 
-  Layers, 
+  PackageSearch,
+  HelpCircle,
   Clock, 
   CheckCircle2, 
   ArrowRight,
@@ -162,9 +163,9 @@ export default async function ContactPage() {
                 <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                   <Store className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">Reseller & SaaS Support</h3>
+                <h3 className="text-lg font-bold text-foreground">Reseller & Dropshipping</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Assistance with store onboarding, custom domain mapping, catalog sync, and virtual wallet payout settlements.
+                  Start your own e-commerce business with zero inventory. Store onboarding, product sync, and automated wallet payouts.
                 </p>
               </div>
               <Button asChild size="sm" className="w-full font-bold rounded-xl">
@@ -174,38 +175,38 @@ export default async function ContactPage() {
               </Button>
             </div>
 
-            {/* Supplier & Wholesale */}
+            {/* Order Tracking & Logistics */}
             <div className="bg-card p-6 rounded-2xl border border-border/80 hover:border-primary/40 transition-all shadow-sm flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <Layers className="h-6 w-6" />
+                  <PackageSearch className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">Supplier & Wholesale Inquiries</h3>
+                <h3 className="text-lg font-bold text-foreground">Track Your Order</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Manufacturers and verified suppliers looking to integrate inventories with our nationwide distribution engine.
+                  Check the real-time shipping and courier delivery progress of your parcel using your Order ID or phone number.
                 </p>
               </div>
-              <Button asChild variant="outline" size="sm" className="w-full font-bold rounded-xl">
-                <a href={`mailto:${contactEmail}?subject=Supplier Partnership Inquiry`}>
-                  Partner as Supplier
-                </a>
+              <Button asChild variant="outline" size="sm" className="w-full font-bold rounded-xl hover:bg-primary hover:text-primary-foreground">
+                <Link href="/track-order" className="flex items-center justify-center gap-1.5">
+                  Track Order Now <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </Button>
             </div>
 
-            {/* Customer Care & Courier */}
+            {/* Customer Care & FAQ */}
             <div className="bg-card p-6 rounded-2xl border border-border/80 hover:border-primary/40 transition-all shadow-sm flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <Truck className="h-6 w-6" />
+                  <HelpCircle className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">Customer Care & Tracking</h3>
+                <h3 className="text-lg font-bold text-foreground">Customer Care & FAQ</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Support with retail order tracking across Steadfast, Pathao, RedX, and 7-day replacement claims.
+                  Have questions about payments, return & exchange policies, or courier tracking? Browse our comprehensive FAQ center.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="w-full font-bold rounded-xl">
-                <Link href="/faq">
-                  Visit FAQ Center
+                <Link href="/faq" className="flex items-center justify-center gap-1.5">
+                  Visit FAQ Center <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             </div>
