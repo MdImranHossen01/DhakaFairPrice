@@ -265,48 +265,80 @@ export default async function ResellerProductPage({ params, searchParams }: Prop
     createdAt: productDoc.createdAt || parent.createdAt,
   };
 
-  // Related products from the same reseller store
+  // Related products from the same reseller store (strictly tenant isolated)
   let relatedProducts: any[] = [];
   try {
     const allCategoryIds = (parent.categories || []).map((c: any) => c._id?.toString() || c.toString()).filter(Boolean);
-    if (allCategoryIds.length > 0) {
-      const related = await ResellerProduct.find({
+    const tags = Array.isArray(parent.tags) ? parent.tags.filter(Boolean) : [];
+
+    // 1. Find product IDs matching category or tags
+    let matchingProductIds: any[] = [];
+    if (allCategoryIds.length > 0 || tags.length > 0) {
+      const filterClauses: any[] = [];
+      if (allCategoryIds.length > 0) filterClauses.push({ categories: { $in: allCategoryIds } });
+      if (tags.length > 0) filterClauses.push({ tags: { $in: tags } });
+      matchingProductIds = await Product.find({ $or: filterClauses }).distinct('_id');
+    }
+
+    // 2. Fetch related products strictly from THIS reseller catalog
+    let relatedDocs = await ResellerProduct.find({
+      resellerId: reseller._id,
+      _id: { $ne: productDoc._id },
+      isPublished: true,
+      isAvailableOnMother: true,
+      stock: { $gt: 0 },
+      ...(matchingProductIds.length > 0 ? { productId: { $in: matchingProductIds } } : {}),
+    })
+      .populate({
+        path: 'productId',
+        populate: [{ path: 'categories' }],
+      })
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .lean() as any[];
+
+    // 3. Fallback: if fewer than 4 category matches, fill with other active products from THIS reseller store
+    if (relatedDocs.length < 4) {
+      const excludedIds = [productDoc._id, ...relatedDocs.map((d: any) => d._id)];
+      const additionalDocs = await ResellerProduct.find({
         resellerId: reseller._id,
-        _id: { $ne: productDoc._id },
+        _id: { $nin: excludedIds },
         isPublished: true,
         isAvailableOnMother: true,
         stock: { $gt: 0 },
-      }).populate({
-        path: 'productId',
-        populate: [{ path: 'categories' }]
-      }).limit(4).lean() as any[];
-
-      relatedProducts = related
-        .filter((rp: any) => {
-          if (!rp.productId) return false;
-          const cats = (rp.productId.categories || []).map((c: any) => c._id?.toString() || c.toString());
-          return cats.some((id: string) => allCategoryIds.includes(id));
+      })
+        .populate({
+          path: 'productId',
+          populate: [{ path: 'categories' }],
         })
-        .map((rp: any) => {
-          const p = rp.productId || {};
-          const finalPrice = typeof rp.retailPrice === 'number' ? rp.retailPrice : (p.price ?? 0);
-          return {
-            _id: rp._id.toString(),
-            name: rp.name || p.name || 'Product',
-            slug: rp.slug || p.slug,
-            price: finalPrice,
-            salePrice: finalPrice,
-            images: rp.images?.length > 0 ? rp.images : p.images || [],
-            stock: rp.stock ?? p.stock ?? 0,
-            categories: p.categories || [],
-            isNewArrival: Boolean(p.isNewArrival),
-            isFeatured: Boolean(p.isFeatured),
-            ratings: p.ratings || 0,
-            numReviews: p.numReviews || 0,
-            variants: p.variants || [],
-          };
-        });
+        .sort({ createdAt: -1 })
+        .limit(4 - relatedDocs.length)
+        .lean() as any[];
+
+      relatedDocs = [...relatedDocs, ...additionalDocs];
     }
+
+    relatedProducts = relatedDocs
+      .filter((rp: any) => rp.productId)
+      .map((rp: any) => {
+        const p = rp.productId || {};
+        const finalPrice = typeof rp.retailPrice === 'number' && rp.retailPrice > 0 ? rp.retailPrice : (p.price ?? 0);
+        return {
+          _id: rp._id.toString(),
+          name: rp.name || p.name || 'Product',
+          slug: rp.slug || p.slug,
+          price: finalPrice,
+          salePrice: finalPrice,
+          images: rp.images?.length > 0 ? rp.images : p.images || [],
+          stock: rp.stock ?? p.stock ?? 0,
+          categories: p.categories || [],
+          isNewArrival: Boolean(p.isNewArrival),
+          isFeatured: Boolean(p.isFeatured),
+          ratings: p.ratings || 0,
+          numReviews: p.numReviews || 0,
+          variants: p.variants || [],
+        };
+      });
   } catch (err) {
     console.error('Error fetching related products:', err);
   }

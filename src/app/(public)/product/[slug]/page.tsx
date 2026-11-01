@@ -105,14 +105,36 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
   try {
     const conn = await (await import('@/lib/db')).default();
     const ProductModel = (await import('@/models/Product')).default;
-    const relatedProducts = await ProductModel.find({
-      _id: { $ne: product._id },
-      isPublished: true,
-      $or: [
-        { categories: { $in: (product.categories ?? []).map((category: { _id: string }) => category._id) } },
-        { tags: { $in: product.tags || [] } },
-      ],
-    })
+    const { MOTHER_SHOP_PRODUCT_FILTER } = await import('@/models/Product');
+
+    const categoryIds = (product.categories ?? [])
+      .map((category: any) => category?._id || category)
+      .filter(Boolean);
+    const tags = Array.isArray(product.tags) ? product.tags.filter(Boolean) : [];
+
+    const andConditions: any[] = [
+      { _id: { $ne: product._id } },
+      { isPublished: true },
+      MOTHER_SHOP_PRODUCT_FILTER,
+    ];
+
+    const orConditions: any[] = [];
+    if (categoryIds.length > 0) {
+      orConditions.push({ categories: { $in: categoryIds } });
+    }
+    if (tags.length > 0) {
+      orConditions.push({ tags: { $in: tags } });
+    }
+
+    if (orConditions.length > 0) {
+      andConditions.push({ $or: orConditions });
+    }
+
+    const relatedProducts = await ProductModel.find(
+      orConditions.length > 0
+        ? { $and: andConditions }
+        : { _id: { $ne: product._id }, isPublished: true, ...MOTHER_SHOP_PRODUCT_FILTER }
+    )
       .populate('categories')
       .sort({ createdAt: -1 })
       .limit(4)
