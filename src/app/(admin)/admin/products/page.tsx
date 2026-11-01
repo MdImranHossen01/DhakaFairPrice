@@ -47,6 +47,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -87,7 +88,7 @@ interface AdminProduct {
 
 function ProductsContent() {
   const getProductStoreUrl = (product: AdminProduct) => {
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     if (product.uploadedBy && (product.uploadedBy.subdomain || product.uploadedBy.customDomain)) {
       const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const previewQuery = product.isApprovedByAdmin ? '' : '?preview=true';
@@ -124,6 +125,11 @@ function ProductsContent() {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [counts, setCounts] = useState({ all: 0, mother: 0, reseller: 0, pending: 0 });
 
+  // Reseller Filter State
+  const [resellers, setResellers] = useState<any[]>([]);
+  const initialReseller = searchParams.get('resellerId') || 'all';
+  const [resellerFilter, setResellerFilter] = useState<string>(initialReseller);
+
   // Add to Mother Shop Modal State
   const [addToMotherModalOpen, setAddToMotherModalOpen] = useState(false);
   const [selectedResellerProduct, setSelectedResellerProduct] = useState<AdminProduct | null>(null);
@@ -133,10 +139,23 @@ function ProductsContent() {
 
   const limit = 10;
 
-  const fetchProducts = async (signal?: AbortSignal, page = currentPage, tab = activeTab) => {
+  const fetchProducts = async (
+    signal?: AbortSignal,
+    page = currentPage,
+    tab = activeTab,
+    reseller = resellerFilter
+  ) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products?page=${page}&limit=${limit}&tab=${tab}`, { signal });
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        tab: tab,
+      });
+      if (reseller && reseller !== 'all') {
+        queryParams.set('resellerId', reseller);
+      }
+      const response = await fetch(`/api/products?${queryParams.toString()}`, { signal });
       if (!response.ok) {
         toast.error(`Failed to fetch products: ${response.status} ${response.statusText}`);
         return;
@@ -163,8 +182,59 @@ function ProductsContent() {
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setCurrentPage(1);
-    router.push(`/admin/products?tab=${tab}`);
-    fetchProducts(undefined, 1, tab);
+
+    let targetReseller = resellerFilter;
+    if (tab === 'mother' && resellerFilter !== 'all' && resellerFilter !== 'main') {
+      targetReseller = 'main';
+      setResellerFilter('main');
+    } else if (tab === 'reseller' && resellerFilter === 'main') {
+      targetReseller = 'all';
+      setResellerFilter('all');
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', '1');
+    params.set('tab', tab);
+    if (targetReseller !== 'all') {
+      params.set('resellerId', targetReseller);
+    } else {
+      params.delete('resellerId');
+    }
+    router.push(`?${params.toString()}`);
+    fetchProducts(undefined, 1, tab, targetReseller);
+  };
+
+  const handleResellerChange = (val: string) => {
+    setResellerFilter(val);
+    setCurrentPage(1);
+
+    let targetTab = activeTab;
+    if (val === 'main') {
+      if (activeTab === 'reseller' || activeTab === 'pending') {
+        targetTab = 'all';
+        setActiveTab('all');
+      }
+    } else if (val !== 'all') {
+      if (activeTab === 'mother') {
+        targetTab = 'reseller';
+        setActiveTab('reseller');
+      }
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', '1');
+    if (val !== 'all') {
+      params.set('resellerId', val);
+    } else {
+      params.delete('resellerId');
+    }
+    if (targetTab !== 'all') {
+      params.set('tab', targetTab);
+    } else {
+      params.delete('tab');
+    }
+    router.push(`?${params.toString()}`);
+    fetchProducts(undefined, 1, targetTab, val);
   };
 
   const openAddToMotherModal = (product: AdminProduct) => {
@@ -251,8 +321,20 @@ function ProductsContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProducts(controller.signal);
+    fetchProducts(controller.signal, currentPage, activeTab, initialReseller);
     return () => controller.abort();
+  }, []);
+
+  // Fetch resellers for the filter dropdown
+  useEffect(() => {
+    fetch('/api/admin/resellers')
+      .then(res => res.json())
+      .then(data => {
+        if (data.resellers && Array.isArray(data.resellers)) {
+          setResellers(data.resellers);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -479,7 +561,11 @@ function ProductsContent() {
 
     try {
       toast.info('Fetching products for export...');
-      const response = await fetch(`/api/products?page=1&limit=1000`);
+      const exportUrl = new URLSearchParams({ page: '1', limit: '1000', tab: activeTab });
+      if (resellerFilter !== 'all') {
+        exportUrl.set('resellerId', resellerFilter);
+      }
+      const response = await fetch(`/api/products?${exportUrl.toString()}`);
       if (response.ok) {
         const data = await response.json();
         const allProducts: AdminProduct[] = Array.isArray(data.products) ? data.products : [];
@@ -783,16 +869,73 @@ function ProductsContent() {
         </Button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search products by name or SKU..."
-            className="pl-8 h-9 text-xs sm:text-sm"
+            className="pl-8 h-9 text-xs sm:text-sm bg-background"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        {/* Reseller / Shop Filter Dropdown */}
+        <div className="w-full sm:w-48 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-9 w-full justify-between px-3 text-xs sm:text-sm font-normal bg-background">
+                <span className="truncate">
+                  {resellerFilter === 'all' 
+                    ? 'All' 
+                    : resellerFilter === 'main'
+                    ? 'Main Shop'
+                    : resellers.find(r => r._id === resellerFilter)?.storeName || 'Select Shop'}
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[200px] max-h-[300px] overflow-y-auto">
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => handleResellerChange('all')}
+                  className={resellerFilter === 'all' ? "bg-accent font-bold" : ""}
+                >
+                  All
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleResellerChange('main')}
+                  className={resellerFilter === 'main' ? "bg-accent font-bold" : ""}
+                >
+                  Main Shop
+                </DropdownMenuItem>
+                {resellers.map((r) => (
+                  <DropdownMenuItem
+                    key={r._id}
+                    onClick={() => handleResellerChange(r._id)}
+                    className={resellerFilter === r._id ? "bg-accent font-bold" : ""}
+                  >
+                    {r.storeName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {(resellerFilter !== 'all' || search) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              handleResellerChange('all');
+            }}
+            className="text-xs text-muted-foreground hover:text-primary shrink-0 h-9 px-2.5"
+          >
+            Clear Filter
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border bg-background overflow-hidden relative shadow-xs">
@@ -1403,9 +1546,15 @@ function ProductsContent() {
             totalPages={pagination.totalPages}
             onPageChange={(page) => {
               setCurrentPage(page);
-              fetchProducts(undefined, page);
+              fetchProducts(undefined, page, activeTab, resellerFilter);
               const params = new URLSearchParams(searchParams.toString());
               params.set('page', page.toString());
+              if (resellerFilter !== 'all') {
+                params.set('resellerId', resellerFilter);
+              }
+              if (activeTab !== 'all') {
+                params.set('tab', activeTab);
+              }
               router.push(`?${params.toString()}`);
             }}
           />

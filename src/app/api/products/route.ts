@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
       andConditions.push({ categories: { $in: category.split(',') } });
     }
 
-    const uploadedBy = searchParams.get('uploadedBy');
-    if (uploadedBy) {
-      if (uploadedBy === 'mother' || uploadedBy === 'null' || uploadedBy === 'admin') {
+    const uploadedBy = searchParams.get('uploadedBy') || searchParams.get('resellerId');
+    if (uploadedBy && uploadedBy !== 'all') {
+      if (uploadedBy === 'mother' || uploadedBy === 'null' || uploadedBy === 'admin' || uploadedBy === 'main') {
         andConditions.push({
           $or: [
             { isMotherProduct: true },
@@ -135,30 +135,51 @@ export async function GET(req: NextRequest) {
 
     let counts = undefined;
     if (isAdmin) {
+      const buildCountQuery = (extraCondition: any) => {
+        const conds: any[] = [];
+        if (uploadedBy && uploadedBy !== 'all') {
+          if (uploadedBy === 'mother' || uploadedBy === 'null' || uploadedBy === 'admin' || uploadedBy === 'main') {
+            conds.push({
+              $or: [
+                { isMotherProduct: true },
+                { uploadedBy: null },
+                { uploadedBy: { $exists: false } },
+              ]
+            });
+          } else {
+            conds.push({ uploadedBy });
+          }
+        }
+        if (extraCondition) {
+          conds.push(extraCondition);
+        }
+        return conds.length > 0 ? { $and: conds } : {};
+      };
+
       const [allCount, motherCount, resellerCount, pendingCount] = await Promise.all([
-        Product.countDocuments({
+        Product.countDocuments(buildCountQuery({
           $or: [
             { uploadedBy: null },
             { uploadedBy: { $exists: false } },
             { uploadedBy: { $ne: null, $exists: true }, isPublished: true }
           ]
-        }),
-        Product.countDocuments({
+        })),
+        Product.countDocuments(buildCountQuery({
           $or: [
             { isMotherProduct: true },
             { uploadedBy: null, isMotherProduct: { $ne: false } },
             { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
           ]
-        }),
-        Product.countDocuments({
+        })),
+        Product.countDocuments(buildCountQuery({
           uploadedBy: { $ne: null, $exists: true },
           isPublished: true
-        }),
-        Product.countDocuments({
+        })),
+        Product.countDocuments(buildCountQuery({
           uploadedBy: { $ne: null, $exists: true },
           isPublished: true,
           $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }]
-        }),
+        })),
       ]);
       counts = { all: allCount, mother: motherCount, reseller: resellerCount, pending: pendingCount };
     }
