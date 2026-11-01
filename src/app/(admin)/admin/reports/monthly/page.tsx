@@ -109,9 +109,11 @@ export default function MonthlyReportPage() {
               <thead>
                 <tr className="bg-muted/30 border-b text-muted-foreground font-semibold">
                   <th className="p-2.5 text-left font-bold text-foreground">Month</th>
+                  <th className="p-2.5 text-center font-bold text-foreground">Orders</th>
                   <th className="p-2.5 font-bold text-emerald-600">Net Sales</th>
-                  <th className="p-2.5 font-bold text-slate-600">Delivery Cost</th>
-                  <th className="p-2.5 font-bold text-foreground">Total</th>
+                  <th className="p-2.5 font-bold text-slate-600">Delivery</th>
+                  <th className="p-2.5 font-bold text-foreground">Total Sales</th>
+                  <th className="p-2.5 font-bold text-slate-600">Product Cost</th>
                   <th className="p-2.5 font-bold text-emerald-600">Sales Profit</th>
                   <th className="p-2.5 font-bold text-rose-600">Expense</th>
                   <th className="p-2.5 font-bold text-primary text-right">Net Profit</th>
@@ -120,30 +122,40 @@ export default function MonthlyReportPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         <span>Loading monthly report...</span>
                       </div>
                     </td>
                   </tr>
-                ) : data?.rows?.length > 0 ? (
-                  data.rows.map((row: any) => (
-                    <tr key={row.monthKey} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
-                      <td className="p-2.5 text-left font-medium text-foreground">{row.month}</td>
-                      <td className="p-2.5 font-medium text-emerald-600">৳{Math.round(row.netSales).toLocaleString()}</td>
-                      <td className="p-2.5 text-muted-foreground">৳{Math.round(row.deliveryCost).toLocaleString()}</td>
-                      <td className="p-2.5 font-medium text-foreground">৳{Math.round(row.total).toLocaleString()}</td>
-                      <td className="p-2.5 font-semibold text-emerald-600">৳{Math.round(row.salesProfit).toLocaleString()}</td>
-                      <td className="p-2.5 font-medium text-rose-600">৳{Math.round(row.expense).toLocaleString()}</td>
+                ) : (data?.rows?.length > 0 || data?.monthlyRows?.length > 0) ? (
+                  (data.rows || data.monthlyRows).map((row: any) => (
+                    <tr key={row.monthKey || row.monthNumber} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
+                      <td className="p-2.5 text-left font-medium text-foreground whitespace-nowrap">{row.month || row.monthName}</td>
+                      <td className="p-2.5 text-center">
+                        {row.orderCount > 0 ? (
+                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-bold">
+                            {row.orderCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-2.5 font-medium text-emerald-600">৳{Math.round(row.netSales || 0).toLocaleString()}</td>
+                      <td className="p-2.5 text-muted-foreground">৳{Math.round(row.deliveryCost || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-medium text-foreground">৳{Math.round(row.totalSales || row.total || 0).toLocaleString()}</td>
+                      <td className="p-2.5 text-muted-foreground">৳{Math.round(row.cogs || row.productCost || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-semibold text-emerald-600">৳{Math.round(row.salesProfit || row.grossProfit || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-medium text-rose-600">৳{Math.round(row.expense || 0).toLocaleString()}</td>
                       <td className={`p-2.5 font-bold text-right ${row.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        ৳{Math.round(row.netProfit).toLocaleString()}
+                        ৳{Math.round(row.netProfit || 0).toLocaleString()}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-muted-foreground">No data found for this period.</td>
+                    <td colSpan={9} className="p-6 text-center text-muted-foreground">No data found for this period.</td>
                   </tr>
                 )}
               </tbody>
@@ -152,13 +164,15 @@ export default function MonthlyReportPage() {
                 <tfoot>
                   <tr className="bg-muted/60 font-bold border-t-2 border-primary/20 text-foreground text-xs md:text-sm">
                     <td className="p-3 text-left">Yearly Grand Total:</td>
-                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.totalNetSales).toLocaleString()}</td>
-                    <td className="p-3 text-slate-600">৳{Math.round(data.summary.totalDeliveryCost).toLocaleString()}</td>
-                    <td className="p-3">৳{Math.round(data.summary.grandTotal).toLocaleString()}</td>
-                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.totalSalesProfit).toLocaleString()}</td>
-                    <td className="p-3 text-rose-600">৳{Math.round(data.summary.totalExpense).toLocaleString()}</td>
-                    <td className={`p-3 text-right ${data.summary.totalNetProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      ৳{Math.round(data.summary.totalNetProfit).toLocaleString()}
+                    <td className="p-3 text-center">{data.summary.totalOrderCount || data.summary.orderCount || 0}</td>
+                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.totalNetSales || data.summary.netSales || 0).toLocaleString()}</td>
+                    <td className="p-3 text-slate-600">৳{Math.round(data.summary.totalDeliveryCost || data.summary.deliveryCost || 0).toLocaleString()}</td>
+                    <td className="p-3">৳{Math.round(data.summary.grandTotal || data.summary.totalSales || 0).toLocaleString()}</td>
+                    <td className="p-3 text-muted-foreground">৳{Math.round(data.summary.totalCOGS || data.summary.cogs || 0).toLocaleString()}</td>
+                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.totalSalesProfit || data.summary.salesProfit || data.summary.grossProfit || 0).toLocaleString()}</td>
+                    <td className="p-3 text-rose-600">৳{Math.round(data.summary.totalExpense || data.summary.expense || 0).toLocaleString()}</td>
+                    <td className={`p-3 text-right ${(data.summary.totalNetProfit ?? data.summary.netProfit) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      ৳{Math.round(data.summary.totalNetProfit ?? data.summary.netProfit ?? 0).toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
@@ -173,36 +187,44 @@ export default function MonthlyReportPage() {
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span className="text-xs">Loading report...</span>
               </div>
-            ) : data?.rows?.length > 0 ? (
+            ) : (data?.rows?.length > 0 || data?.monthlyRows?.length > 0) ? (
               <>
-                {data.rows.map((row: any) => (
-                  <div key={row.monthKey} className="bg-card border border-border/80 rounded-xl p-3 text-xs space-y-2 shadow-xs">
+                {(data.rows || data.monthlyRows).map((row: any) => (
+                  <div key={row.monthKey || row.monthNumber} className="bg-card border border-border/80 rounded-xl p-3 text-xs space-y-2 shadow-xs">
                     <div className="flex items-center justify-between font-bold border-b pb-1.5">
-                      <span className="text-foreground">{row.month}</span>
+                      <span className="text-foreground">{row.month || row.monthName}</span>
                       <span className={row.netProfit >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
-                        Net Profit: ৳{Math.round(row.netProfit).toLocaleString()}
+                        Net Profit: ৳{Math.round(row.netProfit || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="divide-y divide-border/40 text-[11px]">
                       <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Orders:</span>
+                        <span className="font-semibold text-foreground">{row.orderCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
                         <span className="text-muted-foreground">Net Sales:</span>
-                        <span className="font-semibold text-emerald-600">৳{Math.round(row.netSales).toLocaleString()}</span>
+                        <span className="font-semibold text-emerald-600">৳{Math.round(row.netSales || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1">
-                        <span className="text-muted-foreground">Delivery Cost:</span>
-                        <span className="font-medium text-foreground">৳{Math.round(row.deliveryCost).toLocaleString()}</span>
+                        <span className="text-muted-foreground">Delivery:</span>
+                        <span className="font-medium text-foreground">৳{Math.round(row.deliveryCost || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1">
-                        <span className="text-muted-foreground">Total:</span>
-                        <span className="font-bold text-foreground">৳{Math.round(row.total).toLocaleString()}</span>
+                        <span className="text-muted-foreground">Total Sales:</span>
+                        <span className="font-bold text-foreground">৳{Math.round(row.totalSales || row.total || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Product Cost:</span>
+                        <span className="font-medium text-muted-foreground">৳{Math.round(row.cogs || row.productCost || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1">
                         <span className="text-muted-foreground">Sales Profit:</span>
-                        <span className="font-semibold text-emerald-600">৳{Math.round(row.salesProfit).toLocaleString()}</span>
+                        <span className="font-semibold text-emerald-600">৳{Math.round(row.salesProfit || row.grossProfit || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1">
                         <span className="text-muted-foreground">Expense:</span>
-                        <span className="font-semibold text-rose-600">৳{Math.round(row.expense).toLocaleString()}</span>
+                        <span className="font-semibold text-rose-600">৳{Math.round(row.expense || 0).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -216,21 +238,37 @@ export default function MonthlyReportPage() {
                     </div>
                     <div className="divide-y divide-border/40 text-[11px] font-semibold">
                       <div className="flex justify-between py-1">
-                        <span className="text-muted-foreground">Total Sales:</span>
-                        <span className="text-foreground font-bold">৳{Math.round(data.summary.grandTotal).toLocaleString()}</span>
+                        <span className="text-muted-foreground">Total Orders:</span>
+                        <span className="text-foreground font-bold">{data.summary.totalOrderCount || data.summary.orderCount || 0}</span>
                       </div>
                       <div className="flex justify-between py-1">
                         <span className="text-muted-foreground">Total Net Sales:</span>
-                        <span className="text-emerald-600 font-bold">৳{Math.round(data.summary.totalNetSales).toLocaleString()}</span>
+                        <span className="text-emerald-600 font-bold">৳{Math.round(data.summary.totalNetSales || data.summary.netSales || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Delivery:</span>
+                        <span className="text-slate-600 font-bold">৳{Math.round(data.summary.totalDeliveryCost || data.summary.deliveryCost || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Grand Total Sales:</span>
+                        <span className="text-foreground font-bold">৳{Math.round(data.summary.grandTotal || data.summary.totalSales || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Product Cost:</span>
+                        <span className="text-muted-foreground font-bold">৳{Math.round(data.summary.totalCOGS || data.summary.cogs || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Sales Profit:</span>
+                        <span className="text-emerald-600 font-bold">৳{Math.round(data.summary.totalSalesProfit || data.summary.salesProfit || data.summary.grossProfit || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1">
                         <span className="text-muted-foreground">Total Expenses:</span>
-                        <span className="text-rose-600 font-bold">৳{Math.round(data.summary.totalExpense).toLocaleString()}</span>
+                        <span className="text-rose-600 font-bold">৳{Math.round(data.summary.totalExpense || data.summary.expense || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between py-1 text-xs">
                         <span className="text-foreground">Net Profit:</span>
-                        <span className={data.summary.totalNetProfit >= 0 ? 'text-emerald-600 font-black' : 'text-rose-600 font-black'}>
-                          ৳{Math.round(data.summary.totalNetProfit).toLocaleString()}
+                        <span className={(data.summary.totalNetProfit ?? data.summary.netProfit) >= 0 ? 'text-emerald-600 font-black' : 'text-rose-600 font-black'}>
+                          ৳{Math.round(data.summary.totalNetProfit ?? data.summary.netProfit ?? 0).toLocaleString()}
                         </span>
                       </div>
                     </div>

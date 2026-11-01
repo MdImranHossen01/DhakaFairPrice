@@ -112,12 +112,15 @@ export async function GET(req: NextRequest) {
     let summaryNetSales = 0;
     let summaryDeliveryCost = 0;
     let summaryTotal = 0;
+    let summaryCOGS = 0;
     let summaryResellerCommission = 0;
     let summarySalesProfit = 0;
     let summaryExpense = 0;
     let summaryNetProfit = 0;
+    let summaryOrderCount = 0;
 
-    for (let m = 1; m <= 12; m++) {
+    // Loop descending from 12 down to 1 so latest month is on top
+    for (let m = 12; m >= 1; m--) {
       const monthStr = m.toString().padStart(2, '0');
       const monthKey = `${year}-${monthStr}`;
       const monthName = monthNames[m - 1];
@@ -128,44 +131,66 @@ export async function GET(req: NextRequest) {
       const netSales = Math.max(0, orderData.totalSales - orderData.deliveryCost);
       const deliveryCost = orderData.deliveryCost || 0;
       const total = orderData.totalSales || 0;
+      const cogs = orderData.cogs || 0;
       const resellerCommission = orderData.resellerCommission || 0;
-      const salesProfit = Math.max(0, netSales - (orderData.cogs || 0) - resellerCommission);
+      const salesProfit = Math.max(0, netSales - cogs - resellerCommission);
       const netProfit = salesProfit - expense;
+      const orderCount = orderData.orderCount || 0;
 
       summaryNetSales += netSales;
       summaryDeliveryCost += deliveryCost;
       summaryTotal += total;
+      summaryCOGS += cogs;
       summaryResellerCommission += resellerCommission;
       summarySalesProfit += salesProfit;
       summaryExpense += expense;
       summaryNetProfit += netProfit;
+      summaryOrderCount += orderCount;
 
       monthlyRows.push({
         monthNumber: m,
         month: monthName,
+        monthName,
         monthKey,
+        orders: orderCount,
+        orderCount,
         netSales,
         deliveryCost,
         total,
+        totalSales: total,
+        cogs,
+        productCost: cogs,
         resellerCommission,
         salesProfit,
+        grossProfit: salesProfit,
         expense,
-        netProfit,
-        orderCount: orderData.orderCount || 0
+        netProfit
       });
     }
 
     return NextResponse.json({
       year,
       rows: monthlyRows,
+      monthlyRows,
       summary: {
         totalNetSales: summaryNetSales,
+        netSales: summaryNetSales,
         totalDeliveryCost: summaryDeliveryCost,
+        deliveryCost: summaryDeliveryCost,
         grandTotal: summaryTotal,
+        totalSales: summaryTotal,
+        totalCOGS: summaryCOGS,
+        cogs: summaryCOGS,
+        totalOrderCount: summaryOrderCount,
+        orderCount: summaryOrderCount,
         totalResellerCommission: summaryResellerCommission,
         totalSalesProfit: summarySalesProfit,
+        salesProfit: summarySalesProfit,
+        grossProfit: summarySalesProfit,
         totalExpense: summaryExpense,
-        totalNetProfit: summaryNetProfit
+        expense: summaryExpense,
+        totalNetProfit: summaryNetProfit,
+        netProfit: summaryNetProfit
       }
     });
   } catch (error) {
