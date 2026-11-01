@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
             description: `Purchase Bill ${billNo} Payment to ${supplierDoc.name} (${paymentMethod})`,
             type: 'debit',
             amount: finalPaid,
-            reference: `SupplierBill:${newBill._id}`,
+            reference: billNo,
             balanceAfter
           });
         }

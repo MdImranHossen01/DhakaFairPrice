@@ -38,12 +38,15 @@ import {
   CalendarDays,
   Hash,
   MoreHorizontal,
-  Edit
+  Edit,
+  History,
+  Receipt,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
-import { generateBillPDF } from '@/lib/bill-invoice-generator';
+import { generateBillPDF, generatePaymentReceiptPDF } from '@/lib/bill-invoice-generator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,6 +107,12 @@ function ClientBillsContent() {
   // Bill detail view state
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [editingBill, setEditingBill] = useState<any>(null);
+
+  // Transaction history modal state
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryBill, setSelectedHistoryBill] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<any>(null);
 
   // Dialog state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -394,9 +403,31 @@ function ClientBillsContent() {
         if (!res.ok) throw new Error('Failed to update bill');
         toast.success('Payment updated successfully');
         fetchBills();
+        if (selectedHistoryBill && selectedHistoryBill._id === billId) {
+          handleOpenTransactionHistory({ ...bill, cashIn: newCashIn, currentBillDue: newDue, status: newStatus });
+        }
       } catch (error) {
         toast.error('Failed to update payment');
       }
+    }
+  };
+
+  const handleOpenTransactionHistory = async (bill: any) => {
+    setSelectedHistoryBill(bill);
+    setHistoryModalOpen(true);
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/admin/bills/${bill._id}/transactions`);
+      if (!res.ok) throw new Error('Failed to load transaction history');
+      const data = await res.json();
+      setHistoryData(data);
+      if (data.bill) {
+        setSelectedHistoryBill(data.bill);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error loading transaction history');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -659,7 +690,10 @@ function ClientBillsContent() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => setSelectedBill(bill)}>
-                                <Eye className="mr-2 h-4 w-4" /> View Details
+                                <Eye className="mr-2 h-4 w-4 text-indigo-600" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenTransactionHistory(bill)}>
+                                <History className="mr-2 h-4 w-4 text-purple-600" /> Payment History
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
@@ -775,6 +809,12 @@ function ClientBillsContent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedBill(bill)}>
+                          <Eye className="mr-2 h-4 w-4 text-indigo-600" /> View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenTransactionHistory(bill)}>
+                          <History className="mr-2 h-4 w-4 text-purple-600" /> Payment History
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setEditingBill(bill);
@@ -1321,7 +1361,24 @@ function ClientBillsContent() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1 font-bold h-8 text-xs text-purple-700 border-purple-200 hover:bg-purple-50"
+                    onClick={() => {
+                      setSelectedBill(null);
+                      handleOpenTransactionHistory(selectedBill);
+                    }}
+                  >
+                    <History className="h-3.5 w-3.5 mr-1.5" /> Payment History
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 font-bold h-8 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    onClick={() => generatePaymentReceiptPDF(selectedBill, settings)}
+                  >
+                    <Printer className="h-3.5 w-3.5 mr-1.5" /> Receipt
+                  </Button>
                   <Button
                     className="flex-1 font-bold h-8 text-xs"
                     onClick={() => generateBillPDF(selectedBill, settings, 'download')}
@@ -1338,6 +1395,201 @@ function ClientBillsContent() {
                 </div>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Bill Payment & Transaction History Modal ── */}
+      <Dialog open={historyModalOpen} onOpenChange={(open) => { setHistoryModalOpen(open); if (!open) { setHistoryData(null); setSelectedHistoryBill(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <History className="h-5 w-5 text-purple-600" />
+              Payment & Transaction History
+              {selectedHistoryBill && (
+                <Badge variant="outline" className="font-mono text-sm bg-purple-50 text-purple-700 border-purple-200">
+                  #{selectedHistoryBill.invoiceNo}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {historyLoading ? (
+            <div className="flex flex-col items-center justify-center py-14 space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              <p className="text-sm text-muted-foreground">Loading transaction records...</p>
+            </div>
+          ) : selectedHistoryBill && (
+            <div className="space-y-5 pt-1">
+              {/* Client & Bill Info Card */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-4 rounded-xl border">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="font-bold text-base">{selectedHistoryBill.clientName}</span>
+                    <Badge variant={selectedHistoryBill.status === 'Paid' ? 'default' : 'destructive'} className={selectedHistoryBill.status === 'Paid' ? 'bg-green-600 text-white border-none' : ''}>
+                      {selectedHistoryBill.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {selectedHistoryBill.clientPhone}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Bill Date: {format(new Date(selectedHistoryBill.date), 'dd MMM yyyy')}</span>
+                  </div>
+                </div>
+
+                {selectedHistoryBill.status === 'Due' && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                    onClick={() => {
+                      handleUpdateStatus(selectedHistoryBill._id, selectedHistoryBill.currentBillDue);
+                      setHistoryModalOpen(false);
+                    }}
+                  >
+                    <CreditCard className="h-4 w-4 mr-1.5" /> Collect Next Payment
+                  </Button>
+                )}
+              </div>
+
+              {/* Financial Metrics Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-lg border bg-card space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Grand Total</p>
+                  <p className="text-lg font-black text-foreground">৳{Math.round(selectedHistoryBill.gTotal || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-3.5 rounded-lg border border-green-200 bg-green-50/50 dark:bg-green-950/20 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Total Paid (Cash-in)</p>
+                  <p className="text-lg font-black text-green-600">৳{Math.round(selectedHistoryBill.cashIn || 0).toLocaleString()}</p>
+                </div>
+                <div className={`p-3.5 rounded-lg border space-y-1 ${selectedHistoryBill.currentBillDue > 0 ? 'border-orange-200 bg-orange-50/50 dark:bg-orange-950/20' : 'border-muted bg-muted/20'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${selectedHistoryBill.currentBillDue > 0 ? 'text-orange-700 dark:text-orange-400' : 'text-muted-foreground'}`}>Remaining Due</p>
+                  <p className={`text-lg font-black ${selectedHistoryBill.currentBillDue > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>৳{Math.round(selectedHistoryBill.currentBillDue || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Payment Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-muted-foreground">Payment Progress</span>
+                  <span className="font-bold text-primary">
+                    {Math.min(100, Math.round(((selectedHistoryBill.cashIn || 0) / (selectedHistoryBill.gTotal || 1)) * 100))}%
+                    {selectedHistoryBill.currentBillDue <= 0 ? ' (Fully Paid)' : ''}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-green-600 h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, Math.round(((selectedHistoryBill.cashIn || 0) / (selectedHistoryBill.gTotal || 1)) * 100)))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Installments Breakdown List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-purple-600" />
+                    Payment Installments ({historyData?.installments?.length || 0})
+                  </h4>
+                  <span className="text-xs text-muted-foreground">Step-by-step transaction logs</span>
+                </div>
+
+                {(!historyData?.installments || historyData.installments.length === 0) ? (
+                  <div className="text-center py-8 border rounded-lg bg-muted/20 text-muted-foreground text-sm">
+                    No payment transactions recorded for this bill yet.
+                  </div>
+                ) : (
+                  <div className="border rounded-xl divide-y overflow-hidden bg-card">
+                    {historyData.installments.map((inst: any, idx: number) => (
+                      <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                            #{inst.installmentNo}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-foreground">{inst.description || `Payment Step #${inst.installmentNo}`}</span>
+                              {idx === 0 && (
+                                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 border-green-200 py-0 font-bold">
+                                  Latest
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-[11px] bg-muted/50 py-0">
+                                {inst.method || 'Cash'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              <Clock className="h-3 w-3" />
+                              <span>{format(new Date(inst.date), 'dd MMM yyyy, hh:mm a')}</span>
+                              <span>•</span>
+                              <span>Remaining Due: <strong className={inst.remainingDueAfter > 0 ? 'text-orange-600' : 'text-green-600'}>৳{Math.round(inst.remainingDueAfter).toLocaleString()}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                          <div className="text-right">
+                            <div className="text-base font-black text-green-600">
+                              + ৳{Math.round(inst.amount).toLocaleString()}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Total paid so far: ৳{Math.round(inst.cumulativePaid).toLocaleString()}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs font-bold text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                            onClick={() => {
+                              const chronologicalPayments = historyData?.installments
+                                ? [...historyData.installments]
+                                    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                    .map((i: any) => ({ _id: i.txId, amount: i.amount, date: i.date }))
+                                : [];
+
+                              generatePaymentReceiptPDF(
+                                {
+                                  ...selectedHistoryBill,
+                                  payments: chronologicalPayments
+                                },
+                                settings,
+                                inst.amount,
+                                inst.date,
+                                inst.txId,
+                                false
+                              );
+                            }}
+                            title="Print receipt for this installment"
+                          >
+                            <Printer className="h-3.5 w-3.5 mr-1" /> Receipt
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex justify-between items-center sm:justify-between pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setHistoryModalOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedBill(selectedHistoryBill);
+                    setHistoryModalOpen(false);
+                  }}
+                >
+                  <Eye className="h-4 w-4 mr-1.5" /> View Full Bill
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>

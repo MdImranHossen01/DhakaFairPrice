@@ -2,9 +2,10 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Plus, Trash2, Search, FileText, CalendarDays, Eye, DollarSign, MoreHorizontal, Edit, Download, Printer, Users, Loader2 } from 'lucide-react';
-import { generateBillPDF } from '@/lib/bill-invoice-generator';
+import { Plus, Trash2, Search, FileText, CalendarDays, Eye, DollarSign, MoreHorizontal, Edit, Download, Printer, Users, Loader2, History, Receipt, Clock, CreditCard, User, Building, Phone, Mail, MapPin } from 'lucide-react';
+import { generateBillPDF, generateSupplierPaymentReceiptPDF } from '@/lib/bill-invoice-generator';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -100,6 +101,12 @@ function SupplierBillsContent() {
   const [selectedBill, setSelectedBill] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any>(null);
+
+  // Transaction History State
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryBill, setSelectedHistoryBill] = useState<any>(null);
+  const [historyData, setHistoryData] = useState<any>(null);
 
   const [settings, setSettings] = useState<any>(null);
 
@@ -231,6 +238,102 @@ function SupplierBillsContent() {
       }
     } catch (error) {
       toast.error('Failed to delete bill');
+    }
+  };
+
+  const handleOpenTransactionHistory = async (bill: any) => {
+    setSelectedHistoryBill(bill);
+    setHistoryModalOpen(true);
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/admin/supplier-bills/${bill._id}/transactions`);
+      if (!res.ok) throw new Error('Failed to load transaction history');
+      const data = await res.json();
+      setHistoryData(data);
+      if (data.bill) {
+        setSelectedHistoryBill(data.bill);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error loading transaction history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const handleRecordPayment = async (billId: string, currentDue: number) => {
+    const bill = bills.find(b => b._id === billId) || selectedHistoryBill;
+    if (!bill) return;
+
+    const liquid = accounts.filter(isTransferableAccount);
+    const accountOptionsHtml = liquid.map(acc => {
+      const clean = cleanAccountName(acc.accountName || acc.name || '');
+      return `<option value="${acc._id}">${clean} (৳${(acc.currentBalance || 0).toLocaleString()})</option>`;
+    }).join('');
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Disburse Payment to Supplier',
+      html: `
+        <div style="text-align: left; font-size: 13px;">
+          <div style="margin-bottom: 12px;">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Payment Amount (৳)</label>
+            <input id="swal-pay-amount" type="number" class="swal2-input" style="width: 100%; margin: 0; box-sizing: border-box;" value="${currentDue}" max="${currentDue}" min="1" />
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Disbursement Account</label>
+            <select id="swal-pay-account" class="swal2-select" style="width: 100%; margin: 0; display: block;">
+              ${accountOptionsHtml || '<option value="">Default Cash/Bank</option>'}
+            </select>
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Disburse Payment',
+      confirmButtonColor: '#10b981',
+      preConfirm: () => {
+        const amountEl = document.getElementById('swal-pay-amount') as HTMLInputElement;
+        const accountEl = document.getElementById('swal-pay-account') as HTMLSelectElement;
+        const amt = parseFloat(amountEl?.value || '0');
+        if (!amt || amt <= 0) {
+          Swal.showValidationMessage('Please enter a valid payment amount');
+          return false;
+        }
+        return {
+          amount: amt,
+          accountId: accountEl?.value || undefined
+        };
+      }
+    });
+
+    if (formValues) {
+      try {
+        const newPaid = (bill.paidAmount || 0) + formValues.amount;
+        const selectedAcc = accounts.find(a => a._id === formValues.accountId);
+        const res = await fetch(`/api/admin/supplier-bills/${billId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paidAmount: newPaid,
+            paymentAccountId: formValues.accountId,
+            paymentMethod: selectedAcc ? cleanAccountName(selectedAcc.accountName || selectedAcc.name) : (bill.paymentMethod || 'Cash')
+          })
+        });
+
+        if (!res.ok) throw new Error('Failed to record payment');
+        toast.success('Supplier payment recorded successfully');
+        fetchBills();
+        fetchAccounts();
+        if (selectedHistoryBill && selectedHistoryBill._id === billId) {
+          handleOpenTransactionHistory({
+            ...bill,
+            paidAmount: newPaid,
+            dueAmount: Math.max(0, bill.total - newPaid),
+            status: Math.max(0, bill.total - newPaid) === 0 ? 'Paid' : 'Due'
+          });
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to record payment');
+      }
     }
   };
 
@@ -513,6 +616,17 @@ function SupplierBillsContent() {
                               <DropdownMenuItem onClick={() => { setSelectedBill(bill); setIsDetailOpen(true); }}>
                                 <Eye className="mr-2 h-4 w-4 text-indigo-600" /> View Details
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleOpenTransactionHistory(bill)}>
+                                <History className="mr-2 h-4 w-4 text-purple-600" /> Payment History
+                              </DropdownMenuItem>
+                              {bill.dueAmount > 0 && (
+                                <DropdownMenuItem onClick={() => handleRecordPayment(bill._id, bill.dueAmount)}>
+                                  <CreditCard className="mr-2 h-4 w-4 text-emerald-600" /> Pay Due / Record Payment
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => generateSupplierPaymentReceiptPDF(bill, settings)}>
+                                <Receipt className="mr-2 h-4 w-4 text-emerald-600" /> Payment Voucher
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditingBill(bill);
@@ -612,6 +726,17 @@ function SupplierBillsContent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleOpenTransactionHistory(bill)}>
+                          <History className="mr-2 h-4 w-4 text-purple-600" /> Payment History
+                        </DropdownMenuItem>
+                        {bill.dueAmount > 0 && (
+                          <DropdownMenuItem onClick={() => handleRecordPayment(bill._id, bill.dueAmount)}>
+                            <CreditCard className="mr-2 h-4 w-4 text-emerald-600" /> Pay Due / Record Payment
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => generateSupplierPaymentReceiptPDF(bill, settings)}>
+                          <Receipt className="mr-2 h-4 w-4 text-emerald-600" /> Payment Voucher
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
                             setEditingBill(bill);
@@ -920,6 +1045,244 @@ function SupplierBillsContent() {
                   <span>৳{selectedBill.dueAmount.toLocaleString()}</span>
                 </div>
               </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t">
+                <Button
+                  variant="outline"
+                  className="flex-1 font-bold h-8 text-xs text-purple-700 border-purple-200 hover:bg-purple-50"
+                  onClick={() => {
+                    setIsDetailOpen(false);
+                    handleOpenTransactionHistory(selectedBill);
+                  }}
+                >
+                  <History className="h-3.5 w-3.5 mr-1.5" /> Payment History
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 font-bold h-8 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                  onClick={() => generateSupplierPaymentReceiptPDF(selectedBill, settings)}
+                >
+                  <Receipt className="h-3.5 w-3.5 mr-1.5" /> Voucher
+                </Button>
+                <Button
+                  className="flex-1 font-bold h-8 text-xs"
+                  onClick={() => generateBillPDF(selectedBill, settings, 'download')}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 font-bold h-8 text-xs"
+                  onClick={() => generateBillPDF(selectedBill, settings, 'print')}
+                >
+                  <Printer className="h-3.5 w-3.5 mr-1.5" /> Print
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Supplier Bill Payment & Transaction History Modal ── */}
+      <Dialog open={historyModalOpen} onOpenChange={(open) => { setHistoryModalOpen(open); if (!open) { setHistoryData(null); setSelectedHistoryBill(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              <History className="h-5 w-5 text-purple-600" />
+              Supplier Bill Payment & Transaction History
+              {selectedHistoryBill && (
+                <Badge variant="outline" className="font-mono text-sm bg-purple-50 text-purple-700 border-purple-200">
+                  #{selectedHistoryBill.billNo}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {historyLoading ? (
+            <div className="flex flex-col items-center justify-center py-14 space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              <p className="text-sm text-muted-foreground">Loading transaction records...</p>
+            </div>
+          ) : selectedHistoryBill && (
+            <div className="space-y-5 pt-1">
+              {/* Supplier & Bill Info Card */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/40 p-4 rounded-xl border">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-primary" />
+                    <span className="font-bold text-base">
+                      {selectedHistoryBill.supplier?.name || 'Supplier'}
+                      {selectedHistoryBill.supplier?.companyName && (
+                        <span className="text-xs text-muted-foreground font-normal ml-1.5">
+                          ({selectedHistoryBill.supplier.companyName})
+                        </span>
+                      )}
+                    </span>
+                    <Badge variant={selectedHistoryBill.status === 'Paid' ? 'default' : 'destructive'} className={selectedHistoryBill.status === 'Paid' ? 'bg-green-600 text-white border-none' : ''}>
+                      {selectedHistoryBill.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    {selectedHistoryBill.supplier?.phone && (
+                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {selectedHistoryBill.supplier.phone}</span>
+                    )}
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> Bill Date: {format(new Date(selectedHistoryBill.date), 'dd MMM yyyy')}</span>
+                  </div>
+                </div>
+
+                {selectedHistoryBill.dueAmount > 0 && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                    onClick={() => {
+                      handleRecordPayment(selectedHistoryBill._id, selectedHistoryBill.dueAmount);
+                    }}
+                  >
+                    <CreditCard className="h-4 w-4 mr-1.5" /> Pay Next Due
+                  </Button>
+                )}
+              </div>
+
+              {/* Financial Metrics Cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-lg border bg-card space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Bill</p>
+                  <p className="text-lg font-black text-foreground">৳{Math.round(selectedHistoryBill.total || 0).toLocaleString()}</p>
+                </div>
+                <div className="p-3.5 rounded-lg border border-green-200 bg-green-50/50 dark:bg-green-950/20 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-green-700 dark:text-green-400">Total Paid (Cash-out)</p>
+                  <p className="text-lg font-black text-green-600">৳{Math.round(selectedHistoryBill.paidAmount || 0).toLocaleString()}</p>
+                </div>
+                <div className={`p-3.5 rounded-lg border space-y-1 ${selectedHistoryBill.dueAmount > 0 ? 'border-orange-200 bg-orange-50/50 dark:bg-orange-950/20' : 'border-muted bg-muted/20'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${selectedHistoryBill.dueAmount > 0 ? 'text-orange-700 dark:text-orange-400' : 'text-muted-foreground'}`}>Remaining Due</p>
+                  <p className={`text-lg font-black ${selectedHistoryBill.dueAmount > 0 ? 'text-orange-600' : 'text-muted-foreground'}`}>৳{Math.round(selectedHistoryBill.dueAmount || 0).toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Payment Progress Bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-muted-foreground">Payment Progress</span>
+                  <span className="font-bold text-primary">
+                    {Math.min(100, Math.round(((selectedHistoryBill.paidAmount || 0) / (selectedHistoryBill.total || 1)) * 100))}%
+                    {selectedHistoryBill.dueAmount <= 0 ? ' (Fully Settled)' : ''}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-green-600 h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, Math.round(((selectedHistoryBill.paidAmount || 0) / (selectedHistoryBill.total || 1)) * 100)))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Installments Breakdown List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-sm flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-purple-600" />
+                    Disbursement Installments ({historyData?.installments?.length || 0})
+                  </h4>
+                  <span className="text-xs text-muted-foreground">Step-by-step transaction logs</span>
+                </div>
+
+                {(!historyData?.installments || historyData.installments.length === 0) ? (
+                  <div className="text-center py-8 border rounded-lg bg-muted/20 text-muted-foreground text-sm">
+                    No payment disbursements recorded for this purchase bill yet.
+                  </div>
+                ) : (
+                  <div className="border rounded-xl divide-y overflow-hidden bg-card">
+                    {historyData.installments.map((inst: any, idx: number) => (
+                      <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                            #{inst.installmentNo}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-sm text-foreground">{inst.description || `Disbursement Step #${inst.installmentNo}`}</span>
+                              {idx === 0 && (
+                                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300 border-green-200 py-0 font-bold">
+                                  Latest
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-[11px] bg-muted/50 py-0">
+                                {inst.method || 'Cash'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              <Clock className="h-3 w-3" />
+                              <span>{format(new Date(inst.date), 'dd MMM yyyy, hh:mm a')}</span>
+                              <span>•</span>
+                              <span>Remaining Due: <strong className={inst.remainingDueAfter > 0 ? 'text-orange-600' : 'text-green-600'}>৳{Math.round(inst.remainingDueAfter).toLocaleString()}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                          <div className="text-right">
+                            <div className="text-base font-black text-rose-600">
+                              - ৳{Math.round(inst.amount).toLocaleString()}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Total paid so far: ৳{Math.round(inst.cumulativePaid).toLocaleString()}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs font-bold text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                            onClick={() => {
+                              const chronologicalPayments = historyData?.installments
+                                ? [...historyData.installments]
+                                    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                    .map((i: any) => ({ _id: i.txId, amount: i.amount, date: i.date }))
+                                : [];
+
+                              generateSupplierPaymentReceiptPDF(
+                                {
+                                  ...selectedHistoryBill,
+                                  payments: chronologicalPayments
+                                },
+                                settings,
+                                inst.amount,
+                                inst.date,
+                                inst.txId,
+                                false
+                              );
+                            }}
+                            title="Print payment voucher for this installment"
+                          >
+                            <Printer className="h-3.5 w-3.5 mr-1" /> Voucher
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="flex justify-between items-center sm:justify-between pt-2 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setHistoryModalOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedBill(selectedHistoryBill);
+                    setIsDetailOpen(true);
+                    setHistoryModalOpen(false);
+                  }}
+                >
+                  <Eye className="h-4 w-4 mr-1.5" /> View Details
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

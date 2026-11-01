@@ -64,6 +64,7 @@ export async function PUT(
     }
 
     const oldDueAmount = existingBill.dueAmount || 0;
+    const oldPaidAmount = existingBill.paidAmount || 0;
 
     if (items && Array.isArray(items)) {
       existingBill.items = items.map((it: any) => ({
@@ -100,6 +101,38 @@ export async function PUT(
       await Supplier.findByIdAndUpdate(existingBill.supplier, {
         $inc: { currentBalance: dueDifference }
       });
+    }
+
+    // If payment amount increased, log transaction to Ledger
+    const paymentDifference = (existingBill.paidAmount || 0) - oldPaidAmount;
+    if (paymentDifference > 0) {
+      try {
+        const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+        const LedgerTransaction = (await import('@/models/LedgerTransaction')).default;
+        const targetAccountId = paymentAccountId || existingBill.paymentAccountId;
+
+        const account = targetAccountId
+          ? await LedgerAccount.findById(targetAccountId)
+          : (await LedgerAccount.findOne({ isDefault: true }) || await LedgerAccount.findOne({ code: 'CASH' }));
+
+        if (account) {
+          const balanceAfter = (account.currentBalance || 0) - paymentDifference;
+          account.currentBalance = balanceAfter;
+          await account.save();
+
+          await LedgerTransaction.create({
+            account: account._id,
+            date: date ? new Date(date) : new Date(),
+            description: `Payment for Purchase Bill ${existingBill.billNo} (${paymentMethod || existingBill.paymentMethod || 'Cash'})`,
+            type: 'debit',
+            amount: paymentDifference,
+            reference: existingBill.billNo,
+            balanceAfter
+          });
+        }
+      } catch (ledgerErr) {
+        console.error('[SupplierBill Ledger Error]', ledgerErr);
+      }
     }
 
     const updated = await SupplierBill.findById(id)
