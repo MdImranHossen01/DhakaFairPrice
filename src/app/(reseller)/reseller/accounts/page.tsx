@@ -28,6 +28,7 @@ import {
   History,
   Search,
   Trash2,
+  Edit,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -88,6 +89,69 @@ export default function ResellerAccountsPage() {
       ['CASH', 'BANK', 'AP', 'AR'].includes(code) ||
       ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(name)
     );
+  };
+
+  // Edit Account Modal State
+  const [editAccountOpen, setEditAccountOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<any>(null);
+  const [updatingAccount, setUpdatingAccount] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    category: 'Bank',
+    bankName: '',
+    branchName: '',
+    bankAccountType: 'Savings',
+    accountNumber: '',
+    mfsProvider: 'bKash',
+    mfsType: 'Merchant',
+    openingBalance: '',
+    description: ''
+  });
+
+  const handleOpenEdit = (acc: any) => {
+    setEditingAccount(acc);
+    setEditForm({
+      name: acc.name || '',
+      category: acc.category || 'Bank',
+      bankName: acc.bankName || '',
+      branchName: acc.branchName || '',
+      bankAccountType: acc.bankAccountType || 'Savings',
+      accountNumber: acc.accountNumber || '',
+      mfsProvider: acc.mfsProvider || 'bKash',
+      mfsType: acc.mfsType || 'Merchant',
+      openingBalance: acc.openingBalance !== undefined ? String(acc.openingBalance) : '0',
+      description: acc.description || ''
+    });
+    setEditAccountOpen(true);
+  };
+
+  const handleUpdateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAccount) return;
+    if (!editForm.name.trim()) {
+      toast.error('Account Name is required');
+      return;
+    }
+
+    setUpdatingAccount(true);
+    try {
+      const res = await fetch(`/api/reseller/accounts/${editingAccount._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update account');
+
+      toast.success('Account updated successfully');
+      setEditAccountOpen(false);
+      setEditingAccount(null);
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update account');
+    } finally {
+      setUpdatingAccount(false);
+    }
   };
 
   const handleDeleteAccount = async (account: any) => {
@@ -545,6 +609,13 @@ export default function ResellerAccountsPage() {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
+                              onClick={() => handleOpenEdit(acc)}
+                              className="text-amber-600 focus:text-amber-700 font-semibold cursor-pointer gap-2"
+                            >
+                              <Edit className="h-3.5 w-3.5 text-amber-600" />
+                              <span>Edit Account</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleOpenHistory(acc)}
                               className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
                             >
@@ -642,6 +713,13 @@ export default function ResellerAccountsPage() {
                               <span>Transfer Funds</span>
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() => handleOpenEdit(acc)}
+                            className="text-amber-600 focus:text-amber-700 font-semibold cursor-pointer gap-2"
+                          >
+                            <Edit className="h-3.5 w-3.5 text-amber-600" />
+                            <span>Edit Account</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleOpenHistory(acc)}
                             className="text-indigo-600 focus:text-indigo-700 font-semibold cursor-pointer gap-2"
@@ -1150,6 +1228,218 @@ export default function ResellerAccountsPage() {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Account Modal */}
+      <Dialog open={editAccountOpen} onOpenChange={setEditAccountOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md p-0 overflow-hidden gap-0">
+          {/* Styled Header */}
+          <div className="bg-primary px-5 py-3.5 flex justify-between items-center">
+            <h2 className="text-base font-bold text-primary-foreground flex items-center gap-2">
+              <Edit className="h-4 w-4" />
+              Edit Account
+            </h2>
+            <button
+              onClick={() => setEditAccountOpen(false)}
+              className="text-primary-foreground hover:bg-white/10 p-1 rounded-md transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Form Body — Scrollable */}
+          <div className="overflow-y-auto max-h-[80vh]">
+            <form onSubmit={handleUpdateAccount} className="p-5 space-y-4 pb-6">
+              {/* Account Code & Category Info */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border text-xs">
+                <div>
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Account Code</span>
+                  <span className="font-mono font-bold text-foreground text-sm">{editingAccount?.code}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-muted-foreground block text-[10px] uppercase font-bold tracking-wider">Category</span>
+                  <Badge variant="outline" className="font-bold">{editingAccount?.category || 'Bank'}</Badge>
+                </div>
+              </div>
+
+              {/* Account Name */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">Account Name <span className="text-red-500">*</span></Label>
+                <Input
+                  required
+                  placeholder="e.g. City Bank Primary / bKash Merchant"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="h-11 text-base"
+                />
+              </div>
+
+              {/* MFS-specific fields */}
+              {editingAccount?.category === 'MFS' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 border p-4 rounded-lg bg-muted/30">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">MFS Provider</Label>
+                      <Select
+                        value={editForm.mfsProvider}
+                        onValueChange={(val) => val && setEditForm(prev => ({ ...prev, mfsProvider: val }))}
+                      >
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Provider" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bKash">bKash</SelectItem>
+                          <SelectItem value="Nagad">Nagad</SelectItem>
+                          <SelectItem value="Rocket">Rocket</SelectItem>
+                          <SelectItem value="Upay">Upay</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Account Type</Label>
+                      <Select
+                        value={editForm.mfsType}
+                        onValueChange={(val: any) => val && setEditForm(prev => ({ ...prev, mfsType: val }))}
+                      >
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Merchant">Merchant</SelectItem>
+                          <SelectItem value="Personal">Personal</SelectItem>
+                          <SelectItem value="Agent">Agent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Mobile Account Number</Label>
+                    <Input
+                      placeholder="e.g. 017XXXXXXXX"
+                      value={editForm.accountNumber}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, accountNumber: e.target.value }))}
+                      className="h-10 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Bank-specific fields */}
+              {editingAccount?.category === 'Bank' && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 border p-4 rounded-lg bg-muted/30">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Bank Name</Label>
+                    <Input
+                      placeholder="e.g. City Bank, Dutch Bangla Bank"
+                      value={editForm.bankName}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, bankName: e.target.value }))}
+                      className="h-10 text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Branch Name</Label>
+                      <Input
+                        placeholder="e.g. Dhanmondi Branch"
+                        value={editForm.branchName}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, branchName: e.target.value }))}
+                        className="h-10 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Account Type</Label>
+                      <Select
+                        value={editForm.bankAccountType}
+                        onValueChange={(val: any) => val && setEditForm(prev => ({ ...prev, bankAccountType: val }))}
+                      >
+                        <SelectTrigger className="h-10 text-sm">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Savings">Savings</SelectItem>
+                          <SelectItem value="Current">Current</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Account Number</Label>
+                    <Input
+                      placeholder="e.g. 150XXXXXXXXXX"
+                      value={editForm.accountNumber}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, accountNumber: e.target.value }))}
+                      className="h-10 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Opening Balance */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">Opening Balance (৳)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0.00"
+                  value={editForm.openingBalance}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, openingBalance: e.target.value }))}
+                  className="h-11 text-base font-bold"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Adjusting opening balance automatically syncs the running ledger balance for this account.
+                </p>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">Note / Description</Label>
+                <Textarea
+                  placeholder="Additional account details, routing or branch instructions..."
+                  value={editForm.description}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2.5 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditAccountOpen(false)}
+                  disabled={updatingAccount}
+                  className="h-10 text-sm font-semibold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updatingAccount}
+                  className="h-10 text-sm font-bold min-w-[120px]"
+                >
+                  {updatingAccount ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

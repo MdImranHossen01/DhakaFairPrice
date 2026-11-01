@@ -5,7 +5,6 @@ import connectToDatabase from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import LedgerTransaction from '@/models/LedgerTransaction';
-
 import Expense from '@/models/Expense';
 import { recalculateLedgerBalanceByAccountId } from '@/lib/ledgerHelper';
 
@@ -35,7 +34,17 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, openingBalance, description } = body;
+    const {
+      name,
+      openingBalance,
+      description,
+      accountNumber,
+      bankName,
+      branchName,
+      bankAccountType,
+      mfsProvider,
+      mfsType
+    } = body;
 
     await connectToDatabase();
 
@@ -44,18 +53,48 @@ export async function PUT(
       return NextResponse.json({ message: 'Account not found in your store' }, { status: 404 });
     }
 
-    if (name !== undefined) account.name = name.trim();
+    if (name !== undefined && typeof name === 'string' && name.trim()) {
+      account.name = name.trim();
+    }
     if (description !== undefined) account.description = description?.trim();
+    if (accountNumber !== undefined) account.accountNumber = accountNumber?.trim();
+    if (bankName !== undefined) account.bankName = bankName?.trim();
+    if (branchName !== undefined) account.branchName = branchName?.trim();
+    if (bankAccountType !== undefined) account.bankAccountType = bankAccountType;
+    if (mfsProvider !== undefined) account.mfsProvider = mfsProvider?.trim();
+    if (mfsType !== undefined) account.mfsType = mfsType;
 
     if (openingBalance !== undefined) {
-      const newOpening = Number(openingBalance) || 0;
+      const newOpening = Math.max(0, Number(openingBalance) || 0);
       const oldOpening = account.openingBalance || 0;
       const diff = newOpening - oldOpening;
       account.openingBalance = newOpening;
       account.currentBalance = (account.currentBalance || 0) + diff;
+
+      // Update or create Opening Balance ledger transaction
+      const openingTx = await LedgerTransaction.findOne({
+        account: account._id,
+        resellerId: reseller._id,
+        description: 'Opening Balance'
+      });
+      if (openingTx) {
+        openingTx.amount = newOpening;
+        await openingTx.save();
+      } else if (newOpening > 0) {
+        await LedgerTransaction.create({
+          account: account._id,
+          date: account.createdAt || new Date(),
+          description: 'Opening Balance',
+          type: 'credit',
+          amount: newOpening,
+          balanceAfter: newOpening,
+          resellerId: reseller._id
+        });
+      }
     }
 
     await account.save();
+    await recalculateLedgerBalanceByAccountId(account._id);
 
     return NextResponse.json({ message: 'Account updated successfully', account });
   } catch (error: any) {
@@ -91,49 +130,24 @@ export async function DELETE(
       return NextResponse.json({ message: 'Account not found in your store' }, { status: 404 });
     }
 
+    // Protect default core system accounts (AR, AP, CASH, BANK)
     const isProtected =
       ['CASH', 'BANK', 'AP', 'AR'].includes(account.code?.toUpperCase()?.trim()) ||
-      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(account.name?.toLowerCase()?.trim()) ||
-      account.category === 'Cash';
+      ['cash', 'cash in hand', 'bank', 'bank account', 'accounts payable', 'accounts receivable'].includes(account.name?.toLowerCase()?.trim());
     if (isProtected) {
-      return NextResponse.json({ message: `Core store account (${account.name}) cannot be deleted as it is required for store operations.` }, { status: 400 });
+      return NextResponse.json(
+        { message: `Core system account (${account.name}) cannot be deleted as it is required for your store operations.` },
+        { status: 400 }
+      );
     }
 
-    // 1. Cascade delete all linked expenses/incomes recorded under this account
-    await Expense.deleteMany({ paymentAccountId: account._id, resellerId: reseller._id });
+    // 1. Delete all transactions belonging to this account in reseller scope
+    await LedgerTransaction.deleteMany({ account: id, resellerId: reseller._id });
 
-    // 2. Find companion transfer transactions in other accounts
-    const escapedName = account.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const companionTxList = await LedgerTransaction.find({
-      resellerId: reseller._id,
-      account: { $ne: account._id },
-      $or: [
-        { description: new RegExp(`Transfer to ${escapedName}`, 'i') },
-        { description: new RegExp(`Transfer from ${escapedName}`, 'i') }
-      ]
-    }).lean();
+    // 2. Cascade cleanup expenses that referenced this payment account
+    await Expense.deleteMany({ paymentAccount: id, resellerId: reseller._id });
 
-    const affectedAccountIds = Array.from(new Set(companionTxList.map((tx: any) => tx.account.toString())));
-
-    // 3. Delete companion transfer transactions from other accounts
-    if (companionTxList.length > 0) {
-      await LedgerTransaction.deleteMany({
-        _id: { $in: companionTxList.map((tx: any) => tx._id) }
-      });
-    }
-
-    // 4. Delete all ledger transactions directly belonging to this account
-    await LedgerTransaction.deleteMany({
-      account: account._id,
-      resellerId: reseller._id
-    });
-
-    // 5. Recalculate balances for all affected companion accounts
-    for (const accId of affectedAccountIds) {
-      await recalculateLedgerBalanceByAccountId(accId);
-    }
-
-    // 6. Delete the account itself
+    // 3. Delete the account itself
     await LedgerAccount.deleteOne({ _id: id, resellerId: reseller._id });
 
     return NextResponse.json({

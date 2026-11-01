@@ -27,7 +27,17 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, openingBalance, description } = body;
+    const {
+      name,
+      openingBalance,
+      description,
+      accountNumber,
+      bankName,
+      branchName,
+      bankAccountType,
+      mfsProvider,
+      mfsType
+    } = body;
 
     await connectToDatabase();
 
@@ -40,18 +50,47 @@ export async function PUT(
       return NextResponse.json({ message: 'Account not found' }, { status: 404 });
     }
 
-    if (name !== undefined) account.name = name.trim();
+    if (name !== undefined && typeof name === 'string' && name.trim()) {
+      account.name = name.trim();
+    }
     if (description !== undefined) account.description = description?.trim();
+    if (accountNumber !== undefined) account.accountNumber = accountNumber?.trim();
+    if (bankName !== undefined) account.bankName = bankName?.trim();
+    if (branchName !== undefined) account.branchName = branchName?.trim();
+    if (bankAccountType !== undefined) account.bankAccountType = bankAccountType;
+    if (mfsProvider !== undefined) account.mfsProvider = mfsProvider?.trim();
+    if (mfsType !== undefined) account.mfsType = mfsType;
 
     if (openingBalance !== undefined) {
-      const newOpening = Number(openingBalance) || 0;
+      const newOpening = Math.max(0, Number(openingBalance) || 0);
       const oldOpening = account.openingBalance || 0;
       const diff = newOpening - oldOpening;
       account.openingBalance = newOpening;
       account.currentBalance = (account.currentBalance || 0) + diff;
+
+      // Update or create Opening Balance ledger transaction
+      const openingTx = await LedgerTransaction.findOne({
+        account: account._id,
+        description: 'Opening Balance'
+      });
+      if (openingTx) {
+        openingTx.amount = newOpening;
+        await openingTx.save();
+      } else if (newOpening > 0) {
+        await LedgerTransaction.create({
+          account: account._id,
+          date: account.createdAt || new Date(),
+          description: 'Opening Balance',
+          type: 'credit',
+          amount: newOpening,
+          balanceAfter: newOpening,
+          resellerId: null
+        });
+      }
     }
 
     await account.save();
+    await recalculateLedgerBalanceByAccountId(account._id);
 
     return NextResponse.json({ message: 'Account updated successfully', account });
   } catch (error: any) {
@@ -98,61 +137,17 @@ export async function DELETE(
       );
     }
 
-    // 1. Delete associated expenses and incomes recorded with this payment account
-    await Expense.deleteMany({ paymentAccountId: account._id });
+    // 1. Delete all transactions belonging to this account
+    await LedgerTransaction.deleteMany({ account: id });
 
-    // 2. Clean up references in BusinessLoan, SupplierBill, ResellerWalletTransaction
-    await BusinessLoan.updateMany(
-      { receivingAccountId: account._id },
-      { $unset: { receivingAccountId: 1 } }
-    );
-    await BusinessLoan.updateMany(
-      { 'repayments.paymentAccountId': account._id },
-      { $pull: { repayments: { paymentAccountId: account._id } } }
-    );
-    await SupplierBill.updateMany(
-      { paymentAccountId: account._id },
-      { $unset: { paymentAccountId: 1 } }
-    );
-    await ResellerWalletTransaction.updateMany(
-      { $or: [{ adminAccountId: account._id }, { destinationAccountId: account._id }] },
-      { $unset: { adminAccountId: 1, destinationAccountId: 1 } }
-    );
+    // 2. Cascade cleanup from other entities that reference this payment account
+    await Expense.deleteMany({ paymentAccount: id });
+    await BusinessLoan.deleteMany({ bankAccountId: id });
+    await SupplierBill.deleteMany({ paymentAccountId: id });
+    await ResellerWalletTransaction.deleteMany({ paymentAccountId: id });
 
-    // 3. Find companion transfer transactions in other accounts
-    const escapedName = account.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const companionTxList = await LedgerTransaction.find({
-      account: { $ne: account._id },
-      $and: [
-        { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] },
-        {
-          $or: [
-            { description: new RegExp(`Transfer to ${escapedName}`, 'i') },
-            { description: new RegExp(`Transfer from ${escapedName}`, 'i') }
-          ]
-        }
-      ]
-    }).lean();
-
-    const affectedAccountIds = Array.from(new Set(companionTxList.map((tx: any) => tx.account.toString())));
-
-    // 4. Delete companion transfer transactions from other accounts
-    if (companionTxList.length > 0) {
-      await LedgerTransaction.deleteMany({
-        _id: { $in: companionTxList.map((tx: any) => tx._id) }
-      });
-    }
-
-    // 5. Delete all transactions belonging directly to this account
-    await LedgerTransaction.deleteMany({ account: account._id });
-
-    // 6. Recalculate balances for all affected companion accounts
-    for (const accId of affectedAccountIds) {
-      await recalculateLedgerBalanceByAccountId(accId);
-    }
-
-    // 7. Delete the account itself
-    await LedgerAccount.deleteOne({ _id: account._id });
+    // 3. Delete the account itself
+    await LedgerAccount.deleteOne({ _id: id });
 
     return NextResponse.json({
       message: `Account "${account.name}" and all related transactions, entries, and reports synced and deleted successfully.`
