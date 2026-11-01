@@ -135,6 +135,23 @@ export async function POST(req: NextRequest) {
             reference: billNo,
             balanceAfter
           });
+
+          // Log expense into Expense collection for /admin/expenses-incomes and daily/monthly reports
+          try {
+            const Expense = (await import('@/models/Expense')).default;
+            await Expense.create({
+              title: `Purchase Bill Payment - ${billNo}`,
+              amount: finalPaid,
+              category: 'Others Expense',
+              type: 'expense',
+              paymentAccountId: account._id,
+              date: date ? new Date(date) : new Date(),
+              reference: billNo,
+              description: `Payment for Purchase Bill ${billNo} to supplier ${supplierDoc.name}`
+            });
+          } catch (expErr) {
+            console.error('Error logging purchase bill payment to Expense collection:', expErr);
+          }
         }
       } catch (ledgerErr) {
         console.error('[Ledger SupplierBill Log Error]', ledgerErr);

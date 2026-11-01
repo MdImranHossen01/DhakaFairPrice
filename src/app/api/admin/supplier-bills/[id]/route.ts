@@ -129,6 +129,23 @@ export async function PUT(
             reference: existingBill.billNo,
             balanceAfter
           });
+
+          // Log expense into Expense collection for /admin/expenses-incomes and daily/monthly reports
+          try {
+            const Expense = (await import('@/models/Expense')).default;
+            await Expense.create({
+              title: `Purchase Bill Payment - ${existingBill.billNo}`,
+              amount: paymentDifference,
+              category: 'Others Expense',
+              type: 'expense',
+              paymentAccountId: account._id,
+              date: date ? new Date(date) : new Date(),
+              reference: existingBill.billNo,
+              description: `Payment for Purchase Bill ${existingBill.billNo}`
+            });
+          } catch (expErr) {
+            console.error('Error logging payment difference to Expense collection:', expErr);
+          }
         }
       } catch (ledgerErr) {
         console.error('[SupplierBill Ledger Error]', ledgerErr);
@@ -193,6 +210,23 @@ export async function DELETE(
       await recalculateLedgerBalance('BANK');
     } catch (err) {
       console.error('Error removing ledger entries for supplier bill:', err);
+    }
+
+    // Clean associated Expense entries for this supplier bill
+    try {
+      const Expense = (await import('@/models/Expense')).default;
+      const billRef = (bill as any).billNo || (bill as any).invoiceNo;
+      if (billRef) {
+        await Expense.deleteMany({
+          $or: [
+            { reference: billRef },
+            { title: { $regex: billRef, $options: 'i' } },
+            { description: { $regex: billRef, $options: 'i' } }
+          ]
+        });
+      }
+    } catch (err) {
+      console.error('Error removing expense entries for supplier bill:', err);
     }
 
     await SupplierBill.findByIdAndDelete(id);

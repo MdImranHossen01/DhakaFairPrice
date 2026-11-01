@@ -115,6 +115,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           `Payment credit for Bill ${bill.invoiceNo}`,
           bill.invoiceNo
         );
+
+        // Log income into Expense collection for /admin/expenses-incomes and financial reports
+        try {
+          const Expense = (await import('@/models/Expense')).default;
+          await Expense.create({
+            title: `Bill Payment Received #${bill.invoiceNo}`,
+            amount: paymentReceived,
+            category: 'Sales Revenue',
+            type: 'income',
+            date: new Date(),
+            reference: bill.invoiceNo,
+            description: `Payment received for Bill ${bill.invoiceNo} from ${bill.clientName}`
+          });
+        } catch (expErr) {
+          console.error('Error logging bill payment to Expense collection:', expErr);
+        }
       } catch (err) {
         console.error('Error logging to ledger:', err);
       }

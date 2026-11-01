@@ -81,6 +81,23 @@ export async function POST(
           reference: `Supplier:${supplier._id}`,
           balanceAfter,
         });
+
+        // Log expense into Expense collection for /admin/expenses-incomes and financial reports
+        try {
+          const Expense = (await import('@/models/Expense')).default;
+          await Expense.create({
+            title: `Supplier Payment - ${supplier.name}`,
+            amount: paymentAmount,
+            category: 'Others Expense',
+            type: 'expense',
+            paymentAccountId: payAccount._id,
+            date: date ? new Date(date) : new Date(),
+            reference: `Supplier:${supplier._id}`,
+            description: description || `Direct payment to Supplier: ${supplier.name}`
+          });
+        } catch (expErr) {
+          console.error('[Expense Supplier Payment Error]', expErr);
+        }
       }
     } catch (ledgerErr) {
       console.error('[Ledger Payment Logging Error]', ledgerErr);
