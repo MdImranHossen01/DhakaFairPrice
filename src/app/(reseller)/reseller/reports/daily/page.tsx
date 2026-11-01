@@ -144,99 +144,186 @@ export default function ResellerDailyReportPage() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-xs md:text-sm text-center border-collapse">
               <thead>
-                <tr className="bg-muted/60 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase">
-                  <th className="py-2.5 px-3 whitespace-nowrap">Date</th>
-                  <th className="py-2.5 px-3 text-center">Day</th>
-                  <th className="py-2.5 px-3 text-center">Orders</th>
-                  <th className="py-2.5 px-3 text-right">Net Sales</th>
-                  <th className="py-2.5 px-3 text-right">Delivery</th>
-                  <th className="py-2.5 px-3 text-right">Total Sales</th>
-                  <th className="py-2.5 px-3 text-right">Product Cost</th>
-                  <th className="py-2.5 px-3 text-right text-emerald-600 font-bold">Reseller Profit</th>
-                  <th className="py-2.5 px-3 text-right text-rose-500">Expenses</th>
-                  <th className="py-2.5 px-3 text-right font-bold">Net Profit</th>
+                <tr className="bg-muted/30 border-b text-muted-foreground font-semibold">
+                  <th className="p-2.5 text-left font-bold text-foreground">Date</th>
+                  <th className="p-2.5 text-center font-bold text-muted-foreground">Day</th>
+                  <th className="p-2.5 text-center font-bold text-foreground">Orders</th>
+                  <th className="p-2.5 font-bold text-emerald-600">Net Sales</th>
+                  <th className="p-2.5 font-bold text-slate-600">Delivery</th>
+                  <th className="p-2.5 font-bold text-foreground">Total Sales</th>
+                  <th className="p-2.5 font-bold text-slate-600">Product Cost</th>
+                  <th className="p-2.5 font-bold text-emerald-600">Reseller Profit</th>
+                  <th className="p-2.5 font-bold text-rose-600">Expense</th>
+                  <th className="p-2.5 font-bold text-primary text-right">Net Profit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-muted-foreground">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
-                      Loading report data...
+                    <td colSpan={10} className="p-8 text-center text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Loading daily report...</span>
+                      </div>
                     </td>
                   </tr>
-                ) : !data?.days || data.days.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-12 text-center text-muted-foreground">
-                      No records found for {data?.monthName} {data?.year}.
-                    </td>
-                  </tr>
+                ) : (data?.rows?.length > 0 || data?.days?.length > 0) ? (
+                  (data.rows || data.days).map((row: any) => (
+                    <tr key={row.dateKey || row.date} className="border-b border-muted/30 hover:bg-muted/30 transition-colors">
+                      <td className="p-2.5 text-left font-medium text-foreground whitespace-nowrap">{row.date}</td>
+                      <td className="p-2.5 text-center text-muted-foreground">{row.dayName}</td>
+                      <td className="p-2.5 text-center">
+                        {row.orderCount > 0 ? (
+                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-bold">
+                            {row.orderCount}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-2.5 font-medium text-emerald-600">৳{Math.round(row.netSales || 0).toLocaleString()}</td>
+                      <td className="p-2.5 text-muted-foreground">৳{Math.round(row.deliveryCost || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-medium text-foreground">৳{Math.round(row.totalSales || row.total || 0).toLocaleString()}</td>
+                      <td className="p-2.5 text-muted-foreground">৳{Math.round(row.cogs || row.productCost || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-semibold text-emerald-600">৳{Math.round(row.grossProfit || row.salesProfit || 0).toLocaleString()}</td>
+                      <td className="p-2.5 font-medium text-rose-600">৳{Math.round(row.expense || 0).toLocaleString()}</td>
+                      <td className={`p-2.5 font-bold text-right ${row.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        ৳{Math.round(row.netProfit || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))
                 ) : (
-                  data.days.map((row: any) => {
-                    const isToday = row.date === currentDate.toISOString().split('T')[0];
-                    return (
-                      <tr
-                        key={row.date}
-                        className={`hover:bg-muted/30 transition-colors ${isToday ? 'bg-primary/5 font-semibold' : ''}`}
-                      >
-                        <td className="py-2 px-3 whitespace-nowrap">{row.date}</td>
-                        <td className="py-2 px-3 text-center text-muted-foreground">{row.dayName}</td>
-                        <td className="py-2 px-3 text-center">
-                          {row.orderCount > 0 ? (
-                            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-bold">
-                              {row.orderCount}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 text-right">{fmt(row.netSales)}</td>
-                        <td className="py-2 px-3 text-right text-muted-foreground">{fmt(row.deliveryCost)}</td>
-                        <td className="py-2 px-3 text-right font-medium">{fmt(row.totalSales)}</td>
-                        <td className="py-2 px-3 text-right text-muted-foreground">{fmt(row.cogs)}</td>
-                        <td className="py-2 px-3 text-right text-emerald-600 font-bold">{fmt(row.grossProfit)}</td>
-                        <td className="py-2 px-3 text-right text-rose-500">
-                          {row.expense > 0 ? fmt(row.expense) : '-'}
-                        </td>
-                        <td
-                          className={`py-2 px-3 text-right font-bold ${
-                            row.netProfit > 0 ? 'text-emerald-600' : row.netProfit < 0 ? 'text-rose-600' : ''
-                          }`}
-                        >
-                          {fmt(row.netProfit)}
-                        </td>
-                      </tr>
-                    );
-                  })
+                  <tr>
+                    <td colSpan={10} className="p-6 text-center text-muted-foreground">No data found for this period.</td>
+                  </tr>
                 )}
               </tbody>
+              {/* Summary / Total Footer Row */}
               {data?.summary && (
                 <tfoot>
-                  <tr className="bg-muted/80 font-bold border-t-2 border-border text-xs">
-                    <td className="py-3 px-3 uppercase" colSpan={2}>
-                      Total ({data.monthName})
-                    </td>
-                    <td className="py-3 px-3 text-center">{data.summary.orderCount}</td>
-                    <td className="py-3 px-3 text-right">{fmt(data.summary.netSales)}</td>
-                    <td className="py-3 px-3 text-right">{fmt(data.summary.deliveryCost)}</td>
-                    <td className="py-3 px-3 text-right">{fmt(data.summary.totalSales)}</td>
-                    <td className="py-3 px-3 text-right">{fmt(data.summary.cogs)}</td>
-                    <td className="py-3 px-3 text-right text-emerald-600">{fmt(data.summary.grossProfit)}</td>
-                    <td className="py-3 px-3 text-right text-rose-500">{fmt(data.summary.expense)}</td>
-                    <td
-                      className={`py-3 px-3 text-right ${
-                        data.summary.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
-                      {fmt(data.summary.netProfit)}
+                  <tr className="bg-muted/60 font-bold border-t-2 border-primary/20 text-foreground text-xs md:text-sm">
+                    <td className="p-3 text-left" colSpan={2}>Monthly Total:</td>
+                    <td className="p-3 text-center">{data.summary.orderCount || data.summary.totalOrderCount || 0}</td>
+                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.netSales || data.summary.totalNetSales || 0).toLocaleString()}</td>
+                    <td className="p-3 text-slate-600">৳{Math.round(data.summary.deliveryCost || data.summary.totalDeliveryCost || 0).toLocaleString()}</td>
+                    <td className="p-3">৳{Math.round(data.summary.totalSales || data.summary.grandTotal || 0).toLocaleString()}</td>
+                    <td className="p-3 text-muted-foreground">৳{Math.round(data.summary.cogs || data.summary.totalCOGS || 0).toLocaleString()}</td>
+                    <td className="p-3 text-emerald-600">৳{Math.round(data.summary.grossProfit || data.summary.totalSalesProfit || 0).toLocaleString()}</td>
+                    <td className="p-3 text-rose-600">৳{Math.round(data.summary.expense || data.summary.totalExpense || 0).toLocaleString()}</td>
+                    <td className={`p-3 text-right ${data.summary.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      ৳{Math.round(data.summary.netProfit || 0).toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
               )}
             </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="block md:hidden p-2 space-y-2.5">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-xs">Loading report...</span>
+              </div>
+            ) : (data?.rows?.length > 0 || data?.days?.length > 0) ? (
+              <>
+                {(data.rows || data.days).map((row: any) => (
+                  <div key={row.dateKey || row.date} className="bg-card border border-border/80 rounded-xl p-3 text-xs space-y-2 shadow-xs">
+                    <div className="flex items-center justify-between font-bold border-b pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-foreground">{row.date}</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">({row.dayName})</span>
+                      </div>
+                      <span className={row.netProfit >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
+                        Net Profit: ৳{Math.round(row.netProfit || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-border/40 text-[11px]">
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Orders:</span>
+                        <span className="font-semibold text-foreground">{row.orderCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Net Sales:</span>
+                        <span className="font-semibold text-emerald-600">৳{Math.round(row.netSales || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Delivery:</span>
+                        <span className="font-medium text-foreground">৳{Math.round(row.deliveryCost || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Sales:</span>
+                        <span className="font-bold text-foreground">৳{Math.round(row.totalSales || row.total || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Product Cost:</span>
+                        <span className="font-medium text-muted-foreground">৳{Math.round(row.cogs || row.productCost || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Reseller Profit:</span>
+                        <span className="font-semibold text-emerald-600">৳{Math.round(row.grossProfit || row.salesProfit || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Expense:</span>
+                        <span className="font-semibold text-rose-600">৳{Math.round(row.expense || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Mobile Monthly Grand Total Card */}
+                {data?.summary && (
+                  <div className="bg-primary/5 border-2 border-primary/30 rounded-xl p-3 text-xs space-y-1.5 shadow-xs mt-3">
+                    <div className="font-bold text-sm text-primary border-b pb-1">
+                      Monthly Grand Total ({data?.monthName} {data?.year})
+                    </div>
+                    <div className="divide-y divide-border/40 text-[11px] font-semibold">
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Orders:</span>
+                        <span className="text-foreground font-bold">{data.summary.orderCount || data.summary.totalOrderCount || 0}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Net Sales:</span>
+                        <span className="text-emerald-600 font-bold">৳{Math.round(data.summary.netSales || data.summary.totalNetSales || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Delivery:</span>
+                        <span className="text-slate-600 font-bold">৳{Math.round(data.summary.deliveryCost || data.summary.totalDeliveryCost || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Grand Total Sales:</span>
+                        <span className="text-foreground font-bold">৳{Math.round(data.summary.totalSales || data.summary.grandTotal || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Product Cost:</span>
+                        <span className="text-muted-foreground font-bold">৳{Math.round(data.summary.cogs || data.summary.totalCOGS || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Reseller Profit:</span>
+                        <span className="text-emerald-600 font-bold">৳{Math.round(data.summary.grossProfit || data.summary.totalSalesProfit || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-muted-foreground">Total Expenses:</span>
+                        <span className="text-rose-600 font-bold">৳{Math.round(data.summary.expense || data.summary.totalExpense || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between py-1 text-xs">
+                        <span className="text-foreground">Net Profit:</span>
+                        <span className={(data.summary.netProfit || 0) >= 0 ? 'text-emerald-600 font-black' : 'text-rose-600 font-black'}>
+                          ৳{Math.round(data.summary.netProfit || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-6 text-center text-xs text-muted-foreground">No data found for this period.</div>
+            )}
           </div>
         </CardContent>
       </Card>

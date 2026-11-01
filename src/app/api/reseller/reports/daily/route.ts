@@ -127,9 +127,11 @@ export async function GET(req: NextRequest) {
     let summaryNetProfit = 0;
     let summaryOrderCount = 0;
 
-    for (let d = 1; d <= daysInMonth; d++) {
+    for (let d = daysInMonth; d >= 1; d--) {
       const dayStr = d.toString().padStart(2, '0');
-      const dateKey = `${year}-${month.toString().padStart(2, '0')}-${dayStr}`;
+      const monthStr = month.toString().padStart(2, '0');
+      const dateKey = `${year}-${monthStr}-${dayStr}`;
+      const displayDate = `${dayStr}-${monthNames[month - 1].substring(0, 3)}-${year}`;
 
       const dateObj = new Date(`${dateKey}T00:00:00+06:00`);
       const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
@@ -155,18 +157,23 @@ export async function GET(req: NextRequest) {
       summaryOrderCount += orderData.orderCount;
 
       days.push({
-        date: dateKey,
+        date: displayDate,
+        dateKey,
         day: d,
         dayName,
+        orders: orderData.orderCount,
+        orderCount: orderData.orderCount,
         netSales,
         deliveryCost,
         totalSales,
+        total: totalSales,
         cogs,
+        productCost: cogs,
         resellerCommission: grossProfit,
+        salesProfit: grossProfit,
         grossProfit,
         expense,
-        netProfit,
-        orderCount: orderData.orderCount
+        netProfit
       });
     }
 
@@ -176,6 +183,7 @@ export async function GET(req: NextRequest) {
       monthName: monthNames[month - 1],
       daysInMonth,
       days,
+      rows: days,
       summary: {
         totalSales: summaryTotal,
         netSales: summaryNetSales,

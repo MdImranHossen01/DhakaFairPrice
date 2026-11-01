@@ -124,16 +124,22 @@ export async function GET(req: NextRequest) {
     let summaryNetSales = 0;
     let summaryDeliveryCost = 0;
     let summaryTotal = 0;
+    let summaryCOGS = 0;
     let summaryResellerCommission = 0;
     let summarySalesProfit = 0;
     let summaryExpense = 0;
     let summaryNetProfit = 0;
+    let summaryOrderCount = 0;
 
-    for (let day = 1; day <= daysInMonth; day++) {
+    // Loop descending from latest day down to 1
+    for (let day = daysInMonth; day >= 1; day--) {
       const dayStr = day.toString().padStart(2, '0');
       const monthStr = month.toString().padStart(2, '0');
       const dateKey = `${year}-${monthStr}-${dayStr}`;
       const displayDate = `${dayStr}-${monthShort}-${year}`;
+
+      const dateObj = new Date(`${dateKey}T00:00:00+06:00`);
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
 
       const orderData = orderMap.get(dateKey) || { totalSales: 0, deliveryCost: 0, cogs: 0, resellerCommission: 0, orderCount: 0 };
       const expense = expenseMap.get(dateKey) || 0;
@@ -141,29 +147,40 @@ export async function GET(req: NextRequest) {
       const netSales = Math.max(0, orderData.totalSales - orderData.deliveryCost);
       const deliveryCost = orderData.deliveryCost || 0;
       const total = orderData.totalSales || 0;
+      const cogs = orderData.cogs || 0;
       const resellerCommission = orderData.resellerCommission || 0;
-      const salesProfit = Math.max(0, netSales - (orderData.cogs || 0) - resellerCommission);
+      const salesProfit = Math.max(0, netSales - cogs - resellerCommission);
       const netProfit = salesProfit - expense;
+      const orderCount = orderData.orderCount || 0;
 
       summaryNetSales += netSales;
       summaryDeliveryCost += deliveryCost;
       summaryTotal += total;
+      summaryCOGS += cogs;
       summaryResellerCommission += resellerCommission;
       summarySalesProfit += salesProfit;
       summaryExpense += expense;
       summaryNetProfit += netProfit;
+      summaryOrderCount += orderCount;
 
       dailyRows.push({
         date: displayDate,
         dateKey,
+        day: dayStr,
+        dayName,
+        orders: orderCount,
+        orderCount,
         netSales,
         deliveryCost,
         total,
+        totalSales: total,
+        cogs,
+        productCost: cogs,
         resellerCommission,
         salesProfit,
+        grossProfit: salesProfit,
         expense,
-        netProfit,
-        orderCount: orderData.orderCount || 0
+        netProfit
       });
     }
 
@@ -176,6 +193,8 @@ export async function GET(req: NextRequest) {
         totalNetSales: summaryNetSales,
         totalDeliveryCost: summaryDeliveryCost,
         grandTotal: summaryTotal,
+        totalCOGS: summaryCOGS,
+        totalOrderCount: summaryOrderCount,
         totalResellerCommission: summaryResellerCommission,
         totalSalesProfit: summarySalesProfit,
         totalExpense: summaryExpense,
