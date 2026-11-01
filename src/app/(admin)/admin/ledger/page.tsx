@@ -363,6 +363,15 @@ function AccountsLedgerContent() {
     }
 
     return matchesSearch && matchesDate;
+  }).sort((a: any, b: any) => {
+    const dateA = a.date ? new Date(a.date).toISOString().slice(0, 10) : '';
+    const dateB = b.date ? new Date(b.date).toISOString().slice(0, 10) : '';
+    if (dateA !== dateB) {
+      return dateB.localeCompare(dateA);
+    }
+    const createdA = a.createdAt ? new Date(a.createdAt).getTime() : (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0);
+    const createdB = b.createdAt ? new Date(b.createdAt).getTime() : (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0);
+    return createdB - createdA;
   });
 
   const ITEMS_PER_PAGE = 20;
@@ -473,7 +482,7 @@ function AccountsLedgerContent() {
                       <TableHead className="max-w-[300px]">Description</TableHead>
                       <TableHead className="text-right w-[120px] whitespace-nowrap font-bold text-foreground">Debit</TableHead>
                       <TableHead className="text-right w-[120px] whitespace-nowrap font-bold text-foreground">Credit</TableHead>
-                      <TableHead className="text-right w-[150px] whitespace-nowrap font-bold text-foreground">Running Balance (৳)</TableHead>
+                      <TableHead className="text-right w-[150px] whitespace-nowrap font-bold text-foreground">Running Balance (à§³)</TableHead>
                       <TableHead className="text-right w-[80px] whitespace-nowrap">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -497,12 +506,12 @@ function AccountsLedgerContent() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-primary">
-                          {tx.type === 'debit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                          {tx.type === 'debit' ? `à§³${Math.round(tx.amount || 0).toLocaleString()}` : 'â€”'}
                         </TableCell>
                         <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm text-foreground">
-                          {tx.type === 'credit' ? `৳${Math.round(tx.amount || 0).toLocaleString()}` : '—'}
+                          {tx.type === 'credit' ? `à§³${Math.round(tx.amount || 0).toLocaleString()}` : 'â€”'}
                         </TableCell>
-                        <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">৳{Math.round(tx.balanceAfter).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold whitespace-nowrap text-xs md:text-sm">à§³{Math.round(tx.balanceAfter).toLocaleString()}</TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           {tx.reference && ['manual-deposit', 'manual-withdrawal', 'manual-transfer'].includes(tx.reference) ? (
                             <div className="flex items-center justify-end gap-1.5">
@@ -526,7 +535,7 @@ function AccountsLedgerContent() {
                               </DropdownMenu>
                             </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                            <span className="text-xs text-muted-foreground">â€”</span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -555,7 +564,7 @@ function AccountsLedgerContent() {
                     footer={
                       <div className="flex items-center justify-between w-full font-bold text-xs">
                         <span className="text-muted-foreground">Running Balance:</span>
-                        <span className="text-foreground text-sm">৳{Math.round(tx.balanceAfter).toLocaleString()}</span>
+                        <span className="text-foreground text-sm">à§³{Math.round(tx.balanceAfter).toLocaleString()}</span>
                       </div>
                     }
                   >
@@ -565,9 +574,9 @@ function AccountsLedgerContent() {
                       label="Debit" 
                       value={
                         tx.type === 'debit' ? (
-                          <span className="font-bold text-primary">৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          <span className="font-bold text-primary">à§³{Math.round(tx.amount || 0).toLocaleString()}</span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">â€”</span>
                         )
                       } 
                     />
@@ -575,9 +584,9 @@ function AccountsLedgerContent() {
                       label="Credit" 
                       value={
                         tx.type === 'credit' ? (
-                          <span className="font-bold text-foreground">৳{Math.round(tx.amount || 0).toLocaleString()}</span>
+                          <span className="font-bold text-foreground">à§³{Math.round(tx.amount || 0).toLocaleString()}</span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">â€”</span>
                         )
                       } 
                     />
@@ -620,11 +629,11 @@ function AccountsLedgerContent() {
       <Dialog open={!!editingAccount} onOpenChange={(open) => { if (!open) setEditingAccount(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Opening Balance — {editingAccount?.name}</DialogTitle>
+            <DialogTitle>Edit Opening Balance â€” {editingAccount?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateOpeningBalance} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="openingBal">Opening Balance (৳)</Label>
+              <Label htmlFor="openingBal">Opening Balance (à§³)</Label>
               <Input
                 id="openingBal"
                 type="number"
@@ -827,7 +836,7 @@ function AccountsLedgerContent() {
 
             {activeTab === 'journal' ? (
               <div className="space-y-1">
-                <Label htmlFor="journalAmt" className="text-xs">Amount (৳)</Label>
+                <Label htmlFor="journalAmt" className="text-xs">Amount (à§³)</Label>
                 <Input
                   id="journalAmt"
                   type="number"
@@ -841,7 +850,7 @@ function AccountsLedgerContent() {
               </div>
             ) : (
               <div className="space-y-1">
-                <Label htmlFor="transferAmt" className="text-xs">Transfer Amount (৳)</Label>
+                <Label htmlFor="transferAmt" className="text-xs">Transfer Amount (à§³)</Label>
                 <Input
                   id="transferAmt"
                   type="number"

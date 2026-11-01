@@ -46,6 +46,18 @@ export async function GET(req: NextRequest) {
       .limit(accountId ? 200 : 500)
       .lean();
 
+    // Strict secondary sort: transactions falling on the same calendar day are ordered with the newest createdAt/ID first
+    transactions.sort((a: any, b: any) => {
+      const dateA = a.date ? new Date(a.date).toISOString().slice(0, 10) : '';
+      const dateB = b.date ? new Date(b.date).toISOString().slice(0, 10) : '';
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      const createdA = a.createdAt ? new Date(a.createdAt).getTime() : (a._id ? parseInt(a._id.toString().substring(0, 8), 16) * 1000 : 0);
+      const createdB = b.createdAt ? new Date(b.createdAt).getTime() : (b._id ? parseInt(b._id.toString().substring(0, 8), 16) * 1000 : 0);
+      return createdB - createdA;
+    });
+
     return NextResponse.json(transactions);
   } catch (error: any) {
     console.error('Error fetching transactions:', error);

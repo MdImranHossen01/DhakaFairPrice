@@ -90,10 +90,21 @@ export async function POST(req: NextRequest) {
     const dueAmount = Math.max(0, calculatedTotal - finalPaid);
     const status = dueAmount === 0 ? 'Paid' : 'Due';
 
+    let finalBillDate = new Date();
+    if (date) {
+      const parsed = new Date(date);
+      const now = new Date();
+      if (parsed.toDateString() === now.toDateString()) {
+        finalBillDate = now;
+      } else {
+        finalBillDate = parsed;
+      }
+    }
+
     const newBill = await SupplierBill.create({
       billNo,
       supplier,
-      date: date ? new Date(date) : new Date(),
+      date: finalBillDate,
       items: items.map((it: any) => ({
         name: it.name.trim(),
         quantity: Number(it.quantity) || 1,
@@ -128,7 +139,7 @@ export async function POST(req: NextRequest) {
 
           await LedgerTransaction.create({
             account: account._id,
-            date: date ? new Date(date) : new Date(),
+            date: finalBillDate,
             description: `Purchase Bill ${billNo} Payment to ${supplierDoc.name} (${paymentMethod})`,
             type: 'debit',
             amount: finalPaid,
@@ -145,7 +156,7 @@ export async function POST(req: NextRequest) {
               category: 'Others Expense',
               type: 'expense',
               paymentAccountId: account._id,
-              date: date ? new Date(date) : new Date(),
+              date: finalBillDate,
               reference: billNo,
               description: `Payment for Purchase Bill ${billNo} to supplier ${supplierDoc.name}`
             });

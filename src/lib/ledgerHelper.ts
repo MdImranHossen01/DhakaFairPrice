@@ -1053,7 +1053,15 @@ export async function syncPayablesToLedger() {
       if (dueAmount <= 0) continue;
 
       const supplierName = (sb as any).supplier?.companyName || (sb as any).supplier?.name || 'Supplier';
-      const billDate = (sb as any).date ? new Date((sb as any).date) : new Date();
+      let billDate = (sb as any).createdAt ? new Date((sb as any).createdAt) : ((sb as any).date ? new Date((sb as any).date) : new Date());
+      if ((sb as any).date) {
+        const d = new Date((sb as any).date);
+        if ((sb as any).createdAt && d.toISOString().slice(0, 10) === new Date((sb as any).createdAt).toISOString().slice(0, 10)) {
+          billDate = new Date((sb as any).createdAt);
+        } else {
+          billDate = d;
+        }
+      }
       const desc = `Supplier Bill Payable for ${supplierName} (${billNo})`;
 
       const apCredit = await LedgerTransaction.findOne({
