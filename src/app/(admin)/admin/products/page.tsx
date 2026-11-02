@@ -110,6 +110,7 @@ function ProductsContent() {
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exportLoading, setExportLoading] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Add Stock Modal State
@@ -370,6 +371,73 @@ function ProductsContent() {
       } catch (error) {
         toast.error('An error occurred while deleting the product');
       }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+
+    const selectedMotherProducts = products.filter(p => selectedIds.includes(p._id) && !p.uploadedBy);
+    const selectedResellerProducts = products.filter(p => selectedIds.includes(p._id) && Boolean(p.uploadedBy));
+
+    if (selectedMotherProducts.length === 0) {
+      await Swal.fire({
+        title: 'Cannot Delete Reseller Products',
+        html: `All <b>${selectedIds.length} selected product(s)</b> were uploaded by resellers.<br/><br/><span style="color:#ef4444;font-size:12px;">Reseller products cannot be permanently deleted by Mother Admin. You can hide, unpublish, or revoke approval instead.</span>`,
+        icon: 'warning',
+        confirmButtonColor: 'var(--primary, #ea580c)'
+      });
+      return;
+    }
+
+    let warningHtml = `You are about to permanently delete <b>${selectedMotherProducts.length} Mother Shop product(s)</b> and purge their images from Cloudflare R2.`;
+    if (selectedResellerProducts.length > 0) {
+      warningHtml += `<br/><br/><span style="color:#f59e0b;font-size:12px;">Notice: ${selectedResellerProducts.length} reseller product(s) are protected and will be preserved automatically.</span>`;
+    }
+
+    const confirmResult = await Swal.fire({
+      title: `Delete ${selectedMotherProducts.length} Product(s)?`,
+      html: warningHtml,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: 'var(--destructive, #ef4444)',
+      confirmButtonText: `Yes, Delete (${selectedMotherProducts.length})`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const res = await fetch('/api/products', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedMotherProducts.map(p => p._id) })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Failed to delete selected products');
+      }
+
+      await Swal.fire({
+        title: 'Deleted Successfully!',
+        text: data.message,
+        icon: 'success',
+        confirmButtonColor: '#10b981'
+      });
+
+      setSelectedIds([]);
+      fetchProducts(undefined, currentPage);
+    } catch (err: any) {
+      await Swal.fire({
+        title: 'Delete Failed',
+        text: err.message || 'Error occurred while deleting products',
+        icon: 'error',
+        confirmButtonColor: 'var(--destructive, #ef4444)'
+      });
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -868,6 +936,49 @@ function ProductsContent() {
           )}
         </Button>
       </div>
+
+      {/* In-Page Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="destructive" className="text-xs px-2.5 py-0.5 font-bold">
+              {selectedIds.length} Selected
+            </Badge>
+            <span className="text-xs text-muted-foreground font-medium">
+              Actions for selected products:
+            </span>
+            {products.filter(p => selectedIds.includes(p._id) && Boolean(p.uploadedBy)).length > 0 && (
+              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                Reseller items protected ({products.filter(p => selectedIds.includes(p._id) && Boolean(p.uploadedBy)).length})
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="h-8 text-xs font-semibold"
+            >
+              Deselect All
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="h-8 text-xs font-bold gap-1.5"
+            >
+              {isBulkDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash className="h-3.5 w-3.5" />
+              )}
+              Delete Selected ({products.filter(p => selectedIds.includes(p._id) && !p.uploadedBy).length})
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -1776,6 +1887,38 @@ function ProductsContent() {
           </Dialog>
         );
       })()}
+
+      {/* Floating Sticky Bulk Action Bar for high visibility */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-background/95 backdrop-blur-md border border-border shadow-2xl rounded-full animate-in fade-in slide-in-from-bottom-5">
+          <Badge variant="destructive" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+            {selectedIds.length} Selected
+          </Badge>
+          <div className="h-4 w-px bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 text-xs font-semibold px-2 hover:bg-muted rounded-full"
+          >
+            Deselect
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={isBulkDeleting}
+            className="h-8 text-xs font-bold gap-1.5 px-3.5 rounded-full shadow-md"
+          >
+            {isBulkDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash className="h-3.5 w-3.5" />
+            )}
+            Delete Selected ({products.filter(p => selectedIds.includes(p._id) && !p.uploadedBy).length})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

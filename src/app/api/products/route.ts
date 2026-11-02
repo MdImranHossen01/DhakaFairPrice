@@ -358,3 +358,145 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// Bulk DELETE products (Mother Shop products only)
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    if (!session || !['admin', 'super_admin'].includes(userRole)) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    let targetIds: string[] = [];
+    const { searchParams } = new URL(req.url);
+    const queryIds = searchParams.get('ids');
+    if (queryIds) {
+      targetIds = queryIds.split(',').map(s => s.trim()).filter(Boolean);
+    } else {
+      const body = await req.json().catch(() => ({}));
+      if (Array.isArray(body?.ids)) {
+        targetIds = body.ids.map((s: any) => String(s).trim()).filter(Boolean);
+      } else if (body?.id) {
+        targetIds = [String(body.id).trim()];
+      }
+    }
+
+    if (targetIds.length === 0) {
+      return NextResponse.json({ message: 'No product ID(s) provided' }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const mongoose = (await import('mongoose')).default;
+    const validObjectIds = targetIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (validObjectIds.length === 0) {
+      return NextResponse.json({ message: 'Invalid product ID(s)' }, { status: 400 });
+    }
+
+    // Fetch products
+    const products = await Product.find({ _id: { $in: validObjectIds } });
+    if (products.length === 0) {
+      return NextResponse.json({ message: 'No products found' }, { status: 404 });
+    }
+
+    // STRICT USER RULE: Only mother shop's own uploaded products can be deleted by Mother Admin!
+    // Reseller uploaded products (even if sourced/approved in Mother Shop) CANNOT be deleted permanently by Mother Admin!
+    const motherProducts = products.filter(p => !p.uploadedBy);
+    const resellerProducts = products.filter(p => Boolean(p.uploadedBy));
+
+    if (motherProducts.length === 0) {
+      return NextResponse.json({
+        message: 'None of the selected products can be deleted: they were uploaded by resellers. Reseller products cannot be deleted by Mother Admin (you can hide, unpublish, or revoke approval instead).'
+      }, { status: 403 });
+    }
+
+    const motherPIds = motherProducts.map(p => p._id);
+    const motherPIdStrs = motherProducts.map(p => p._id.toString());
+
+    // Check active orders for mother products
+    const Order = (await import('@/models/Order')).default;
+    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+    const ResellerProduct = (await import('@/models/ResellerProduct')).default;
+    const resellerProductIds = (await ResellerProduct.find({ productId: { $in: motherPIds } }).distinct('_id')) || [];
+
+    const activeOrders = await Order.countDocuments({
+      'items.product': { $in: [...motherPIds, ...motherPIdStrs] },
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const activeResellerOrders = await ResellerOrder.countDocuments({
+      $or: [
+        { 'items.productId': { $in: [...motherPIds, ...motherPIdStrs] } },
+        { 'items.resellerProductId': { $in: [...motherPIds, ...motherPIdStrs, ...resellerProductIds] } },
+      ],
+      status: { $nin: ['Delivered', 'Cancelled'] },
+      deletedAt: null,
+    });
+
+    const totalActiveOrders = activeOrders + activeResellerOrders;
+    if (totalActiveOrders > 0) {
+      return NextResponse.json({
+        message: `Cannot delete selected product(s): There are ${totalActiveOrders} active/pending order(s) for them. Please complete or cancel pending orders first, or unpublish instead.`
+      }, { status: 400 });
+    }
+
+    // Collect images to delete from Cloudflare R2
+    const imagesToDelete: string[] = [];
+    motherProducts.forEach((p: any) => {
+      if (Array.isArray(p.images)) imagesToDelete.push(...p.images);
+      if (p.image) imagesToDelete.push(p.image);
+      if (p.featuredImage) imagesToDelete.push(p.featuredImage);
+      if (p.thumbnail) imagesToDelete.push(p.thumbnail);
+      if (Array.isArray(p.variants)) {
+        p.variants.forEach((v: any) => {
+          if (v?.image) imagesToDelete.push(v.image);
+          if (Array.isArray(v?.images)) imagesToDelete.push(...v.images);
+        });
+      }
+    });
+
+    // Delete mother products
+    const deleteResult = await Product.deleteMany({
+      _id: { $in: motherPIds },
+      uploadedBy: null,
+    });
+
+    // Remove from reseller catalogs
+    await ResellerProduct.deleteMany({ productId: { $in: motherPIds } });
+
+    const { unpublishProductFromResellers } = await import('@/lib/syncEngine');
+    for (const idStr of motherPIdStrs) {
+      await unpublishProductFromResellers(idStr).catch(() => {});
+    }
+
+    // Automatically purge images from Cloudflare R2
+    if (imagesToDelete.length > 0) {
+      try {
+        const { deleteMultipleFromR2 } = await import('@/lib/r2');
+        await deleteMultipleFromR2(imagesToDelete);
+      } catch (r2CleanErr) {
+        console.error('Failed to clean up product images from Cloudflare R2:', r2CleanErr);
+      }
+    }
+
+    revalidateTag('products', 'max');
+    revalidatePath('/');
+    revalidatePath('/shop');
+
+    let message = `Deleted ${deleteResult.deletedCount} Mother Shop product(s) successfully and purged images from Cloudflare R2.`;
+    if (resellerProducts.length > 0) {
+      message += ` (${resellerProducts.length} reseller product(s) were protected and preserved).`;
+    }
+
+    return NextResponse.json({
+      success: true,
+      message,
+      deletedCount: deleteResult.deletedCount,
+      skippedResellerCount: resellerProducts.length,
+    });
+  } catch (error: any) {
+    console.error('Error in bulk delete products:', error);
+    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
