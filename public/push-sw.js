@@ -5,9 +5,9 @@ self.addEventListener("push", function (event) {
 
   try {
     const data = event.data.json();
-    const title = data.title || "🛒 নতুন অর্ডার এসেছে!";
+    const title = data.title || "🎉 নতুন অর্ডার এসেছে!";
     const options = {
-      body: data.body || "একটি নতুন অর্ডার প্লেস হয়েছে।",
+      body: data.body || "একটি নতুন অর্ডার প্লেস করা হয়েছে।",
       icon: data.icon || "/favicon.ico",
       badge: data.badge || "/favicon.ico",
       vibrate: [300, 100, 300, 100, 300],
@@ -31,14 +31,18 @@ self.addEventListener("notificationclick", function (event) {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (clientList) {
-      // If a tab is already open with admin orders, focus it
+      // If a matching tab is already open, focus it
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url.includes("/admin/orders") && "focus" in client) {
-          return client.focus();
+        if (
+          (client.url.includes("/admin/orders") && targetUrl.includes("/admin/orders")) ||
+          (client.url.includes("/reseller/orders") && targetUrl.includes("/reseller/orders")) ||
+          client.url.includes(targetUrl)
+        ) {
+          if ("focus" in client) return client.focus();
         }
       }
-      // Otherwise open a new window
+      // Otherwise open target URL in new tab/window
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

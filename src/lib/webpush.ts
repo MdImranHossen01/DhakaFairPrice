@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import connectToDatabase from '@/lib/db';
 import PushSubscription from '@/models/PushSubscription';
+import mongoose from 'mongoose';
 
 const vapidPublicKey =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
@@ -27,24 +28,66 @@ export interface PushNotificationPayload {
   url?: string;
 }
 
-export async function sendWebPushNotification(payload: PushNotificationPayload) {
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+export interface PushTargetScope {
+  isMotherOrder?: boolean;
+  resellerId?: string | mongoose.Types.ObjectId;
+  targetUserId?: string;
+}
+
+export async function sendWebPushNotification(
+  payload: PushNotificationPayload,
+  scope?: PushTargetScope
+) {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
 
   try {
     await connectToDatabase();
-    const subscriptions = await PushSubscription.find({}).lean();
+
+    let query: any = {};
+
+    if (scope?.targetUserId) {
+      query = { userId: scope.targetUserId };
+    } else if (scope?.isMotherOrder) {
+      // Mother shop order: ONLY notify Admins
+      query = {
+        $or: [
+          { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
+          { role: { $exists: false } },
+          { role: null },
+        ],
+      };
+    } else if (scope?.resellerId) {
+      // Reseller store order: notify Admins AND the specific reseller
+      query = {
+        $or: [
+          { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
+          { role: { $exists: false } },
+          { role: null },
+          {
+            role: 'reseller',
+            $or: [
+              { resellerId: scope.resellerId },
+              { userId: scope.resellerId },
+            ],
+          },
+        ],
+      };
+    } else {
+      // Default: Admin devices
+      query = {
+        $or: [
+          { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
+          { role: { $exists: false } },
+          { role: null },
+        ],
+      };
+    }
+
+    const subscriptions = await PushSubscription.find(query).lean();
 
     if (!subscriptions || subscriptions.length === 0) {
       return { total: 0, sent: 0, failed: 0 };
     }
-
-    const payloadString = JSON.stringify({
-      title: payload.title || `🛒 নতুন অর্ডার এসেছে! (${storeName})`,
-      body: payload.body || 'একজন কাস্টমার নতুন অর্ডার প্লেস করেছেন।',
-      icon: payload.icon || '/favicon.ico',
-      badge: payload.badge || '/favicon.ico',
-      url: payload.url || '/admin/orders',
-    });
 
     let sent = 0;
     let failed = 0;
@@ -53,6 +96,19 @@ export async function sendWebPushNotification(payload: PushNotificationPayload) 
     await Promise.all(
       subscriptions.map(async (sub: any) => {
         try {
+          const isReseller = sub.role === 'reseller';
+          const targetUrl = isReseller
+            ? '/reseller/orders'
+            : (payload.url || '/admin/orders');
+
+          const payloadString = JSON.stringify({
+            title: payload.title || `নতুন অর্ডার এসেছে! (${storeName})`,
+            body: payload.body || 'একটি নতুন অর্ডার প্লেস করা হয়েছে।',
+            icon: payload.icon || '/favicon.ico',
+            badge: payload.badge || '/favicon.ico',
+            url: targetUrl,
+          });
+
           await webpush.sendNotification(
             {
               endpoint: sub.endpoint,

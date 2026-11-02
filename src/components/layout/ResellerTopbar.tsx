@@ -7,6 +7,7 @@ import { User, LogOut, Store } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
+import { NotificationSettingsDialog } from '@/components/admin/NotificationSettingsDialog';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ export default function ResellerTopbar() {
       </div>
       <div className="hidden md:flex flex-1" />
       <div className="flex items-center gap-4">
+        <NotificationSettingsDialog />
         <ModeToggle />
 
         {session?.user ? (

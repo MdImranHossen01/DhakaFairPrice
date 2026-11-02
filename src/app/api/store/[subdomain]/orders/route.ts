@@ -645,11 +645,14 @@ export async function POST(
           customerNote: notes,
           items: itemsForNotification,
         }).catch(err => console.error('[Reseller Order Telegram Alert Error]', err));
-        sendWebPushNotification({
-          title: '🛒 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',
-          body: 'রিসেলার: ' + (reseller.storeName || subdomain) + ' — ' + customer.name + ' (' + customer.phone + ')',
-          url: '/admin/orders',
-        }).catch(err => console.error('[Reseller Order WebPush Alert Error]', err));
+        sendWebPushNotification(
+          {
+            title: '🛒 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',
+            body: 'রিসেলার: ' + (reseller.storeName || subdomain) + ' — ' + customer.name + ' (' + customer.phone + ')',
+            url: '/admin/orders',
+          },
+          { resellerId: reseller._id }
+        ).catch(err => console.error('[Reseller Order WebPush Alert Error]', err));
       } catch (notifErr) {
         console.error('[Reseller Store Order Notification Error]', notifErr);
       }

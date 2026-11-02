@@ -779,11 +779,14 @@ export async function POST(req: NextRequest) {
         customerNote: newOrder.customerNote,
         items: itemsForNotification,
       }).catch(err => console.error('[Telegram Alert Error]', err));
-      sendWebPushNotification({
-        title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',
-        body: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + 'টি আইটেম।',
-        url: '/admin/orders',
-      }).catch(err => console.error('[WebPush Alert Error]', err));
+      sendWebPushNotification(
+        {
+          title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',
+          body: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + 'টি আইটেম।',
+          url: '/admin/orders',
+        },
+        { isMotherOrder: true }
+      ).catch(err => console.error('[WebPush Alert Error]', err));
     } catch (notifErr) {
       console.error('[Order Notification Error]', notifErr);
     }

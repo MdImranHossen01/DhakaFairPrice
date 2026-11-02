@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import PushSubscription from '@/models/PushSubscription';
+import Reseller from '@/models/Reseller';
+import { auth } from '@/auth';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,12 +17,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Upsert subscription based on unique endpoint
+    const session = await auth();
+    let userId: any = undefined;
+    let role = 'guest';
+    let resellerId: any = undefined;
+    let subdomain: any = undefined;
+
+    if (session?.user) {
+      userId = (session.user as any).id;
+      role = (session.user as any)?.role || 'user';
+      if (role === 'reseller') {
+        const resellerDoc = await Reseller.findOne({ userId }).select('_id subdomain').lean();
+        if (resellerDoc) {
+          resellerId = resellerDoc._id;
+          subdomain = resellerDoc.subdomain;
+        }
+      }
+    }
+
+    // Upsert subscription based on unique endpoint with tenant details
     await PushSubscription.findOneAndUpdate(
       { endpoint: subscription.endpoint },
       {
         endpoint: subscription.endpoint,
         keys: subscription.keys,
+        userId: userId || undefined,
+        role,
+        resellerId: resellerId || undefined,
+        subdomain: subdomain || undefined,
         userAgent: userAgent || req.headers.get('user-agent') || '',
         createdAt: new Date(),
       },
