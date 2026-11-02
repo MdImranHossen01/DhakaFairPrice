@@ -430,6 +430,38 @@ export async function DELETE(request: NextRequest) {
 
     await ResellerProduct.deleteMany({ productId: { $in: pIds } });
 
+    // Automatically clean up all product images from Cloudflare R2
+    try {
+      const { deleteMultipleFromR2 } = await import('@/lib/r2');
+      const imagesToDelete: string[] = [];
+      productsToDelete.forEach((p: any) => {
+        if (Array.isArray(p.images)) {
+          imagesToDelete.push(...p.images);
+        }
+        if (p.image) {
+          imagesToDelete.push(p.image);
+        }
+        if (p.featuredImage) {
+          imagesToDelete.push(p.featuredImage);
+        }
+        if (p.thumbnail) {
+          imagesToDelete.push(p.thumbnail);
+        }
+        if (Array.isArray(p.variants)) {
+          p.variants.forEach((v: any) => {
+            if (v?.image) imagesToDelete.push(v.image);
+            if (Array.isArray(v?.images)) imagesToDelete.push(...v.images);
+          });
+        }
+      });
+
+      if (imagesToDelete.length > 0) {
+        await deleteMultipleFromR2(imagesToDelete);
+      }
+    } catch (r2CleanErr) {
+      console.error('Failed to clean up reseller product images from Cloudflare R2:', r2CleanErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: `Deleted ${deleteResult.deletedCount} product(s) successfully`,

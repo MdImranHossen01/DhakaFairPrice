@@ -45,11 +45,13 @@ export function R2MediaCleaner() {
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
   const [scanData, setScanData] = useState<ScanData | null>(null);
+  const [includeRecent, setIncludeRecent] = useState(false);
 
-  const handleScan = async () => {
+  const handleScan = async (forceRecent?: boolean | any) => {
+    const useRecent = typeof forceRecent === 'boolean' ? forceRecent : includeRecent;
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/media/cleanup');
+      const res = await fetch(`/api/admin/media/cleanup?minAgeMinutes=${useRecent ? 0 : 60}`);
       const data = await res.json();
       if (res.ok && data.success) {
         setScanData(data);
@@ -133,7 +135,7 @@ export function R2MediaCleaner() {
       const res = await fetch('/api/admin/media/cleanup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purgeAll: true, prefix: scanData.prefix }),
+        body: JSON.stringify({ purgeAll: true, prefix: scanData.prefix, minAgeMinutes: includeRecent ? 0 : 60 }),
       });
       const data = await res.json();
 
@@ -208,11 +210,29 @@ export function R2MediaCleaner() {
 
       <CardContent className="space-y-6">
         {/* Safety Note */}
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
-          <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-          <p className="leading-relaxed">
-            <strong>Safety Guard Active:</strong> Images uploaded within the last 60 minutes are automatically protected from deletion to prevent accidental removal while an admin is actively drafting a product.
-          </p>
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-300">
+          <div className="flex items-start gap-2.5">
+            <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <p className="leading-relaxed">
+              <strong>Safety Guard {includeRecent ? 'Disabled' : 'Active'}:</strong>{' '}
+              {includeRecent
+                ? 'Scanning all files regardless of upload time (0 min delay).'
+                : 'Images uploaded within the last 60 minutes are automatically protected from deletion to prevent accidental removal while an admin is actively drafting a product.'}
+            </p>
+          </div>
+          <label className="inline-flex items-center gap-2 cursor-pointer font-semibold shrink-0 select-none bg-background/80 px-2.5 py-1.5 rounded-lg border border-amber-500/30 hover:bg-background">
+            <input
+              type="checkbox"
+              checked={includeRecent}
+              onChange={(e) => {
+                const val = e.target.checked;
+                setIncludeRecent(val);
+                handleScan(val);
+              }}
+              className="rounded border-amber-500 text-primary focus:ring-primary h-3.5 w-3.5"
+            />
+            <span>Scan Recent (&lt; 60m)</span>
+          </label>
         </div>
 
         {/* Stats Grid */}
