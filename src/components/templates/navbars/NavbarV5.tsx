@@ -104,9 +104,9 @@ export default function NavbarV5() {
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
        (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
-         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
-         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
-       ) : true))
+          window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+          window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+        ) : true))
     ))
   );
 
@@ -228,7 +228,7 @@ export default function NavbarV5() {
               </div>
 
               <Link
-                href="/dashboard/wishlist"
+                href="/dashboard/wishlist" prefetch={false}
                 className={`relative hidden sm:flex h-12 w-12 rounded-2xl bg-transparent items-center justify-center hover:text-primary hover:scale-110 transition-all ${wishlistCount > 0 ? 'text-primary' : ''}`}
                 aria-label={`Wishlist (${wishlistCount})`}
                 onClick={(e) => {

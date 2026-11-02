@@ -105,9 +105,9 @@ export default function NavbarV3() {
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
        (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
-         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
-         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
-       ) : true))
+          window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+          window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+        ) : true))
     ))
   );
 
@@ -155,9 +155,7 @@ export default function NavbarV3() {
 
             {/* Center: Logo */}
             <div className="absolute left-1/2 -translate-x-1/2">
-              <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">
-                {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}
-              </Link>
+              <Link href="/" className="text-4xl font-serif tracking-widest italic hover:opacity-60 transition-opacity">{settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}</Link>
             </div>
 
             {/* Right: Actions */}
@@ -238,7 +236,7 @@ export default function NavbarV3() {
               </div>
 
               <Link
-                href="/dashboard/wishlist"
+                href="/dashboard/wishlist" prefetch={false}
                 aria-label="Wishlist"
                 className="relative hidden sm:block group hover:scale-110 transition-all"
                 onClick={(e) => {

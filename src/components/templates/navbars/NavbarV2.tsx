@@ -64,9 +64,9 @@ export default function NavbarV2() {
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
        (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
-         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
-         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
-       ) : true))
+          window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+          window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+        ) : true))
     ))
   );
   const filteredNavItems = isResellerStore
@@ -206,7 +206,7 @@ export default function NavbarV2() {
 
             <Link href="/" className={`text-2xl md:text-3xl font-black tracking-tighter hover:scale-105 transition-all flex items-center gap-2 group ${!isHomePage || isScrolled ? 'text-foreground' : 'text-white'}`}>
               <Image src="/logo.webp" width={40} height={40} alt="Logo" className="object-contain" />
-              {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME}
+              {settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store'}
             </Link>
           </div>
 
@@ -313,7 +313,7 @@ export default function NavbarV2() {
                 <ModeToggle />
               </div>
 
-              <Link href="/dashboard/wishlist" aria-label="Wishlist">
+              <Link href="/dashboard/wishlist" prefetch={false} aria-label="Wishlist">
                 <Button variant="ghost" size="icon" aria-label="Wishlist" className={`rounded-full relative group ${!isHomePage || isScrolled ? 'text-foreground hover:bg-muted' : 'text-white hover:bg-white/10'}`}>
                   <Heart className={`h-5 w-5 transition-all ${wishlistCount > 0 ? 'fill-primary text-primary' : ((!isHomePage || isScrolled) ? 'group-hover:text-primary' : 'group-hover:text-white')}`} />
                   {wishlistCount > 0 && (

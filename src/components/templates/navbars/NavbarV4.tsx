@@ -85,9 +85,9 @@ export default function NavbarV4() {
       (window.location.hostname !== 'localhost' &&
        window.location.hostname !== '127.0.0.1' &&
        (process.env.NEXT_PUBLIC_ROOT_DOMAIN ? (
-         window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
-         window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
-       ) : true))
+          window.location.hostname !== process.env.NEXT_PUBLIC_ROOT_DOMAIN &&
+          window.location.hostname !== `www.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`
+        ) : true))
     ))
   );
   const filteredNavItems = isResellerStore
@@ -444,7 +444,7 @@ export default function NavbarV4() {
 
               {/* Wishlist */}
               <Link
-                href="/dashboard/wishlist"
+                href="/dashboard/wishlist" prefetch={false}
                 className="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl transition-all cursor-pointer hover:text-primary hover:scale-110"
                 aria-label="Wishlist"
                 onClick={(e) => {

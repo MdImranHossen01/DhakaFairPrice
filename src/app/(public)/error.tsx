@@ -16,12 +16,18 @@ export default function ErrorBoundary({
     // Log the error to console
     console.error('Unhandled runtime error in public layout:', error);
 
-    // Auto-recovery for ChunkLoadErrors (highly common after new deployments)
+    // Auto-recovery for ChunkLoadErrors and stale deployment bundles
+    const errorMsg = (error?.message || '').toLowerCase();
+    const errorStack = (error?.stack || '').toLowerCase();
     const isChunkError = 
-      error.message && 
-      (error.message.toLowerCase().includes('chunk') || 
-       error.message.toLowerCase().includes('loading') || 
-       error.message.toLowerCase().includes('failed to fetch'));
+      errorMsg.includes('chunk') || 
+      errorMsg.includes('loading') || 
+      errorMsg.includes('failed to fetch') ||
+      errorMsg.includes("reading 'call'") ||
+      errorMsg.includes('undefined (reading') ||
+      errorMsg.includes('webpack') ||
+      errorStack.includes('webpack') ||
+      errorMsg.includes('minified react error');
 
     if (isChunkError) {
       const reloadKey = 'pwa-chunk-reload-timestamp';
