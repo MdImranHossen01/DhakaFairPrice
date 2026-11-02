@@ -1,5 +1,25 @@
 # Dhaka Fair Price - Enterprise B2B + B2C Multi-Tenant Dropshipping Platform and SaaS
 
+
+[
+  {
+    "AllowedOrigins": [
+      "*"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD",
+      "PUT",
+      "POST",
+      "DELETE"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [],
+    "MaxAgeSeconds": 3600
+  }
+]
 ---
 
 ## Introduction and Abstraction
