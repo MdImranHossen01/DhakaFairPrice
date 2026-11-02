@@ -34,7 +34,7 @@ export async function uploadImageToR2(
         const compressionOptions = {
           maxSizeMB,
           maxWidthOrHeight,
-          useWebWorker: true,
+          useWebWorker: false,
           fileType: 'image/webp',
           initialQuality: 0.82,
         };
