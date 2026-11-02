@@ -202,6 +202,32 @@ export async function POST(request: NextRequest) {
     const retailPrice = parsedSalePrice && parsedSalePrice > 0 ? parsedSalePrice : parsedPrice;
     await addProductToReseller(resellerId.toString(), newProduct._id.toString(), retailPrice);
 
+    // Trigger Admin & Reseller Notifications
+    try {
+      const { createAdminNotification, createNotification } = await import('@/lib/notifications');
+      await createAdminNotification({
+        title: '📦 New Product Approval Request',
+        message: `${(resellerDoc as any)?.storeName || (resellerDoc as any)?.name || 'Reseller'} submitted "${newProduct.name}" for admin approval.`,
+        type: 'product',
+        link: '/admin/products',
+        sendPush: true,
+      });
+
+      if (resellerDoc?.userId) {
+        await createNotification({
+          userId: resellerDoc.userId,
+          resellerId: resellerDoc._id,
+          title: '📦 Product Submitted for Review',
+          message: `Your product "${newProduct.name}" was submitted and is awaiting admin approval.`,
+          type: 'product',
+          link: '/reseller/products',
+          sendPush: false,
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Reseller Product Notification Error]', notifErr);
+    }
+
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

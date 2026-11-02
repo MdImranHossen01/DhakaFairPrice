@@ -53,6 +53,7 @@ const resellerNav = [
     icon: LayoutDashboard,
     items: [
       { title: "Dashboard", url: "/reseller/dashboard" },
+      { title: "Notifications", url: "/reseller/notifications" },
     ],
   },
   {

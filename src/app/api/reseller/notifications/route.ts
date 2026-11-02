@@ -4,6 +4,7 @@ import connectToDatabase from '@/lib/db';
 import Notification from '@/models/Notification';
 import Reseller from '@/models/Reseller';
 import ResellerOrder from '@/models/ResellerOrder';
+import Product from '@/models/Product';
 
 export async function GET(req: NextRequest) {
   try {
@@ -21,16 +22,35 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const type = searchParams.get('type');
 
-    const [pendingOrdersCount, notifications, unreadCount] = await Promise.all([
+    const [pendingOrdersCount, pendingProductsCount, lowStockCount] = await Promise.all([
       ResellerOrder.countDocuments({
         resellerId: reseller._id,
         status: 'Order Placed' as any,
       }),
-      Notification.find({
-        $or: [{ resellerId: reseller._id }, { userId: user.id }],
-        forAdmin: false,
-      })
+      Product.countDocuments({
+        uploadedBy: reseller._id,
+        $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }],
+      }),
+      Product.countDocuments({
+        uploadedBy: reseller._id,
+        stock: { $gt: 0, $lt: 5 },
+      }),
+    ]);
+
+    const totalQueueActions = pendingOrdersCount + pendingProductsCount;
+
+    const filter: any = {
+      $or: [{ resellerId: reseller._id }, { userId: user.id }],
+      forAdmin: false,
+    };
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find(filter)
         .sort({ createdAt: -1 })
         .limit(limit)
         .lean(),
@@ -44,8 +64,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       queues: {
         pendingOrders: pendingOrdersCount,
+        pendingProducts: pendingProductsCount,
+        lowStock: lowStockCount,
         walletBalance: reseller.walletBalance || 0,
         pendingBalance: reseller.pendingBalance || 0,
+        totalQueueActions,
       },
       notifications,
       unreadCount,
@@ -101,3 +124,39 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await auth();
+    const user = session?.user as any;
+    if (!session || !user || user.role !== 'reseller') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+    const reseller = await Reseller.findOne({ userId: user.id }).select('_id').lean();
+    if (!reseller) {
+      return NextResponse.json({ message: 'Reseller not found' }, { status: 404 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ message: 'Notification ID required' }, { status: 400 });
+    }
+
+    const userFilter = {
+      _id: id,
+      $or: [{ resellerId: reseller._id }, { userId: user.id }],
+      forAdmin: false,
+    };
+
+    await Notification.deleteOne(userFilter);
+    return NextResponse.json({ success: true, message: 'Notification deleted' });
+  } catch (error: any) {
+    console.error('Error deleting reseller notification:', error);
+    return NextResponse.json(
+      { message: 'Failed to delete notification', error: error.message },
+      { status: 500 }
+    );
+  }
+}

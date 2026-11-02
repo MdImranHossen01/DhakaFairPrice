@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
       pendingOrdersCount,
       pendingPayoutsCount,
       pendingResellersCount,
+      pendingProductsCount,
       lowStockCount,
     ] = await Promise.all([
       Order.countDocuments({
@@ -42,13 +43,53 @@ export async function GET(req: NextRequest) {
       } as any),
       ResellerWalletTransaction.countDocuments({ type: 'payout_released', status: 'pending' }),
       Reseller.countDocuments({ status: 'pending' }),
+      Product.countDocuments({
+        uploadedBy: { $ne: null, $exists: true },
+        isPublished: true,
+        $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }],
+      }),
       Product.countDocuments({ stock: { $gt: 0, $lt: 5 } }),
     ]);
 
     const totalQueueActions =
       pendingOrdersCount +
       pendingPayoutsCount +
-      pendingResellersCount;
+      pendingResellersCount +
+      pendingProductsCount;
+
+    // Backfill notification for any unapproved reseller products that had no notification logged
+    if (pendingProductsCount > 0) {
+      try {
+        const unapprovedProducts = await Product.find({
+          uploadedBy: { $ne: null, $exists: true },
+          isPublished: true,
+          $or: [{ isApprovedByAdmin: false }, { isApprovedByAdmin: { $exists: false } }],
+        }).lean();
+
+        for (const prod of unapprovedProducts) {
+          const exists = await Notification.findOne({
+            forAdmin: true,
+            type: 'product',
+            link: '/admin/products',
+            message: { $regex: prod.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+          });
+
+          if (!exists) {
+            const reseller = await Reseller.findById(prod.uploadedBy).lean();
+            await Notification.create({
+              forAdmin: true,
+              title: '📦 New Product Approval Request',
+              message: `${(reseller as any)?.storeName || (reseller as any)?.name || 'Reseller'} submitted "${prod.name}" for admin approval.`,
+              type: 'product',
+              link: '/admin/products',
+              read: false,
+            });
+          }
+        }
+      } catch (backfillErr) {
+        console.error('[Notification Backfill Error]', backfillErr);
+      }
+    }
 
     // 2. Fetch logged admin notifications
     const filter: any = { forAdmin: true };
@@ -69,6 +110,7 @@ export async function GET(req: NextRequest) {
         pendingOrders: pendingOrdersCount,
         pendingPayouts: pendingPayoutsCount,
         pendingResellers: pendingResellersCount,
+        pendingProducts: pendingProductsCount,
         lowStock: lowStockCount,
         totalQueueActions,
       },

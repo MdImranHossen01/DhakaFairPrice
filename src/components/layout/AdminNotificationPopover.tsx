@@ -13,7 +13,8 @@ import {
   Settings,
   Info,
   Clock,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ interface QueueStats {
   pendingOrders: number;
   pendingPayouts: number;
   pendingResellers: number;
+  pendingProducts: number;
   lowStock: number;
   totalQueueActions: number;
 }
@@ -51,6 +53,7 @@ export default function AdminNotificationPopover() {
     pendingOrders: 0,
     pendingPayouts: 0,
     pendingResellers: 0,
+    pendingProducts: 0,
     lowStock: 0,
     totalQueueActions: 0,
   });
@@ -67,6 +70,7 @@ export default function AdminNotificationPopover() {
             pendingOrders: 0,
             pendingPayouts: 0,
             pendingResellers: 0,
+            pendingProducts: 0,
             lowStock: 0,
             totalQueueActions: 0,
           }
@@ -269,16 +273,31 @@ export default function AdminNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" /> Low Stock Items
+                  <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" /> Pending Products
                 </span>
                 <Badge
-                  variant={queues.lowStock > 0 ? 'destructive' : 'secondary'}
+                  variant={queues.pendingProducts > 0 ? 'default' : 'secondary'}
                   className="text-[10px] h-5 px-1.5 shrink-0"
                 >
-                  {queues.lowStock}
+                  {queues.pendingProducts}
                 </Badge>
               </Link>
             </div>
+
+            {queues.lowStock > 0 && (
+              <Link
+                href="/admin/low-stock"
+                onClick={() => setOpen(false)}
+                className="mt-2 flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-xs font-semibold"
+              >
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Low Stock Warning
+                </span>
+                <Badge variant="outline" className="text-[10px] h-5 border-amber-500/30">
+                  {queues.lowStock} products
+                </Badge>
+              </Link>
+            )}
           </div>
 
           {/* Recent Alerts List */}
