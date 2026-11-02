@@ -22,7 +22,6 @@ import { Loader2, CreditCard, Globe, X, BarChart3, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { PasswordChangeForm } from '@/components/user/PasswordChangeForm';
-import { R2MediaCleaner } from '@/components/admin/R2MediaCleaner';
 
 const settingsSchema = z.object({
   brandName: z.string().min(2, 'Brand Name is required'),
@@ -339,12 +338,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-[640px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="storage">Storage & Media</TabsTrigger>
         </TabsList>
 
         <Form {...form}>
@@ -718,9 +716,6 @@ export default function SettingsPage() {
               <PasswordChangeForm hideHeader={true} />
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="storage" className="space-y-4">
-          <R2MediaCleaner />
         </TabsContent>
       </Tabs>
     </div>
