@@ -5,6 +5,42 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2';
 import crypto from 'crypto';
 
+/**
+ * Determines a strictly partitioned, multi-tenant storage folder path:
+ * e.g.:
+ * - {platform}/mother/products/uuid.webp (Mother shop admin)
+ * - {platform}/resellers/{resellerSlug}/products/uuid.webp (Reseller personal product)
+ * - {platform}/users/avatars/uuid.webp (Customer uploads)
+ */
+async function resolveStoragePrefix(session: any, folder: string): Promise<string> {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+  const platform = rootDomain.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'swapnobaz';
+  const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'products';
+
+  const user = session?.user;
+  const role = user?.role;
+
+  if (role === 'reseller') {
+    try {
+      const connectToDatabase = (await import('@/lib/db')).default;
+      const Reseller = (await import('@/models/Reseller')).default;
+      await connectToDatabase();
+      const reseller = await Reseller.findOne({ userId: user.id }).select('subdomain storeName').lean();
+      const slug = reseller?.subdomain || reseller?.storeName?.toLowerCase().replace(/[^a-z0-9_-]/g, '') || user.id;
+      return `${platform}/resellers/${slug}/${safeFolder}`;
+    } catch (err) {
+      console.warn('Could not resolve reseller subdomain for storage prefix:', err);
+      return `${platform}/resellers/${user?.id || 'unknown'}/${safeFolder}`;
+    }
+  }
+
+  if (['admin', 'super_admin', 'manager', 'moderator'].includes(role)) {
+    return `${platform}/mother/${safeFolder}`;
+  }
+
+  return `${platform}/users/${safeFolder}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -42,9 +78,9 @@ export async function POST(req: NextRequest) {
     const rawExt = filename.split('.').pop()?.toLowerCase() || 'webp';
     const ext = rawExt.replace(/[^a-z0-9]/g, '') || 'webp';
 
-    // Sanitize folder
-    const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'products';
-    const fileKey = `${safeFolder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    // Multi-tenant partitioned folder
+    const storagePrefix = await resolveStoragePrefix(session, folder);
+    const fileKey = `${storagePrefix}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
     const command = new PutObjectCommand({
       Bucket: R2_BUCKET_NAME,

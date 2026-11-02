@@ -4,6 +4,38 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2';
 import crypto from 'crypto';
 
+/**
+ * Determines a strictly partitioned, multi-tenant storage folder path:
+ */
+async function resolveStoragePrefix(session: any, folder: string): Promise<string> {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+  const platform = rootDomain.split('.')[0].toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'swapnobaz';
+  const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'uploads';
+
+  const user = session?.user;
+  const role = user?.role;
+
+  if (role === 'reseller') {
+    try {
+      const connectToDatabase = (await import('@/lib/db')).default;
+      const Reseller = (await import('@/models/Reseller')).default;
+      await connectToDatabase();
+      const reseller = await Reseller.findOne({ userId: user.id }).select('subdomain storeName').lean();
+      const slug = reseller?.subdomain || reseller?.storeName?.toLowerCase().replace(/[^a-z0-9_-]/g, '') || user.id;
+      return `${platform}/resellers/${slug}/${safeFolder}`;
+    } catch (err) {
+      console.warn('Could not resolve reseller subdomain for storage prefix:', err);
+      return `${platform}/resellers/${user?.id || 'unknown'}/${safeFolder}`;
+    }
+  }
+
+  if (['admin', 'super_admin', 'manager', 'moderator'].includes(role)) {
+    return `${platform}/mother/${safeFolder}`;
+  }
+
+  return `${platform}/users/${safeFolder}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -40,11 +72,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unsupported image format' }, { status: 400 });
     }
 
-    // Generate unique key
+    // Generate unique key inside multi-tenant folder
     const rawExt = originalName.split('.').pop()?.toLowerCase() || 'jpg';
     const ext = rawExt.replace(/[^a-z0-9]/g, '') || 'jpg';
-    const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'uploads';
-    const fileKey = `${safeFolder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const storagePrefix = await resolveStoragePrefix(session, folder);
+    const fileKey = `${storagePrefix}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
     // Upload directly to Cloudflare R2
     const command = new PutObjectCommand({
