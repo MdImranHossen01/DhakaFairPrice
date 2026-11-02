@@ -761,8 +761,8 @@ export async function POST(req: NextRequest) {
           }))
         : [];
       createAdminNotification({
-        title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',
-        message: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + 'টি আইটেম।',
+        title: '🛒 New Order #' + (newOrder.shortId || '') + ' (৳' + newOrder.totalAmount + ')',
+        message: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + ' item(s)',
         type: 'order',
         link: '/admin/orders',
         sendPush: false,

@@ -158,8 +158,8 @@ export async function POST(request: NextRequest) {
     try {
       const { createAdminNotification, createNotification } = await import('@/lib/notifications');
       await createAdminNotification({
-        title: '👤 নতুন রিসেলার রেজিস্ট্রেশন',
-        message: `${newReseller.storeName} (${newReseller.subdomain}) অনুমোদনের আবেদন করেছেন।`,
+        title: '👤 New Reseller Application',
+        message: `${newReseller.storeName} (${newReseller.subdomain}) applied for reseller approval.`,
         type: 'reseller',
         link: '/admin/resellers',
         sendPush: true,
@@ -167,8 +167,8 @@ export async function POST(request: NextRequest) {
       await createNotification({
         userId: targetUserId,
         resellerId: newReseller._id,
-        title: '👤 আবেদন জমা হয়েছে',
-        message: 'আপনার রিসেলার আবেদন সফলভাবে জমা হয়েছে। অনুমোদিত হলে আপনি নোটিফিকেশন পাবেন।',
+        title: '👤 Application Submitted',
+        message: 'Your reseller application has been submitted successfully and is awaiting review.',
         type: 'reseller',
         link: '/login',
         sendPush: false,

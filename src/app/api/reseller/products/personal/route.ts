@@ -146,8 +146,8 @@ export async function POST(request: NextRequest) {
     try {
       const { createAdminNotification, createNotification } = await import('@/lib/notifications');
       await createAdminNotification({
-        title: '📦 নতুন প্রডাক্ট অনুমোদন রিকোয়েস্ট',
-        message: `${reseller.storeName || 'রিসেলার'} "${product.name}" প্রডাক্টটি অনুমোদনের জন্য যোগ করেছেন।`,
+        title: '📦 New Product Approval Request',
+        message: `${reseller.storeName || 'Reseller'} submitted "${product.name}" for admin approval.`,
         type: 'product',
         link: '/admin/products',
         sendPush: true,
@@ -155,8 +155,8 @@ export async function POST(request: NextRequest) {
       await createNotification({
         userId: reseller.userId,
         resellerId: reseller._id,
-        title: '📦 প্রডাক্ট সাবমিট হয়েছে',
-        message: `আপনার "${product.name}" প্রডাক্টটি জমা হয়েছে। এডমিন অনুমোদনের পর স্টোরে লাইভ হবে।`,
+        title: '📦 Product Submitted for Review',
+        message: `Your product "${product.name}" was submitted and is awaiting admin approval.`,
         type: 'product',
         link: '/reseller/products',
         sendPush: false,

@@ -29,14 +29,27 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
     const type = searchParams.get('type');
 
-    // 1. Calculate live queue action items
+    // 1. Calculate live queue action items matching Mother Admin dashboard filters
+    const motherOrderFilter = {
+      $or: [
+        { deletedAt: null },
+        { paymentStatus: 'Paid' },
+        { status: 'Delivered' },
+      ],
+      orderSource: { $ne: 'reseller_storefront' },
+      systemNote: { $not: /^Reseller Order/ },
+    };
+
     const [
       pendingOrdersCount,
       pendingPayoutsCount,
       pendingResellersCount,
       lowStockCount,
     ] = await Promise.all([
-      Order.countDocuments({ status: 'Order Placed' as any, isDeleted: { $ne: true } }),
+      Order.countDocuments({
+        status: 'Order Placed',
+        ...motherOrderFilter,
+      } as any),
       ResellerWalletTransaction.countDocuments({ type: 'payout_released', status: 'pending' }),
       Reseller.countDocuments({ status: 'pending' }),
       Product.countDocuments({ stock: { $gt: 0, $lt: 5 } }),
@@ -111,4 +124,3 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
-

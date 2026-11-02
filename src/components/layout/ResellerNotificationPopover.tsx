@@ -89,10 +89,10 @@ export default function ResellerNotificationPopover() {
       if (res.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
-        toast.success('সব নোটিফিকেশন পড়া হয়েছে');
+        toast.success('All notifications marked as read');
       }
     } catch {
-      toast.error('ব্যর্থ হয়েছে');
+      toast.error('Failed to mark notifications as read');
     }
   };
 
@@ -139,16 +139,16 @@ export default function ResellerNotificationPopover() {
       const diffMin = Math.floor(diffMs / 60000);
       const diffHr = Math.floor(diffMin / 60);
 
-      if (diffMin < 1) return 'এইমাত্র';
-      if (diffMin < 60) return `${diffMin} মি. আগে`;
-      if (diffHr < 24) return `${diffHr} ঘণ্টা আগে`;
-      return date.toLocaleDateString('bn-BD', { month: 'short', day: 'numeric' });
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return `${diffMin}m ago`;
+      if (diffHr < 24) return `${diffHr}h ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
       return '';
     }
   };
 
-  const totalBadgeCount = queues.pendingOrders + unreadCount;
+  const bellBadgeCount = unreadCount > 0 ? unreadCount : 0;
 
   return (
     <>
@@ -160,12 +160,12 @@ export default function ResellerNotificationPopover() {
               variant="outline"
               size="icon"
               className="relative rounded-full h-9 w-9 bg-background/80 hover:bg-accent border shadow-sm"
-              title="রিসেলার অ্যাকশন সেন্টার ও নোটিফিকেশন"
+              title="Reseller Notifications & Action Center"
             >
               <Bell className="h-4 w-4 text-muted-foreground" />
-              {totalBadgeCount > 0 && (
+              {bellBadgeCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm animate-pulse">
-                  {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+                  {bellBadgeCount > 99 ? '99+' : bellBadgeCount}
                 </span>
               )}
             </Button>
@@ -180,10 +180,10 @@ export default function ResellerNotificationPopover() {
           {/* Header */}
           <div className="p-3.5 bg-card border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-foreground">রিসেলার নোটিফিকেশন</h3>
-              {totalBadgeCount > 0 && (
+              <h3 className="font-bold text-sm text-foreground">Action Center</h3>
+              {queues.pendingOrders > 0 && (
                 <Badge variant="destructive" className="rounded-full text-[10px] px-2 py-0">
-                  {totalBadgeCount} টি অ্যাকশন
+                  {queues.pendingOrders} Pending Orders
                 </Badge>
               )}
             </div>
@@ -208,7 +208,7 @@ export default function ResellerNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <ShoppingBag className="h-3.5 w-3.5 text-blue-600 shrink-0" /> পেন্ডিং অর্ডার
+                  <ShoppingBag className="h-3.5 w-3.5 text-blue-600 shrink-0" /> Pending Orders
                 </span>
                 <Badge
                   variant={queues.pendingOrders > 0 ? 'default' : 'secondary'}
@@ -224,7 +224,7 @@ export default function ResellerNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <Wallet className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> ওয়ালেট ব্যালেন্স
+                  <Wallet className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> Wallet Balance
                 </span>
                 <span className="text-[11px] font-bold text-emerald-600">
                   ৳{queues.walletBalance}
@@ -237,7 +237,7 @@ export default function ResellerNotificationPopover() {
           <div className="max-h-[260px] overflow-y-auto divide-y divide-border/60">
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                বর্তমানে কোনো নতুন নোটিফিকেশন নেই।
+                No recent notifications logged.
               </div>
             ) : (
               notifications.map((notif) => (
@@ -282,7 +282,7 @@ export default function ResellerNotificationPopover() {
           {/* Footer */}
           <div className="p-2.5 bg-muted/40 border-t flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground font-medium pl-1">
-              রিসেলার অ্যালার্ট
+              Store Alerts
             </span>
             <Button
               variant="outline"
@@ -294,7 +294,7 @@ export default function ResellerNotificationPopover() {
               className="h-7 text-xs gap-1.5 text-foreground hover:bg-card shadow-xs"
             >
               <Settings className="h-3.5 w-3.5 text-primary" />
-              ডিভাইস অ্যালার্ট সেটিংস
+              Device Alert Settings
             </Button>
           </div>
         </PopoverContent>
@@ -309,4 +309,3 @@ export default function ResellerNotificationPopover() {
     </>
   );
 }
-

@@ -9,7 +9,6 @@ import {
   ArrowUpCircle,
   Users,
   Package,
-  AlertTriangle,
   CheckCheck,
   Settings,
   Info,
@@ -81,7 +80,7 @@ export default function AdminNotificationPopover() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000); // Polling every 20s
+    const interval = setInterval(fetchData, 20000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -96,10 +95,10 @@ export default function AdminNotificationPopover() {
       if (res.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
-        toast.success('সব নোটিফিকেশন পড়া হিসেবে চিহ্নিত করা হয়েছে');
+        toast.success('All notifications marked as read');
       }
     } catch {
-      toast.error('ব্যর্থ হয়েছে');
+      toast.error('Failed to mark notifications as read');
     }
   };
 
@@ -148,16 +147,17 @@ export default function AdminNotificationPopover() {
       const diffMin = Math.floor(diffMs / 60000);
       const diffHr = Math.floor(diffMin / 60);
 
-      if (diffMin < 1) return 'এইমাত্র';
-      if (diffMin < 60) return `${diffMin} মি. আগে`;
-      if (diffHr < 24) return `${diffHr} ঘণ্টা আগে`;
-      return date.toLocaleDateString('bn-BD', { month: 'short', day: 'numeric' });
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return `${diffMin}m ago`;
+      if (diffHr < 24) return `${diffHr}h ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
       return '';
     }
   };
 
-  const totalBadgeCount = queues.totalQueueActions + unreadCount;
+  // Bell badge reflects unread notification alerts; if none, show pending queue actions if any
+  const bellBadgeCount = unreadCount > 0 ? unreadCount : 0;
 
   return (
     <>
@@ -169,12 +169,12 @@ export default function AdminNotificationPopover() {
               variant="outline"
               size="icon"
               className="relative rounded-full h-9 w-9 bg-background/80 hover:bg-accent border shadow-sm"
-              title="অ্যাকশন সেন্টার ও নোটিফিকেশন"
+              title="Action Center & Notifications"
             >
               <Bell className="h-4 w-4 text-muted-foreground" />
-              {totalBadgeCount > 0 && (
+              {bellBadgeCount > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white shadow-sm animate-pulse">
-                  {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+                  {bellBadgeCount > 99 ? '99+' : bellBadgeCount}
                 </span>
               )}
             </Button>
@@ -189,10 +189,10 @@ export default function AdminNotificationPopover() {
           {/* Header */}
           <div className="p-3.5 bg-card border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm text-foreground">অ্যাকশন সেন্টার</h3>
-              {totalBadgeCount > 0 && (
-                <Badge variant="destructive" className="rounded-full text-[10px] px-2 py-0">
-                  {totalBadgeCount} টি পেন্ডিং
+              <h3 className="font-bold text-sm text-foreground">Action Center</h3>
+              {queues.totalQueueActions > 0 && (
+                <Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0 bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 font-semibold border border-rose-200/60">
+                  {queues.totalQueueActions} Pending
                 </Badge>
               )}
             </div>
@@ -211,7 +211,7 @@ export default function AdminNotificationPopover() {
           {/* Live Queue Shortcuts */}
           <div className="p-3 bg-muted/30 border-b">
             <p className="text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-wider">
-              অ্যাকশন প্রয়োজন এমন বিষয়সমূহ
+              Queues Requiring Action
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <Link
@@ -220,7 +220,7 @@ export default function AdminNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <ShoppingBag className="h-3.5 w-3.5 text-blue-600 shrink-0" /> পেন্ডিং অর্ডার
+                  <ShoppingBag className="h-3.5 w-3.5 text-blue-600 shrink-0" /> Pending Orders
                 </span>
                 <Badge
                   variant={queues.pendingOrders > 0 ? 'default' : 'secondary'}
@@ -236,7 +236,7 @@ export default function AdminNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <ArrowUpCircle className="h-3.5 w-3.5 text-purple-600 shrink-0" /> পে-আউট রিকোয়েস্ট
+                  <ArrowUpCircle className="h-3.5 w-3.5 text-purple-600 shrink-0" /> Payout Requests
                 </span>
                 <Badge
                   variant={queues.pendingPayouts > 0 ? 'default' : 'secondary'}
@@ -252,7 +252,7 @@ export default function AdminNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> পেন্ডিং রিসেলার
+                  <Users className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> Pending Resellers
                 </span>
                 <Badge
                   variant={queues.pendingResellers > 0 ? 'default' : 'secondary'}
@@ -268,7 +268,7 @@ export default function AdminNotificationPopover() {
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
               >
                 <span className="flex items-center gap-1.5 font-medium truncate">
-                  <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" /> লো-স্টক প্রডাক্ট
+                  <Package className="h-3.5 w-3.5 text-amber-600 shrink-0" /> Low Stock Items
                 </span>
                 <Badge
                   variant={queues.lowStock > 0 ? 'destructive' : 'secondary'}
@@ -284,7 +284,7 @@ export default function AdminNotificationPopover() {
           <div className="max-h-[260px] overflow-y-auto divide-y divide-border/60">
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                বর্তমানে কোনো নতুন নোটিফিকেশন নেই।
+                No recent notifications logged.
               </div>
             ) : (
               notifications.map((notif) => (
@@ -329,7 +329,7 @@ export default function AdminNotificationPopover() {
           {/* Footer */}
           <div className="p-2.5 bg-muted/40 border-t flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground font-medium pl-1">
-              রিয়েল-টাইম নোটিফিকেশন
+              Real-time Alerts
             </span>
             <Button
               variant="outline"
@@ -341,7 +341,7 @@ export default function AdminNotificationPopover() {
               className="h-7 text-xs gap-1.5 text-foreground hover:bg-card shadow-xs"
             >
               <Settings className="h-3.5 w-3.5 text-primary" />
-              অ্যালার্ট সেটিংস (WebPush/Telegram)
+              Alert Settings (Push/Telegram)
             </Button>
           </div>
         </PopoverContent>
@@ -355,4 +355,3 @@ export default function AdminNotificationPopover() {
     </>
   );
 }
-

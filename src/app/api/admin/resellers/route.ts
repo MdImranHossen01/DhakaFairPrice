@@ -113,8 +113,8 @@ export async function PATCH(request: NextRequest) {
         await createNotification({
           userId: updated.userId,
           resellerId: updated._id,
-          title: '🎉 অভিনন্দন! অ্যাকাউন্ট অনুমোদিত হয়েছে',
-          message: 'আপনার রিসেলার অ্যাকাউন্ট সফলভাবে অনুমোদিত হয়েছে। এখন আপনি প্রডাক্ট বিক্রি শুরু করতে পারেন।',
+          title: '🎉 Application Approved!',
+          message: 'Your reseller application has been approved. You can now access your reseller store dashboard.',
           type: 'reseller',
           link: '/reseller/dashboard',
           sendPush: true,
@@ -129,8 +129,8 @@ export async function PATCH(request: NextRequest) {
         await createNotification({
           userId: updated.userId,
           resellerId: updated._id,
-          title: '❌ রিসেলার আবেদন গৃহীত হয়নি',
-          message: 'আপনার রিসেলার আবেদনটি এই মুহূর্তে অনুমোদন করা সম্ভব হয়নি।',
+          title: '❌ Application Declined',
+          message: 'Your reseller application could not be approved at this time.',
           type: 'reseller',
           link: '/login',
           sendPush: true,

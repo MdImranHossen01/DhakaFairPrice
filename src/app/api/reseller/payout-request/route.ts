@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
       try {
         const { createAdminNotification, createNotification } = await import('@/lib/notifications');
         createAdminNotification({
-          title: '💸 নতুন পে-আউট রিকোয়েস্ট',
-          message: `${reseller.storeName || 'রিসেলার'} ৳${amount} উত্তোলনের আবেদন করেছেন।`,
+          title: '💸 New Payout Request',
+          message: `${reseller.storeName || 'Reseller'} requested a withdrawal of ৳${amount}.`,
           type: 'payout',
           link: '/admin/payouts',
           sendPush: true,
@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
         createNotification({
           userId: reseller.userId,
           resellerId: reseller._id,
-          title: '💸 পে-আউট আবেদন জমা হয়েছে',
-          message: `আপনার ৳${amount} উত্তোলনের আবেদন জমা হয়েছে। এডমিন অনুমোদনের পর টাকা পাঠানো হবে।`,
+          title: '💸 Payout Request Submitted',
+          message: `Your withdrawal request of ৳${amount} has been submitted and is pending admin approval.`,
           type: 'payout',
           link: '/reseller/wallet',
           sendPush: false,

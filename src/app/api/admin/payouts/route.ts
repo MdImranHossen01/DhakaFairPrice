@@ -189,8 +189,8 @@ export async function PATCH(request: NextRequest) {
             await createNotification({
               userId: reseller.userId,
               resellerId: reseller._id,
-              title: '✅ পে-আউট রিলিজ হয়েছে!',
-              message: `আপনার ৳${payoutAmt} পে-আউট সফলভাবে অনুমোদিত হয়েছে এবং একাউন্টে পাঠানো হয়েছে।`,
+              title: '✅ Payout Released!',
+              message: `Your payout request of ৳${payoutAmt} has been approved and disbursed.`,
               type: 'payout',
               link: '/reseller/wallet',
               sendPush: true,
@@ -199,8 +199,8 @@ export async function PATCH(request: NextRequest) {
             await createNotification({
               userId: reseller.userId,
               resellerId: reseller._id,
-              title: '❌ পে-আউট আবেদন বাতিল',
-              message: `আপনার ৳${payoutAmt} পে-আউট আবেদন বাতিল করা হয়েছে এবং টাকা ওয়ালেটে রিফান্ড করা হয়েছে।`,
+              title: '❌ Payout Request Rejected',
+              message: `Your payout request of ৳${payoutAmt} was rejected and refunded to your wallet.`,
               type: 'payout',
               link: '/reseller/wallet',
               sendPush: true,

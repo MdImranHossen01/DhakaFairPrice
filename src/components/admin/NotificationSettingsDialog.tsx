@@ -94,7 +94,7 @@ export function NotificationSettingsDialog({
 
   const handleSubscribePush = async () => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      toast.error("আপনার ব্রাউজারে পুশ নোটিফিকেশন সাপোর্ট করে না।");
+      toast.error("Push notifications are not supported in this browser.");
       return;
     }
 
@@ -105,7 +105,7 @@ export function NotificationSettingsDialog({
       setPermission(result);
 
       if (result !== "granted") {
-        toast.error("নোটিফিকেশন পারমিশন দেওয়া হয়নি। ব্রাউজার সেটিংসে গিয়ে Allow করুন।");
+        toast.error("Notification permission denied. Please allow notifications in your browser settings.");
         return;
       }
 
@@ -135,18 +135,18 @@ export function NotificationSettingsDialog({
         }),
       });
 
-      if (!res.ok) throw new Error("সাবস্ক্রিপশন সেভ করা যায়নি।");
+      if (!res.ok) throw new Error("Failed to save push subscription.");
 
       setIsSubscribed(true);
       playNotificationSound();
       toast.success(
         isReseller
-          ? "অ্যালার্ট চালু হয়েছে! আপনার স্টোরে নতুন অর্ডার আসলে সাথে সাথে শব্দসহ নোটিফিকেশন পাবেন।"
-          : "পুশ নোটিফিকেশন সফলভাবে চালু হয়েছে! নতুন অর্ডার আসলে সাথে সাথে নোটিফিকেশন পাবেন।"
+          ? "Alerts enabled! You will now receive instant audio and push alerts when new orders arrive."
+          : "Push notifications successfully enabled! Real-time alerts will sound on new orders."
       );
     } catch (err: any) {
       console.error("Subscription error:", err);
-      toast.error(err.message || "পুশ নোটিফিকেশন চালু করা সম্ভব হয়নি।");
+      toast.error(err.message || "Failed to enable push notifications.");
     } finally {
       setIsRegistering(false);
     }
@@ -159,12 +159,12 @@ export function NotificationSettingsDialog({
       const res = await fetch("/api/push/test", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        toast.success("টেস্ট পুশ নোটিফিকেশন পাঠানো হয়েছে!");
+        toast.success("Test push notification sent successfully!");
       } else {
-        toast.error(data.error || "টেস্ট পুশ নোটিফিকেশন পাঠানো যায়নি।");
+        toast.error(data.error || "Failed to send test push notification.");
       }
     } catch (e: any) {
-      toast.error(e.message || "টেস্ট ফেইল করেছে।");
+      toast.error(e.message || "Push notification test failed.");
     } finally {
       setIsTestingPush(false);
     }
@@ -176,12 +176,12 @@ export function NotificationSettingsDialog({
       const res = await fetch("/api/telegram/test", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        toast.success("টেলিগ্রামে টেস্ট নোটিফিকেশন সফলভাবে পাঠানো হয়েছে!");
+        toast.success("Test Telegram notification sent successfully!");
       } else {
-        toast.error(data.message || "টেলিগ্রাম টেস্ট ফেইল করেছে।");
+        toast.error(data.message || "Failed to send Telegram test message.");
       }
     } catch (e: any) {
-      toast.error(e.message || "টেলিগ্রাম কানেকশন এরর।");
+      toast.error(e.message || "Telegram connection error.");
     } finally {
       setIsTestingTelegram(false);
     }
@@ -195,7 +195,7 @@ export function NotificationSettingsDialog({
           size="icon"
           onClick={() => setIsOpen(true)}
           className="relative rounded-full h-9 w-9 bg-background/80 hover:bg-accent border shadow-sm"
-          title={isReseller ? "রিসেলার অর্ডার পুশ অ্যালার্ট" : "ইনস্ট্যান্ট অর্ডার নোটিফিকেশন সেটিংস"}
+          title={isReseller ? "Reseller Order Alerts" : "Instant Order Notification Settings"}
         >
           {isSubscribed ? (
             <BellRing className="h-4 w-4 text-emerald-600 animate-pulse" />
@@ -220,12 +220,12 @@ export function NotificationSettingsDialog({
               </div>
               <div>
                 <DialogTitle className="text-base font-bold">
-                  {isReseller ? "রিসেলার অর্ডার অ্যালার্ট সেটিংস" : "ইনস্ট্যান্ট অর্ডার অ্যালার্ট সেটিংস"}
+                  {isReseller ? "Order Alert Settings" : "Instant Order Alert Settings"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   {isReseller
-                    ? "আপনার স্টোরে কাস্টমার অর্ডার দিলে সাথে সাথে মোবাইল ও পিসিতে শব্দসহ অ্যালার্ট পান।"
-                    : "নতুন অর্ডার আসার সাথে সাথে মোবাইল ও ল্যাপটপে নোটিফিকেশন ও সাউন্ড পান।"}
+                    ? "Receive instant sound and push notifications on mobile and desktop whenever customers order."
+                    : "Receive instant audio alerts and push notifications on mobile and laptop whenever a new order arrives."}
                 </DialogDescription>
               </div>
             </div>
@@ -238,24 +238,24 @@ export function NotificationSettingsDialog({
                 <div className="flex items-center gap-2">
                   <Laptop className="h-4 w-4 text-primary" />
                   <span className="text-xs font-bold text-foreground">
-                    {isReseller ? "মোবাইল ও ব্রাউজার সাউন্ড অ্যালার্ট" : "ব্রাউজার পুশ নোটিফিকেশন"}
+                    {isReseller ? "Mobile & Browser Audio Alerts" : "Browser Push Notifications"}
                   </span>
                 </div>
                 {isSubscribed ? (
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px] gap-1">
-                    <CheckCircle2 className="h-3 w-3" /> সক্রিয়
+                    <CheckCircle2 className="h-3 w-3" /> Active
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-[10px] gap-1">
-                    <AlertCircle className="h-3 w-3" /> নিষ্ক্রিয়
+                    <AlertCircle className="h-3 w-3" /> Inactive
                   </Badge>
                 )}
               </div>
 
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {isReseller
-                  ? "আপনার মোবাইল বা ল্যাপটপের ব্রাউজার বন্ধ থাকলেও ব্যাকগ্রাউন্ডে শব্দসহ আপনার স্টোরের অর্ডার ভেসে উঠবে।"
-                  : "আপনার ফোন বা পিসির ব্রাউজার বন্ধ থাকলেও ব্যাকগ্রাউন্ডে অডিও সাউন্ডসহ নোটিফিকেশন স্ক্রিনে ভেসে উঠবে।"}
+                  ? "Receive sound alerts and instant popups even when your browser is closed or running in background."
+                  : "Audio notifications and order alerts will appear in the background even if your device browser is minimized."}
               </p>
 
               <div className="flex gap-2 pt-1">
@@ -267,7 +267,7 @@ export function NotificationSettingsDialog({
                     size="sm"
                   >
                     <Smartphone className="h-3.5 w-3.5 mr-1.5" />
-                    {isRegistering ? "চালু হচ্ছে..." : "এই ডিভাইসে অ্যালার্ট চালু করুন"}
+                    {isRegistering ? "Enabling..." : "Enable Alerts on this Device"}
                   </Button>
                 ) : (
                   <Button
@@ -278,7 +278,7 @@ export function NotificationSettingsDialog({
                     size="sm"
                   >
                     <Send className="h-3.5 w-3.5 mr-1.5" />
-                    {isTestingPush ? "পাঠানো হচ্ছে..." : "টেস্ট পুশ নোটিফিকেশন পাঠান"}
+                    {isTestingPush ? "Sending..." : "Send Test Push Alert"}
                   </Button>
                 )}
               </div>
@@ -290,15 +290,15 @@ export function NotificationSettingsDialog({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-sky-500" />
-                    <span className="text-xs font-bold text-foreground">টেলিগ্রাম বট ইনস্ট্যান্ট অ্যালার্ট</span>
+                    <span className="text-xs font-bold text-foreground">Telegram Bot Instant Alerts</span>
                   </div>
                   <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-300 text-[10px]">
-                    বট কানেক্টেড
+                    Bot Connected
                   </Badge>
                 </div>
 
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  যেকোনো অর্ডার আসার সাথে সাথে টেলিগ্রামে সম্পূর্ণ কাস্টমার নাম, ফোন, ঠিকানা, টাকার পরিমাণ ও প্রোডাক্ট তালিকা মেসেজ চলে যাবে।
+                  Instant Telegram notifications containing customer name, phone, full address, total amount, and ordered item breakdown.
                 </p>
 
                 <Button
@@ -309,7 +309,7 @@ export function NotificationSettingsDialog({
                   size="sm"
                 >
                   <Send className="h-3.5 w-3.5 mr-1.5" />
-                  {isTestingTelegram ? "পাঠানো হচ্ছে..." : "টেলিগ্রামে টেস্ট নোটিফিকেশন পাঠান"}
+                  {isTestingTelegram ? "Sending..." : "Send Test Telegram Alert"}
                 </Button>
               </div>
             )}
