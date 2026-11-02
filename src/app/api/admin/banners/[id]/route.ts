@@ -45,6 +45,15 @@ export async function PUT(
       return NextResponse.json({ message: 'Banner not found' }, { status: 404 });
     }
 
+    if (banner.image) {
+      try {
+        const { deleteFromR2 } = await import('@/lib/r2');
+        await deleteFromR2(banner.image);
+      } catch (r2Err) {
+        console.error('Failed to delete banner image from Cloudflare R2:', r2Err);
+      }
+    }
+
     revalidateTag('banners', 'max');
     revalidatePath('/');
 

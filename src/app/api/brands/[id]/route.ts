@@ -82,6 +82,16 @@ export async function DELETE(
       return NextResponse.json({ message: 'Brand not found' }, { status: 404 });
     }
 
+    const brandImg = (deleted as any).image || (deleted as any).logo;
+    if (brandImg) {
+      try {
+        const { deleteFromR2 } = await import('@/lib/r2');
+        await deleteFromR2(brandImg);
+      } catch (r2Err) {
+        console.error('Failed to delete brand image from Cloudflare R2:', r2Err);
+      }
+    }
+
     return NextResponse.json({ message: 'Brand deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting brand:', error);

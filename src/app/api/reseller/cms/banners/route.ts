@@ -117,6 +117,15 @@ export async function DELETE(request: NextRequest) {
     const banner = await Banner.findOneAndDelete({ _id: id, resellerId });
     if (!banner) return NextResponse.json({ error: 'Banner not found' }, { status: 404 });
 
+    if (banner.image) {
+      try {
+        const { deleteFromR2 } = await import('@/lib/r2');
+        await deleteFromR2(banner.image);
+      } catch (r2Err) {
+        console.error('Failed to delete reseller banner image from Cloudflare R2:', r2Err);
+      }
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

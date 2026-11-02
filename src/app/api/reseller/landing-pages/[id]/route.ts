@@ -52,7 +52,7 @@ export async function GET(
       return NextResponse.json({ message: 'Landing page not found' }, { status: 404 });
     }
 
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'production' ? 'dhakafairprice.com' : 'localhost:3000');
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || (process.env.NODE_ENV === 'production' ? 'swapnobaz.com' : 'localhost:3000');
     const storeHost = reseller.customDomain || (reseller.subdomain ? `${reseller.subdomain}.${rootDomain}` : '');
     const isLocal = storeHost.includes('localhost');
     const protocol = isLocal ? 'http' : 'https';
@@ -146,6 +146,24 @@ export async function DELETE(
 
     if (!deletedPage) {
       return NextResponse.json({ message: 'Landing page not found' }, { status: 404 });
+    }
+
+    try {
+      const { deleteMultipleFromR2 } = await import('@/lib/r2');
+      const imagesToDelete: string[] = [];
+      if (deletedPage.seoConfig?.ogImage) {
+        imagesToDelete.push(deletedPage.seoConfig.ogImage);
+      }
+      if (deletedPage.sections) {
+        const str = JSON.stringify(deletedPage.sections);
+        const matches = str.match(/https?:\/\/[^\s"'<>]+\.(?:webp|png|jpe?g|gif|svg|avif)/gi);
+        if (matches) imagesToDelete.push(...matches);
+      }
+      if (imagesToDelete.length > 0) {
+        await deleteMultipleFromR2(imagesToDelete);
+      }
+    } catch (r2Err) {
+      console.error('Failed to delete landing page images from Cloudflare R2:', r2Err);
     }
 
     return NextResponse.json({ message: 'Landing page deleted successfully' });

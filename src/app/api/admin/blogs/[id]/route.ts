@@ -124,6 +124,26 @@ export async function DELETE(
       return NextResponse.json({ message: 'Blog not found' }, { status: 404 });
     }
 
+    try {
+      const { deleteMultipleFromR2 } = await import('@/lib/r2');
+      const imagesToDelete: string[] = [];
+      if (blog.thumbnail) {
+        imagesToDelete.push(blog.thumbnail);
+      }
+      if (typeof blog.content === 'string') {
+        const urlRegex = /https?:\/\/[^\s"'<>]+\.(?:webp|png|jpe?g|gif|svg|avif)/gi;
+        const matches = blog.content.match(urlRegex);
+        if (matches) {
+          imagesToDelete.push(...matches);
+        }
+      }
+      if (imagesToDelete.length > 0) {
+        await deleteMultipleFromR2(imagesToDelete);
+      }
+    } catch (r2Err) {
+      console.error('Failed to delete blog images from Cloudflare R2:', r2Err);
+    }
+
     // Revalidate paths after deletion
     try {
       revalidatePath('/');

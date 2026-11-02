@@ -108,6 +108,24 @@ export async function DELETE(
       return NextResponse.json({ message: 'Page not found' }, { status: 404 });
     }
 
+    try {
+      const { deleteMultipleFromR2 } = await import('@/lib/r2');
+      const imagesToDelete: string[] = [];
+      if (deletedPage.seoConfig?.ogImage) {
+        imagesToDelete.push(deletedPage.seoConfig.ogImage);
+      }
+      if (deletedPage.sections) {
+        const str = JSON.stringify(deletedPage.sections);
+        const matches = str.match(/https?:\/\/[^\s"'<>]+\.(?:webp|png|jpe?g|gif|svg|avif)/gi);
+        if (matches) imagesToDelete.push(...matches);
+      }
+      if (imagesToDelete.length > 0) {
+        await deleteMultipleFromR2(imagesToDelete);
+      }
+    } catch (r2Err) {
+      console.error('Failed to delete landing page images from Cloudflare R2:', r2Err);
+    }
+
     return NextResponse.json({ message: 'Page deleted successfully' });
   } catch (error) {
     return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });

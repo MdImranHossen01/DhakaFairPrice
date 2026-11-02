@@ -131,6 +131,15 @@ export async function DELETE(
         console.error('Revalidation error:', e);
       }
 
+      if (category.image) {
+        try {
+          const { deleteFromR2 } = await import('@/lib/r2');
+          await deleteFromR2(category.image);
+        } catch (r2Err) {
+          console.error('Failed to delete category image from Cloudflare R2:', r2Err);
+        }
+      }
+
       return NextResponse.json({ message: 'Category deleted successfully' });
     } finally {
       await dbSession.endSession();
