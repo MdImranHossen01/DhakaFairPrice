@@ -57,6 +57,7 @@ function ProductsContent() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [togglingPublishId, setTogglingPublishId] = useState<string | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Add Stock Modal State
   const [addStockModalOpen, setAddStockModalOpen] = useState(false);
@@ -214,6 +215,42 @@ function ProductsContent() {
       fetchProducts(undefined, currentPage, activeTab);
     } else {
       toast.error(data.error || data.message || 'Failed to remove');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const result = await Swal.fire({
+      title: 'Delete Selected Products?',
+      text: `Are you sure you want to permanently delete ${selectedIds.length} selected product(s)? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: `Yes, delete ${selectedIds.length} products!`,
+      cancelButtonText: 'Cancel',
+      customClass: { popup: 'rounded-xl', confirmButton: 'rounded-lg px-4 py-2 font-bold', cancelButton: 'rounded-lg px-4 py-2' },
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      setIsBulkDeleting(true);
+      const res = await fetch(`/api/reseller/products`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(data.message || `Deleted ${selectedIds.length} product(s) successfully`);
+        setSelectedIds([]);
+        fetchProducts(undefined, currentPage, activeTab);
+      } else {
+        toast.error(data.error || data.message || 'Failed to delete selected products');
+      }
+    } catch {
+      toast.error('Network error during bulk deletion');
+    } finally {
+      setIsBulkDeleting(false);
     }
   };
 
@@ -376,6 +413,44 @@ function ProductsContent() {
           )}
         </Button>
       </div>
+
+      {/* Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 bg-destructive/10 border border-destructive/20 rounded-xl animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="destructive" className="text-xs px-2.5 py-0.5">
+              {selectedIds.length} Selected
+            </Badge>
+            <span className="text-xs text-muted-foreground font-medium">
+              Actions for selected products:
+            </span>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              className="h-8 text-xs font-semibold"
+            >
+              Deselect All
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="h-8 text-xs font-bold gap-1.5"
+            >
+              {isBulkDeleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash className="h-3.5 w-3.5" />
+              )}
+              Delete Selected ({selectedIds.length})
+            </Button>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSearch} className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
@@ -650,9 +725,16 @@ function ProductsContent() {
             products.map(product => {
               const totalStock = calculateCumulativeStock(product);
               const hasVariants = product.variants && product.variants.length > 0;
+              const isSelected = selectedIds.includes(product._id);
               return (
-                <div key={product._id} className="p-3 bg-card border rounded-lg shadow-sm space-y-2">
+                <div key={product._id} className={`p-3 bg-card border rounded-lg shadow-sm space-y-2 transition-colors ${isSelected ? 'border-primary/50 bg-primary/5' : ''}`}>
                   <div className="flex items-start gap-2.5">
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(product._id)}
+                      />
+                    </div>
                     <div className="h-14 w-14 rounded-md border bg-muted overflow-hidden relative shrink-0">
                       {product.images?.[0] ? (
                         <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
@@ -858,6 +940,38 @@ function ProductsContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Sticky Bulk Action Bar for high visibility */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-background/95 backdrop-blur-md border border-border shadow-2xl rounded-full animate-in fade-in slide-in-from-bottom-5">
+          <Badge variant="destructive" className="text-xs px-2.5 py-0.5 rounded-full font-bold">
+            {selectedIds.length} Selected
+          </Badge>
+          <div className="h-4 w-px bg-border" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 text-xs font-semibold px-2 hover:bg-muted rounded-full"
+          >
+            Deselect
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={isBulkDeleting}
+            className="h-8 text-xs font-bold gap-1.5 px-3.5 rounded-full shadow-md"
+          >
+            {isBulkDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash className="h-3.5 w-3.5" />
+            )}
+            Delete Selected ({selectedIds.length})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

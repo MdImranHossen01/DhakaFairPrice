@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
     const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 15;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
 
     const hasVariants = Array.isArray(variants) && variants.length > 0;
     if (!hasVariants) {
@@ -279,7 +279,7 @@ export async function PATCH(request: NextRequest) {
 
     const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 15;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
 
     if (updateData.purchasePrice !== undefined) {
       const pPrice = Number(updateData.purchasePrice) || 0;
@@ -362,27 +362,55 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const resellerId = await getResellerId(session.user.id);
-    const id = request.nextUrl.searchParams.get('id');
-    const existingProduct = await Product.findOne({ _id: id, uploadedBy: resellerId });
-    if (!existingProduct) return NextResponse.json({ error: 'Product not found or not owned by you' }, { status: 404 });
+    
+    // Support single id or multiple ids from query params or body
+    const body = await request.json().catch(() => ({}));
+    const queryId = request.nextUrl.searchParams.get('id');
+    const queryIds = request.nextUrl.searchParams.get('ids');
+    
+    let targetIds: string[] = [];
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      targetIds = body.ids;
+    } else if (body.id) {
+      targetIds = [body.id];
+    } else if (queryIds) {
+      targetIds = queryIds.split(',').filter(Boolean);
+    } else if (queryId) {
+      targetIds = [queryId];
+    }
 
-    // Guard: Prevent deleting product if there are active / pending orders
+    if (targetIds.length === 0) {
+      return NextResponse.json({ error: 'No product ID(s) provided' }, { status: 400 });
+    }
+
     const Order = (await import('@/models/Order')).default;
     const ResellerOrder = (await import('@/models/ResellerOrder')).default;
-    const pId = existingProduct._id;
-    const pIdStr = existingProduct._id.toString();
-    const resellerProductIds = (await ResellerProduct.find({ productId: pId }).distinct('_id')) || [];
 
+    // Verify ownership
+    const productsToDelete = await Product.find({
+      _id: { $in: targetIds },
+      uploadedBy: resellerId,
+    });
+
+    if (productsToDelete.length === 0) {
+      return NextResponse.json({ error: 'No matching products found owned by you' }, { status: 404 });
+    }
+
+    const pIds = productsToDelete.map(p => p._id);
+    const pIdStrs = productsToDelete.map(p => p._id.toString());
+    const resellerProductIds = (await ResellerProduct.find({ productId: { $in: pIds } }).distinct('_id')) || [];
+
+    // Guard: check active orders
     const activeOrders = await Order.countDocuments({
-      'items.product': { $in: [pId, pIdStr] },
+      'items.product': { $in: [...pIds, ...pIdStrs] },
       status: { $nin: ['Delivered', 'Cancelled'] },
       deletedAt: null,
     });
 
     const activeResellerOrders = await ResellerOrder.countDocuments({
       $or: [
-        { 'items.productId': { $in: [pId, pIdStr] } },
-        { 'items.resellerProductId': { $in: [pId, pIdStr, ...resellerProductIds] } },
+        { 'items.productId': { $in: [...pIds, ...pIdStrs] } },
+        { 'items.resellerProductId': { $in: [...pIds, ...pIdStrs, ...resellerProductIds] } },
       ],
       status: { $nin: ['Delivered', 'Cancelled'] },
       deletedAt: null,
@@ -391,18 +419,23 @@ export async function DELETE(request: NextRequest) {
     const totalActiveOrders = activeOrders + activeResellerOrders;
     if (totalActiveOrders > 0) {
       return NextResponse.json({
-        error: `Cannot delete product: There are ${totalActiveOrders} active/pending order(s) for this product. Please complete or cancel the pending orders first, or unpublish it instead.`
+        error: `Cannot delete selected product(s): There are ${totalActiveOrders} active/pending order(s) for them. Please complete or cancel pending orders first, or unpublish instead.`
       }, { status: 400 });
     }
 
-    const deleted = await Product.findOneAndDelete({ _id: id, uploadedBy: resellerId });
-    if (!deleted) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    const deleteResult = await Product.deleteMany({
+      _id: { $in: pIds },
+      uploadedBy: resellerId,
+    });
 
-    // Also delete any associated ResellerProduct records to avoid orphaned entries
-    await ResellerProduct.deleteMany({ productId: id });
+    await ResellerProduct.deleteMany({ productId: { $in: pIds } });
 
-    return NextResponse.json({ success: true, message: 'Product deleted successfully' });
+    return NextResponse.json({
+      success: true,
+      message: `Deleted ${deleteResult.deletedCount} product(s) successfully`,
+      deletedCount: deleteResult.deletedCount,
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
