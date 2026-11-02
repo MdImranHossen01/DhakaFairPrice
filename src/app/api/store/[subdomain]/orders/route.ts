@@ -69,7 +69,7 @@ export async function POST(
 
     const resellerFeeRate = reseller.systemFeePercent !== undefined 
       ? reseller.systemFeePercent 
-      : (reseller.commissionRate ?? 15);
+      : (reseller.commissionRate ?? 10);
 
     for (const item of items) {
       const qty = parseInt(item.quantity, 10);
@@ -134,7 +134,7 @@ export async function POST(
         let unitFee = Math.max(0, (Number(matchedVariant?.purchasePrice || rp.purchasePrice) || 0) - varBaseCost);
         if (unitFee === 0 && varBaseCost > 0) {
           const uploaderReseller = await Reseller.findById(uploaderId).select('systemFeePercent').lean();
-          const feePct = uploaderReseller?.systemFeePercent ?? 15;
+          const feePct = uploaderReseller?.systemFeePercent ?? 10;
           unitFee = Math.round(varBaseCost * (feePct / 100));
         }
 
@@ -189,8 +189,8 @@ export async function POST(
           ? Number(productDoc.purchasePrice)
           : effectivePurchase;
 
-        // Ensure wholesale price includes Mother Shop's platform fee margin
-        const feeRatePct = resellerFeeRate > 0 ? resellerFeeRate : 15;
+        // Ensure wholesale price includes Mother Shop's platform fee margin (Swapnobaz / Janopriyo default: 10%)
+        const feeRatePct = resellerFeeRate > 0 ? resellerFeeRate : 10;
         const minWholesale = motherBaseCost > 0 ? Math.round(motherBaseCost * (1 + feeRatePct / 100)) : effectivePurchase;
 
         if (effectivePurchase < minWholesale && !productDoc?.resellerPrice) {
@@ -611,6 +611,47 @@ export async function POST(
         }
       } catch (syncErr) {
         console.error('[Sync Error after storefront order creation]', syncErr);
+      }
+
+            // Instant Telegram & Web Push Notifications Alert for Reseller Store Order
+      try {
+        const { sendTelegramOrderNotification } = await import('@/lib/telegram');
+        const { sendWebPushNotification } = await import('@/lib/webpush');
+        const itemsForNotification = Array.isArray(validatedItems)
+          ? validatedItems.map((it: any) => ({
+              name: it.name,
+              quantity: it.quantity,
+              price: it.retailPrice || it.price || 0,
+              size: it.size,
+              color: it.color,
+            }))
+          : [];
+        const fullAddressStr = [
+          customer.address,
+          customer.city,
+          customer.district,
+        ].filter(Boolean).join(', ');
+        sendTelegramOrderNotification({
+          orderId: order._id?.toString(),
+          shortId: order.shortId,
+          name: customer.name,
+          phone: customer.phone,
+          address: fullAddressStr,
+          totalAmount: calculatedFinalTotal,
+          deliveryCharge: calculatedDeliveryCharge,
+          paymentMethod: paymentMethod || 'COD',
+          paymentStatus: order.paymentStatus || 'Pending',
+          resellerStoreName: reseller.storeName || subdomain,
+          customerNote: notes,
+          items: itemsForNotification,
+        }).catch(err => console.error('[Reseller Order Telegram Alert Error]', err));
+        sendWebPushNotification({
+          title: '🛒 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',
+          body: 'রিসেলার: ' + (reseller.storeName || subdomain) + ' — ' + customer.name + ' (' + customer.phone + ')',
+          url: '/admin/orders',
+        }).catch(err => console.error('[Reseller Order WebPush Alert Error]', err));
+      } catch (notifErr) {
+        console.error('[Reseller Store Order Notification Error]', notifErr);
       }
 
       return NextResponse.json({

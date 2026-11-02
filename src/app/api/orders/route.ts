@@ -477,7 +477,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Compute reseller commission, system platform fee, and sales profit
-    const defaultPlatformCommissionRate = settings?.platformCommissionRate ?? 15;
+    const defaultPlatformCommissionRate = settings?.platformCommissionRate ?? 10;
     const uploaderResellerIds = Array.from(uploaderItemsMap.keys());
     const uploaderFeeMap = new Map<string, number>();
     if (uploaderResellerIds.length > 0) {
@@ -744,6 +744,48 @@ export async function POST(req: NextRequest) {
       revalidateTag(CACHE_TAGS.products, 'max');
     } catch (e) {
       console.error('Failed to revalidate products cache:', e);
+    }
+
+    // Instant Telegram & Web Push Notifications Alert
+    try {
+      const { sendTelegramOrderNotification } = await import('@/lib/telegram');
+      const { sendWebPushNotification } = await import('@/lib/webpush');
+      const itemsForNotification = Array.isArray(newOrder.items)
+        ? newOrder.items.map((it: any) => ({
+            name: it.name,
+            quantity: it.quantity,
+            price: it.price,
+            size: it.size,
+            color: it.color,
+          }))
+        : [];
+      const fullAddressStr = [
+        shippingAddress.street,
+        shippingAddress.city,
+        shippingAddress.state,
+        shippingAddress.division,
+      ].filter(Boolean).join(', ');
+      sendTelegramOrderNotification({
+        orderId: newOrder._id?.toString(),
+        shortId: newOrder.shortId,
+        name: shippingAddress.fullName,
+        phone: shippingAddress.phone,
+        address: fullAddressStr,
+        totalAmount: newOrder.totalAmount,
+        deliveryCharge: newOrder.deliveryCharge,
+        paymentMethod: newOrder.paymentMethod,
+        paymentStatus: newOrder.paymentStatus,
+        source: 'মাদার শপ',
+        customerNote: newOrder.customerNote,
+        items: itemsForNotification,
+      }).catch(err => console.error('[Telegram Alert Error]', err));
+      sendWebPushNotification({
+        title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',
+        body: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + 'টি আইটেম।',
+        url: '/admin/orders',
+      }).catch(err => console.error('[WebPush Alert Error]', err));
+    } catch (notifErr) {
+      console.error('[Order Notification Error]', notifErr);
     }
 
     return NextResponse.json(newOrder, { status: 201 });
@@ -1196,8 +1238,8 @@ export async function GET(req: NextRequest) {
           const firstF = fulfillmentRos[0];
           const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
             ? Number((firstF.resellerId as any).systemFeePercent)
-            : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 15);
-          const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.15 : (supplierRate / 100);
+            : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+          const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
           const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
           if (computedFee > 0) {
             computedMotherFee = computedFee;
