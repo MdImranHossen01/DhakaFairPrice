@@ -353,6 +353,28 @@ export async function DELETE(
       // Mark unavailable on reseller storefronts
       const { unpublishProductFromResellers } = await import('@/lib/syncEngine');
       await unpublishProductFromResellers(deletedProduct._id.toString());
+
+      // Automatically clean up all product images from Cloudflare R2
+      try {
+        const { deleteMultipleFromR2 } = await import('@/lib/r2');
+        const imagesToDelete: string[] = [];
+        if (Array.isArray(deletedProduct.images)) {
+          imagesToDelete.push(...deletedProduct.images);
+        }
+        if ((deletedProduct as any).image) {
+          imagesToDelete.push((deletedProduct as any).image);
+        }
+        if (Array.isArray(deletedProduct.variants)) {
+          deletedProduct.variants.forEach((v: any) => {
+            if (v?.image) imagesToDelete.push(v.image);
+          });
+        }
+        if (imagesToDelete.length > 0) {
+          await deleteMultipleFromR2(imagesToDelete);
+        }
+      } catch (r2CleanErr) {
+        console.error('Failed to clean up product images from Cloudflare R2:', r2CleanErr);
+      }
     }
 
     try {

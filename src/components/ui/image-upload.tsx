@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
-import { uploadToImgBB } from '@/lib/upload';
+import { uploadImageToR2 } from '@/lib/upload';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -45,7 +45,7 @@ export function ImageUpload({ onUpload, value, label, className, iconClassName, 
 
     setLoading(true);
     try {
-      const url = await uploadToImgBB(file);
+      const url = await uploadImageToR2(file);
       onUpload(url);
       toast.success('Image uploaded successfully');
     } catch (error: any) {

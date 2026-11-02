@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { r2Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from '@/lib/r2';
+import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,54 +13,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const apiKey = process.env.IMGBB_API_KEY || process.env.NEXT_PUBLIC_IMGBB_API_KEY;
-    if (!apiKey) {
-      console.error('Server Configuration Error: IMGBB_API_KEY is not set');
-      return NextResponse.json({ message: 'Image upload service is not configured' }, { status: 500 });
-    }
-
     const formData = await req.formData();
     const image = formData.get('image');
+    const folder = (formData.get('folder') as string) || 'uploads';
 
     if (!image) {
       return NextResponse.json({ message: 'No image provided' }, { status: 400 });
     }
 
-    // Re-pack for ImgBB
-    const imgbbFormData = new FormData();
+    let buffer: Buffer;
+    let contentType = 'image/jpeg';
+    let originalName = 'image.jpg';
+
     if (image instanceof File) {
-      imgbbFormData.append('image', image, image.name);
+      const bytes = await image.arrayBuffer();
+      buffer = Buffer.from(bytes);
+      contentType = image.type || 'image/jpeg';
+      originalName = image.name || 'image.jpg';
+    } else if (typeof image === 'string') {
+      // Base64 string
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+      buffer = Buffer.from(base64Data, 'base64');
+      const match = image.match(/^data:(image\/\w+);base64,/);
+      if (match) contentType = match[1];
     } else {
-      imgbbFormData.append('image', image);
+      return NextResponse.json({ message: 'Unsupported image format' }, { status: 400 });
     }
 
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
-      method: 'POST',
-      body: imgbbFormData,
+    // Generate unique key
+    const rawExt = originalName.split('.').pop()?.toLowerCase() || 'jpg';
+    const ext = rawExt.replace(/[^a-z0-9]/g, '') || 'jpg';
+    const safeFolder = folder.replace(/[^a-zA-Z0-9_-]/g, '') || 'uploads';
+    const fileKey = `${safeFolder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+    // Upload directly to Cloudflare R2
+    const command = new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: fileKey,
+      Body: buffer,
+      ContentType: contentType,
     });
 
-    const text = await response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return NextResponse.json({
-        message: `Image upload failed: Unexpected response from provider. Status: ${response.status}`,
-        details: text
-      }, { status: 502 }); // Bad Gateway for vendor error
-    }
+    await r2Client.send(command);
 
-    if (data.success) {
-      // Prioritize original full-quality image URL over downscaled/thumbnail viewer URLs
-      const fullQualityUrl = data.data.image?.url || data.data.display_url || data.data.url;
-      return NextResponse.json({ url: fullQualityUrl });
-    } else {
-      const errorMsg = data?.error?.message || data?.error || `Upload failed with status ${response.status}`;
-      return NextResponse.json({ message: errorMsg }, { status: 400 });
-    }
+    const publicUrl = `${R2_PUBLIC_URL}/${fileKey}`;
+
+    return NextResponse.json({
+      success: true,
+      url: publicUrl,
+      fileKey,
+    });
   } catch (error: any) {
-    console.error('Error in /api/upload:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error('Error in Cloudflare R2 /api/upload:', error);
+    return NextResponse.json(
+      { message: error.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
-

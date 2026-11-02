@@ -208,7 +208,7 @@ Default Password for All Seeded Test Accounts: `Password123!`
 ### External Third-Party Integrations
 - Courier Logistics: Steadfast Courier API, Pathao Logistics API, RedX API
 - Fraud Prevention: BD Courier Intelligence API
-- Image Storage: ImgBB Cloud API with dynamic multipart uploads
+- Image Storage: Cloudflare R2 S3 Object Storage with Client-side WebP Compression
 - Email Notifications: Nodemailer with secure SMTP transport
 
 ---
@@ -279,7 +279,11 @@ EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_gmail_app_password
 
 # Image Storage
-NEXT_PUBLIC_IMGBB_API_KEY=your_imgbb_api_key
+R2_ACCOUNT_ID=your_r2_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET_NAME=your_r2_bucket
+NEXT_PUBLIC_R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
 # Security and Automation
 ENCRYPTION_KEY=your_exact_32_character_encryption_key

@@ -1,13 +1,7 @@
 import { createImageUpload } from "novel";
 import { toast } from "sonner";
 
-// Use IMGBB if possible (simple client-side upload or server-side proxy).
-// Since we have an IMGBB_API_KEY in .env.local, we should use a server action or API route.
-// For now, let's use a simple placeholder upload function that mocks it if we don't have the API route ready.
-// Or even better, try to use IMGBB client-side upload if the key is exposed, but better not expose it.
-// We will assume /api/upload exists or just return a placeholder.
-
-// Actually, I'll create a minimal /api/upload route in the next step to support this properly using ImgBB.
+// Uploads image directly to Cloudflare R2 storage via /api/upload
 
 const onUpload = (file: File) => {
     const formData = new FormData();

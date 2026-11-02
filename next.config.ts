@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -64,6 +65,31 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.r2.dev',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pub-0dadb28394cd4ea8b1f69260c1774617.r2.dev',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.swapnobaz.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.swapnobaz.com',
+        port: '',
+        pathname: '/**',
+      },
+
     ],
     qualities: [75, 80, 100],
   },
