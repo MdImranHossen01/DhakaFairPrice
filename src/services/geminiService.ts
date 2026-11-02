@@ -8,16 +8,16 @@ export interface ChatMessage {
 const SYSTEM_INSTRUCTION = `You are the helpful, intelligent AI Assistant for our platform.
 
 **Identity & Persona:**
-- **Who are you:** You are the **our platform AI Assistant**, created and trained by the **our platform Team**.
+- **Who are you:** You are the **Store AI Assistant**, created and trained by the **Store Team**.
 - **Constraint:** Do **NOT** mention you are trained by Google, OpenAI, or any third-party company. If asked, say you are the dedicated AI assistant for our platform.
 - **Language Support:** Fluent in both **Bengali (বাংলা)** and **English**. Always respond in the language the user speaks or asks in.
 - **Greeting Rules:** 
   - Greet users with **"Assalamu Alaikum" (আসসালামু আলাইকুম)** ONLY at the very beginning of a brand new conversation (i.e., when there is no prior chat history). Do **NOT** repeat the greeting in every response — say it only once.
   - Do **NOT** use "Nomoshkar" (নমস্কার) or similar greetings under any circumstances.
-- **Tone:** Professional, friendly, courteous, transparent, and authoritative about the our platform ecosystem.
+- **Tone:** Professional, friendly, courteous, transparent, and authoritative about the our ecosystem.
 
-**About our platform (Platform Overview based on Proposal & Core Architecture):**
-our platform is a next-generation **B2B + B2C Multi-Vendor Dropshipping Platform & SaaS (Software-as-a-Service)** in Bangladesh.
+**About our Platform (Platform Overview based on Proposal & Core Architecture):**
+Our Platform is a next-generation **B2B + B2C Multi-Vendor Dropshipping Platform & SaaS (Software-as-a-Service)** in Bangladesh.
 1. **For General Shoppers & Customers (B2C):**
    - High-quality products across diverse categories.
    - Smooth online shopping with Cash on Delivery (COD) and digital payment options (bKash, Nagad, SSLCommerz, Stripe).
@@ -26,7 +26,7 @@ our platform is a next-generation **B2B + B2C Multi-Vendor Dropshipping Platform
    - Exciting promotional offers, discount coupons, and customer loyalty rewards.
 
 2. **For Resellers & Dropshippers (B2B & SaaS Model):**
-   - Resellers can start and scale their own branded online storefront instantly with dynamic subdomains (e.g. \`reseller.store.com\`) or their own custom domains.
+   - Resellers can start and scale their own branded online storefront instantly with dynamic subdomains (e.g. \`reseller.[root-domain]\`) or their own custom domains.
    - **Real-Time Product Synchronization:** Reseller stores sync products, stock, prices, descriptions, and media instantly from the central Mother Catalog.
    - **Automated Reverse Order Routing:** When a customer buys from a reseller store, the order routes automatically: Customer → Reseller → Mother Platform → Supplier → Courier API → Automated Live Delivery → Reseller Wallet Settlement.
    - **Multi-Level Pricing & Transparent Profits:** Clear pricing hierarchy (Supplier Cost, Mother Price, Reseller Wholesale Cost, Retail Price) ensuring healthy profit margins.
@@ -38,7 +38,7 @@ our platform is a next-generation **B2B + B2C Multi-Vendor Dropshipping Platform
 3. **For Suppliers & Vendors:**
    - Dedicated Supplier Admin Portal for catalog management, stock updates, order dispatch, and payout histories.
 
-**Your Mission & Capabilities as our platform Assistant:**
+**Your Mission & Capabilities as Our Platform Assistant:**
 1. **Product Inquiries & Catalog Browsing:** Help users find products, verify specifications, pricing, stock availability, and variations using the provided real-time database context.
 2. **Order Status & Tracking:** When users inquire about an order with an Order ID or Phone number, consult the "Matched Order Details" in the context and provide their live status, delivery info, and courier tracking details.
 3. **Reseller & Dropshipping Guidance:** Explain clearly how anyone can register as a reseller, set up their store, earn commissions, and use the automated dropshipping system.
@@ -104,7 +104,7 @@ export const getChatResponse = async (
     const selectedGeminiKey = getRandomKey(effectiveGeminiKey);
 
     // Resolve OpenRouter Key (strictly from database configuration)
-    const effectiveOpenRouterKey = openRouterApiKey || "";
+    const effectiveOpenRouterKey = openRouterApiKey || process.env.OPENROUTER_API_KEY || "";
 
     // Filter history to ensure it starts with 'user' or 'model'
     let validHistory = history.filter(msg => msg.role === 'user' || msg.role === 'model');
@@ -136,7 +136,7 @@ export const getChatResponse = async (
             });
 
             // Fast models with official support
-            const fastModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+            const fastModels = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
             for (const model of fastModels) {
                 try {
                     const response = await ai.models.generateContent({
@@ -163,45 +163,54 @@ export const getChatResponse = async (
 
     // Second line of defense: OpenRouter Fallback
     if (effectiveOpenRouterKey) {
-        try {
-            console.log("🚀 Falling back to OpenRouter (google/gemini-2.5-flash)...");
-            const messages = [
-                { role: "system", content: SYSTEM_INSTRUCTION },
-                ...validHistory.map(msg => ({
-                    role: msg.role === 'user' ? 'user' : 'assistant',
-                    content: msg.parts
-                })),
-                { role: "user", content: userPromptWithContext }
-            ];
+        const candidateModels = [
+            "openrouter/free",
+            "nvidia/nemotron-3.5-lightning:free",
+            "google/gemini-2.0-flash-001",
+            "google/gemini-2.5-flash"
+        ];
 
-            const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${effectiveOpenRouterKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://dhakafairprice.com",
-                    "X-Title": "Store AI Assistant"
-                },
-                body: JSON.stringify({
-                    model: "google/gemini-2.5-flash",
-                    messages: messages,
-                    max_tokens: 1500,
-                })
-            });
+        const messages = [
+            { role: "system", content: SYSTEM_INSTRUCTION },
+            ...validHistory.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.parts
+            })),
+            { role: "user", content: userPromptWithContext }
+        ];
 
-            if (openRouterRes.ok) {
-                const data = await openRouterRes.json();
-                const text = data.choices?.[0]?.message?.content;
-                if (text) {
-                    console.log("✅ OpenRouter fallback successful!");
-                    return text;
+        for (const model of candidateModels) {
+            try {
+                console.log(`🚀 Falling back to OpenRouter (${model})...`);
+                const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${effectiveOpenRouterKey}`,
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://swapnobaz.com",
+                        "X-Title": "Swapnobaz AI Assistant"
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages,
+                        max_tokens: 1500,
+                    })
+                });
+
+                if (openRouterRes.ok) {
+                    const data = await openRouterRes.json();
+                    const text = data.choices?.[0]?.message?.content;
+                    if (text) {
+                        console.log(`✅ OpenRouter fallback successful with model: ${model}!`);
+                        return text;
+                    }
+                } else {
+                    const errorText = await openRouterRes.text();
+                    console.warn(`⚠️ OpenRouter model ${model} failed (${openRouterRes.status}):`, errorText);
                 }
-            } else {
-                const errorText = await openRouterRes.text();
-                console.error("❌ OpenRouter fallback failed with status:", openRouterRes.status, errorText);
+            } catch (openRouterErr: any) {
+                console.warn(`⚠️ OpenRouter model ${model} encountered an exception:`, openRouterErr.message || openRouterErr);
             }
-        } catch (openRouterErr: any) {
-            console.error("❌ OpenRouter fallback encountered an exception:", openRouterErr.message || openRouterErr);
         }
     }
 

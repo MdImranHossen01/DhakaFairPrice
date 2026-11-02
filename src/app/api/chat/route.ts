@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const aiConfig = settings?.aiConfig || {};
     
     const apiKey = aiConfig.geminiApiKey || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    const openRouterApiKey = (aiConfig as any).openRouterApiKey || '';
+    const openRouterApiKey = (aiConfig as any).openRouterApiKey || process.env.OPENROUTER_API_KEY || '';
 
     if (!apiKey && !openRouterApiKey) {
       console.error('AI Keys (Gemini / OpenRouter) are missing');
