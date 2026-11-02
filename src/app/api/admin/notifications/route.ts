@@ -29,17 +29,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
     const type = searchParams.get('type');
 
-    // 1. Calculate live queue action items matching Mother Admin dashboard filters
-    const motherOrderFilter = {
-      $or: [
-        { deletedAt: null },
-        { paymentStatus: 'Paid' },
-        { status: 'Delivered' },
-      ],
-      orderSource: { $ne: 'reseller_storefront' },
-      systemNote: { $not: /^Reseller Order/ },
-    };
-
+    // 1. Calculate live queue action items (all orders fulfilled via mother logistics)
     const [
       pendingOrdersCount,
       pendingPayoutsCount,
@@ -48,7 +38,7 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       Order.countDocuments({
         status: 'Order Placed',
-        ...motherOrderFilter,
+        deletedAt: null,
       } as any),
       ResellerWalletTransaction.countDocuments({ type: 'payout_released', status: 'pending' }),
       Reseller.countDocuments({ status: 'pending' }),

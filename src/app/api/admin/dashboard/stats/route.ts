@@ -198,9 +198,17 @@ export async function GET(req: NextRequest) {
         }
       ]),
 
-      // 3. Order counts grouped by workflow status
+      // 3. Order counts grouped by workflow status (all orders fulfilled via mother courier logistics)
       Order.aggregate([
-        { $match: { ...motherOrderFilter } },
+        {
+          $match: {
+            $or: [
+              { deletedAt: null },
+              { paymentStatus: 'Paid' },
+              { status: 'Delivered' }
+            ]
+          }
+        },
         {
           $group: {
             _id: '$status',
