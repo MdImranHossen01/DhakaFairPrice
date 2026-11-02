@@ -279,6 +279,28 @@ export async function PUT(
     // Trigger sync to reseller storefronts
     await triggerResellerSyncBestEffort(updatedProduct._id.toString());
 
+    // If Admin approved a reseller's product, notify the reseller
+    if (body.isApprovedByAdmin === true && updatedProduct.uploadedBy) {
+      try {
+        const Reseller = (await import('@/models/Reseller')).default;
+        const reseller = await Reseller.findById(updatedProduct.uploadedBy);
+        if (reseller) {
+          const { createNotification } = await import('@/lib/notifications');
+          await createNotification({
+            userId: reseller.userId,
+            resellerId: reseller._id,
+            title: '🚀 প্রডাক্ট অনুমোদিত হয়েছে!',
+            message: 'আপনার "' + updatedProduct.name + '" প্রডাক্টটি অনুমোদিত হয়েছে এবং স্টোরে লাইভ হয়েছে।',
+            type: 'product',
+            link: '/reseller/products',
+            sendPush: true,
+          });
+        }
+      } catch (prodNotifErr) {
+        console.error('[Product Approval Notif Error]', prodNotifErr);
+      }
+    }
+
     revalidateTag('products', 'max');
 
     return NextResponse.json(updatedProduct);

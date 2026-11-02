@@ -617,6 +617,23 @@ export async function POST(
       try {
         const { sendTelegramOrderNotification } = await import('@/lib/telegram');
         const { sendWebPushNotification } = await import('@/lib/webpush');
+        const { createAdminNotification, createNotification } = await import('@/lib/notifications');
+        createAdminNotification({
+          title: '🛒 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',
+          message: 'রিসেলার: ' + (reseller.storeName || subdomain) + ' — ' + customer.name + ' (' + customer.phone + ')',
+          type: 'order',
+          link: '/admin/orders',
+          sendPush: false,
+        }).catch(err => console.error('[Reseller Order Admin Log Error]', err));
+        createNotification({
+          userId: reseller.userId,
+          resellerId: reseller._id,
+          title: '🎉 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',
+          message: 'কাস্টমার: ' + customer.name + ' (' + customer.phone + ') • প্রফিট: ৳' + totalCommission,
+          type: 'order',
+          link: '/reseller/orders',
+          sendPush: false,
+        }).catch(err => console.error('[Reseller Order Reseller Log Error]', err));
         const itemsForNotification = Array.isArray(validatedItems)
           ? validatedItems.map((it: any) => ({
               name: it.name,

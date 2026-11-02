@@ -154,6 +154,29 @@ export async function POST(request: NextRequest) {
       console.error('Failed to pre-seed reseller accounts/categories:', seedErr);
     }
 
+    // Trigger Admin & User Notifications
+    try {
+      const { createAdminNotification, createNotification } = await import('@/lib/notifications');
+      await createAdminNotification({
+        title: '👤 নতুন রিসেলার রেজিস্ট্রেশন',
+        message: `${newReseller.storeName} (${newReseller.subdomain}) অনুমোদনের আবেদন করেছেন।`,
+        type: 'reseller',
+        link: '/admin/resellers',
+        sendPush: true,
+      });
+      await createNotification({
+        userId: targetUserId,
+        resellerId: newReseller._id,
+        title: '👤 আবেদন জমা হয়েছে',
+        message: 'আপনার রিসেলার আবেদন সফলভাবে জমা হয়েছে। অনুমোদিত হলে আপনি নোটিফিকেশন পাবেন।',
+        type: 'reseller',
+        link: '/login',
+        sendPush: false,
+      });
+    } catch (notifErr) {
+      console.error('[Reseller Registration Notification Error]', notifErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Registration successful! Your store application is under review.',

@@ -142,6 +142,29 @@ export async function POST(request: NextRequest) {
     // Automatically link this product to the creator's reseller storefront catalog
     await addProductToReseller(reseller._id.toString(), product._id.toString(), numPrice);
 
+    // Trigger Admin & Reseller Notifications
+    try {
+      const { createAdminNotification, createNotification } = await import('@/lib/notifications');
+      await createAdminNotification({
+        title: '📦 নতুন প্রডাক্ট অনুমোদন রিকোয়েস্ট',
+        message: `${reseller.storeName || 'রিসেলার'} "${product.name}" প্রডাক্টটি অনুমোদনের জন্য যোগ করেছেন।`,
+        type: 'product',
+        link: '/admin/products',
+        sendPush: true,
+      });
+      await createNotification({
+        userId: reseller.userId,
+        resellerId: reseller._id,
+        title: '📦 প্রডাক্ট সাবমিট হয়েছে',
+        message: `আপনার "${product.name}" প্রডাক্টটি জমা হয়েছে। এডমিন অনুমোদনের পর স্টোরে লাইভ হবে।`,
+        type: 'product',
+        link: '/reseller/products',
+        sendPush: false,
+      });
+    } catch (notifErr) {
+      console.error('[Product Submission Notification Error]', notifErr);
+    }
+
     return NextResponse.json({ success: true, product });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

@@ -25,12 +25,25 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export function NotificationSettingsDialog() {
+interface NotificationSettingsDialogProps {
+  openControlled?: boolean;
+  onOpenControlledChange?: (open: boolean) => void;
+  hideTriggerButton?: boolean;
+}
+
+export function NotificationSettingsDialog({
+  openControlled,
+  onOpenControlledChange,
+  hideTriggerButton = false,
+}: NotificationSettingsDialogProps = {}) {
   const { data: session } = useSession();
   const role = (session?.user as any)?.role;
   const isReseller = role === "reseller";
 
-  const [isOpen, setIsOpen] = useState(false);
+  const isControlled = openControlled !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = isControlled ? openControlled : internalOpen;
+  const setIsOpen = isControlled ? (onOpenControlledChange || (() => {})) : setInternalOpen;
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -176,25 +189,27 @@ export function NotificationSettingsDialog() {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => setIsOpen(true)}
-        className="relative rounded-full h-9 w-9 bg-background/80 hover:bg-accent border shadow-sm"
-        title={isReseller ? "রিসেলার অর্ডার পুশ অ্যালার্ট" : "ইনস্ট্যান্ট অর্ডার নোটিফিকেশন সেটিংস"}
-      >
-        {isSubscribed ? (
-          <BellRing className="h-4 w-4 text-emerald-600 animate-pulse" />
-        ) : (
-          <Bell className="h-4 w-4 text-muted-foreground" />
-        )}
-        {isSubscribed && (
-          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-        )}
-      </Button>
+      {!hideTriggerButton && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsOpen(true)}
+          className="relative rounded-full h-9 w-9 bg-background/80 hover:bg-accent border shadow-sm"
+          title={isReseller ? "রিসেলার অর্ডার পুশ অ্যালার্ট" : "ইনস্ট্যান্ট অর্ডার নোটিফিকেশন সেটিংস"}
+        >
+          {isSubscribed ? (
+            <BellRing className="h-4 w-4 text-emerald-600 animate-pulse" />
+          ) : (
+            <Bell className="h-4 w-4 text-muted-foreground" />
+          )}
+          {isSubscribed && (
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          )}
+        </Button>
+      )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-md p-6">

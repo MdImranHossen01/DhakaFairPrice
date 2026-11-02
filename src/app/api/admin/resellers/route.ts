@@ -108,8 +108,36 @@ export async function PATCH(request: NextRequest) {
 
     if (status === 'active' && updated) {
       await User.findByIdAndUpdate(updated.userId, { role: 'reseller', resellerId: updated._id });
+      try {
+        const { createNotification } = await import('@/lib/notifications');
+        await createNotification({
+          userId: updated.userId,
+          resellerId: updated._id,
+          title: '🎉 অভিনন্দন! অ্যাকাউন্ট অনুমোদিত হয়েছে',
+          message: 'আপনার রিসেলার অ্যাকাউন্ট সফলভাবে অনুমোদিত হয়েছে। এখন আপনি প্রডাক্ট বিক্রি শুরু করতে পারেন।',
+          type: 'reseller',
+          link: '/reseller/dashboard',
+          sendPush: true,
+        });
+      } catch (e) {
+        console.error('[Reseller Approval Notification Error]', e);
+      }
     } else if (status === 'rejected' && updated) {
       await User.findByIdAndUpdate(updated.userId, { role: 'user' });
+      try {
+        const { createNotification } = await import('@/lib/notifications');
+        await createNotification({
+          userId: updated.userId,
+          resellerId: updated._id,
+          title: '❌ রিসেলার আবেদন গৃহীত হয়নি',
+          message: 'আপনার রিসেলার আবেদনটি এই মুহূর্তে অনুমোদন করা সম্ভব হয়নি।',
+          type: 'reseller',
+          link: '/login',
+          sendPush: true,
+        });
+      } catch (e) {
+        console.error('[Reseller Rejection Notification Error]', e);
+      }
     }
 
     return NextResponse.json({ success: true, reseller: updated });

@@ -750,6 +750,7 @@ export async function POST(req: NextRequest) {
     try {
       const { sendTelegramOrderNotification } = await import('@/lib/telegram');
       const { sendWebPushNotification } = await import('@/lib/webpush');
+      const { createAdminNotification } = await import('@/lib/notifications');
       const itemsForNotification = Array.isArray(newOrder.items)
         ? newOrder.items.map((it: any) => ({
             name: it.name,
@@ -759,6 +760,13 @@ export async function POST(req: NextRequest) {
             color: it.color,
           }))
         : [];
+      createAdminNotification({
+        title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',
+        message: shippingAddress.fullName + ' (' + shippingAddress.phone + ') — ' + itemsForNotification.length + 'টি আইটেম।',
+        type: 'order',
+        link: '/admin/orders',
+        sendPush: false,
+      }).catch(err => console.error('[Order Admin Notification Error]', err));
       const fullAddressStr = [
         shippingAddress.street,
         shippingAddress.city,

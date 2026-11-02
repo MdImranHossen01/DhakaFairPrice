@@ -107,6 +107,30 @@ export async function POST(request: NextRequest) {
       await sessionConn.commitTransaction();
       sessionConn.endSession();
 
+      // Dispatch Notifications to Admin & Reseller
+      try {
+        const { createAdminNotification, createNotification } = await import('@/lib/notifications');
+        createAdminNotification({
+          title: '💸 নতুন পে-আউট রিকোয়েস্ট',
+          message: `${reseller.storeName || 'রিসেলার'} ৳${amount} উত্তোলনের আবেদন করেছেন।`,
+          type: 'payout',
+          link: '/admin/payouts',
+          sendPush: true,
+        }).catch(err => console.error('[Payout Admin Notif Error]', err));
+
+        createNotification({
+          userId: reseller.userId,
+          resellerId: reseller._id,
+          title: '💸 পে-আউট আবেদন জমা হয়েছে',
+          message: `আপনার ৳${amount} উত্তোলনের আবেদন জমা হয়েছে। এডমিন অনুমোদনের পর টাকা পাঠানো হবে।`,
+          type: 'payout',
+          link: '/reseller/wallet',
+          sendPush: false,
+        }).catch(err => console.error('[Payout Reseller Log Error]', err));
+      } catch (notifErr) {
+        console.error('[Payout Notification Dispatch Error]', notifErr);
+      }
+
       return NextResponse.json({
         success: true,
         message: 'Payout request submitted successfully',
