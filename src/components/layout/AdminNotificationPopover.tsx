@@ -12,7 +12,8 @@ import {
   CheckCheck,
   Settings,
   Info,
-  Clock
+  Clock,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -328,21 +329,27 @@ export default function AdminNotificationPopover() {
 
           {/* Footer */}
           <div className="p-2.5 bg-muted/40 border-t flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground font-medium pl-1">
-              Real-time Alerts
-            </span>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => {
                 setOpen(false);
                 setIsSettingsOpen(true);
               }}
-              className="h-7 text-xs gap-1.5 text-foreground hover:bg-card shadow-xs"
+              className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
             >
               <Settings className="h-3.5 w-3.5 text-primary" />
-              Alert Settings (Push/Telegram)
+              Alert Settings
             </Button>
+
+            <Link
+              href="/admin/notifications"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-primary hover:underline pr-1"
+            >
+              <span>View All Alerts & Logs</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </PopoverContent>
       </Popover>
@@ -351,6 +358,7 @@ export default function AdminNotificationPopover() {
       <NotificationSettingsDialog
         openControlled={isSettingsOpen}
         onOpenControlledChange={setIsSettingsOpen}
+        hideTriggerButton={true}
       />
     </>
   );

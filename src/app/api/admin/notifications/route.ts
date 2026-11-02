@@ -114,3 +114,29 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await verifyAdminAuth();
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ message: 'Notification ID is required' }, { status: 400 });
+    }
+
+    await Notification.deleteOne({ _id: id, forAdmin: true });
+    return NextResponse.json({ success: true, message: 'Notification deleted' });
+  } catch (error: any) {
+    console.error('Error deleting admin notification:', error);
+    return NextResponse.json(
+      { message: 'Failed to delete notification', error: error.message },
+      { status: 500 }
+    );
+  }
+}
