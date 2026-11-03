@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
     if (sessionUser?.user?.id) {
       const loggedUser = await User.findOne({ _id: sessionUser.user.id }).session(session);
-      if (loggedUser && loggedUser.role === 'user') {
+      if (loggedUser) {
         user = loggedUser;
       }
     }
