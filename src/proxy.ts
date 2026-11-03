@@ -26,6 +26,15 @@ function extractSubdomain(hostname: string): string | null {
   return null;
 }
 
+function getSafeRedirectUrl(req: any, path: string): URL {
+  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const forwardedProto = req.headers.get('x-forwarded-proto') || (req.url && req.url.startsWith('https:') ? 'https' : 'http');
+  if (forwardedHost && !forwardedHost.startsWith('localhost:') && forwardedHost !== 'localhost' && forwardedHost !== '127.0.0.1') {
+    return new URL(path, `${forwardedProto}://${forwardedHost}`);
+  }
+  return new URL(path, req.nextUrl);
+}
+
 export const proxy = auth(async (req) => {
   const { nextUrl } = req;
   const hostname = req.headers.get('host') || '';
@@ -124,7 +133,7 @@ export const proxy = auth(async (req) => {
   if (nextUrl.pathname === '/reseller-dashboard' || nextUrl.pathname.startsWith('/reseller-dashboard/')) {
     const sub = nextUrl.pathname.replace(/^\/reseller-dashboard/, '') || '/dashboard';
     const target = sub === '/' ? '/dashboard' : (sub.startsWith('/') ? sub : `/${sub}`);
-    return NextResponse.redirect(new URL(`/reseller${target}`, nextUrl));
+    return NextResponse.redirect(getSafeRedirectUrl(req, `/reseller${target}`));
   }
 
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
@@ -136,12 +145,12 @@ export const proxy = auth(async (req) => {
   if (isResellerRoute) {
     if (!isLoggedIn) {
       if (!isResellerRegisterPage) {
-        return NextResponse.redirect(new URL("/login", nextUrl));
+        return NextResponse.redirect(getSafeRedirectUrl(req, "/login"));
       }
     } else {
       // /reseller/register is open to any logged-in user (so customers can apply)
       if (!isResellerRegisterPage && (!role || !['reseller', 'admin', 'super_admin'].includes(role))) {
-        return NextResponse.redirect(new URL("/", nextUrl));
+        return NextResponse.redirect(getSafeRedirectUrl(req, "/"));
       }
     }
   }
@@ -149,22 +158,22 @@ export const proxy = auth(async (req) => {
   // ── 3. Redirect logged-in users away from auth pages ──────────────────────
   if (isAuthRoute && isLoggedIn) {
     if (role === "admin" || role === "super_admin" || role === "manager" || role === "moderator") {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/admin/dashboard"));
     }
     if (role === "reseller") {
-      return NextResponse.redirect(new URL("/reseller/dashboard", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/reseller/dashboard"));
     }
-    return NextResponse.redirect(new URL("/", nextUrl));
+    return NextResponse.redirect(getSafeRedirectUrl(req, "/"));
   }
 
   // ── 4. Admin route protection ──────────────────────────────────────────────
   if (isAdminRoute) {
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/login", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/login"));
     }
 
     if (role !== "admin" && role !== "super_admin" && role !== "manager" && role !== "moderator") {
-      return NextResponse.redirect(new URL("/", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/"));
     }
 
     if (role === "manager" || role === "moderator") {
@@ -193,26 +202,31 @@ export const proxy = auth(async (req) => {
         nextUrl.pathname === path || nextUrl.pathname.startsWith(path + "/")
       );
       if (!isPathAllowed) {
-        return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+        return NextResponse.redirect(getSafeRedirectUrl(req, "/admin/dashboard"));
       }
     }
 
     // /admin/system-design for super_admin and admin
     if (nextUrl.pathname.startsWith("/admin/system-design") && role !== "super_admin" && role !== "admin") {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/admin/dashboard"));
     }
   }
 
   // ── 5. /dashboard redirect ─────────────────────────────────────────────────
-  if (nextUrl.pathname === "/dashboard" || nextUrl.pathname.startsWith("/dashboard/")) {
+  // Note: /dashboard/wishlist is customer-facing and must never redirect away!
+  if (nextUrl.pathname === "/dashboard") {
     if (role === "admin" || role === "super_admin" || role === "manager" || role === "moderator") {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/admin/dashboard"));
     }
     if (role === "reseller") {
-      return NextResponse.redirect(new URL("/reseller/dashboard", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/reseller/dashboard"));
     }
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/login", nextUrl));
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/login"));
+    }
+  } else if (nextUrl.pathname.startsWith("/dashboard/") && nextUrl.pathname !== "/dashboard/wishlist") {
+    if (!isLoggedIn) {
+      return NextResponse.redirect(getSafeRedirectUrl(req, "/login"));
     }
   }
 

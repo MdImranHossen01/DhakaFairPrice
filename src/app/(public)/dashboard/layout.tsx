@@ -33,10 +33,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } else if (status === 'authenticated' && session?.user) {
       const role = (session.user as any)?.role;
       if (role === 'admin' || role === 'super_admin') {
-        router.push('/admin/dashboard');
+        if (pathname === '/dashboard') {
+          router.push('/admin/dashboard');
+        }
       }
     }
-  }, [status, session, router]);
+  }, [status, session, router, pathname]);
 
   if (status === 'loading') {
     return (
