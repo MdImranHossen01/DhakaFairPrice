@@ -68,6 +68,8 @@ jobs:
                 restart: unless-stopped
                 ports:
                   - "3004:3000"
+                environment:
+                  - NODE_OPTIONS=--max-old-space-size=125
                 env_file:
                   - .env.local
                 deploy:
