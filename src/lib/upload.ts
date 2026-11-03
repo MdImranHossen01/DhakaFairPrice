@@ -18,8 +18,8 @@ export async function uploadImageToR2(
   const {
     folder = 'products',
     compress = true,
-    maxSizeMB = 0.35, // ~350 KB target
-    maxWidthOrHeight = 1200,
+    maxSizeMB = 0.12, // ~100-120 KB target
+    maxWidthOrHeight = 1080,
   } = options;
 
   // 1. If it's a browser File and compression is enabled, compress to WebP
@@ -36,7 +36,7 @@ export async function uploadImageToR2(
           maxWidthOrHeight,
           useWebWorker: false,
           fileType: 'image/webp',
-          initialQuality: 0.82,
+          initialQuality: 0.78,
         };
 
         const compressedBlob = await imageCompression(file, compressionOptions);

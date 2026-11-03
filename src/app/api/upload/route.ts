@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
         const sharp = (await import('sharp')).default;
         buffer = await sharp(buffer)
           .rotate()
-          .webp({ quality: 82, effort: 4 })
+          .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 78, effort: 4 })
           .toBuffer();
         contentType = 'image/webp';
         ext = 'webp';
