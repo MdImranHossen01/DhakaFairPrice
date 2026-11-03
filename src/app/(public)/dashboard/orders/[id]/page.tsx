@@ -164,7 +164,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
             <div className="text-center p-8 md:p-20 space-y-4">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto opacity-20" />
                 <h2 className="text-xl md:text-2xl font-bold">Order Not Found</h2>
-                <Button onClick={() => router.push('/dashboard')}>Back to Orders</Button>
+                <Button onClick={() => router.push('/dashboard/orders')}>Back to Orders</Button>
             </div>
         );
     }
@@ -180,7 +180,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                     <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => router.push('/dashboard')}
+                        onClick={() => router.push('/dashboard/orders')}
                         className="rounded-lg h-9 w-9 shrink-0"
                     >
                         <ArrowLeft className="h-4 w-4" />

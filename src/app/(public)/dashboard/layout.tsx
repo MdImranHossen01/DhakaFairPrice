@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const navLinks = [
-    { href: '/dashboard', label: 'My Orders', icon: ShoppingBag, exact: true },
+    { href: '/dashboard/orders', label: 'My Orders', icon: ShoppingBag },
     { href: '/dashboard/wishlist', label: 'Wishlist', icon: Heart },
     { href: '/dashboard/profile', label: 'Profile Info', icon: UserIcon },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
@@ -97,7 +97,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Mobile Horizontal Scrollable Tab Bar */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 bg-muted/40 rounded-xl border border-border/60">
           {navLinks.map((item) => {
-            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+            const isActive = item.href === '/dashboard/orders'
+              ? (pathname === '/dashboard' || pathname === '/dashboard/orders' || pathname.startsWith('/dashboard/orders/'))
+              : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
@@ -145,11 +147,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <CardContent className="p-0">
               <nav className="flex flex-col">
                 <Link 
-                  href="/dashboard" 
+                  href="/dashboard/orders" 
                   className={cn(
                     buttonVariants({ variant: 'ghost' }),
                     "justify-start px-5 h-11 rounded-none border-l-4 w-full text-sm",
-                    pathname === '/dashboard' ? 'border-primary bg-muted/60 font-bold text-primary' : 'border-transparent text-muted-foreground'
+                    (pathname === '/dashboard' || pathname === '/dashboard/orders' || pathname.startsWith('/dashboard/orders/')) ? 'border-primary bg-muted/60 font-bold text-primary' : 'border-transparent text-muted-foreground'
                   )}
                 >
                   <ShoppingBag className="mr-3 h-4 w-4" /> My Orders

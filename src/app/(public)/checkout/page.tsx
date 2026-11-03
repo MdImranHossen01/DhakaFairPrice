@@ -1419,7 +1419,7 @@ function CheckoutContent() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setShowSuccessModal(false); router.push('/dashboard'); }}
+                onClick={() => { setShowSuccessModal(false); router.push('/dashboard/orders'); }}
                 className="w-full h-11 rounded-full font-bold"
               >
                 আমার অর্ডার দেখুন
