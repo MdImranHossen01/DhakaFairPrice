@@ -748,7 +748,7 @@ export async function POST(req: NextRequest) {
 
     // Instant Telegram & Web Push Notifications Alert
     try {
-      const { sendTelegramOrderNotification } = await import('@/lib/telegram');
+      const { sendTelegramOrderNotification, checkAndNotifyLowStock } = await import('@/lib/telegram');
       const { sendWebPushNotification } = await import('@/lib/webpush');
       const { createAdminNotification } = await import('@/lib/notifications');
       const itemsForNotification = Array.isArray(newOrder.items)
@@ -787,6 +787,10 @@ export async function POST(req: NextRequest) {
         customerNote: newOrder.customerNote,
         items: itemsForNotification,
       }).catch(err => console.error('[Telegram Alert Error]', err));
+
+      // Low Stock Instant Alert for Admin
+      const uniqueProductIdsForStock = Array.from(new Set(successfulDeductions.map(d => d.productId)));
+      checkAndNotifyLowStock(uniqueProductIdsForStock).catch(err => console.error('[Low Stock Telegram Alert Error]', err));
       sendWebPushNotification(
         {
           title: '🛒 নতুন অর্ডার #' + (newOrder.shortId || '') + '! (৳' + newOrder.totalAmount + ')',

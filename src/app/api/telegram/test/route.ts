@@ -3,7 +3,7 @@ import { sendTelegramOrderNotification } from '@/lib/telegram';
 
 export async function POST(req: NextRequest) {
   try {
-    const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
     const success = await sendTelegramOrderNotification({
       shortId: 'TEST-1234',
       name: 'টেস্ট কাস্টমার',

@@ -127,6 +127,21 @@ export async function POST(request: NextRequest) {
           link: '/reseller/wallet',
           sendPush: false,
         }).catch(err => console.error('[Payout Reseller Log Error]', err));
+
+        // Instant Telegram Alert for Reseller Payout Request
+        try {
+          const { sendTelegramPayoutNotification } = await import('@/lib/telegram');
+          sendTelegramPayoutNotification({
+            resellerStoreName: reseller.storeName || 'Reseller Store',
+            resellerName: reseller.pickupAddress?.contactPerson || session.user.name || reseller.storeName,
+            amount,
+            payoutMethod: method,
+            accountNumber: number,
+            balanceAfter: updatedReseller.walletBalance,
+          }).catch(err => console.error('[Payout Telegram Alert Error]', err));
+        } catch (tgErr) {
+          console.error('[Payout Telegram Alert Import Error]', tgErr);
+        }
       } catch (notifErr) {
         console.error('[Payout Notification Dispatch Error]', notifErr);
       }

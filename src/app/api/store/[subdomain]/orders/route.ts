@@ -616,7 +616,7 @@ export async function POST(
 
             // Instant Telegram & Web Push Notifications Alert for Reseller Store Order
       try {
-        const { sendTelegramOrderNotification } = await import('@/lib/telegram');
+        const { sendTelegramOrderNotification, checkAndNotifyLowStock } = await import('@/lib/telegram');
         const { sendWebPushNotification } = await import('@/lib/webpush');
         const { createAdminNotification, createNotification } = await import('@/lib/notifications');
         createAdminNotification({
@@ -663,6 +663,10 @@ export async function POST(
           customerNote: notes,
           items: itemsForNotification,
         }).catch(err => console.error('[Reseller Order Telegram Alert Error]', err));
+
+        // Low Stock Alert for Admin
+        const uniqueProductIdsForStock = Array.from(new Set(validatedItems.map(i => (i.productId?._id || i.productId).toString())));
+        checkAndNotifyLowStock(uniqueProductIdsForStock).catch(err => console.error('[Reseller Low Stock Telegram Alert Error]', err));
         sendWebPushNotification(
           {
             title: '🛒 নতুন অর্ডার #' + order.shortId + '! (৳' + calculatedFinalTotal + ')',

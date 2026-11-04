@@ -1,5 +1,6 @@
 /**
- * Telegram Instant Order Notification Helper
+ * Telegram Instant Notification Helper
+ * Handles Orders, Reseller Registrations, Payout Requests, and Low Stock Alerts.
  */
 
 export interface OrderNotificationData {
@@ -24,7 +25,35 @@ export interface OrderNotificationData {
   customerNote?: string;
 }
 
-export async function sendTelegramOrderNotification(data: OrderNotificationData): Promise<boolean> {
+export interface ResellerRegistrationNotificationData {
+  storeName: string;
+  subdomain: string;
+  name: string;
+  phone: string;
+  email?: string;
+  hubName?: string;
+  district?: string;
+  division?: string;
+  address?: string;
+}
+
+export interface PayoutNotificationData {
+  resellerStoreName: string;
+  resellerName?: string;
+  amount: number;
+  payoutMethod: string;
+  accountNumber: string;
+  balanceAfter?: number;
+}
+
+export interface LowStockNotificationData {
+  productId: string;
+  productName: string;
+  remainingStock: number;
+  variantName?: string;
+}
+
+async function sendTelegramMessage(message: string): Promise<boolean> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -33,8 +62,35 @@ export async function sendTelegramOrderNotification(data: OrderNotificationData)
     return false;
   }
 
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true,
+      }),
+    });
+
+    const resJson = await response.json();
+    if (!response.ok || !resJson.ok) {
+      console.error('[Telegram] API error:', resJson);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[Telegram] Request failed:', error);
+    return false;
+  }
+}
+
+export async function sendTelegramOrderNotification(data: OrderNotificationData): Promise<boolean> {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
 
   const nowFormatted = new Date().toLocaleString('bn-BD', {
     timeZone: 'Asia/Dhaka',
@@ -67,28 +123,118 @@ ${itemsSummary ? `\n📦 *আইটেমসমূহ:*\n${itemsSummary}\n` : ''
 ━━━━━━━━━━━━━━━━━━━━
 🔗 [ড্যাশবোর্ডে অর্ডার দেখুন](https://www.${rootDomain}/admin/orders)`;
 
+  return sendTelegramMessage(message);
+}
+
+export async function sendTelegramResellerNotification(data: ResellerRegistrationNotificationData): Promise<boolean> {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+
+  const nowFormatted = new Date().toLocaleString('bn-BD', {
+    timeZone: 'Asia/Dhaka',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  const locationParts = [data.hubName, data.address, data.district, data.division].filter(Boolean).join(', ');
+
+  const message = `👥 *নতুন রিসেলার আবেদন! (${storeName})*
+━━━━━━━━━━━━━━━━━━━━
+🏬 *দোকানের নাম:* ${data.storeName}
+🌐 *সাবডোমেন:* https://${data.subdomain}.${rootDomain}
+👤 *আবেদনকারী:* ${data.name}
+📞 *ফোন নম্বর:* ${data.phone}
+✉️ *ইমেইল:* ${data.email || 'N/A'}
+📍 *ঠিকানা / হাব:* ${locationParts || 'N/A'}
+⏰ *আবেদনের সময়:* ${nowFormatted}
+━━━━━━━━━━━━━━━━━━━━
+🔗 [রিসেলার অ্যাপ্লিকেশন রিভিউ করুন](https://www.${rootDomain}/admin/resellers)`;
+
+  return sendTelegramMessage(message);
+}
+
+export async function sendTelegramPayoutNotification(data: PayoutNotificationData): Promise<boolean> {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+
+  const nowFormatted = new Date().toLocaleString('bn-BD', {
+    timeZone: 'Asia/Dhaka',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  const message = `💸 *নতুন পেআউট/উইথড্র রিকোয়েস্ট! (${storeName})*
+━━━━━━━━━━━━━━━━━━━━
+🏬 *রিসেলার স্টোর:* ${data.resellerStoreName}
+👤 *রিসেলার নাম:* ${data.resellerName || 'N/A'}
+💰 *উইথড্র পরিমাণ:* ৳${(data.amount || 0).toLocaleString('en-BD')}
+💳 *পেমেন্ট মেথড:* ${(data.payoutMethod || 'Mobile Banking').toUpperCase()}
+🔢 *অ্যাকাউন্ট নম্বর:* ${data.accountNumber}
+💼 *অবশিষ্ট ব্যালেন্স:* ৳${(data.balanceAfter || 0).toLocaleString('en-BD')}
+⏰ *রিকোয়েস্ট টাইম:* ${nowFormatted}
+━━━━━━━━━━━━━━━━━━━━
+🔗 [পেআউট রিভিউ ও অনুমোদন করুন](https://www.${rootDomain}/admin/payouts)`;
+
+  return sendTelegramMessage(message);
+}
+
+export async function sendTelegramLowStockNotification(data: LowStockNotificationData): Promise<boolean> {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+
+  const nowFormatted = new Date().toLocaleString('bn-BD', {
+    timeZone: 'Asia/Dhaka',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  const stockStatus = data.remainingStock <= 0 
+    ? '❌ স্টক আউট (0)' 
+    : `⚠️ মাত্র ${data.remainingStock} টি বাকি!`;
+
+  const message = `⚠️ *লো স্টক অ্যালার্ট! (${storeName})*
+━━━━━━━━━━━━━━━━━━━━
+📦 *প্রোডাক্ট:* ${data.productName}${data.variantName ? ` (${data.variantName})` : ''}
+🔢 *অবশিষ্ট স্টক:* ${stockStatus}
+⏰ *অ্যালার্ট টাইম:* ${nowFormatted}
+━━━━━━━━━━━━━━━━━━━━
+🔗 [ইনভেন্টরি চেক ও রিস্টক করুন](https://www.${rootDomain}/admin/products)`;
+
+  return sendTelegramMessage(message);
+}
+
+export async function checkAndNotifyLowStock(productIds: string[]): Promise<void> {
+  if (!productIds || productIds.length === 0) return;
   try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: true,
-      }),
-    });
-
-    const resJson = await response.json();
-    if (!response.ok || !resJson.ok) {
-      console.error('[Telegram] API error:', resJson);
-      return false;
+    const Product = (await import('@/models/Product')).default;
+    const cleanIds = Array.from(new Set(productIds.filter(Boolean)));
+    const products = await Product.find({ _id: { $in: cleanIds } }).select('name stock variants');
+    for (const prod of products) {
+      if (Array.isArray(prod.variants) && prod.variants.length > 0) {
+        for (const v of prod.variants) {
+          const vStock = Number(v.stock) || 0;
+          if (vStock <= 5) {
+            const variantDesc = [v.size, v.color].filter(Boolean).join('/');
+            await sendTelegramLowStockNotification({
+              productId: prod._id.toString(),
+              productName: prod.name,
+              remainingStock: vStock,
+              variantName: variantDesc || undefined,
+            });
+          }
+        }
+      } else {
+        const pStock = Number(prod.stock) || 0;
+        if (pStock <= 5) {
+          await sendTelegramLowStockNotification({
+            productId: prod._id.toString(),
+            productName: prod.name,
+            remainingStock: pStock,
+          });
+        }
+      }
     }
-
-    return true;
-  } catch (error) {
-    console.error('[Telegram] Request failed:', error);
-    return false;
+  } catch (err) {
+    console.error('[Telegram Low Stock Check Error]', err);
   }
 }

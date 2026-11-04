@@ -173,6 +173,24 @@ export async function POST(request: NextRequest) {
         link: '/login',
         sendPush: false,
       });
+
+      // Instant Telegram Alert for New Reseller Application
+      try {
+        const { sendTelegramResellerNotification } = await import('@/lib/telegram');
+        sendTelegramResellerNotification({
+          storeName: newReseller.storeName,
+          subdomain: newReseller.subdomain,
+          name: resolvedContactPerson || name || session?.user?.name || storeName,
+          phone,
+          email: targetEmail,
+          hubName: resolvedHubName,
+          district: resolvedDistrict,
+          division: resolvedDivision,
+          address: resolvedAddress,
+        }).catch(err => console.error('[Reseller Telegram Alert Error]', err));
+      } catch (tgErr) {
+        console.error('[Reseller Telegram Alert Import Error]', tgErr);
+      }
     } catch (notifErr) {
       console.error('[Reseller Registration Notification Error]', notifErr);
     }
