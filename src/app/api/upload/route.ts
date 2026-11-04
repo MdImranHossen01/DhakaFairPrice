@@ -82,16 +82,16 @@ export async function POST(req: NextRequest) {
         const sharp = (await import('sharp')).default;
         let optimized = await sharp(buffer)
           .rotate()
-          .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 75, effort: 5 })
+          .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 76, effort: 5 })
           .toBuffer();
 
-        // If highly detailed image exceeds 120KB, adaptively adjust to keep in 80-120KB range
+        // If highly detailed image exceeds 125KB, adaptively adjust keeping quality at pristine 70%
         if (optimized.length > 125 * 1024) {
           optimized = await sharp(buffer)
             .rotate()
-            .resize({ width: 850, height: 850, fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 65, effort: 5 })
+            .resize({ width: 920, height: 920, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 70, effort: 5 })
             .toBuffer();
         }
 

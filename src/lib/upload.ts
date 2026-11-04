@@ -51,7 +51,7 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
       const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
       const filename = `${nameWithoutExt}.webp`;
 
-      // Pass 1: High quality WebP at 0.74 (Target: 80-100KB for typical e-commerce images)
+      // Pass 1: High quality WebP at 0.76 (Target: 80-110KB for typical e-commerce images)
       canvas.toBlob(
         (blob1) => {
           if (!blob1) return resolve(file);
@@ -59,15 +59,15 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
             return resolve(new File([blob1], filename, { type: 'image/webp' }));
           }
 
-          // Pass 2: High texture/detail image, slightly adjust quality to 0.65
+          // Pass 2: High texture/detail image, adjust quality to 0.70 (keeping quality pristine >= 70%)
           canvas.toBlob(
             (blob2) => {
               if (blob2 && blob2.size <= targetMaxKB * 1024) {
                 return resolve(new File([blob2], filename, { type: 'image/webp' }));
               }
 
-              // Pass 3: If still > 120KB, scale slightly to 850px @ 0.60
-              const scale = 0.85;
+              // Pass 3: If still over 120KB, scale gently to 920px @ 0.70
+              const scale = 0.92;
               const c2 = document.createElement('canvas');
               c2.width = Math.round(width * scale);
               c2.height = Math.round(height * scale);
@@ -82,18 +82,18 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
                     resolve(new File([finalBlob], filename, { type: 'image/webp' }));
                   },
                   'image/webp',
-                  0.60
+                  0.70
                 );
               } else {
                 resolve(new File([blob2 || blob1], filename, { type: 'image/webp' }));
               }
             },
             'image/webp',
-            0.65
+            0.70
           );
         },
         'image/webp',
-        0.74
+        0.76
       );
     };
 
