@@ -182,7 +182,7 @@ export function EditHeroDialog({ open, onOpenChange, heroData, onSave }: EditHer
                 value={formData.registerBtnText}
                 onChange={(e) => setFormData({ ...formData, registerBtnText: e.target.value })}
                 className="bg-slate-800 border-slate-700 text-white mt-1"
-                placeholder="Register Free as Reseller"
+                placeholder="Register as Reseller"
               />
             </div>
             <div>

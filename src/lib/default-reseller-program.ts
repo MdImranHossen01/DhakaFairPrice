@@ -7,7 +7,7 @@ export const DEFAULT_RESELLER_PROGRAM_DATA: IResellerProgramData = {
     titleHighlight: 'E-Commerce Brand',
     titlePart2: 'with Zero Risk',
     subheading: 'Source thousands of quality products at wholesale rates, set your prices, and earn instant profits. We handle sourcing, storage, packaging, and door-to-door delivery!',
-    registerBtnText: 'Register Free as Reseller',
+    registerBtnText: 'Register as Reseller',
     registerBtnLink: '/reseller/register',
     viewPackagesBtnText: 'View Packages & Pricing',
     viewPackagesBtnLink: '/reseller-program',
