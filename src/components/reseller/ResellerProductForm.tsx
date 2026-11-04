@@ -852,7 +852,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   <ul className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-1 list-disc list-inside text-[11px] leading-relaxed">
                     <li><strong>Close-up Shots:</strong> Frame product closely and centered; avoid tiny subject or far-away shots.</li>
                     <li><strong>Clean Background:</strong> Use bright lighting with neutral/light background for true colors & texture.</li>
-                    <li><strong>Square Ratio (1:1):</strong> 1:1 square (e.g. 1000×1000px) or 3:4 portrait ratio is recommended.</li>
+                    <li><strong>Ratio:</strong> 1:1 square or 3:4 portrait ratio is recommended.</li>
                   </ul>
                   <div className="flex items-center gap-1.5 text-destructive font-semibold text-[11px] bg-destructive/10 border border-destructive/20 rounded-md px-2.5 py-1.5 mt-1">
                     <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded">Recommendation</span>
@@ -899,10 +899,10 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                   <p className="text-xs text-muted-foreground mt-0.5">Set images and sizes for each color variant.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     className="bg-background hover:bg-muted text-xs transition-all border-primary/20"
                     onClick={autoGenerateAllVariantSkus}
                     title="Auto-generate or sync SKUs for all variations"
@@ -1209,7 +1209,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                             placeholder="0.00"
                             {...field}
                             value={field.value ?? ''}
-                           onChange={(e) => {
+                            onChange={(e) => {
                               const value = e.target.value === '' ? '' : (parseFloat(e.target.value) || 0);
                               field.onChange(value);
                               const prc = value === '' ? 0 : Number(value);
