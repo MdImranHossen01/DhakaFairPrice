@@ -105,8 +105,14 @@ export const proxy = auth(async (req) => {
       }
     }
 
+    const isStorefrontExemptPath = 
+      nextUrl.pathname === '/forgot-password' || 
+      nextUrl.pathname === '/reset-password';
+
     const rewrittenPath = isResellerPanelRoute
       ? `/store/${targetSubdomain}/reseller-panel${resellerSubPath}`
+      : isStorefrontExemptPath
+      ? nextUrl.pathname
       : `/store/${targetSubdomain}${nextUrl.pathname === '/' ? '' : nextUrl.pathname}`;
 
     const url = nextUrl.clone();

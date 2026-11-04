@@ -39,31 +39,74 @@ const escapeHtml = (text?: string | null): string => {
     .replace(/'/g, '&#039;');
 };
 
-export const sendResetEmail = async (email: string, token: string) => {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const encodedToken = encodeURIComponent(token);
-  const resetUrl = `${baseUrl}/reset-password?token=${encodedToken}`;
+export interface ResetEmailResellerContext {
+  storeName: string;
+  subdomain: string;
+  customDomain?: string;
+  logoUrl?: string;
+}
+
+export const sendResetEmail = async (
+  email: string,
+  token: string,
+  resellerContext?: ResetEmailResellerContext
+) => {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
   const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const encodedToken = encodeURIComponent(token);
+
+  let resetUrl: string;
+  if (resellerContext) {
+    if (resellerContext.customDomain) {
+      resetUrl = `https://${resellerContext.customDomain}/reset-password?token=${encodedToken}`;
+    } else if (resellerContext.subdomain && rootDomain) {
+      resetUrl = `https://${resellerContext.subdomain}.${rootDomain}/reset-password?token=${encodedToken}`;
+    } else {
+      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      resetUrl = `${baseUrl}/reset-password?token=${encodedToken}`;
+    }
+  } else {
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    resetUrl = `${baseUrl}/reset-password?token=${encodedToken}`;
+  }
+
+  // Extract raw email address from EMAIL_FROM or SMTP_USER
+  const senderAddress = process.env.EMAIL_FROM
+    ? (process.env.EMAIL_FROM.match(/<([^>]+)>/)?.[1] || process.env.EMAIL_FROM.trim())
+    : (process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@dhakafairprice.com');
+
+  const senderName = resellerContext
+    ? `${resellerContext.storeName} via ${brandName}`
+    : brandName;
+
+  const storeDisplayName = resellerContext ? resellerContext.storeName : brandName;
+  const subHeading = resellerContext ? `Powered by ${brandName}` : 'Your Trusted Online Platform';
 
   const mailOptions = {
-    from: getSenderEmail(),
+    from: `"${senderName}" <${senderAddress}>`,
     to: email,
-    subject: `Password Reset Request - ${brandName}`,
+    subject: `Password Reset Request - ${storeDisplayName}`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #ffffff;">
-        <h2 style="color: #0d9488; text-align: center; margin-bottom: 8px;">${escapeHtml(brandName)}</h2>
-        <p style="color: #475569; font-size: 15px;">Hello,</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          ${resellerContext?.logoUrl ? `
+            <img src="${escapeHtml(resellerContext.logoUrl)}" alt="${escapeHtml(storeDisplayName)}" style="max-height: 50px; margin-bottom: 8px; object-fit: contain;" />
+          ` : ''}
+          <h2 style="color: #0d9488; margin: 0; font-size: 22px;">${escapeHtml(storeDisplayName)}</h2>
+          ${resellerContext ? `<p style="font-size: 12px; color: #64748b; margin: 4px 0 0 0;">(Powered by ${escapeHtml(brandName)})</p>` : ''}
+        </div>
+        <p style="color: #334155; font-size: 15px; margin-top: 0;">Hello,</p>
         <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-          We received a request to reset your password. Click the button below to set a new password. This link will expire in 1 hour.
+          We received a request to reset your password for your account on <strong>${escapeHtml(storeDisplayName)}</strong>${resellerContext ? ` (operated on ${escapeHtml(brandName)} network)` : ''}. Click the button below to set a new password. This link will expire in 1 hour.
         </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${resetUrl}" style="background-color: #0d9488; color: #ffffff; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 14px;">
             Reset Password
           </a>
         </div>
-        <p style="color: #64748b; font-size: 13px;">If you didn't request this password reset, you can safely ignore this email.</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">${escapeHtml(brandName)} - Your Trusted Online Platform</p>
+        <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you didn't request this password reset, you can safely ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">${escapeHtml(storeDisplayName)} - ${escapeHtml(subHeading)}</p>
       </div>
     `,
   };

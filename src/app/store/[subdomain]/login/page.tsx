@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { signIn, useSession, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -117,7 +118,12 @@ export default function StoreLoginPage() {
               )} />
               <FormField control={form.control} name="password" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password <span className="text-xs font-normal text-muted-foreground">(Optional)</span></FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Password <span className="text-xs font-normal text-muted-foreground">(Optional)</span></FormLabel>
+                    <Link href="/forgot-password" className="text-xs text-primary hover:underline font-medium">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <FormControl>
                     <div className="relative">
                       <Input placeholder="••••••••" type={showPassword ? 'text' : 'password'} {...field} disabled={isLoading} className="h-11 focus-visible:ring-primary/20 pr-10" />

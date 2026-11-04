@@ -56,23 +56,54 @@ export async function getStorefrontReseller(req: NextRequest) {
     const cleanHost = host.split(':')[0].toLowerCase();
     const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || '').toLowerCase();
 
-    if (cleanHost && cleanHost !== 'localhost' && cleanHost !== '127.0.0.1' && !/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost)) {
-      if (rootDomain && cleanHost.endsWith(`.${rootDomain}`)) {
-        const sub = cleanHost.replace(`.${rootDomain}`, '');
+    const checkHost = async (h: string) => {
+      if (!h || h === 'localhost' || h === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return null;
+      if (rootDomain && h.endsWith(`.${rootDomain}`)) {
+        const sub = h.replace(`.${rootDomain}`, '');
         if (sub && !['www', 'admin', 'app', 'api', 'static', 'mail'].includes(sub)) {
           return await Reseller.findOne({ subdomain: sub, status: 'active' }).lean();
         }
-      } else if (!rootDomain || (cleanHost !== rootDomain && cleanHost !== `www.${rootDomain}`)) {
-        const withoutWww = cleanHost.replace(/^www\./, '');
+      } else if (!rootDomain || (h !== rootDomain && h !== `www.${rootDomain}`)) {
+        const withoutWww = h.replace(/^www\./, '');
         return await Reseller.findOne({
           $or: [
-            { customDomain: cleanHost },
+            { customDomain: h },
             { customDomain: withoutWww },
             { customDomain: `www.${withoutWww}` }
           ],
           status: 'active'
         }).lean();
       }
+      return null;
+    };
+
+    let reseller = await checkHost(cleanHost);
+    if (reseller) return reseller;
+
+    // Check Referer header if host didn't match (e.g. client fetch on reseller store)
+    const referer = req.headers.get('referer');
+    if (referer) {
+      try {
+        const refUrl = new URL(referer);
+        const refHost = refUrl.hostname.toLowerCase();
+        if (refHost && refHost !== cleanHost) {
+          reseller = await checkHost(refHost);
+          if (reseller) return reseller;
+        }
+      } catch {}
+    }
+
+    // Check Origin header if present
+    const origin = req.headers.get('origin');
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        const originHost = originUrl.hostname.toLowerCase();
+        if (originHost && originHost !== cleanHost) {
+          reseller = await checkHost(originHost);
+          if (reseller) return reseller;
+        }
+      } catch {}
     }
   } catch (err) {
     console.error('getStorefrontReseller error:', err);
