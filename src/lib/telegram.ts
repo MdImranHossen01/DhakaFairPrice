@@ -188,8 +188,8 @@ export async function sendTelegramLowStockNotification(data: LowStockNotificatio
     timeStyle: 'short',
   });
 
-  const stockStatus = data.remainingStock <= 0 
-    ? '❌ স্টক আউট (0)' 
+  const stockStatus = data.remainingStock <= 0
+    ? '❌ স্টক আউট (0)'
     : `⚠️ মাত্র ${data.remainingStock} টি বাকি!`;
 
   const message = `⚠️ *লো স্টক অ্যালার্ট! (${storeName})*
