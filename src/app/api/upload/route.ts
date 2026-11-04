@@ -80,11 +80,22 @@ export async function POST(req: NextRequest) {
     if (!isSvg && !isGif) {
       try {
         const sharp = (await import('sharp')).default;
-        buffer = await sharp(buffer)
+        let optimized = await sharp(buffer)
           .rotate()
-          .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 78, effort: 4 })
+          .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 75, effort: 5 })
           .toBuffer();
+
+        // If highly detailed image exceeds 120KB, adaptively adjust to keep in 80-120KB range
+        if (optimized.length > 125 * 1024) {
+          optimized = await sharp(buffer)
+            .rotate()
+            .resize({ width: 850, height: 850, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 65, effort: 5 })
+            .toBuffer();
+        }
+
+        buffer = optimized;
         contentType = 'image/webp';
         ext = 'webp';
       } catch (sharpErr) {
