@@ -474,6 +474,44 @@ export async function PATCH(
       
       const updatedMother = await Order.findByIdAndUpdate(order.motherOrderId, { $set: motherUpdate }, { new: true });
 
+      // Send Email 2 (Order Confirmed) or Email 3 (Order Delivered) to Customer
+      if (status && status !== order.status) {
+        const customerEmail = order.customer?.email || updatedMother?.shippingAddress?.email;
+        if (customerEmail && !customerEmail.endsWith('@store.com')) {
+          try {
+            const { sendCustomerOrderConfirmedEmail, sendCustomerOrderDeliveredEmail } = await import('@/lib/mail');
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+            const storeUrl = reseller.customDomain ? `https://${reseller.customDomain}` : `https://${reseller.subdomain}.${rootDomain}`;
+            const targetShortId = order.shortId || updatedMother?.shortId || order._id.toString().slice(-8).toUpperCase();
+            const targetTotal = order.totalAmount || updatedMother?.totalAmount || 0;
+
+            if (status === 'Confirmed') {
+              sendCustomerOrderConfirmedEmail({
+                email: customerEmail,
+                customerName: order.customer?.name || updatedMother?.shippingAddress?.fullName || 'Customer',
+                shortId: targetShortId,
+                totalAmount: targetTotal,
+                storeName: reseller.storeName || reseller.subdomain,
+                storeUrl,
+                trackingCode: order.shippingDetails?.trackingId || order.shippingDetails?.consignmentId || updatedMother?.shippingDetails?.trackingId,
+                courierName: order.shippingDetails?.courierName || updatedMother?.shippingDetails?.courierName,
+              }).catch(err => console.error('[Reseller Order Confirmed Mail Error]', err));
+            } else if (status === 'Delivered') {
+              sendCustomerOrderDeliveredEmail({
+                email: customerEmail,
+                customerName: order.customer?.name || updatedMother?.shippingAddress?.fullName || 'Customer',
+                shortId: targetShortId,
+                totalAmount: targetTotal,
+                storeName: reseller.storeName || reseller.subdomain,
+                storeUrl,
+              }).catch(err => console.error('[Reseller Order Delivered Mail Error]', err));
+            }
+          } catch (mailStatusErr) {
+            console.error('[Reseller Order Status Mail Error]', mailStatusErr);
+          }
+        }
+      }
+
       // Handle product sales counting on Mother Order
       const targetStatus = status || updatedMother?.status || order.status;
       const targetPayment = paymentStatus || updatedMother?.paymentStatus || order.paymentStatus;

@@ -36,6 +36,7 @@ import { resellerFbEvent, resellerTtEvent, waitForResellerPixel } from '@/lib/re
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'নাম আবশ্যক'),
   phone: z.string().regex(/^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/, 'সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)'),
+  email: z.string().email('সঠিক ইমেইল ঠিকানা দিন').or(z.literal('')).optional(),
   street: z.string().min(5, 'ঠিকানা আবশ্যক'),
   deliveryArea: z.enum(['inside', 'outside']),
   paymentMethod: z.string().min(1),
@@ -141,7 +142,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
   const form = useForm<CheckoutValues>({
     resolver: zodResolver(checkoutSchema),
     mode: 'onChange',
-    defaultValues: { deliveryArea: 'outside', paymentMethod: 'COD', notes: '' },
+    defaultValues: { deliveryArea: 'outside', paymentMethod: 'COD', notes: '', email: '' },
   });
 
   const deliveryArea = form.watch('deliveryArea');
@@ -518,7 +519,7 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
           customer: {
             name: values.fullName,
             phone: normalizedPhone,
-            email: customerProfile?.email || `${normalizedPhone}@store.com`,
+            email: values.email?.trim() || customerProfile?.email || undefined,
             address: { street: values.street, city: values.deliveryArea === 'inside' ? 'Dhaka' : 'Outside Dhaka' },
           },
           items: cart,
@@ -856,6 +857,27 @@ export function ResellerCheckout({ subdomain, storeInfo, resellerId }: Props) {
                               }
                             }}
                             className="h-11 focus-visible:ring-primary/20" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <span>ইমেইল অ্যাড্রেস</span>
+                          <span className="text-xs font-normal text-muted-foreground">(ঐচ্ছিক - ইনভয়েস ও অর্ডারের আপডেট পেতে)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="যেমন: name@example.com"
+                            {...field}
+                            className="h-11 focus-visible:ring-primary/20"
                           />
                         </FormControl>
                         <FormMessage />

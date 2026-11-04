@@ -430,6 +430,7 @@ export async function POST(
         shippingAddress: {
           fullName: customer.name,
           phone: customer.phone,
+          email: customer.email || undefined,
           street: customer.address?.street || '',
           city: customer.address?.city || '',
           state: customer.address?.city || '',
@@ -670,6 +671,42 @@ export async function POST(
           },
           { resellerId: reseller._id }
         ).catch(err => console.error('[Reseller Order WebPush Alert Error]', err));
+
+        // Send Order Confirmation Email to Customer (if valid email provided)
+        const customerEmail = customer.email;
+        if (customerEmail && !customerEmail.endsWith('@store.com')) {
+          const { sendCustomerOrderPlacedEmail } = await import('@/lib/mail');
+          const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+          const storeUrl = reseller.customDomain ? `https://${reseller.customDomain}` : `https://${subdomain}.${rootDomain}`;
+          sendCustomerOrderPlacedEmail({
+            email: customerEmail,
+            customerName: customer.name,
+            orderId: order._id?.toString(),
+            shortId: order.shortId,
+            items: validatedItems.map((it: any) => ({
+              name: it.name,
+              quantity: it.quantity,
+              price: it.retailPrice,
+              image: it.image,
+              color: it.color,
+              size: it.size,
+            })),
+            subtotal: calculatedSubtotal,
+            deliveryCharge: calculatedDeliveryCharge,
+            couponDiscount: couponDiscountAmount,
+            totalAmount: calculatedFinalTotal,
+            paymentMethod: paymentMethod || 'COD',
+            shippingAddress: {
+              fullName: customer.name,
+              phone: customer.phone,
+              street: customer.address?.street || '',
+              city: customer.address?.city || '',
+              division: customer.address?.division || '',
+            },
+            storeName: reseller.storeName || subdomain,
+            storeUrl,
+          }).catch(err => console.error('[Reseller Order Placed Customer Mail Error]', err));
+        }
       } catch (notifErr) {
         console.error('[Reseller Store Order Notification Error]', notifErr);
       }

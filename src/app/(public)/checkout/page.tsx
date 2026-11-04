@@ -45,6 +45,7 @@ import {
 const checkoutSchema = z.object({
   fullName: z.string().min(2, 'নাম আবশ্যক'),
   phone: z.string().regex(/^(?:\+88|88|\+৮৮|৮৮|0088|০০৮৮)?(?:01|০১)[3-9৩-৯][\d০-৯]{8}$/, 'সঠিক মোবাইল নম্বর দিন (যেমন: 01XXXXXXXXX)'),
+  email: z.string().email('সঠিক ইমেইল ঠিকানা দিন').or(z.literal('')).optional(),
   street: z.string().min(5, 'ঠিকানা আবশ্যক'),
   deliveryArea: z.enum(['inside', 'outside'], {
     message: 'ডেলিভারি এলাকা নির্বাচন করুন',
@@ -86,6 +87,7 @@ function CheckoutContent() {
     defaultValues: {
       fullName: '',
       phone: '',
+      email: '',
       street: '',
       deliveryArea: 'inside',
       paymentMethod: 'COD',
@@ -136,6 +138,7 @@ function CheckoutContent() {
             form.reset({
               fullName: profileData.name || '',
               phone: profileData.phone || '',
+              email: profileData.email || '',
               street: profileData.address || '',
               deliveryArea: (profileData.division?.toLowerCase().includes('dhaka') || profileData.district?.toLowerCase().includes('dhaka')) ? 'inside' : 'outside',
               paymentMethod: 'COD',
@@ -402,7 +405,7 @@ function CheckoutContent() {
         shippingAddress: {
           fullName: values.fullName,
           phone: cleanedPhone,
-          email: profile?.email || `${cleanedPhone}@store.com`,
+          email: values.email?.trim() || profile?.email || undefined,
           street: values.street,
           city: values.deliveryArea === 'inside' ? 'Dhaka' : 'Outside Dhaka',
           state: values.deliveryArea === 'inside' ? 'Dhaka' : 'Outside Dhaka',
@@ -839,6 +842,27 @@ function CheckoutContent() {
                                 form.setValue('phone', norm, { shouldValidate: true });
                               }
                             }}
+                            className="h-11 focus-visible:ring-primary/20"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1.5">
+                          <span>ইমেইল অ্যাড্রেস</span>
+                          <span className="text-xs font-normal text-muted-foreground">(ঐচ্ছিক - ইনভয়েস ও অর্ডারের আপডেট পেতে)</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="যেমন: name@example.com"
+                            {...field}
                             className="h-11 focus-visible:ring-primary/20"
                           />
                         </FormControl>

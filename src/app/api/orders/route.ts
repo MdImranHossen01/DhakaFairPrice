@@ -40,7 +40,7 @@ const orderSchema = z.object({
   shippingAddress: z.object({
     fullName: z.string().min(2, 'Full name is required'),
     phone: z.string().min(10, 'Invalid phone number'),
-    email: z.string().email('Invalid email address'),
+    email: z.string().email('Invalid email address').or(z.literal('')).optional().transform(v => v || undefined),
     street: z.string().min(1, 'Street is required'),
     city: z.string().min(1, 'City is required'),
     state: z.string().min(1, 'State is required'),
@@ -795,6 +795,39 @@ export async function POST(req: NextRequest) {
         },
         { isMotherOrder: true }
       ).catch(err => console.error('[WebPush Alert Error]', err));
+
+      // Send Order Confirmation Email to Customer (if valid email provided)
+      const customerEmail = shippingAddress.email;
+      if (customerEmail && !customerEmail.endsWith('@store.com')) {
+        const { sendCustomerOrderPlacedEmail } = await import('@/lib/mail');
+        sendCustomerOrderPlacedEmail({
+          email: customerEmail,
+          customerName: shippingAddress.fullName,
+          orderId: newOrder._id?.toString(),
+          shortId: newOrder.shortId,
+          items: validatedItems.map((it: any) => ({
+            name: it.name,
+            quantity: it.quantity,
+            price: it.price,
+            image: it.image,
+            color: it.color,
+            size: it.size,
+          })),
+          subtotal: baseTotal - serverComputedDeliveryCharge + (couponDiscountAmount || 0),
+          deliveryCharge: serverComputedDeliveryCharge,
+          couponDiscount: couponDiscountAmount,
+          totalAmount: baseTotal,
+          paymentMethod: newOrder.paymentMethod,
+          shippingAddress: {
+            fullName: shippingAddress.fullName,
+            phone: shippingAddress.phone,
+            street: shippingAddress.street,
+            city: shippingAddress.city,
+            division: shippingAddress.division,
+            thana: (shippingAddress as any).thana || shippingAddress.state || '',
+          },
+        }).catch(err => console.error('[Order Placed Customer Mail Error]', err));
+      }
     } catch (notifErr) {
       console.error('[Order Notification Error]', notifErr);
     }
