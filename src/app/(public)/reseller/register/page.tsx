@@ -7,19 +7,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
-import { 
-  Store, 
-  Loader2, 
-  CheckCircle2, 
-  User, 
-  Mail, 
-  Lock, 
-  Phone, 
-  MapPin, 
-  Sparkles, 
-  Globe, 
-  ArrowRight, 
-  Truck, 
+import {
+  Store,
+  Loader2,
+  CheckCircle2,
+  User,
+  Mail,
+  Lock,
+  Phone,
+  MapPin,
+  Sparkles,
+  Globe,
+  ArrowRight,
+  Truck,
   Building2,
   Eye,
   EyeOff,
@@ -52,19 +52,19 @@ function CosmicAuthBackground() {
   return (
     <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none bg-[#07080e]">
       {/* Cosmic Nebula Radial Glows */}
-      <div 
+      <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[550px] opacity-75 blur-3xl pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse at 50% 25%, rgba(20, 184, 166, 0.18) 0%, rgba(13, 148, 136, 0.10) 40%, rgba(6, 78, 59, 0.05) 65%, transparent 80%)'
         }}
       />
-      <div 
+      <div
         className="absolute top-1/4 right-0 w-[450px] h-[450px] opacity-35 blur-3xl pointer-events-none"
         style={{
           background: 'radial-gradient(circle, rgba(223, 178, 72, 0.15) 0%, transparent 70%)'
         }}
       />
-      <div 
+      <div
         className="absolute bottom-10 left-0 w-[500px] h-[500px] opacity-30 blur-3xl pointer-events-none"
         style={{
           background: 'radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, transparent 70%)'
@@ -72,16 +72,16 @@ function CosmicAuthBackground() {
       />
 
       {/* Hexagonal Honeycomb Geometric Mesh */}
-      <svg 
-        className="absolute inset-0 w-full h-full opacity-[0.14] pointer-events-none" 
+      <svg
+        className="absolute inset-0 w-full h-full opacity-[0.14] pointer-events-none"
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
       >
         <defs>
-          <pattern 
-            id="cosmic-hex-mesh-reseller" 
-            width="56" 
-            height="96.995" 
+          <pattern
+            id="cosmic-hex-mesh-reseller"
+            width="56"
+            height="96.995"
             patternUnits="userSpaceOnUse"
           >
             <path
@@ -258,16 +258,10 @@ export default function ResellerRegisterPage() {
       <div className="w-full max-w-4xl relative z-10 flex flex-col items-center">
         {/* Page Title: Metallic Gold BECOME A RESELLER with generous spacing */}
         <div className="text-center mb-8 md:mb-12 space-y-2">
-          <div className="inline-flex items-center gap-2 bg-[#dfb248]/10 border border-[#dfb248]/30 text-[#dfb248] text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full mb-1 shadow-[0_0_15px_rgba(223,178,72,0.15)]">
-            <Sparkles className="size-3.5 text-[#dfb248]" />
-            Official Reseller Program
-          </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-[0.14em] uppercase bg-gradient-to-b from-[#ffea9f] via-[#dfb248] to-[#9e7623] bg-clip-text text-transparent drop-shadow-[0_4px_25px_rgba(223,178,72,0.35)]">
             BECOME A RESELLER
           </h1>
-          <p className="text-xs sm:text-sm md:text-base text-neutral-400 max-w-xl mx-auto font-medium">
-            Launch your own branded e-commerce storefront with zero inventory risk and automated fulfillment.
-          </p>
+
 
           {isLoggedIn && session?.user && (
             <div className="inline-flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3.5 py-1 rounded-full mt-2">
@@ -605,15 +599,7 @@ export default function ResellerRegisterPage() {
           </form>
         </div>
 
-        {/* Security & Verification Badges */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-8 text-xs text-neutral-400 font-medium">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="size-4 text-[#dfb248]" /> 256-bit SSL Secure Encryption
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="size-4 text-[#dfb248]" /> Verified Dropshipping Architecture
-          </span>
-        </div>
+
       </div>
     </div>
   );
