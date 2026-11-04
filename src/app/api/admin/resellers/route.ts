@@ -119,6 +119,20 @@ export async function PATCH(request: NextRequest) {
           link: '/reseller/dashboard',
           sendPush: true,
         });
+
+        // Send Approval Email to Reseller
+        const resellerUser = await User.findById(updated.userId).select('email name').lean() as any;
+        const targetEmail = updated.contact?.email || resellerUser?.email;
+        if (targetEmail) {
+          const { sendResellerApprovalEmail } = await import('@/lib/mail');
+          sendResellerApprovalEmail({
+            email: targetEmail,
+            name: resellerUser?.name || updated.pickupAddress?.contactPerson || updated.storeName,
+            storeName: updated.storeName,
+            subdomain: updated.subdomain,
+            customDomain: updated.customDomain,
+          }).catch((mailErr) => console.error('[Reseller Approval Mail Error]', mailErr));
+        }
       } catch (e) {
         console.error('[Reseller Approval Notification Error]', e);
       }

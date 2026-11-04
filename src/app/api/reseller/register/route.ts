@@ -177,6 +177,40 @@ export async function POST(request: NextRequest) {
       console.error('[Reseller Registration Notification Error]', notifErr);
     }
 
+    // Send Welcome / Confirmation Email to Reseller
+    if (targetEmail) {
+      try {
+        const joiningDate = new Date().toLocaleString('en-US', {
+          timeZone: 'Asia/Dhaka',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }) + ' (BST)';
+
+        const { sendResellerWelcomeEmail } = await import('@/lib/mail');
+        sendResellerWelcomeEmail({
+          email: targetEmail,
+          name: resolvedContactPerson || name || session?.user?.name || storeName,
+          storeName: newReseller.storeName,
+          subdomain: newReseller.subdomain,
+          password: password || undefined,
+          phone,
+          hubName: resolvedHubName,
+          contactPerson: resolvedContactPerson,
+          division: resolvedDivision,
+          district: resolvedDistrict,
+          thana: resolvedThana,
+          address: resolvedAddress,
+          joiningDate,
+        }).catch((mailErr) => console.error('[Reseller Registration Mail Error]', mailErr));
+      } catch (mailTriggerErr) {
+        console.error('[Reseller Registration Mail Trigger Error]', mailTriggerErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Registration successful! Your store application is under review.',
