@@ -81,10 +81,10 @@ export async function POST(req: NextRequest) {
       try {
         const sharp = (await import('sharp')).default;
         const isBanner = folder === 'banners' || folder.includes('banner') || folder.includes('hero');
-        const maxDim = isBanner ? 2160 : 1080;
-        const targetSize = isBanner ? 450 * 1024 : 125 * 1024;
-        const initialQuality = isBanner ? 82 : 76;
-        const fallbackQuality = isBanner ? 75 : 70;
+        const maxDim = isBanner ? 2160 : 1200;
+        const targetSize = isBanner ? 450 * 1024 : 155 * 1024;
+        const initialQuality = 82;
+        const fallbackQuality = 78;
 
         let optimized = await sharp(buffer)
           .rotate()
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         if (optimized.length > targetSize) {
           optimized = await sharp(buffer)
             .rotate()
-            .resize({ width: Math.round(maxDim * 0.92), height: Math.round(maxDim * 0.92), fit: 'inside', withoutEnlargement: true })
+            .resize({ width: Math.round(maxDim * 0.94), height: Math.round(maxDim * 0.94), fit: 'inside', withoutEnlargement: true })
             .webp({ quality: fallbackQuality, effort: 5 })
             .toBuffer();
         }

@@ -61,8 +61,8 @@ export function ImageUpload({
     try {
       const isBanner = folder === 'banners' || (!compact && aspect === 'banner' && folder !== 'products');
       const uploadFolder = folder || (isBanner ? 'banners' : 'products');
-      const maxDim = maxWidthOrHeight ?? (isBanner ? 2100 : 1000);
-      const maxKB = targetMaxKB ?? (isBanner ? 400 : 120);
+      const maxDim = maxWidthOrHeight ?? (isBanner ? 2100 : 1200);
+      const maxKB = targetMaxKB ?? (isBanner ? 400 : 150);
 
       const url = await uploadImageToR2(file, {
         folder: uploadFolder,

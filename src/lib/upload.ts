@@ -15,13 +15,13 @@ interface UploadOptions {
 /**
  * Fast, adaptive client-side image compression to WebP.
  * Strictly guarantees size within targetMaxKB without quality degradation or loop freezes.
- * - Products: maxDim = 1000px, targetMaxKB = 120KB
- * - Banners / Hero: maxDim = 2100px, targetMaxKB = 400KB
+ * - Products: maxDim = 1200px, quality = 82% (0.82), targetMaxKB = 150KB
+ * - Banners / Hero: maxDim = 2100px, quality = 82% (0.82), targetMaxKB = 400KB
  */
 async function compressImageInBrowser(
   file: File, 
-  targetMaxKB = 120, 
-  maxDim = 1000
+  targetMaxKB = 150, 
+  maxDim = 1200
 ): Promise<File> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
@@ -57,8 +57,8 @@ async function compressImageInBrowser(
       const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
       const filename = `${nameWithoutExt}.webp`;
 
-      // Pass 1: High quality WebP (0.82 for wide banners, 0.76 for products)
-      const pass1Quality = maxDim > 1200 ? 0.82 : 0.76;
+      // Pass 1: Premium 82% WebP (Visually Lossless for sharp text & fine texture)
+      const pass1Quality = 0.82;
       canvas.toBlob(
         (blob1) => {
           if (!blob1) return resolve(file);
@@ -66,16 +66,16 @@ async function compressImageInBrowser(
             return resolve(new File([blob1], filename, { type: 'image/webp' }));
           }
 
-          // Pass 2: High texture/detail image, adjust quality (0.75 for banners, 0.70 for products)
-          const pass2Quality = maxDim > 1200 ? 0.75 : 0.70;
+          // Pass 2: High detail image exceeding targetMaxKB, adjust quality slightly to 0.78
+          const pass2Quality = 0.78;
           canvas.toBlob(
             (blob2) => {
               if (blob2 && blob2.size <= targetMaxKB * 1024) {
                 return resolve(new File([blob2], filename, { type: 'image/webp' }));
               }
 
-              // Pass 3: If still over target, scale gently to 92%
-              const scale = 0.92;
+              // Pass 3: If still over target, scale gently to 94%
+              const scale = 0.94;
               const c2 = document.createElement('canvas');
               c2.width = Math.round(width * scale);
               c2.height = Math.round(height * scale);
@@ -124,8 +124,8 @@ export async function uploadImageToR2(
   } = options;
 
   const isBanner = folder === 'banners' || folder.includes('banner') || folder.includes('hero');
-  const targetMaxKB = options.targetMaxKB ?? (isBanner ? 400 : 120);
-  const maxWidthOrHeight = options.maxWidthOrHeight ?? (isBanner ? 2100 : 1000);
+  const targetMaxKB = options.targetMaxKB ?? (isBanner ? 400 : 150);
+  const maxWidthOrHeight = options.maxWidthOrHeight ?? (isBanner ? 2100 : 1200);
 
   // 1. If it's a browser File and compression is enabled, compress to WebP
   let uploadFile: File | null = null;
