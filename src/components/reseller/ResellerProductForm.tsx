@@ -847,14 +847,17 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5 text-muted-foreground">
                   <div className="flex items-center gap-1.5 font-semibold text-primary">
                     <Info className="h-4 w-4 shrink-0" />
-                    <span>ছবি আপলোড গাইডলাইন (সেরা কোয়ালিটির জন্য)</span>
+                    <span>Image Upload Guidelines (For Best Quality & Zoom)</span>
                   </div>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 list-disc list-inside text-[11px] leading-relaxed">
-                    <li><strong>ক্লোজ-আপ শট:</strong> দূর থেকে নয়, প্রোডাক্টের কাছাকাছি ফ্রেম থেকে ছবি তুলুন।</li>
-                    <li><strong>ক্লিন ব্যাকগ্রাউন্ড:</strong> হালকা বা এক রঙের ব্যাকগ্রাউন্ডে প্রোডাক্ট মাঝে রাখলে জুমের সময় স্পষ্ট দেখাবে।</li>
-                    <li><strong>স্কয়ার রেশিও (1:1):</strong> ১:১ (স্কয়ার) বা ৩:৪ রেশিওর ছবি প্রোডাক্ট পেজের জন্য সবচেয়ে উপযোগী।</li>
-                    <li><strong>অটো অপটিমাইজেশন:</strong> ওয়েবসাইটের দ্রুতগতির জন্য প্রতিটি ছবি স্বয়ংক্রিয়ভাবে প্রিমিয়াম WebP-তে অপটিমাইজ হবে।</li>
+                  <ul className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-1 list-disc list-inside text-[11px] leading-relaxed">
+                    <li><strong>Close-up Shots:</strong> Frame product closely and centered; avoid tiny subject or far-away shots.</li>
+                    <li><strong>Clean Background:</strong> Use bright lighting with neutral/light background for true colors & texture.</li>
+                    <li><strong>Square Ratio (1:1):</strong> 1:1 square (e.g. 1000×1000px) or 3:4 portrait ratio is recommended.</li>
                   </ul>
+                  <div className="flex items-center gap-1.5 text-destructive font-semibold text-[11px] bg-destructive/10 border border-destructive/20 rounded-md px-2.5 py-1.5 mt-1">
+                    <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded">Recommendation</span>
+                    <span>Upload in <strong>.webp</strong> format to ensure 100% original sharpness, zero quality loss, and instant loading!</span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {form.watch('images').map((url, index) => (
