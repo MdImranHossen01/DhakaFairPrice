@@ -53,6 +53,14 @@ export interface LowStockNotificationData {
   variantName?: string;
 }
 
+export interface ProductSubmissionNotificationData {
+  resellerStoreName: string;
+  productName: string;
+  price: number;
+  stock?: number;
+  category?: string;
+}
+
 async function sendTelegramMessage(message: string): Promise<boolean> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -199,6 +207,28 @@ export async function sendTelegramLowStockNotification(data: LowStockNotificatio
 ⏰ *অ্যালার্ট টাইম:* ${nowFormatted}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 [ইনভেন্টরি চেক ও রিস্টক করুন](https://www.${rootDomain}/admin/products)`;
+
+  return sendTelegramMessage(message);
+}
+
+export async function sendTelegramProductNotification(data: ProductSubmissionNotificationData): Promise<boolean> {
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+
+  const nowFormatted = new Date().toLocaleString('bn-BD', {
+    timeZone: 'Asia/Dhaka',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  const message = `📦 *নতুন প্রডাক্ট অ্যাপ্রুভাল রিকোয়েস্ট! (${storeName})*
+━━━━━━━━━━━━━━━━━━━━
+🏬 *রিসেলার স্টোর:* ${data.resellerStoreName}
+🛍️ *প্রডাক্টের নাম:* ${data.productName}
+💰 *মূল্য:* ৳${(data.price || 0).toLocaleString('en-BD')}
+${data.stock !== undefined ? `🔢 *স্টক:* ${data.stock} টি\n` : ''}${data.category ? `🏷️ *ক্যাটাগরি:* ${data.category}\n` : ''}⏰ *সাবমিটের সময়:* ${nowFormatted}
+━━━━━━━━━━━━━━━━━━━━
+🔗 [প্রডাক্ট রিভিউ ও অনুমোদন করুন](https://www.${rootDomain}/admin/products)`;
 
   return sendTelegramMessage(message);
 }

@@ -213,6 +213,20 @@ export async function POST(request: NextRequest) {
         sendPush: true,
       });
 
+      // Instant Telegram Alert for New Product Submission
+      try {
+        const { sendTelegramProductNotification } = await import('@/lib/telegram');
+        sendTelegramProductNotification({
+          resellerStoreName: (resellerDoc as any)?.storeName || (resellerDoc as any)?.name || 'Reseller Store',
+          productName: newProduct.name,
+          price: retailPrice,
+          stock: newProduct.stock,
+          category: (newProduct as any)?.category?.name || undefined,
+        }).catch(err => console.error('[Product Telegram Alert Error]', err));
+      } catch (tgErr) {
+        console.error('[Product Telegram Alert Import Error]', tgErr);
+      }
+
       if (resellerDoc?.userId) {
         await createNotification({
           userId: resellerDoc.userId,
