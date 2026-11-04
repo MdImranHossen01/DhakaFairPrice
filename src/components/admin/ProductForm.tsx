@@ -29,7 +29,8 @@ import {
   Sparkles,
   Barcode,
   RefreshCw,
-  Video
+  Video,
+  Info
 } from 'lucide-react';
 
 const generateBaseSku = () => {
@@ -985,7 +986,21 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Gallery Images</Label>
+                  <Label className="text-base font-bold">Gallery Images</Label>
+                </div>
+
+                {/* Image Upload Best Practice Guideline */}
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1.5 text-muted-foreground">
+                  <div className="flex items-center gap-1.5 font-semibold text-primary">
+                    <Info className="h-4 w-4 shrink-0" />
+                    <span>ছবি আপলোড গাইডলাইন (সেরা কোয়ালিটির জন্য)</span>
+                  </div>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 list-disc list-inside text-[11px] leading-relaxed">
+                    <li><strong>ক্লোজ-আপ শট:</strong> দূর থেকে নয়, প্রোডাক্টের কাছাকাছি ফ্রেম থেকে ছবি তুলুন।</li>
+                    <li><strong>ক্লিন ব্যাকগ্রাউন্ড:</strong> হালকা বা এক রঙের ব্যাকগ্রাউন্ডে প্রোডাক্ট মাঝে রাখলে জুমের সময় স্পষ্ট দেখাবে।</li>
+                    <li><strong>স্কয়ার রেশিও (1:1):</strong> ১:১ (স্কয়ার) বা ৩:৪ রেশিওর ছবি প্রোডাক্ট পেজের জন্য সবচেয়ে উপযোগী।</li>
+                    <li><strong>অটো অপটিমাইজেশন:</strong> ওয়েবসাইটের দ্রুতগতির জন্য প্রতিটি ছবি স্বয়ংক্রিয়ভাবে প্রিমিয়াম WebP-তে অপটিমাইজ হবে।</li>
+                  </ul>
                 </div>
                 <div className="grid grid-cols-4 gap-4">
                   {form.watch('images').map((url, index) => (
