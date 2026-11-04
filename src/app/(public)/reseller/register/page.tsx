@@ -88,7 +88,7 @@ export default function ResellerRegisterPage() {
     try {
       const payload: any = {
         storeName: values.storeName.trim(),
-        subdomain: values.subdomain.toLowerCase().trim(),
+        subdomain: values.subdomain.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '').trim(),
         phone: values.phone.trim(),
         division: values.division,
         district: values.district,
@@ -275,6 +275,14 @@ export default function ResellerRegisterPage() {
                 <div className="flex items-center">
                   <Input
                     {...form.register('subdomain')}
+                    onChange={(e) => {
+                      const sanitized = e.target.value
+                        .toLowerCase()
+                        .replace(/\s+/g, '')
+                        .replace(/[^a-z0-9-]/g, '')
+                        .replace(/-+/g, '-');
+                      form.setValue('subdomain', sanitized, { shouldValidate: true });
+                    }}
                     placeholder="apextrends"
                     className="rounded-r-none border-r-0 font-medium"
                   />
@@ -285,7 +293,7 @@ export default function ResellerRegisterPage() {
                 {subdomainValue && (
                   <p className="text-[11px] text-primary mt-1 font-medium flex items-center gap-1">
                     <Globe className="h-3 w-3" />
-                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().trim()}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || ''}</strong>
+                    Your store URL will be: <strong>https://{subdomainValue.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '')}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || ''}</strong>
                   </p>
                 )}
                 {form.formState.errors.subdomain && (

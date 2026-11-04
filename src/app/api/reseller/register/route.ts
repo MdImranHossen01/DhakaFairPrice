@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Store name, subdomain, and phone number are required.' }, { status: 400 });
     }
 
-    const cleanSubdomain = subdomain.toLowerCase().trim();
+    const cleanSubdomain = subdomain.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9-]/g, '').trim();
     // Validate subdomain format (3-63 lowercase alphanumeric characters or hyphens)
     if (!/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(cleanSubdomain)) {
       return NextResponse.json({
