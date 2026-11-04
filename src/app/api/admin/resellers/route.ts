@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const resellers = await Reseller.find().populate('userId', 'name email').sort({ createdAt: -1 }).lean();
+  const resellers = await Reseller.find().populate('userId', 'name email phone').sort({ createdAt: -1 }).lean();
 
   return NextResponse.json({ resellers });
 }

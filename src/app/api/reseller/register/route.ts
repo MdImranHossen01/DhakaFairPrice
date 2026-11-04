@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
         }) + ' (BST)';
 
         const { sendResellerWelcomeEmail } = await import('@/lib/mail');
-        sendResellerWelcomeEmail({
+        await sendResellerWelcomeEmail({
           email: targetEmail,
           name: resolvedContactPerson || name || session?.user?.name || storeName,
           storeName: newReseller.storeName,
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
           thana: resolvedThana,
           address: resolvedAddress,
           joiningDate,
-        }).catch((mailErr) => console.error('[Reseller Registration Mail Error]', mailErr));
+        });
       } catch (mailTriggerErr) {
         console.error('[Reseller Registration Mail Trigger Error]', mailTriggerErr);
       }

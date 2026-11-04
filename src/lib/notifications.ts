@@ -51,7 +51,7 @@ export async function createNotification(params: CreateNotificationParams) {
         scope.targetUserId = params.userId.toString();
       }
 
-      sendWebPushNotification(
+      await sendWebPushNotification(
         {
           title: params.title,
           body: params.message,
