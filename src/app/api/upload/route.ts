@@ -80,18 +80,24 @@ export async function POST(req: NextRequest) {
     if (!isSvg && !isGif) {
       try {
         const sharp = (await import('sharp')).default;
+        const isBanner = folder === 'banners' || folder.includes('banner') || folder.includes('hero');
+        const maxDim = isBanner ? 2160 : 1080;
+        const targetSize = isBanner ? 450 * 1024 : 125 * 1024;
+        const initialQuality = isBanner ? 82 : 76;
+        const fallbackQuality = isBanner ? 75 : 70;
+
         let optimized = await sharp(buffer)
           .rotate()
-          .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 76, effort: 5 })
+          .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: initialQuality, effort: 5 })
           .toBuffer();
 
-        // If highly detailed image exceeds 125KB, adaptively adjust keeping quality at pristine 70%
-        if (optimized.length > 125 * 1024) {
+        // If highly detailed image exceeds targetSize, adaptively adjust keeping quality pristine
+        if (optimized.length > targetSize) {
           optimized = await sharp(buffer)
             .rotate()
-            .resize({ width: 920, height: 920, fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 70, effort: 5 })
+            .resize({ width: Math.round(maxDim * 0.92), height: Math.round(maxDim * 0.92), fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: fallbackQuality, effort: 5 })
             .toBuffer();
         }
 

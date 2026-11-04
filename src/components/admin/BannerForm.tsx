@@ -150,6 +150,10 @@ export function BannerForm({
                             value={field.value}
                             onUpload={(url) => field.onChange(url)}
                             className="aspect-[21/9] w-full"
+                            aspect="banner"
+                            folder="banners"
+                            maxWidthOrHeight={2100}
+                            targetMaxKB={400}
                           />
                         </FormControl>
                         <FormMessage />

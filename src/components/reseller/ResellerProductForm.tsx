@@ -855,7 +855,7 @@ export function ResellerProductForm({ initialData, onCancel, onSuccess }: Resell
                     <li><strong>Ratio:</strong> 1:1 square or 3:4 portrait ratio is recommended.</li>
                   </ul>
                   <div className="flex items-center gap-1.5 text-destructive font-semibold text-[11px] bg-destructive/10 border border-destructive/20 rounded-md px-2.5 py-1.5 mt-1">
-                    <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded">Recommendation</span>
+                    <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-white px-1.5 py-0.5 rounded">Recommendation</span>
                     <span>Upload in <strong>.webp</strong> format to ensure 100% original sharpness, zero quality loss, and instant loading!</span>
                   </div>
                 </div>

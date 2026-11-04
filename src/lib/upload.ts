@@ -9,13 +9,20 @@ interface UploadOptions {
   compress?: boolean;
   maxSizeMB?: number;
   maxWidthOrHeight?: number;
+  targetMaxKB?: number;
 }
 
 /**
  * Fast, adaptive client-side image compression to WebP.
- * Strictly guarantees size within 80-120 KB without quality degradation or loop freezes.
+ * Strictly guarantees size within targetMaxKB without quality degradation or loop freezes.
+ * - Products: maxDim = 1000px, targetMaxKB = 120KB
+ * - Banners / Hero: maxDim = 2100px, targetMaxKB = 400KB
  */
-async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<File> {
+async function compressImageInBrowser(
+  file: File, 
+  targetMaxKB = 120, 
+  maxDim = 1000
+): Promise<File> {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
       return resolve(file);
@@ -27,7 +34,6 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
       let { width, height } = img;
-      const maxDim = 1000;
       if (width > maxDim || height > maxDim) {
         if (width > height) {
           height = Math.round((height * maxDim) / width);
@@ -51,7 +57,8 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
       const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
       const filename = `${nameWithoutExt}.webp`;
 
-      // Pass 1: High quality WebP at 0.76 (Target: 80-110KB for typical e-commerce images)
+      // Pass 1: High quality WebP (0.82 for wide banners, 0.76 for products)
+      const pass1Quality = maxDim > 1200 ? 0.82 : 0.76;
       canvas.toBlob(
         (blob1) => {
           if (!blob1) return resolve(file);
@@ -59,14 +66,15 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
             return resolve(new File([blob1], filename, { type: 'image/webp' }));
           }
 
-          // Pass 2: High texture/detail image, adjust quality to 0.70 (keeping quality pristine >= 70%)
+          // Pass 2: High texture/detail image, adjust quality (0.75 for banners, 0.70 for products)
+          const pass2Quality = maxDim > 1200 ? 0.75 : 0.70;
           canvas.toBlob(
             (blob2) => {
               if (blob2 && blob2.size <= targetMaxKB * 1024) {
                 return resolve(new File([blob2], filename, { type: 'image/webp' }));
               }
 
-              // Pass 3: If still over 120KB, scale gently to 920px @ 0.70
+              // Pass 3: If still over target, scale gently to 92%
               const scale = 0.92;
               const c2 = document.createElement('canvas');
               c2.width = Math.round(width * scale);
@@ -82,18 +90,18 @@ async function compressImageInBrowser(file: File, targetMaxKB = 120): Promise<Fi
                     resolve(new File([finalBlob], filename, { type: 'image/webp' }));
                   },
                   'image/webp',
-                  0.70
+                  pass2Quality
                 );
               } else {
                 resolve(new File([blob2 || blob1], filename, { type: 'image/webp' }));
               }
             },
             'image/webp',
-            0.70
+            pass2Quality
           );
         },
         'image/webp',
-        0.76
+        pass1Quality
       );
     };
 
@@ -115,6 +123,10 @@ export async function uploadImageToR2(
     compress = true,
   } = options;
 
+  const isBanner = folder === 'banners' || folder.includes('banner') || folder.includes('hero');
+  const targetMaxKB = options.targetMaxKB ?? (isBanner ? 400 : 120);
+  const maxWidthOrHeight = options.maxWidthOrHeight ?? (isBanner ? 2100 : 1000);
+
   // 1. If it's a browser File and compression is enabled, compress to WebP
   let uploadFile: File | null = null;
   let contentType = 'image/jpeg';
@@ -123,7 +135,7 @@ export async function uploadImageToR2(
   if (typeof window !== 'undefined' && file instanceof File) {
     if (compress && file.type.startsWith('image/') && !file.type.includes('svg') && !file.type.includes('gif')) {
       try {
-        uploadFile = await compressImageInBrowser(file, 120);
+        uploadFile = await compressImageInBrowser(file, targetMaxKB, maxWidthOrHeight);
         contentType = uploadFile.type || 'image/webp';
         filename = uploadFile.name || 'image.webp';
       } catch (compErr) {

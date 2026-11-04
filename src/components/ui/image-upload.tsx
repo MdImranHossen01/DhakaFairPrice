@@ -18,9 +18,23 @@ interface ImageUploadProps {
   iconClassName?: string;
   compact?: boolean;
   aspect?: "square" | "video" | "banner";
+  folder?: string;
+  maxWidthOrHeight?: number;
+  targetMaxKB?: number;
 }
 
-export function ImageUpload({ onUpload, value, label, className, iconClassName, compact, aspect = "banner" }: ImageUploadProps) {
+export function ImageUpload({ 
+  onUpload, 
+  value, 
+  label, 
+  className, 
+  iconClassName, 
+  compact, 
+  aspect = "banner",
+  folder,
+  maxWidthOrHeight,
+  targetMaxKB
+}: ImageUploadProps) {
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const generatedId = useId();
@@ -45,7 +59,16 @@ export function ImageUpload({ onUpload, value, label, className, iconClassName, 
 
     setLoading(true);
     try {
-      const url = await uploadImageToR2(file);
+      const isBanner = folder === 'banners' || (!compact && aspect === 'banner' && folder !== 'products');
+      const uploadFolder = folder || (isBanner ? 'banners' : 'products');
+      const maxDim = maxWidthOrHeight ?? (isBanner ? 2100 : 1000);
+      const maxKB = targetMaxKB ?? (isBanner ? 400 : 120);
+
+      const url = await uploadImageToR2(file, {
+        folder: uploadFolder,
+        maxWidthOrHeight: maxDim,
+        targetMaxKB: maxKB,
+      });
       onUpload(url);
       toast.success('Image uploaded successfully');
     } catch (error: any) {
