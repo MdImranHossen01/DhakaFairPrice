@@ -80,17 +80,22 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
     try {
       const conn = await (await import('@/lib/db')).default();
       const ProductModel = (await import('@/models/Product')).default;
-      const resellerProduct = await ProductModel.findOne({ slug, isPublished: true })
+      const decodedSlug = decodeURIComponent(slug);
+      const isObjId = /^[0-9a-fA-F]{24}$/.test(decodedSlug);
+      const fallbackFilter = isObjId
+        ? { $or: [{ slug: decodedSlug }, { slug }, { _id: decodedSlug }] }
+        : { $or: [{ slug: decodedSlug }, { slug }] };
+      const resellerProduct = await ProductModel.findOne(fallbackFilter)
         .populate('uploadedBy', 'subdomain customDomain')
         .lean() as any;
 
-      if (resellerProduct && resellerProduct.uploadedBy) {
+      if (resellerProduct && resellerProduct.uploadedBy && (resellerProduct.uploadedBy.customDomain || resellerProduct.uploadedBy.subdomain)) {
         const { redirect } = await import('next/navigation');
         const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
         const storeDomain = resellerProduct.uploadedBy.customDomain?.replace(/^https?:\/\//, '').replace(/\/+$/, '')
           || `${resellerProduct.uploadedBy.subdomain}.${rootDomain}`;
         const previewQuery = resellerProduct.isApprovedByAdmin ? '' : '?preview=true';
-        redirect(`https://${storeDomain}/product/${slug}${previewQuery}`);
+        redirect(`https://${storeDomain}/product/${resellerProduct.slug || slug}${previewQuery}`);
       }
     } catch (e: any) {
       if (e?.digest?.startsWith('NEXT_REDIRECT')) throw e;

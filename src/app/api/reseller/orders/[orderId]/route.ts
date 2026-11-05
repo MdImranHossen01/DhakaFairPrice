@@ -46,7 +46,7 @@ export async function GET(
       })
       .populate({
         path: 'items.productId',
-        select: 'name uploadedBy isMotherProduct image retailPrice price',
+        select: 'name slug uploadedBy isMotherProduct image retailPrice price',
         populate: {
           path: 'uploadedBy',
           select: 'storeName subdomain customDomain'

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -1222,21 +1223,35 @@ function OrdersContent() {
                           {order.items?.map((item: any, idx: number) => {
                             const uploader = item.uploadedBy || item.product?.uploadedBy;
                             const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                            const productObj = typeof item.product === 'object' && item.product ? item.product : null;
+                            const productSlugOrId = item.slug || productObj?.slug || productObj?._id || (typeof item.product === 'string' ? item.product : null);
+                            const itemHref = productSlugOrId
+                              ? `/product/${encodeURIComponent(String(productSlugOrId))}`
+                              : `/shop?search=${encodeURIComponent(item.name || '')}`;
                             return (
-                              <Badge key={idx} variant="outline" className="text-xs px-2 py-1 font-medium whitespace-normal break-words inline-block text-left h-auto leading-snug">
-                                <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
-                                <span>{item.name}</span>
-                                {(item.color || item.size) && (
-                                  <span className="text-muted-foreground ml-1 font-normal">
-                                    ({[item.color, item.size].filter(Boolean).join('/')})
-                                  </span>
-                                )}
-                                {uploaderName && (
-                                  <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
-                                    🏷️ Source: {uploaderName}
-                                  </span>
-                                )}
-                              </Badge>
+                              <Link
+                                key={idx}
+                                href={itemHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group inline-block w-full"
+                                title={`View product: ${item.name}`}
+                              >
+                                <Badge variant="outline" className="text-xs px-2 py-1 font-medium whitespace-normal break-words inline-block text-left h-auto leading-snug w-full cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-colors">
+                                  <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                                  <span className="group-hover:text-primary group-hover:underline transition-colors">{item.name}</span>
+                                  {(item.color || item.size) && (
+                                    <span className="text-muted-foreground ml-1 font-normal">
+                                      ({[item.color, item.size].filter(Boolean).join('/')})
+                                    </span>
+                                  )}
+                                  {uploaderName && (
+                                    <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
+                                      🏷️ Source: {uploaderName}
+                                    </span>
+                                  )}
+                                </Badge>
+                              </Link>
                             );
                           })}
                         </div>
@@ -1508,21 +1523,35 @@ function OrdersContent() {
                     {order.items?.map((item: any, idx: number) => {
                       const uploader = item.uploadedBy || item.product?.uploadedBy;
                       const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                      const productObj = typeof item.product === 'object' && item.product ? item.product : null;
+                      const productSlugOrId = item.slug || productObj?.slug || productObj?._id || (typeof item.product === 'string' ? item.product : null);
+                      const itemHref = productSlugOrId
+                        ? `/product/${encodeURIComponent(String(productSlugOrId))}`
+                        : `/shop?search=${encodeURIComponent(item.name || '')}`;
                       return (
-                        <Badge key={idx} variant="outline" className="text-[11px] px-2 py-0.5 font-normal whitespace-normal break-words inline-block text-left h-auto leading-tight">
-                          <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
-                          <span>{item.name}</span>
-                          {(item.color || item.size) && (
-                            <span className="text-muted-foreground ml-1">
-                              ({[item.color, item.size].filter(Boolean).join('/')})
-                            </span>
-                          )}
-                          {uploaderName && (
-                            <span className="ml-1 text-[9px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1 py-0.2 rounded font-bold">
-                              🏷️ {uploaderName}
-                            </span>
-                          )}
-                        </Badge>
+                        <Link
+                          key={idx}
+                          href={itemHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-block w-full"
+                          title={`View product: ${item.name}`}
+                        >
+                          <Badge variant="outline" className="text-[11px] px-2 py-0.5 font-normal whitespace-normal break-words inline-block text-left h-auto leading-tight w-full cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-colors">
+                            <span className="font-semibold text-primary mr-1">{item.quantity}×</span>
+                            <span className="group-hover:text-primary group-hover:underline transition-colors">{item.name}</span>
+                            {(item.color || item.size) && (
+                              <span className="text-muted-foreground ml-1">
+                                ({[item.color, item.size].filter(Boolean).join('/')})
+                              </span>
+                            )}
+                            {uploaderName && (
+                              <span className="ml-1 text-[9px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1 py-0.2 rounded font-bold">
+                                🏷️ {uploaderName}
+                              </span>
+                            )}
+                          </Badge>
+                        </Link>
                       );
                     })}
                   </div>

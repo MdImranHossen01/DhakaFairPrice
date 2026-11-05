@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -1193,18 +1194,31 @@ export default function OrderDetailsDialog({
             <div className="space-y-4">
               <h4 className="text-sm font-bold uppercase text-muted-foreground">Order Items</h4>
               <div className="space-y-3">
-                {(order.items || []).map((item: any, i: number) => (
+                {(order.items || []).map((item: any, i: number) => {
+                  const productObj = typeof item.product === 'object' && item.product ? item.product : null;
+                  const productSlugOrId = item.slug || productObj?.slug || productObj?._id || (typeof item.product === 'string' ? item.product : null);
+                  const itemHref = productSlugOrId
+                    ? `/product/${encodeURIComponent(String(productSlugOrId))}`
+                    : `/shop?search=${encodeURIComponent(item.name || '')}`;
+                  return (
                   <div key={item._id || item.id || i} className="flex items-center justify-between text-sm gap-4">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="h-12 w-12 rounded border overflow-hidden bg-muted flex-shrink-0">
+                      <Link href={itemHref} target="_blank" rel="noopener noreferrer" className="h-12 w-12 rounded border overflow-hidden bg-muted flex-shrink-0 hover:opacity-80 transition-opacity">
                          {item.image ? (
                              <Image src={item.image} alt={item.name} width={48} height={48} className="h-full w-full object-cover" />
                          ) : (
                              <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">No Img</div>
                          )}
-                      </div>
+                      </Link>
                       <div className="flex flex-col">
-                        <span className="font-medium whitespace-normal break-words leading-snug">{item.name}</span>
+                        <Link
+                          href={itemHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium whitespace-normal break-words leading-snug hover:text-primary hover:underline transition-colors w-fit"
+                        >
+                          {item.name}
+                        </Link>
                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
                           {item.color && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">{item.color}</Badge>}
                           {item.size && <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-muted/50">Size: {item.size}</Badge>}
@@ -1235,7 +1249,8 @@ export default function OrderDetailsDialog({
                       ৳{Math.round(Number(item.price || 0) * (item.quantity || 0))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               
               {/* Financial Breakdown & Bill Summary */}

@@ -63,10 +63,17 @@ export const getCachedProductBySlug = (slug: string) => {
   return unstable_cache(
     async () => {
       await connectToDatabase();
+      const decodedSlug = decodeURIComponent(slug);
+      const isObjId = /^[0-9a-fA-F]{24}$/.test(decodedSlug);
+      const slugCondition = isObjId
+        ? { $or: [{ slug: decodedSlug }, { slug }, { _id: decodedSlug }] }
+        : { $or: [{ slug: decodedSlug }, { slug }] };
       const product = await Product.findOne({
-        slug,
-        isPublished: true,
-        ...MOTHER_SHOP_PRODUCT_FILTER,
+        $and: [
+          slugCondition,
+          { isPublished: true },
+          MOTHER_SHOP_PRODUCT_FILTER,
+        ],
       })
         .populate('categories')
         .populate('brand')

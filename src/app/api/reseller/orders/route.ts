@@ -120,11 +120,15 @@ export async function GET(request: NextRequest) {
         })
         .populate({
           path: 'items.productId',
-          select: 'name uploadedBy isMotherProduct',
+          select: 'name slug uploadedBy isMotherProduct',
           populate: {
             path: 'uploadedBy',
             select: 'storeName subdomain customDomain'
           }
+        })
+        .populate({
+          path: 'items.resellerProductId',
+          select: 'slug productId'
         })
         .lean(),
       ResellerOrder.countDocuments(query),

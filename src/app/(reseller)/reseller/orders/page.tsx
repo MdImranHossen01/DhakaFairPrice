@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -751,17 +752,30 @@ function OrdersContent() {
                               const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
                               const uploader = item.uploadedBy || item.productId?.uploadedBy;
                               const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                              const prodObj = typeof item.productId === 'object' && item.productId ? item.productId : null;
+                              const rpObj = typeof item.resellerProductId === 'object' && item.resellerProductId ? item.resellerProductId : null;
+                              const productSlugOrId = item.slug || prodObj?.slug || rpObj?.slug || prodObj?._id || (typeof item.productId === 'string' ? item.productId : null) || rpObj?.productId;
+                              const itemHref = productSlugOrId
+                                ? `/product/${encodeURIComponent(String(productSlugOrId))}`
+                                : `/shop?search=${encodeURIComponent(item.name || '')}`;
                               return (
-                                <div key={item._id || item.id || i} className="text-xs bg-muted/40 p-1.5 rounded-md border font-medium whitespace-normal break-words leading-snug" title={item.name}>
+                                <Link
+                                  key={item._id || item.id || i}
+                                  href={itemHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group text-xs bg-muted/40 hover:bg-primary/5 hover:border-primary/50 p-1.5 rounded-md border font-medium whitespace-normal break-words leading-snug transition-colors block"
+                                  title={`View product: ${item.name}`}
+                                >
                                   <span className="font-semibold text-primary mr-1">{item.quantity}x</span>{' '}
-                                  <span className="font-bold text-foreground">{item.name}</span>
+                                  <span className="font-bold text-foreground group-hover:text-primary group-hover:underline transition-colors">{item.name}</span>
                                   {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
                                   {uploaderName && (
                                     <span className="ml-1.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1.5 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
                                       🏷️ Source: {uploaderName}
                                     </span>
                                   )}
-                                </div>
+                                </Link>
                               );
                             })}
 
@@ -971,17 +985,30 @@ function OrdersContent() {
                           const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
                           const uploader = item.uploadedBy || item.productId?.uploadedBy;
                           const uploaderName = typeof uploader === 'object' && uploader?.storeName ? uploader.storeName : null;
+                          const prodObj = typeof item.productId === 'object' && item.productId ? item.productId : null;
+                          const rpObj = typeof item.resellerProductId === 'object' && item.resellerProductId ? item.resellerProductId : null;
+                          const productSlugOrId = item.slug || prodObj?.slug || rpObj?.slug || prodObj?._id || (typeof item.productId === 'string' ? item.productId : null) || rpObj?.productId;
+                          const itemHref = productSlugOrId
+                            ? `/product/${encodeURIComponent(String(productSlugOrId))}`
+                            : `/shop?search=${encodeURIComponent(item.name || '')}`;
                           return (
-                            <div key={item._id || item.id || i} className="text-[11px] bg-muted/40 p-1.5 rounded border font-medium whitespace-normal break-words leading-tight">
+                            <Link
+                              key={item._id || item.id || i}
+                              href={itemHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group text-[11px] bg-muted/40 hover:bg-primary/5 hover:border-primary/50 p-1.5 rounded border font-medium whitespace-normal break-words leading-tight transition-colors block"
+                              title={`View product: ${item.name}`}
+                            >
                               <span className="font-semibold text-primary mr-1">{item.quantity}x</span>
-                              <span className="font-bold text-foreground">{item.name}</span>
+                              <span className="font-bold text-foreground group-hover:text-primary group-hover:underline transition-colors">{item.name}</span>
                               {variantDesc && <span className="text-muted-foreground ml-1 font-normal">({variantDesc})</span>}
                               {uploaderName && (
                                 <span className="ml-1.5 text-[9px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-1 py-0.2 rounded font-bold border border-purple-200 dark:border-purple-800">
                                   🏷️ {uploaderName}
                                 </span>
                               )}
-                            </div>
+                            </Link>
                           );
                         })}
 

@@ -1186,7 +1186,7 @@ export async function GET(req: NextRequest) {
       .populate('storefrontResellerId', 'storeName subdomain customDomain')
       .populate({
         path: 'items.product',
-        select: 'name uploadedBy',
+        select: 'name slug isMotherProduct uploadedBy',
         populate: {
           path: 'uploadedBy',
           select: 'storeName subdomain customDomain',
