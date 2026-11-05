@@ -44,7 +44,6 @@ export function NotificationSettingsDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = isControlled ? openControlled : internalOpen;
   const setIsOpen = isControlled ? (onOpenControlledChange || (() => {})) : setInternalOpen;
-  const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isTestingPush, setIsTestingPush] = useState(false);
@@ -72,25 +71,29 @@ export function NotificationSettingsDialog({
   }
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setPermission(Notification.permission);
-      checkExistingSubscription();
-    }
-  }, []);
-
-  const checkExistingSubscription = async () => {
-    try {
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        if (reg) {
-          const sub = await reg.pushManager.getSubscription();
-          setIsSubscribed(!!sub);
+    let active = true;
+    const checkExistingSubscription = async () => {
+      try {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && active) {
+            const sub = await reg.pushManager.getSubscription();
+            if (active) setIsSubscribed(!!sub);
+          }
         }
+      } catch (e) {
+        console.error("Error checking subscription:", e);
       }
-    } catch (e) {
-      console.error("Error checking subscription:", e);
+    };
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      void checkExistingSubscription();
     }
-  };
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubscribePush = async () => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
@@ -102,7 +105,6 @@ export function NotificationSettingsDialog({
     try {
       // 1. Request browser permission
       const result = await Notification.requestPermission();
-      setPermission(result);
 
       if (result !== "granted") {
         toast.error("Notification permission denied. Please allow notifications in your browser settings.");
@@ -113,7 +115,7 @@ export function NotificationSettingsDialog({
       let reg: ServiceWorkerRegistration;
       try {
         reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      } catch (e) {
+      } catch {
         reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
       }
       await navigator.serviceWorker.ready;
