@@ -133,6 +133,7 @@ export default function ResellerRegisterPage() {
   const subdomainValue = form.watch('subdomain');
   const selectedDivision = form.watch('division');
   const selectedDistrict = form.watch('district');
+  const selectedThana = form.watch('thana');
 
   const availableDistricts = selectedDivision ? getDistrictsByDivision(selectedDivision) : [];
   const availableThanas = selectedDistrict ? getThanasByDistrict(selectedDistrict) : [];
@@ -140,14 +141,22 @@ export default function ResellerRegisterPage() {
   const handleDivisionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     form.setValue('division', val, { shouldValidate: true });
-    form.setValue('district', '', { shouldValidate: true });
-    form.setValue('thana', '', { shouldValidate: true });
+    form.setValue('district', '', { shouldValidate: false });
+    form.setValue('thana', '', { shouldValidate: false });
+    form.clearErrors(['district', 'thana']);
   };
 
   const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     form.setValue('district', val, { shouldValidate: true });
-    form.setValue('thana', '', { shouldValidate: true });
+    form.setValue('thana', '', { shouldValidate: false });
+    form.clearErrors('thana');
+  };
+
+  const handleThanaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    form.setValue('thana', val, { shouldValidate: true });
+    if (val) form.clearErrors('thana');
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -261,7 +270,6 @@ export default function ResellerRegisterPage() {
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-[0.14em] uppercase bg-gradient-to-b from-[#ffea9f] via-[#dfb248] to-[#9e7623] bg-clip-text text-transparent drop-shadow-[0_4px_25px_rgba(223,178,72,0.35)]">
             BECOME A RESELLER
           </h1>
-
 
           {isLoggedIn && session?.user && (
             <div className="inline-flex items-center gap-2 bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3.5 py-1 rounded-full mt-2">
@@ -512,7 +520,8 @@ export default function ResellerRegisterPage() {
                   </label>
                   <div className="relative flex items-center bg-[#07080c] border border-neutral-800 rounded-xl px-4 py-3.5 focus-within:border-[#dfb248] transition-all">
                     <select
-                      {...form.register('thana')}
+                      value={selectedThana}
+                      onChange={handleThanaChange}
                       disabled={!selectedDistrict}
                       className="w-full bg-transparent text-white text-sm md:text-base outline-none appearance-none cursor-pointer font-medium disabled:text-neutral-500 disabled:cursor-not-allowed"
                     >
