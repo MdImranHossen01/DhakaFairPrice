@@ -750,7 +750,7 @@ export async function POST(req: NextRequest) {
     try {
       const { sendTelegramOrderNotification, checkAndNotifyLowStock } = await import('@/lib/telegram');
       const { sendWebPushNotification } = await import('@/lib/webpush');
-      const { createAdminNotification } = await import('@/lib/notifications');
+      const { createAdminNotification, createNotification } = await import('@/lib/notifications');
       const itemsForNotification = Array.isArray(newOrder.items)
         ? newOrder.items.map((it: any) => ({
             name: it.name,
@@ -767,6 +767,28 @@ export async function POST(req: NextRequest) {
         link: '/admin/orders',
         sendPush: false,
       }).catch(err => console.error('[Order Admin Notification Error]', err));
+
+      // Notify Supplier Resellers (whose uploaded products were ordered on the Mother Shop)
+      if (uploaderItemsMap.size > 0) {
+        let supIdx = 1;
+        for (const [uploaderId, fItems] of uploaderItemsMap.entries()) {
+          const supCommission = fItems.reduce((sum: number, it: any) => sum + (Number(it.purchasePrice) || 0) * it.quantity, 0);
+          const supItemCount = fItems.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+          const supShortId = uploaderItemsMap.size === 1 ? newOrder.shortId : `${newOrder.shortId}-M${supIdx}`;
+          Reseller.findById(uploaderId).select('userId').lean().then((supReseller: any) => {
+            createNotification({
+              userId: supReseller?.userId,
+              resellerId: uploaderId,
+              title: `📦 নতুন সাপ্লাই অর্ডার #${supShortId} (পে-আউট: ৳${supCommission})`,
+              message: `মাদার শপে আপনার প্রোডাক্টের ${supItemCount}টি আইটেম অর্ডার হয়েছে • আপনার সাপ্লাই পে-আউট: ৳${supCommission}`,
+              type: 'order',
+              link: '/reseller/orders',
+              sendPush: true,
+            }).catch(err => console.error('[Mother Order Supplier Notif Error]', err));
+          }).catch(() => {});
+          supIdx++;
+        }
+      }
       const fullAddressStr = [
         shippingAddress.street,
         shippingAddress.city,
