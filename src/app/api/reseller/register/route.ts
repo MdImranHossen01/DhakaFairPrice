@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
       console.error('[Reseller Registration Notification Error]', notifErr);
     }
 
-    // Send Welcome / Confirmation Email to Reseller
+    // Send Welcome / Confirmation Email to Reseller in background (Non-blocking, ABSInternational pattern)
     if (targetEmail) {
       try {
         const joiningDate = new Date().toLocaleString('en-US', {
@@ -208,22 +208,25 @@ export async function POST(request: NextRequest) {
           hour12: true,
         }) + ' (BST)';
 
-        const { sendResellerWelcomeEmail } = await import('@/lib/mail');
-        await sendResellerWelcomeEmail({
-          email: targetEmail,
-          name: resolvedContactPerson || name || session?.user?.name || storeName,
-          storeName: newReseller.storeName,
-          subdomain: newReseller.subdomain,
-          password: password || undefined,
-          phone,
-          hubName: resolvedHubName,
-          contactPerson: resolvedContactPerson,
-          division: resolvedDivision,
-          district: resolvedDistrict,
-          thana: resolvedThana,
-          address: resolvedAddress,
-          joiningDate,
-        });
+        import('@/lib/mail')
+          .then(({ sendResellerWelcomeEmail }) => {
+            sendResellerWelcomeEmail({
+              email: targetEmail,
+              name: resolvedContactPerson || name || session?.user?.name || storeName,
+              storeName: newReseller.storeName,
+              subdomain: newReseller.subdomain,
+              password: password || undefined,
+              phone,
+              hubName: resolvedHubName,
+              contactPerson: resolvedContactPerson,
+              division: resolvedDivision,
+              district: resolvedDistrict,
+              thana: resolvedThana,
+              address: resolvedAddress,
+              joiningDate,
+            }).catch(err => console.error('[Background Reseller Welcome Email Error]', err));
+          })
+          .catch(mailImportErr => console.error('[Reseller Mail Import Error]', mailImportErr));
       } catch (mailTriggerErr) {
         console.error('[Reseller Registration Mail Trigger Error]', mailTriggerErr);
       }

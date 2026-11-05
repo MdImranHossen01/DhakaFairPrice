@@ -11,6 +11,9 @@ const transporter = isCustomSmtp
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000,
     })
   : nodemailer.createTransport({
       service: 'gmail',
@@ -18,14 +21,17 @@ const transporter = isCustomSmtp
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 8000,
     });
 
 const getSenderEmail = () => {
-  const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
   if (process.env.EMAIL_FROM) {
     return process.env.EMAIL_FROM;
   }
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@dhakafairprice.com';
+  const user = process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@swapnobaz.com';
   return `"${brandName}" <${user}>`;
 };
 
@@ -52,7 +58,7 @@ export const sendResetEmail = async (
   resellerContext?: ResetEmailResellerContext
 ) => {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
-  const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
   const encodedToken = encodeURIComponent(token);
 
   let resetUrl: string;
@@ -73,7 +79,7 @@ export const sendResetEmail = async (
   // Extract raw email address from EMAIL_FROM or SMTP_USER
   const senderAddress = process.env.EMAIL_FROM
     ? (process.env.EMAIL_FROM.match(/<([^>]+)>/)?.[1] || process.env.EMAIL_FROM.trim())
-    : (process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@dhakafairprice.com');
+    : (process.env.SMTP_USER || process.env.EMAIL_USER || 'no-reply@swapnobaz.com');
 
   const senderName = resellerContext
     ? `${resellerContext.storeName} via ${brandName}`
@@ -154,8 +160,8 @@ export const sendResellerWelcomeEmail = async ({
       return;
     }
 
-    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = process.env.NEXTAUTH_URL || `https://${rootDomain}`;
     const storefrontUrl = customDomain ? `https://${customDomain}` : `https://${subdomain}.${rootDomain}`;
     const loginUrl = `${baseUrl}/login`;
@@ -358,8 +364,8 @@ export const sendResellerApprovalEmail = async ({
       return;
     }
 
-    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = process.env.NEXTAUTH_URL || `https://${rootDomain}`;
     const storefrontUrl = customDomain ? `https://${customDomain}` : `https://${subdomain}.${rootDomain}`;
     const dashboardUrl = `${baseUrl}/reseller/dashboard`;
@@ -480,8 +486,8 @@ export const sendCustomerOrderPlacedEmail = async ({
     const hasAuth = (process.env.SMTP_USER && process.env.SMTP_PASS) || (process.env.EMAIL_USER && process.env.EMAIL_PASS);
     if (!hasAuth || !email) return;
 
-    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = storeUrl || process.env.NEXTAUTH_URL || `https://${rootDomain}`;
     const trackingUrl = `${baseUrl}/track-order/${encodeURIComponent(shortId)}`;
     const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;
@@ -651,8 +657,8 @@ export const sendCustomerOrderConfirmedEmail = async ({
     const hasAuth = (process.env.SMTP_USER && process.env.SMTP_PASS) || (process.env.EMAIL_USER && process.env.EMAIL_PASS);
     if (!hasAuth || !email) return;
 
-    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = storeUrl || process.env.NEXTAUTH_URL || `https://${rootDomain}`;
     const trackingUrl = `${baseUrl}/track-order/${encodeURIComponent(shortId)}`;
     const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;
@@ -739,8 +745,8 @@ export const sendCustomerOrderDeliveredEmail = async ({
     const hasAuth = (process.env.SMTP_USER && process.env.SMTP_PASS) || (process.env.EMAIL_USER && process.env.EMAIL_PASS);
     if (!hasAuth || !email) return;
 
-    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+    const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = storeUrl || process.env.NEXTAUTH_URL || `https://${rootDomain}`;
     const shopUrl = `${baseUrl}`;
     const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;

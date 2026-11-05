@@ -109,8 +109,13 @@ export function NotificationSettingsDialog({
         return;
       }
 
-      // 2. Register Service Worker (/push-sw.js)
-      const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
+      // 2. Register Service Worker (/sw.js or /push-sw.js)
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      } catch (e) {
+        reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
+      }
       await navigator.serviceWorker.ready;
 
       // 3. Convert VAPID Public Key and Subscribe
@@ -160,6 +165,19 @@ export function NotificationSettingsDialog({
       const data = await res.json();
       if (data.success) {
         toast.success("Test push notification sent successfully!");
+        if ("serviceWorker" in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification("🔔 টেস্ট পুশ নোটিফিকেশন", {
+              body: "অভিনন্দন! আপনার ডিভাইসে নোটিফিকেশন সফলভাবে কাজ করছে।",
+              icon: "/favicon.ico",
+              badge: "/favicon.ico",
+              requireInteraction: true,
+            });
+          } catch (swErr) {
+            console.error("ServiceWorker showNotification error:", swErr);
+          }
+        }
       } else {
         toast.error(data.error || "Failed to send test push notification.");
       }
