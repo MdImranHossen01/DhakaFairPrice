@@ -2,11 +2,18 @@ import nodemailer from 'nodemailer';
 
 const isCustomSmtp = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
-const transporter = isCustomSmtp
+const rawSmtpPort = Number(process.env.SMTP_PORT) || 2525;
+// DigitalOcean droplets block outbound ports 25/465/587; force port 2525 for Brevo SMTP
+const resolvedSmtpPort =
+  process.env.SMTP_HOST?.includes('brevo.com') && (rawSmtpPort === 587 || rawSmtpPort === 465 || !process.env.SMTP_PORT)
+    ? 2525
+    : rawSmtpPort;
+
+const primaryCustomTransporter = isCustomSmtp
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: Number(process.env.SMTP_PORT) === 465,
+      port: resolvedSmtpPort,
+      secure: resolvedSmtpPort === 465,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -15,16 +22,72 @@ const transporter = isCustomSmtp
       greetingTimeout: 5000,
       socketTimeout: 8000,
     })
-  : nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 8000,
-    });
+  : null;
+
+// Optional secondary SMTP relay fallback via env
+const fallbackBrevoTransporter =
+  process.env.FALLBACK_SMTP_USER && process.env.FALLBACK_SMTP_PASS
+    ? nodemailer.createTransport({
+        host: process.env.FALLBACK_SMTP_HOST || 'smtp-relay.brevo.com',
+        port: Number(process.env.FALLBACK_SMTP_PORT) || 2525,
+        secure: false,
+        auth: {
+          user: process.env.FALLBACK_SMTP_USER,
+          pass: process.env.FALLBACK_SMTP_PASS,
+        },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
+      })
+    : null;
+
+const gmailFallbackTransporter =
+  process.env.EMAIL_USER && process.env.EMAIL_PASS
+    ? nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
+      })
+    : null;
+
+const transporter = {
+  sendMail: async (mailOptions: nodemailer.SendMailOptions) => {
+    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+
+    // Tier 1: Primary Custom SMTP (Automatically uses Port 2525 on Brevo to bypass DigitalOcean port 587 block)
+    if (primaryCustomTransporter) {
+      try {
+        return await primaryCustomTransporter.sendMail(mailOptions);
+      } catch (primaryErr: any) {
+        console.warn('[Mail] Primary SMTP failed, trying fallback transport:', primaryErr?.message || primaryErr);
+      }
+    }
+
+    // Tier 2: Secondary SMTP Relay Fallback (if configured)
+    if (fallbackBrevoTransporter) {
+      try {
+        return await fallbackBrevoTransporter.sendMail(mailOptions);
+      } catch (brevoErr: any) {
+        console.warn('[Mail] Secondary SMTP relay failed, trying Gmail fallback:', brevoErr?.message || brevoErr);
+      }
+    }
+
+    // Tier 3: Gmail SMTP Fallback
+    if (gmailFallbackTransporter) {
+      return await gmailFallbackTransporter.sendMail({
+        ...mailOptions,
+        from: `"${brandName}" <${process.env.EMAIL_USER}>`,
+      });
+    }
+
+    throw new Error('All SMTP mail transports failed.');
+  },
+};
 
 const getSenderEmail = () => {
   const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
