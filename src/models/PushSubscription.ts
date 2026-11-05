@@ -21,7 +21,7 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>({
     auth: { type: String, required: true },
   },
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
-  role: { type: String, default: 'admin' },
+  role: { type: String, default: 'guest' },
   resellerId: { type: Schema.Types.ObjectId, ref: 'Reseller' },
   subdomain: { type: String },
   userAgent: { type: String },

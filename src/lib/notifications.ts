@@ -44,11 +44,11 @@ export async function createNotification(params: CreateNotificationParams) {
     if (params.sendPush !== false) {
       const scope: any = {};
       if (params.forAdmin) {
-        scope.isMotherOrder = true;
-      } else if (params.resellerId) {
-        scope.resellerId = params.resellerId;
-      } else if (params.userId) {
-        scope.targetUserId = params.userId.toString();
+        scope.onlyAdmin = true;
+      } else if (params.resellerId || params.userId) {
+        scope.onlyTarget = true;
+        if (params.resellerId) scope.resellerId = params.resellerId;
+        if (params.userId) scope.targetUserId = params.userId.toString();
       }
 
       await sendWebPushNotification(

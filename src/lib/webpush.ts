@@ -30,6 +30,8 @@ export interface PushNotificationPayload {
 
 export interface PushTargetScope {
   isMotherOrder?: boolean;
+  onlyAdmin?: boolean;
+  onlyTarget?: boolean;
   resellerId?: string | mongoose.Types.ObjectId;
   targetUserId?: string;
 }
@@ -38,48 +40,58 @@ export async function sendWebPushNotification(
   payload: PushNotificationPayload,
   scope?: PushTargetScope
 ) {
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Dhaka Fair Price';
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
 
   try {
     await connectToDatabase();
 
     let query: any = {};
 
-    if (scope?.targetUserId) {
-      query = { userId: scope.targetUserId };
-    } else if (scope?.isMotherOrder) {
-      // Mother shop order: ONLY notify Admins
+    if (scope?.onlyTarget) {
+      // Strictly notify ONLY the specific Reseller or User (never Admins or other resellers)
+      const orConditions: any[] = [];
+      if (scope.targetUserId && mongoose.Types.ObjectId.isValid(scope.targetUserId)) {
+        orConditions.push({ userId: new mongoose.Types.ObjectId(scope.targetUserId) });
+      }
+      if (scope.resellerId && mongoose.Types.ObjectId.isValid(scope.resellerId.toString())) {
+        const rObjId = new mongoose.Types.ObjectId(scope.resellerId.toString());
+        orConditions.push({ role: 'reseller', resellerId: rObjId });
+      }
+      if (orConditions.length === 0) {
+        return { total: 0, sent: 0, failed: 0 };
+      }
+      query = { $or: orConditions };
+    } else if (scope?.targetUserId) {
+      if (!mongoose.Types.ObjectId.isValid(scope.targetUserId)) {
+        return { total: 0, sent: 0, failed: 0 };
+      }
+      query = { userId: new mongoose.Types.ObjectId(scope.targetUserId) };
+    } else if (scope?.isMotherOrder || scope?.onlyAdmin) {
+      // Mother shop order or Admin-only alert: ONLY notify verified Admins
       query = {
-        $or: [
-          { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
-          { role: { $exists: false } },
-          { role: null },
-        ],
+        role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] },
       };
     } else if (scope?.resellerId) {
-      // Reseller store order: notify Admins AND the specific reseller
+      // Reseller store order: notify verified Admins AND the specific reseller who owns that store
+      const rObjId = mongoose.Types.ObjectId.isValid(scope.resellerId.toString())
+        ? new mongoose.Types.ObjectId(scope.resellerId.toString())
+        : scope.resellerId;
       query = {
         $or: [
           { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
-          { role: { $exists: false } },
-          { role: null },
           {
             role: 'reseller',
             $or: [
-              { resellerId: scope.resellerId },
-              { userId: scope.resellerId },
+              { resellerId: rObjId },
+              { userId: rObjId },
             ],
           },
         ],
       };
     } else {
-      // Default: Admin devices
+      // Default: Strictly verified Admin devices only
       query = {
-        $or: [
-          { role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] } },
-          { role: { $exists: false } },
-          { role: null },
-        ],
+        role: { $in: ['admin', 'super_admin', 'manager', 'moderator'] },
       };
     }
 
@@ -97,9 +109,12 @@ export async function sendWebPushNotification(
       subscriptions.map(async (sub: any) => {
         try {
           const isReseller = sub.role === 'reseller';
-          const targetUrl = isReseller
-            ? '/reseller/orders'
-            : (payload.url || '/admin/orders');
+          let targetUrl = payload.url || (isReseller ? '/reseller/orders' : '/admin/orders');
+          // If this is a dual-targeted reseller store order push (where payload.url is '/admin/orders'),
+          // route the reseller's click to '/reseller/orders' instead of '/admin/orders'
+          if (isReseller && targetUrl.startsWith('/admin')) {
+            targetUrl = '/reseller/orders';
+          }
 
           const payloadString = JSON.stringify({
             title: payload.title || `নতুন অর্ডার এসেছে! (${storeName})`,

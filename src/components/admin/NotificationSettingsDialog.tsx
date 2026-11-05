@@ -79,6 +79,18 @@ export function NotificationSettingsDialog({
           if (reg && active) {
             const sub = await reg.pushManager.getSubscription();
             if (active) setIsSubscribed(!!sub);
+            // Re-sync existing browser subscription with the currently logged-in user/role
+            // so switching accounts on the same browser never leaks notifications across roles
+            if (sub && session?.user) {
+              fetch("/api/push/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  subscription: sub,
+                  userAgent: navigator.userAgent,
+                }),
+              }).catch(() => {});
+            }
           }
         }
       } catch (e) {
@@ -93,7 +105,7 @@ export function NotificationSettingsDialog({
     return () => {
       active = false;
     };
-  }, []);
+  }, [session?.user]);
 
   const handleSubscribePush = async () => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
