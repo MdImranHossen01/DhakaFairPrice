@@ -73,7 +73,16 @@ export async function GET(request: NextRequest) {
     }
 
     const query: Record<string, any> = { resellerId, deletedAt: null };
-    if (status) query.status = status;
+    if (status) {
+      if (status === 'Paid') {
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [{ status: 'Paid' }, { paymentStatus: 'Paid' }]
+        });
+      } else {
+        query.status = status;
+      }
+    }
     if (commissionStatus && commissionStatus !== 'All') query.commissionStatus = commissionStatus;
     if (search) {
       const cleanSearch = search.trim();
@@ -89,7 +98,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const [orders, total, statusAggregation] = await Promise.all([
+    const [orders, total, statusAggregation, paidOrdersCount] = await Promise.all([
       ResellerOrder.find(query)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
@@ -122,7 +131,12 @@ export async function GET(request: NextRequest) {
       ResellerOrder.aggregate([
         { $match: { resellerId, deletedAt: null } },
         { $group: { _id: "$status", count: { $sum: 1 } } }
-      ])
+      ]),
+      ResellerOrder.countDocuments({
+        resellerId,
+        deletedAt: null,
+        $or: [{ status: 'Paid' }, { paymentStatus: 'Paid' }]
+      })
     ]);
 
     // Collect motherOrderIds to fetch sibling reseller orders for comprehensive disbursement breakdown
@@ -276,7 +290,6 @@ export async function GET(request: NextRequest) {
       switch (item._id) {
         case 'Order Placed': statusCounts.placed = item.count; break;
         case 'Confirmed': statusCounts.confirmed = item.count; break;
-        case 'Paid': statusCounts.paid = item.count; break;
         case 'Hold': statusCounts.hold = item.count; break;
         case 'Processing': statusCounts.processing = item.count; break;
         case 'Ready for Delivery': statusCounts.ready = item.count; break;
@@ -285,6 +298,7 @@ export async function GET(request: NextRequest) {
         case 'Cancelled': statusCounts.cancelled = item.count; break;
       }
     });
+    statusCounts.paid = paidOrdersCount;
 
     return NextResponse.json({ orders: processedOrders, total, page, limit, statusCounts });
   } catch (error: any) {

@@ -992,7 +992,14 @@ export async function GET(req: NextRequest) {
     let query: any = { deletedAt: null };
     if (fetchAll && isAdmin) {
       if (status && status !== 'All') {
-        query.status = status;
+        if (status === 'Paid') {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [{ status: 'Paid' }, { paymentStatus: 'Paid' }]
+          });
+        } else {
+          query.status = status;
+        }
       }
       if (resellerId && resellerId !== 'all') {
         const ResellerOrder = (await import('@/models/ResellerOrder')).default;
@@ -1127,27 +1134,44 @@ export async function GET(req: NextRequest) {
     };
 
     if (fetchAll && isAdmin) {
-      const countQuery = { ...query };
+      const countQuery: any = { ...query };
       delete countQuery.status; // Remove status filter to count all
+      if (Array.isArray(countQuery.$and)) {
+        countQuery.$and = countQuery.$and.filter(
+          (cond: any) => !(Array.isArray(cond?.$or) && cond.$or.some((c: any) => c.paymentStatus === 'Paid'))
+        );
+        if (countQuery.$and.length === 0) delete countQuery.$and;
+      }
 
-      const statusCounts = await Order.aggregate([
-        { $match: countQuery },
-        { $group: { _id: "$status", count: { $sum: 1 } } }
+      const paidCountQuery: any = {
+        ...countQuery,
+        $and: [
+          ...(countQuery.$and || []),
+          { $or: [{ status: 'Paid' }, { paymentStatus: 'Paid' }] }
+        ]
+      };
+
+      const [statusCounts, totalAll, paidTotal] = await Promise.all([
+        Order.aggregate([
+          { $match: countQuery },
+          { $group: { _id: "$status", count: { $sum: 1 } } }
+        ]),
+        Order.countDocuments(countQuery),
+        Order.countDocuments(paidCountQuery),
       ]);
 
-      const totalAll = await Order.countDocuments(countQuery);
       counts.all = totalAll;
 
       statusCounts.forEach((sc: any) => {
         if (sc._id === 'Order Placed') counts.placed = sc.count;
         else if (sc._id === 'Confirmed') counts.confirmed = sc.count;
-        else if (sc._id === 'Paid') counts.paid = sc.count;
         else if (sc._id === 'Hold') counts.hold = sc.count;
         else if (sc._id === 'Ready for Delivery') counts.ready = sc.count;
         else if (sc._id === 'Released for Delivery') counts.released = sc.count;
         else if (sc._id === 'Delivered') counts.delivered = sc.count;
         else if (sc._id === 'Cancelled') counts.cancelled = sc.count;
       });
+      counts.paid = paidTotal;
     }
     
     let ordersQuery = Order.find(query).sort({ createdAt: -1 });
