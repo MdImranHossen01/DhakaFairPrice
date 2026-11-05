@@ -552,7 +552,7 @@ export const sendCustomerOrderPlacedEmail = async ({
     const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = storeUrl || process.env.NEXTAUTH_URL || `https://${rootDomain}`;
-    const trackingUrl = `${baseUrl}/track-order/${encodeURIComponent(shortId)}`;
+    const trackingUrl = `${baseUrl}/track-order?id=${encodeURIComponent(shortId)}`;
     const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;
 
     const safeCustomerName = escapeHtml(customerName);
@@ -723,7 +723,7 @@ export const sendCustomerOrderConfirmedEmail = async ({
     const brandName = storeName || process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
     const baseUrl = storeUrl || process.env.NEXTAUTH_URL || `https://${rootDomain}`;
-    const trackingUrl = `${baseUrl}/track-order/${encodeURIComponent(shortId)}`;
+    const trackingUrl = `${baseUrl}/track-order?id=${encodeURIComponent(shortId)}`;
     const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;
 
     const safeCustomerName = escapeHtml(customerName);

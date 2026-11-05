@@ -9,10 +9,13 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ subdomain: string }>;
+  searchParams: Promise<{ id?: string; q?: string }>;
 }
 
-export default async function ResellerTrackOrderPage({ params }: Props) {
+export default async function ResellerTrackOrderPage({ params, searchParams }: Props) {
   const { subdomain } = await params;
+  const resolvedSearchParams = await searchParams;
+  const initialOrderId = resolvedSearchParams?.id || resolvedSearchParams?.q || '';
   await dbConnect();
 
   const reseller = await Reseller.findOne({ subdomain, status: 'active' }).lean();
@@ -53,7 +56,7 @@ export default async function ResellerTrackOrderPage({ params }: Props) {
             <p className="text-sm text-muted-foreground">আপনার অর্ডার ট্র্যাকিং আইডি দিয়ে রিয়েল-টাইম শিপমেন্ট স্ট্যাটাস চেক করুন।</p>
           </div>
 
-          <ResellerTrackOrder subdomain={subdomain} storeName={storeName} />
+          <ResellerTrackOrder subdomain={subdomain} storeName={storeName} initialOrderId={initialOrderId} />
         </div>
       </div>
     </SettingsProvider>

@@ -41,6 +41,18 @@ export const proxy = auth(async (req) => {
   const isLoggedIn = !!req.auth;
   const role = (req.auth?.user as any)?.role as string | undefined;
 
+  // Redirect /track-order/:id -> /track-order?id=:id so all email tracking links use the main tracker route cleanly
+  if (nextUrl.pathname.startsWith('/track-order/') && nextUrl.pathname.length > '/track-order/'.length) {
+    const rawTrackId = nextUrl.pathname.slice('/track-order/'.length).replace(/\/+$/, '');
+    if (rawTrackId && !rawTrackId.includes('/')) {
+      let cleanTrackId = rawTrackId;
+      try {
+        cleanTrackId = decodeURIComponent(rawTrackId);
+      } catch {}
+      return NextResponse.redirect(getSafeRedirectUrl(req, `/track-order?id=${encodeURIComponent(cleanTrackId)}`));
+    }
+  }
+
   // ── 1. Multi-Tenant Subdomain & Custom Domain Routing ──────────────────────
   let targetSubdomain = extractSubdomain(hostname);
   const cleanHost = hostname.split(':')[0].toLowerCase();
