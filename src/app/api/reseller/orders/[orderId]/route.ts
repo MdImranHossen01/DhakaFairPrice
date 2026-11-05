@@ -129,8 +129,8 @@ export async function GET(
       const firstF = fulfillmentRos[0];
       const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
         ? Number((firstF.resellerId as any).systemFeePercent)
-        : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 15);
-      const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.15 : (supplierRate / 100);
+        : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+      const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
       const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
       if (computedFee > 0) {
         motherFee = computedFee;
@@ -180,7 +180,7 @@ export async function GET(
       if (sfReseller && sfReseller.storeName) {
         sellingStoreInfo = {
           storeName: sfReseller.storeName,
-          domain: sfReseller.customDomain || (sfReseller.subdomain ? `${sfReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+          domain: sfReseller.customDomain || (sfReseller.subdomain ? `${sfReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com'}` : ''),
           email: sfReseller.contact?.email || '',
           phone: sfReseller.contact?.phone || sfReseller.pickupAddress?.phone || '',
           address: sfReseller.contact?.address || sfReseller.pickupAddress?.address || '',
@@ -193,7 +193,7 @@ export async function GET(
       if (myReseller && myReseller.storeName) {
         sellingStoreInfo = {
           storeName: myReseller.storeName,
-          domain: myReseller.customDomain || (myReseller.subdomain ? `${myReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+          domain: myReseller.customDomain || (myReseller.subdomain ? `${myReseller.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com'}` : ''),
           email: myReseller.contact?.email || '',
           phone: myReseller.contact?.phone || myReseller.pickupAddress?.phone || '',
           address: myReseller.contact?.address || myReseller.pickupAddress?.address || '',
@@ -248,6 +248,7 @@ export async function PATCH(
     if (!order) {
       return NextResponse.json({ message: 'Order not found' }, { status: 404 });
     }
+    const previousOrderStatus = order.status;
 
     const allowedStatuses = ['Order Placed', 'Confirmed', 'Hold', 'Ready for Delivery', 'Released for Delivery', 'Cancelled'];
 
@@ -277,7 +278,7 @@ export async function PATCH(
 
       const resellerFeeRate = reseller.systemFeePercent !== undefined 
         ? reseller.systemFeePercent 
-        : (reseller.commissionRate ?? 15);
+        : (reseller.commissionRate ?? 10);
       let serverComputedSubtotal = 0;
       let totalCommission = 0;
       let totalOwnProductSystemFee = 0;
@@ -472,37 +473,62 @@ export async function PATCH(
       if (status) motherUpdate.status = status;
       if (paymentStatus) motherUpdate.paymentStatus = paymentStatus;
       
+      const existingMother = await Order.findById(order.motherOrderId).select('status').lean() as any;
+      const previousMotherStatus = existingMother?.status;
       const updatedMother = await Order.findByIdAndUpdate(order.motherOrderId, { $set: motherUpdate }, { new: true });
 
-      // Send Email 2 (Order Confirmed) or Email 3 (Order Delivered) to Customer
-      if (status && status !== order.status) {
-        const customerEmail = order.customer?.email || updatedMother?.shippingAddress?.email;
-        if (customerEmail && !customerEmail.endsWith('@store.com')) {
+      // Also sync status across all sibling ResellerOrders (storefront + supplier fulfillment) so status stays unified
+      if (status) {
+        await ResellerOrder.updateMany(
+          { motherOrderId: order.motherOrderId, _id: { $ne: order._id } },
+          { $set: { status } }
+        );
+      }
+
+      // Send Email 2 (Order Confirmed) or Email 3 (Order Delivered) to Customer (Strictly ONCE, always under Storefront Seller / Mother Shop identity)
+      const statusJustChanged = status && status !== previousOrderStatus && status !== previousMotherStatus;
+      if (statusJustChanged && (status === 'Confirmed' || status === 'Delivered')) {
+        const customerEmail = updatedMother?.shippingAddress?.email || order.customer?.email;
+        if (customerEmail && !customerEmail.endsWith('@store.com') && !customerEmail.endsWith('@guest.com')) {
           try {
             const { sendCustomerOrderConfirmedEmail, sendCustomerOrderDeliveredEmail } = await import('@/lib/mail');
-            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
-            const storeUrl = reseller.customDomain ? `https://${reseller.customDomain}` : `https://${reseller.subdomain}.${rootDomain}`;
-            const targetShortId = order.shortId || updatedMother?.shortId || order._id.toString().slice(-8).toUpperCase();
-            const targetTotal = order.totalAmount || updatedMother?.totalAmount || 0;
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+            let storeName: string | undefined = undefined;
+            let storeUrl: string | undefined = undefined;
+
+            // Determine the selling storefront (never expose supplier/source reseller identity)
+            if (updatedMother?.orderSource !== 'mother') {
+              const storefrontResellerId = updatedMother?.storefrontResellerId || (!order.shortId?.includes('-F') && !order.shortId?.includes('-M') ? order.resellerId : null);
+              if (storefrontResellerId) {
+                const sfReseller = await Reseller.findById(storefrontResellerId).select('storeName subdomain customDomain').lean() as any;
+                if (sfReseller) {
+                  storeName = sfReseller.storeName || sfReseller.subdomain;
+                  storeUrl = sfReseller.customDomain ? `https://${sfReseller.customDomain}` : `https://${sfReseller.subdomain}.${rootDomain}`;
+                }
+              }
+            }
+
+            const targetShortId = updatedMother?.shortId || order.shortId?.replace(/-[FM]\d+$/, '') || order._id.toString().slice(-8).toUpperCase();
+            const targetTotal = updatedMother?.totalAmount || order.totalAmount || 0;
 
             if (status === 'Confirmed') {
               sendCustomerOrderConfirmedEmail({
                 email: customerEmail,
-                customerName: order.customer?.name || updatedMother?.shippingAddress?.fullName || 'Customer',
+                customerName: updatedMother?.shippingAddress?.fullName || order.customer?.name || 'Customer',
                 shortId: targetShortId,
                 totalAmount: targetTotal,
-                storeName: reseller.storeName || reseller.subdomain,
+                storeName,
                 storeUrl,
-                trackingCode: order.shippingDetails?.trackingId || order.shippingDetails?.consignmentId || updatedMother?.shippingDetails?.trackingId,
-                courierName: order.shippingDetails?.courierName || updatedMother?.shippingDetails?.courierName,
+                trackingCode: updatedMother?.shippingDetails?.trackingId || order.shippingDetails?.trackingId || order.shippingDetails?.consignmentId,
+                courierName: updatedMother?.shippingDetails?.courierName || order.shippingDetails?.courierName,
               }).catch(err => console.error('[Reseller Order Confirmed Mail Error]', err));
             } else if (status === 'Delivered') {
               sendCustomerOrderDeliveredEmail({
                 email: customerEmail,
-                customerName: order.customer?.name || updatedMother?.shippingAddress?.fullName || 'Customer',
+                customerName: updatedMother?.shippingAddress?.fullName || order.customer?.name || 'Customer',
                 shortId: targetShortId,
                 totalAmount: targetTotal,
-                storeName: reseller.storeName || reseller.subdomain,
+                storeName,
                 storeUrl,
               }).catch(err => console.error('[Reseller Order Delivered Mail Error]', err));
             }

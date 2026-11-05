@@ -333,13 +333,57 @@ export async function PATCH(request: NextRequest) {
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
     // If motherOrderId exists, also sync status & commission
+    let updatedMother: any = null;
+    let previousMotherStatus: string | undefined = undefined;
     if (order.motherOrderId) {
-      await Order.findByIdAndUpdate(order.motherOrderId, { $set: { status } });
+      const existingMother = await Order.findById(order.motherOrderId).select('status').lean() as any;
+      previousMotherStatus = existingMother?.status;
+      updatedMother = await Order.findByIdAndUpdate(order.motherOrderId, { $set: { status } }, { new: true });
+      await ResellerOrder.updateMany(
+        { motherOrderId: order.motherOrderId, _id: { $ne: order._id } },
+        { $set: { status } }
+      );
       const { syncResellerCommissionForMotherOrder } = await import('@/lib/resellerCommissionSync');
       await syncResellerCommissionForMotherOrder({
         motherOrderId: order.motherOrderId,
         newStatus: status,
       });
+    }
+
+    // Send Order Confirmed Email to Customer (Strictly ONCE, always under Storefront Seller / Mother Shop identity)
+    const statusJustChanged = status && status !== existingOrder.status && status !== previousMotherStatus;
+    if (statusJustChanged && status === 'Confirmed') {
+      const customerEmail = updatedMother?.shippingAddress?.email || order.customer?.email;
+      if (customerEmail && !customerEmail.endsWith('@store.com') && !customerEmail.endsWith('@guest.com')) {
+        try {
+          const { sendCustomerOrderConfirmedEmail } = await import('@/lib/mail');
+          const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+          let storeName: string | undefined = undefined;
+          let storeUrl: string | undefined = undefined;
+
+          if (updatedMother?.orderSource !== 'mother') {
+            const storefrontResellerId = updatedMother?.storefrontResellerId || (!order.shortId?.includes('-F') && !order.shortId?.includes('-M') ? order.resellerId : null);
+            if (storefrontResellerId) {
+              const resellerDoc = await Reseller.findById(storefrontResellerId).select('storeName subdomain customDomain').lean() as any;
+              if (resellerDoc) {
+                storeName = resellerDoc.storeName || resellerDoc.subdomain;
+                storeUrl = resellerDoc.customDomain ? `https://${resellerDoc.customDomain}` : `https://${resellerDoc.subdomain}.${rootDomain}`;
+              }
+            }
+          }
+
+          sendCustomerOrderConfirmedEmail({
+            email: customerEmail,
+            customerName: updatedMother?.shippingAddress?.fullName || order.customer?.name || 'Customer',
+            shortId: updatedMother?.shortId || order.shortId?.replace(/-[FM]\d+$/, '') || order._id.toString().slice(-8).toUpperCase(),
+            totalAmount: updatedMother?.totalAmount || order.totalAmount || 0,
+            storeName,
+            storeUrl,
+          }).catch(err => console.error('[Reseller PATCH Order Confirmed Mail Error]', err));
+        } catch (mailErr) {
+          console.error('[Reseller PATCH Mail Error]', mailErr);
+        }
+      }
     }
 
     return NextResponse.json({ order });
@@ -558,6 +602,7 @@ export async function POST(request: NextRequest) {
       shippingAddress: {
         fullName: customer.name.trim(),
         phone: customerPhone,
+        email: customer.email?.trim() || undefined,
         street: customer.address.street.trim(),
         city: customer.address.city || 'Dhaka',
         state: customer.address.division || 'Dhaka',
@@ -743,6 +788,42 @@ export async function POST(request: NextRequest) {
           }).catch(() => {});
           supIdx++;
         }
+      }
+
+      // Send Order Confirmation Email to Customer if valid email was provided on Manual Order
+      const rawCustomerEmail = customer.email?.trim();
+      if (rawCustomerEmail && !rawCustomerEmail.endsWith('@store.com') && !rawCustomerEmail.endsWith('@guest.com')) {
+        const { sendCustomerOrderPlacedEmail } = await import('@/lib/mail');
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+        const storeUrl = reseller.customDomain ? `https://${reseller.customDomain}` : `https://${reseller.subdomain}.${rootDomain}`;
+        sendCustomerOrderPlacedEmail({
+          email: rawCustomerEmail,
+          customerName: customer.name.trim(),
+          orderId: resellerOrder._id?.toString(),
+          shortId,
+          items: validatedItems.map((it: any) => ({
+            name: it.name,
+            quantity: it.quantity,
+            price: it.retailPrice,
+            image: it.image,
+            color: it.color,
+            size: it.size,
+          })),
+          subtotal: serverComputedSubtotal,
+          deliveryCharge: delCharge,
+          couponDiscount: discount,
+          totalAmount: finalTotal,
+          paymentMethod: paymentMethod || 'COD',
+          shippingAddress: {
+            fullName: customer.name.trim(),
+            phone: customerPhone,
+            street: customer.address.street.trim(),
+            city: customer.address.city || 'Dhaka',
+            division: customer.address.division || 'Dhaka',
+          },
+          storeName: reseller.storeName || reseller.subdomain,
+          storeUrl,
+        }).catch(err => console.error('[Manual Order Customer Mail Error]', err));
       }
     } catch (notifErr) {
       console.error('[Manual Order Notif Error]', notifErr);

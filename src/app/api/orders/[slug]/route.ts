@@ -138,8 +138,8 @@ export async function GET(
         const firstF = fulfillmentRos[0];
         const supplierRate = (firstF?.resellerId as any)?.systemFeePercent !== undefined
           ? Number((firstF.resellerId as any).systemFeePercent)
-          : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 15);
-        const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.15 : (supplierRate / 100);
+          : ((firstF?.resellerId as any)?.commissionRate !== undefined ? Number((firstF.resellerId as any).commissionRate) : 10);
+        const feeRatio = (isNaN(supplierRate) || supplierRate <= 0) ? 0.10 : (supplierRate / 100);
         const computedFee = Math.min(sellerPart.amount, Math.round(supplierPart.amount * feeRatio));
         if (computedFee > 0) {
           computedMotherFee = computedFee;
@@ -214,7 +214,7 @@ export async function GET(
     if (sfRes && typeof sfRes === 'object' && sfRes.storeName) {
       orderObj.sellingStore = {
         storeName: sfRes.storeName,
-        domain: sfRes.customDomain || (sfRes.subdomain ? `${sfRes.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}` : ''),
+        domain: sfRes.customDomain || (sfRes.subdomain ? `${sfRes.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com'}` : ''),
         email: sfRes.contact?.email || '',
         phone: sfRes.contact?.phone || sfRes.pickupAddress?.phone || '',
         address: sfRes.contact?.address || sfRes.pickupAddress?.address || '',
@@ -529,20 +529,28 @@ export async function PATCH(
 
       await dbSession.commitTransaction();
 
-      // Send Email 2 (Order Confirmed) or Email 3 (Order Delivered) to Customer
+      // Send Email 2 (Order Confirmed) or Email 3 (Order Delivered) to Customer (Strictly ONCE, always under Storefront Seller / Mother Shop identity)
       if (updatedOrder && updateData.status && updateData.status !== order.status) {
-        const customerEmail = updatedOrder.shippingAddress?.email;
-        if (customerEmail && !customerEmail.endsWith('@store.com')) {
+        let customerEmail = updatedOrder.shippingAddress?.email;
+        const isMotherShopOrder = updatedOrder.orderSource === 'mother';
+        const storefrontResellerId = !isMotherShopOrder
+          ? (updatedOrder.storefrontResellerId || updatedOrder.resellerId)
+          : null;
+        if (!customerEmail && (storefrontResellerId || updatedOrder.resellerId)) {
+          const roDoc = await ResellerOrder.findOne({ motherOrderId: updatedOrder._id }).select('customer.email').lean() as any;
+          if (roDoc?.customer?.email) customerEmail = roDoc.customer.email;
+        }
+        if (customerEmail && !customerEmail.endsWith('@store.com') && !customerEmail.endsWith('@guest.com')) {
           try {
             const { sendCustomerOrderConfirmedEmail, sendCustomerOrderDeliveredEmail } = await import('@/lib/mail');
             let storeName: string | undefined;
             let storeUrl: string | undefined;
-            if (updatedOrder.orderSource === 'reseller_storefront' && updatedOrder.storefrontResellerId) {
+            if (storefrontResellerId) {
               const ResellerModel = (await import('@/models/Reseller')).default;
-              const resDoc = await ResellerModel.findById(updatedOrder.storefrontResellerId).select('storeName subdomain customDomain').lean() as any;
+              const resDoc = await ResellerModel.findById(storefrontResellerId).select('storeName subdomain customDomain').lean() as any;
               if (resDoc) {
                 storeName = resDoc.storeName;
-                const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com';
+                const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
                 storeUrl = resDoc.customDomain ? `https://${resDoc.customDomain}` : `https://${resDoc.subdomain}.${rootDomain}`;
               }
             }
