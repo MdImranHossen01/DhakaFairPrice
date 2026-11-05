@@ -179,15 +179,17 @@ export async function PATCH(request: NextRequest) {
       const { reconcileResellerWalletBalances } = await import('@/lib/resellerCommissionSync');
       await reconcileResellerWalletBalances(transaction.resellerId);
 
-      // Send real-time notification to reseller
+      // Send real-time notification & email to reseller
       try {
         const { createNotification } = await import('@/lib/notifications');
-        const reseller = await Reseller.findById(transaction.resellerId);
+        const reseller = await Reseller.findById(transaction.resellerId).populate('userId', 'name email');
         if (reseller) {
           const payoutAmt = Math.abs(transaction.amount || 0);
+          const actualUserId = (reseller.userId as any)?._id || reseller.userId;
+
           if (action === 'approve') {
             await createNotification({
-              userId: reseller.userId,
+              userId: actualUserId,
               resellerId: reseller._id,
               title: '✅ Payout Released!',
               message: `Your payout request of ৳${payoutAmt} has been approved and disbursed.`,
@@ -197,7 +199,7 @@ export async function PATCH(request: NextRequest) {
             });
           } else {
             await createNotification({
-              userId: reseller.userId,
+              userId: actualUserId,
               resellerId: reseller._id,
               title: '❌ Payout Request Rejected',
               message: `Your payout request of ৳${payoutAmt} was rejected and refunded to your wallet.`,
@@ -205,6 +207,24 @@ export async function PATCH(request: NextRequest) {
               link: '/reseller/wallet',
               sendPush: true,
             });
+          }
+
+          // Send Email Notification (non-blocking)
+          const resellerEmail = reseller.contact?.email || (reseller.userId as any)?.email;
+          if (resellerEmail) {
+            const { sendResellerPayoutStatusEmail } = await import('@/lib/mail');
+            sendResellerPayoutStatusEmail({
+              email: resellerEmail,
+              resellerName: reseller.pickupAddress?.contactPerson || (reseller.userId as any)?.name || reseller.storeName || 'Reseller',
+              storeName: reseller.storeName || 'Reseller Store',
+              amount: payoutAmt,
+              payoutMethod: transaction.payoutMethod || 'MFS / Bank',
+              accountNumber: transaction.payoutReference || '',
+              status: action === 'approve' ? 'approved' : 'rejected',
+              transactionRef: action === 'approve' ? (payoutReference || transaction.payoutReference || 'ADMIN_DISBURSED') : undefined,
+              adminAccountDetails: action === 'approve' ? (adminAccountDetails || undefined) : undefined,
+              balanceAfter: reseller.walletBalance,
+            }).catch(err => console.error('[Payout Status Email Error]', err));
           }
         }
       } catch (payoutNotifErr) {

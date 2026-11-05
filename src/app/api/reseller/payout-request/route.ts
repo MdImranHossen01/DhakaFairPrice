@@ -142,6 +142,26 @@ export async function POST(request: NextRequest) {
         } catch (tgErr) {
           console.error('[Payout Telegram Alert Import Error]', tgErr);
         }
+
+        // Send Reseller Payout Request Confirmation Email (non-blocking)
+        try {
+          const resellerEmail = reseller.contact?.email || session.user.email;
+          if (resellerEmail) {
+            const { sendResellerPayoutStatusEmail } = await import('@/lib/mail');
+            sendResellerPayoutStatusEmail({
+              email: resellerEmail,
+              resellerName: reseller.pickupAddress?.contactPerson || session.user.name || reseller.storeName || 'Reseller',
+              storeName: reseller.storeName || 'Reseller Store',
+              amount,
+              payoutMethod: method,
+              accountNumber: number,
+              status: 'requested',
+              balanceAfter: updatedReseller.walletBalance,
+            }).catch(err => console.error('[Payout Request Email Error]', err));
+          }
+        } catch (emailErr) {
+          console.error('[Payout Request Email Import Error]', emailErr);
+        }
       } catch (notifErr) {
         console.error('[Payout Notification Dispatch Error]', notifErr);
       }

@@ -872,3 +872,175 @@ export const sendCustomerOrderDeliveredEmail = async ({
     console.error('[Mail] Error sending order delivered email:', error);
   }
 };
+
+export interface ResellerPayoutEmailParams {
+  email: string;
+  resellerName: string;
+  storeName: string;
+  amount: number;
+  payoutMethod?: string;
+  accountNumber?: string;
+  status: 'requested' | 'approved' | 'rejected';
+  transactionRef?: string;
+  adminAccountDetails?: string;
+  balanceAfter?: number;
+}
+
+export const sendResellerPayoutStatusEmail = async ({
+  email,
+  resellerName,
+  storeName,
+  amount,
+  payoutMethod,
+  accountNumber,
+  status,
+  transactionRef,
+  adminAccountDetails,
+  balanceAfter,
+}: ResellerPayoutEmailParams) => {
+  try {
+    const hasAuth = (process.env.SMTP_USER && process.env.SMTP_PASS) || (process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    if (!hasAuth || !email) return;
+
+    const brandName = process.env.NEXT_PUBLIC_STORE_NAME || 'Swapnobaz';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com';
+    const baseUrl = process.env.NEXTAUTH_URL || `https://${rootDomain}`;
+    const walletUrl = `${baseUrl}/reseller/wallet`;
+    const supportEmail = process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER || `support@${rootDomain}`;
+
+    const safeName = escapeHtml(resellerName || storeName || 'Reseller');
+    const safeStoreName = escapeHtml(storeName || 'Reseller Store');
+    const safeBrandName = escapeHtml(brandName);
+    const safeMethod = escapeHtml(payoutMethod || 'MFS / Bank');
+    const safeAccount = escapeHtml(accountNumber || 'N/A');
+    const safeRef = transactionRef ? escapeHtml(transactionRef) : '';
+    const safeAdminAcc = adminAccountDetails ? escapeHtml(adminAccountDetails) : '';
+    const formattedAmount = `৳${Math.abs(amount).toLocaleString('en-IN')}`;
+    const formattedBalance = balanceAfter !== undefined ? `৳${Number(balanceAfter).toLocaleString('en-IN')}` : undefined;
+
+    let subject = '';
+    let headerSubtitle = '';
+    let badgeBg = '#fef3c7';
+    let badgeColor = '#92400e';
+    let badgeText = 'Pending Approval (অপেক্ষমান)';
+    let introMessage = '';
+
+    if (status === 'requested') {
+      subject = `💸 উইথড্র রিকোয়েস্ট জমা হয়েছে (${formattedAmount}) - ${brandName}`;
+      headerSubtitle = 'রিসেলার পেমেন্ট উইথড্র রিকোয়েস্ট';
+      badgeBg = '#fef3c7';
+      badgeColor = '#92400e';
+      badgeText = '⏳ Pending Review (অ্যাডমিন অনুমোদনের অপেক্ষায়)';
+      introMessage = `আপনার স্টোর <strong>${safeStoreName}</strong> থেকে <strong>${formattedAmount}</strong> উইথড্র রিকোয়েস্ট সফলভাবে গৃহীত হয়েছে। আমাদের একাউন্টিং টিম যাচাই করে খুব শীঘ্রই আপনার অ্যাকাউন্টে পেমেন্ট পাঠিয়ে দেবে।`;
+    } else if (status === 'approved') {
+      subject = `✅ আপনার পেমেন্ট উইথড্র সম্পন্ন হয়েছে! (${formattedAmount}) - ${brandName}`;
+      headerSubtitle = 'রিসেলার পেমেন্ট ডিসবার্সমেন্ট কনফার্মেশন';
+      badgeBg = '#d1fae5';
+      badgeColor = '#065f46';
+      badgeText = '✅ Approved & Disbursed (পেমেন্ট সম্পন্ন)';
+      introMessage = `অভিনন্দন! আপনার স্টোর <strong>${safeStoreName}</strong>-এর <strong>${formattedAmount}</strong> উইথড্র রিকোয়েস্টটি অ্যাপ্রুভ করা হয়েছে এবং আপনার প্রদত্ত অ্যাকাউন্টে পেমেন্ট পাঠিয়ে দেওয়া হয়েছে।`;
+    } else {
+      subject = `❌ উইথড্র রিকোয়েস্ট বাতিল ও ওয়ালেটে রিফান্ড করা হয়েছে (${formattedAmount}) - ${brandName}`;
+      headerSubtitle = 'রিসেলার পেমেন্ট উইথড্র আপডেট';
+      badgeBg = '#ffe4e6';
+      badgeColor = '#9f1239';
+      badgeText = '❌ Rejected & Refunded (বাতিল ও ওয়ালেটে ফেরত)';
+      introMessage = `আপনার স্টোর <strong>${safeStoreName}</strong>-এর <strong>${formattedAmount}</strong> উইথড্র রিকোয়েস্টটি বাতিল করা হয়েছে এবং সম্পূর্ণ টাকা আপনার রিসেলার ওয়ালেট ব্যালেন্সে রিফান্ড (ফেরত) দেওয়া হয়েছে।`;
+    }
+
+    const mailOptions = {
+      from: getSenderEmail(),
+      to: email,
+      subject,
+      html: `
+        <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; color: #1e293b;">
+          
+          <!-- Brand Header -->
+          <div style="text-align: center; padding-bottom: 16px; border-bottom: 2px solid #0d9488;">
+            <h1 style="color: #0d9488; margin: 0 0 4px 0; font-size: 22px; font-weight: 700;">${safeBrandName}</h1>
+            <p style="color: #64748b; font-size: 12px; margin: 0;">${headerSubtitle}</p>
+          </div>
+
+          <!-- Greeting -->
+          <div style="padding: 16px 0 12px 0;">
+            <p style="font-size: 15px; margin: 0 0 8px 0;">প্রিয় <strong>${safeName}</strong>,</p>
+            <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0;">
+              ${introMessage}
+            </p>
+          </div>
+
+          <!-- Payout Summary Card -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 14px 0;">
+            <div style="font-size: 14px; font-weight: 700; color: #0f766e; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+              💳 উইথড্র ও ট্রানজেকশন বিবরণী
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b; width: 45%;">স্টোরের নাম:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #1e293b;">${safeStoreName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">উইথড্র অ্যামাউন্ট:</td>
+                <td style="padding: 6px 0; font-weight: 800; color: #0d9488; font-size: 15px;">${formattedAmount}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">পেমেন্ট মেথড:</td>
+                <td style="padding: 6px 0; font-weight: 600; color: #1e293b;">${safeMethod}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">রিসিভিং অ্যাকাউন্ট নম্বর:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #1e293b; font-family: monospace;">${safeAccount}</td>
+              </tr>
+              ${safeRef ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">ট্রানজেকশন আইডি (TrxID / Ref):</td>
+                <td style="padding: 6px 0;"><span style="background-color: #f0fdfa; border: 1px solid #99f6e4; color: #0f766e; font-family: monospace; font-weight: 700; padding: 2px 8px; border-radius: 4px;">${safeRef}</span></td>
+              </tr>
+              ` : ''}
+              ${safeAdminAcc ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">ডিসবার্সড অ্যাকাউন্ট:</td>
+                <td style="padding: 6px 0; font-weight: 600; color: #475569;">${safeAdminAcc}</td>
+              </tr>
+              ` : ''}
+              ${formattedBalance ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">বর্তমান ওয়ালেট ব্যালেন্স:</td>
+                <td style="padding: 6px 0; font-weight: 700; color: #1e293b;">${formattedBalance}</td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">বর্তমান স্ট্যাটাস:</td>
+                <td style="padding: 6px 0;">
+                  <span style="background-color: ${badgeBg}; color: ${badgeColor}; font-weight: 700; padding: 3px 10px; border-radius: 4px; font-size: 11px; display: inline-block;">
+                    ${badgeText}
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Action Button -->
+          <div style="text-align: center; margin: 22px 0 16px 0;">
+            <a href="${walletUrl}" style="background-color: #0d9488; color: white; padding: 11px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 13px;">
+              রিসেলার ওয়ালেট ও লেজার দেখুন ➔
+            </a>
+          </div>
+
+          <!-- Footer -->
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0 12px 0;" />
+          <div style="text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5;">
+            <p style="margin: 0 0 2px 0; font-weight: 600; color: #64748b;">${safeBrandName} | Bangladesh</p>
+            <p style="margin: 0 0 2px 0;">সাপোর্ট: ${escapeHtml(supportEmail)}</p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} ${safeBrandName}. All rights reserved.</p>
+          </div>
+
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('[Mail] Error sending reseller payout status email:', error);
+  }
+};
