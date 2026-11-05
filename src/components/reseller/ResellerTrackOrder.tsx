@@ -1,34 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Truck, Search, Package, MapPin, CheckCircle2, Clock, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Image from 'next/image';
-import Link from 'next/link';
 
 interface Props {
   subdomain: string;
   storeName: string;
+  initialOrderId?: string;
 }
 
-export function ResellerTrackOrder({ subdomain, storeName }: Props) {
-  const [searchQuery, setSearchQuery] = useState('');
+export function ResellerTrackOrder({ subdomain, initialOrderId }: Props) {
+  const [searchQuery, setSearchQuery] = useState(initialOrderId || '');
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  const handleTrack = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchQuery.trim();
+  const executeTrack = async (rawQuery: string) => {
+    const query = rawQuery.trim().replace(/^#/, '');
     if (!query) {
       toast.error('Please enter order ID or phone number');
       return;
     }
 
+    await Promise.resolve();
     setLoading(true);
     try {
       const res = await fetch(`/api/store/${subdomain}/track-order/${encodeURIComponent(query)}`);
@@ -52,6 +52,17 @@ export function ResellerTrackOrder({ subdomain, storeName }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (initialOrderId) {
+      void executeTrack(initialOrderId);
+    }
+  }, [initialOrderId, subdomain]);
+
+  const handleTrack = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeTrack(searchQuery);
   };
 
   const getStatusStep = (status: string) => {

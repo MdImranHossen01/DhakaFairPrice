@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Truck, Search, Package, MapPin, CheckCircle2, Clock, AlertCircle, ExternalLink, Calendar, CreditCard } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useParams } from 'next/navigation';
+import { Truck, Search, Package, MapPin, CheckCircle2, Clock, AlertCircle, ExternalLink, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,21 +10,25 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import Image from 'next/image';
 
-export default function TrackOrderPage() {
-    const [searchQuery, setSearchQuery] = useState('');
+function TrackOrderContent() {
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const paramId = typeof params?.id === 'string' ? decodeURIComponent(params.id) : '';
+    const queryOrderId = paramId || searchParams.get('id') || searchParams.get('q') || '';
+    const [searchQuery, setSearchQuery] = useState(queryOrderId);
     const [loading, setLoading] = useState(false);
     const [orders, setOrders] = useState<any[]>([]);
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [hasSearched, setHasSearched] = useState(false);
 
-    const handleTrack = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const query = searchQuery.trim();
+    const executeSearch = async (rawQuery: string) => {
+        const query = rawQuery.trim().replace(/^#/, '');
         if (!query) {
             toast.error('Please enter your Order ID or Mobile Number');
             return;
         }
 
+        await Promise.resolve();
         setLoading(true);
         setHasSearched(true);
         try {
@@ -50,8 +55,18 @@ export default function TrackOrderPage() {
         }
     };
 
+    useEffect(() => {
+        if (queryOrderId) {
+            void executeSearch(queryOrderId);
+        }
+    }, [queryOrderId]);
+
+    const handleTrack = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await executeSearch(searchQuery);
+    };
+
     const getStatusStep = (status: string) => {
-        const statuses = ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'];
         if (status === 'Released for Delivery' || status === 'Shipped') return 3;
         if (status === 'Delivered') return 4;
         if (status === 'Processing' || status === 'Ready for Delivery') return 2;
@@ -309,3 +324,10 @@ export default function TrackOrderPage() {
     );
 }
 
+export default function TrackOrderPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-muted/30 py-20 text-center">Loading tracker...</div>}>
+            <TrackOrderContent />
+        </Suspense>
+    );
+}
