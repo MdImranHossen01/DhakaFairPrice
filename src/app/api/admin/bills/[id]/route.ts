@@ -111,9 +111,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (paymentReceived > 0 && bill.documentType === 'bill') {
       try {
         const { logLedgerTransaction } = await import('@/lib/ledgerHelper');
-        // Debit Cash by the payment amount
+        const targetAccountCode = (body.accountCode as any) || (body.paymentMethod === 'bank' ? 'BANK' : 'CASH');
+        // Debit payment account (Cash or Bank) by the payment amount
         await logLedgerTransaction(
-          'CASH',
+          targetAccountCode,
           'debit',
           paymentReceived,
           `Payment Received for Bill ${bill.invoiceNo}`,

@@ -254,14 +254,53 @@ export function calculateTransactionChange(tx: any, account: any): number {
 }
 
 /**
+ * Sort transactions chronologically:
+ * - Primary: calendar date (day)
+ * - Secondary: on same day for AR account, 'debit' (bill/order generation) ALWAYS executes before 'credit' (payment deduction)
+ *   so the receivable running balance never dips into a negative figure.
+ * - Tertiary: exact timestamp / createdAt / _id
+ */
+function sortTransactionsChronologically(transactions: any[], account: any) {
+  transactions.sort((a: any, b: any) => {
+    const dayA = a.date ? new Date(a.date).toISOString().slice(0, 10) : '';
+    const dayB = b.date ? new Date(b.date).toISOString().slice(0, 10) : '';
+    if (dayA !== dayB) return dayA.localeCompare(dayB);
+
+    if (account?.code === 'AR') {
+      const isAddA = a.type === 'debit';
+      const isAddB = b.type === 'debit';
+      if (isAddA !== isAddB) return isAddA ? -1 : 1;
+    }
+
+    if (account?.code === 'AP') {
+      const isAddA = a.type === 'credit';
+      const isAddB = b.type === 'credit';
+      if (isAddA !== isAddB) return isAddA ? -1 : 1;
+    }
+
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    if (timeA !== timeB) return timeA - timeB;
+
+    const createA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const createB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return createA - createB;
+  });
+}
+
+/**
  * Recalculate ledger balance for an account
  */
 export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'AR' | 'AP') {
   await connectToDatabase();
-  const account = await LedgerAccount.findOne({ code: accountCode });
+  const account = await LedgerAccount.findOne({
+    code: accountCode,
+    $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+  });
   if (!account) return;
 
-  const transactions = await LedgerTransaction.find({ account: account._id }).sort({ date: 1, createdAt: 1 });
+  const transactions = await LedgerTransaction.find({ account: account._id }).lean();
+  sortTransactionsChronologically(transactions, account);
 
   let runningBalance = account.openingBalance || 0;
 
@@ -283,7 +322,8 @@ export async function recalculateLedgerBalanceByAccountId(accountId: any) {
   const account = await LedgerAccount.findById(accountId);
   if (!account) return;
 
-  const transactions = await LedgerTransaction.find({ account: account._id }).sort({ date: 1, createdAt: 1 });
+  const transactions = await LedgerTransaction.find({ account: account._id }).lean();
+  sortTransactionsChronologically(transactions, account);
 
   let runningBalance = account.openingBalance || 0;
 
@@ -492,8 +532,18 @@ export async function syncBillsToLedger() {
     await connectToDatabase();
     const Bill = (await import('@/models/Bill')).default;
     const LedgerAccount = (await import('@/models/LedgerAccount')).default;
-    const arAccount = await LedgerAccount.findOne({ code: 'AR' });
-    const cashAccount = await LedgerAccount.findOne({ code: 'CASH' });
+    const arAccount = await LedgerAccount.findOne({
+      code: 'AR',
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
+    const cashAccount = await LedgerAccount.findOne({
+      code: 'CASH',
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
+    const bankAccount = await LedgerAccount.findOne({
+      code: 'BANK',
+      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+    });
 
     if (!arAccount || !cashAccount) return;
 
@@ -532,34 +582,35 @@ export async function syncBillsToLedger() {
 
       // 2. Check Upfront payment if cashIn > 0
       if (bill.cashIn > 0) {
-        const cashDebitExists = await LedgerTransaction.findOne({
-          account: cashAccount._id,
+        const paymentAccountIds: any[] = [];
+        if (cashAccount?._id) paymentAccountIds.push(cashAccount._id);
+        if (bankAccount?._id) paymentAccountIds.push(bankAccount._id);
+
+        // Find all payment debit transactions already logged for this bill (in CASH, BANK, etc.)
+        const existingPaymentTxs = await LedgerTransaction.find({
+          account: { $in: paymentAccountIds },
           reference: bill.invoiceNo,
-          type: 'debit'
+          type: 'debit',
+          description: { $not: /Bill Generated/i }
         });
 
-        if (!cashDebitExists) {
+        const totalAlreadyLogged = existingPaymentTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+        const unloggedCash = (bill.cashIn || 0) - totalAlreadyLogged;
+
+        if (unloggedCash > 0) {
           await logLedgerTransaction(
             'CASH',
             'debit',
-            bill.cashIn,
+            unloggedCash,
             `Cash Paid Upfront for Bill ${bill.invoiceNo}`,
             bill.invoiceNo,
             billDate
           );
-        }
 
-        const arCreditExists = await LedgerTransaction.findOne({
-          account: arAccount._id,
-          reference: bill.invoiceNo,
-          type: 'credit'
-        });
-
-        if (!arCreditExists) {
           await logLedgerTransaction(
             'AR',
             'credit',
-            bill.cashIn,
+            unloggedCash,
             `Upfront payment credit for Bill ${bill.invoiceNo}`,
             bill.invoiceNo,
             billDate
@@ -570,6 +621,9 @@ export async function syncBillsToLedger() {
 
     await recalculateLedgerBalance('AR');
     await recalculateLedgerBalance('CASH');
+    if (bankAccount) {
+      await recalculateLedgerBalance('BANK');
+    }
   } catch (err) {
     console.error('[Ledger] Error syncing bills to ledger:', err);
   }

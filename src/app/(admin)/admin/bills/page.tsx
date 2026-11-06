@@ -492,22 +492,37 @@ function ClientBillsContent() {
   };
 
   const handleUpdateStatus = async (billId: string, currentDue: number) => {
-    const { value: paidAmount } = await Swal.fire({
-      title: 'Update Payment Cash-in',
-      input: 'number',
-      inputLabel: 'Amount Paid (৳)',
-      inputValue: currentDue,
+    const { value: formValues } = await Swal.fire({
+      title: 'Collect Payment',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <label style="display:block; margin-bottom: 6px; font-weight: 600;">Amount Paid (৳):</label>
+          <input id="swal-paid-amount" type="number" class="swal2-input" style="width: 100%; margin: 0 0 16px 0;" value="${currentDue}" min="1" />
+          <label style="display:block; margin-bottom: 6px; font-weight: 600;">Payment Method / Deposit To:</label>
+          <select id="swal-payment-method" class="swal2-select" style="width: 100%; margin: 0;">
+            <option value="CASH">Cash in Hand (CASH)</option>
+            <option value="BANK">Bank Account (BANK)</option>
+          </select>
+        </div>
+      `,
+      focusConfirm: false,
       showCancelButton: true,
-      inputValidator: (value) => {
-        if (!value || isNaN(Number(value)) || Number(value) < 0) {
-          return 'Please enter a valid positive amount';
+      confirmButtonText: 'Record Payment',
+      preConfirm: () => {
+        const amountInput = (document.getElementById('swal-paid-amount') as HTMLInputElement)?.value;
+        const methodSelect = (document.getElementById('swal-payment-method') as HTMLSelectElement)?.value || 'CASH';
+        const num = Number(amountInput);
+        if (!amountInput || isNaN(num) || num <= 0) {
+          Swal.showValidationMessage('Please enter a valid positive amount');
+          return false;
         }
+        return { amount: num, accountCode: methodSelect };
       }
     });
 
-    if (paidAmount !== undefined) {
+    if (formValues) {
       try {
-        const amount = Number(paidAmount);
+        const { amount, accountCode } = formValues;
         const bill = bills.find(b => b._id === billId);
         if (!bill) return;
 
@@ -521,7 +536,8 @@ function ClientBillsContent() {
           body: JSON.stringify({
             cashIn: newCashIn,
             currentBillDue: newDue,
-            status: newStatus
+            status: newStatus,
+            accountCode
           })
         });
 
