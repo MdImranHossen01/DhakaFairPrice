@@ -164,6 +164,14 @@ export async function PUT(
       .populate('supplier', 'name companyName phone email address')
       .populate('paymentAccountId', 'accountName accountType');
 
+    // Sync to Accounts Payable in ledger
+    try {
+      const { syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+      await syncPayablesToLedger();
+    } catch (syncErr) {
+      console.error('[SupplierBill Sync Error]', syncErr);
+    }
+
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('Error updating supplier bill:', error);
@@ -238,6 +246,14 @@ export async function DELETE(
     }
 
     await SupplierBill.findByIdAndDelete(id);
+
+    // Sync to Accounts Payable in ledger
+    try {
+      const { syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+      await syncPayablesToLedger();
+    } catch (syncErr) {
+      console.error('[SupplierBill Sync Error]', syncErr);
+    }
 
     return NextResponse.json({ message: 'Supplier bill deleted successfully' });
   } catch (error: any) {

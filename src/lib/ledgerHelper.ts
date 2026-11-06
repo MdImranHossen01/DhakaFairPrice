@@ -1092,6 +1092,18 @@ export async function syncPayablesToLedger() {
       }
     }
 
+    // Clean up AP entries for supplier bills that are now Paid or no longer Due
+    const paidOrZeroSupplierBills = await SupplierBill.find({
+      $or: [{ status: 'Paid' }, { dueAmount: { $lte: 0 } }]
+    }).select('billNo').lean();
+    const paidSbRefs = paidOrZeroSupplierBills.map((s: any) => `AP-SB-${s.billNo}`).filter(Boolean);
+    if (paidSbRefs.length > 0) {
+      await LedgerTransaction.deleteMany({
+        account: apAccount._id,
+        reference: { $in: paidSbRefs }
+      });
+    }
+
     // 3. Remove AP liabilities ONLY for cancelled/deleted orders that were NEVER Delivered and NEVER cleared
     const cancelledOrders = await ResellerOrder.find({
       $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }],

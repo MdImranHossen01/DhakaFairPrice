@@ -8,6 +8,7 @@ import Expense from '@/models/Expense';
 import Reseller from '@/models/Reseller';
 import LedgerAccount from '@/models/LedgerAccount';
 import Bill from '@/models/Bill';
+import SupplierBill from '@/models/SupplierBill';
 import Subscriber from '@/models/Subscriber';
 import ResellerWalletTransaction from '@/models/ResellerWalletTransaction';
 import BusinessLoan from '@/models/BusinessLoan';
@@ -96,6 +97,7 @@ export async function GET(req: NextRequest) {
       sevenDaysOrders,
       sevenDaysExpenses,
       activeLoansStats,
+      dueSupplierBillsStats,
       totalAllProductsCount,
       motherProductsCount,
       resellerProductsCount,
@@ -392,6 +394,18 @@ export async function GET(req: NextRequest) {
         }
       ]).catch(() => []),
 
+      // 15b. Due Supplier Bills (Payables for purchases from suppliers)
+      SupplierBill.aggregate([
+        { $match: { status: 'Due' } },
+        {
+          $group: {
+            _id: null,
+            totalDueSupplierBills: { $sum: '$dueAmount' },
+            count: { $sum: 1 }
+          }
+        }
+      ]).catch(() => []),
+
       // 16. Total Products Breakdown
       Product.countDocuments({}),
       Product.countDocuments({
@@ -511,8 +525,10 @@ export async function GET(req: NextRequest) {
     const arAccount = (ledgerAccounts as any[]).find((acc: any) => acc.code === 'AR');
     const totalReceivable = arAccount ? (arAccount.currentBalance || 0) : (billDueTotal + pendingOrderReceivable);
 
-    // Process Liabilities (Loans)
+    // Process Liabilities (Loans & Supplier Bills)
     const totalActiveLoansDue = (activeLoansStats as any[])?.[0]?.totalActiveLoansDue || 0;
+    const supplierBillsDueTotal = (dueSupplierBillsStats as any[])?.[0]?.totalDueSupplierBills || 0;
+    const supplierBillsDueCount = (dueSupplierBillsStats as any[])?.[0]?.count || 0;
 
     // Total Assets Calculation
     const totalLiquidBalance = cashBalance + bankBalance + mfsBalance;
@@ -650,7 +666,9 @@ export async function GET(req: NextRequest) {
         billDueTotal,
         totalReceivable,
         totalAssetValue,
-        totalActiveLoansDue
+        totalActiveLoansDue,
+        supplierBillsDueTotal,
+        supplierBillsDueCount
       },
       lowStockProducts,
       chartData: completeChartData,

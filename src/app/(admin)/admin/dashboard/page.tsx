@@ -170,6 +170,10 @@ const payablesChartConfig = {
     label: 'In-Transit Profit',
     color: 'var(--chart-4)',
   },
+  suppliers: {
+    label: 'Supplier Bills (AP)',
+    color: 'var(--chart-2)',
+  },
   loans: {
     label: 'Business Loans',
     color: 'var(--chart-5)',
@@ -416,10 +420,12 @@ export default function AdminDashboard() {
     const cleared = data?.stats?.resellerWalletTotal || 0;
     const transit = data?.stats?.resellerPendingTotal || 0;
     const loans = data?.stats?.totalActiveLoansDue || 0;
+    const suppliers = data?.stats?.supplierBillsDueTotal || 0;
 
     return [
       { type: 'Cleared', amount: cleared, fill: 'var(--color-cleared)' },
       { type: 'In-Transit', amount: transit, fill: 'var(--color-transit)' },
+      { type: 'Suppliers', amount: suppliers, fill: 'var(--color-suppliers)' },
       { type: 'Loans', amount: loans, fill: 'var(--color-loans)' },
     ].filter(d => d.amount > 0);
   }, [data?.stats]);
@@ -1149,6 +1155,13 @@ export default function AdminDashboard() {
                   <span className="font-semibold text-foreground">৳{Math.round(stats?.resellerPendingTotal || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-muted-foreground">
+                  <Link href="/admin/supplier-bills?status=due" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-2)] shrink-0" />
+                    <span>Supplier Bills (Accounts Payable):</span>
+                  </Link>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">৳{Math.round(stats?.supplierBillsDueTotal || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-muted-foreground">
                   <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[var(--chart-5)] shrink-0" /> Business Loans (Active):</span>
                   <span className="font-semibold text-rose-600 dark:text-rose-400">৳{Math.round(stats?.totalActiveLoansDue || 0).toLocaleString()}</span>
                 </div>
@@ -1158,7 +1171,7 @@ export default function AdminDashboard() {
 
           <div className="p-4 bg-sky-500/5 border-t border-sky-500/10 flex justify-between items-center font-bold text-sm text-sky-600 dark:text-sky-400">
             <span>Total Payable Obligations:</span>
-            <span className="text-base">৳{Math.round((stats?.resellerWalletTotal || 0) + (stats?.resellerPendingTotal || 0) + (stats?.totalActiveLoansDue || 0)).toLocaleString()}</span>
+            <span className="text-base">৳{Math.round((stats?.resellerWalletTotal || 0) + (stats?.resellerPendingTotal || 0) + (stats?.totalActiveLoansDue || 0) + (stats?.supplierBillsDueTotal || 0)).toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -1402,7 +1415,7 @@ export default function AdminDashboard() {
                       </div>
                       {seller.subdomain && (
                         <span className="text-[11px] text-muted-foreground">
-                          {seller.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'dhakafairprice.com'}
+                          {seller.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'swapnobaz.com'}
                         </span>
                       )}
                     </td>

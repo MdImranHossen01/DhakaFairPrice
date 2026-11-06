@@ -173,6 +173,14 @@ export async function POST(req: NextRequest) {
       .populate('supplier', 'name companyName phone email address')
       .populate('paymentAccountId', 'accountName accountType');
 
+    // Sync to Accounts Payable in ledger
+    try {
+      const { syncPayablesToLedger } = await import('@/lib/ledgerHelper');
+      await syncPayablesToLedger();
+    } catch (syncErr) {
+      console.error('[SupplierBill Sync Error]', syncErr);
+    }
+
     return NextResponse.json(populated, { status: 201 });
   } catch (error: any) {
     console.error('Error creating supplier bill:', error);
