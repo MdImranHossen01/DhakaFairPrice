@@ -996,13 +996,13 @@ export function ProductForm({ initialData, isReseller = false }: ProductFormProp
                   <span>Image Upload Guidelines (For Best Quality & Zoom)</span>
                 </div>
                 <ul className="grid grid-cols-1 md:grid-cols-3 gap-x-3 gap-y-1 list-disc list-inside text-[11px] leading-relaxed">
-                  <li><strong>Close-up Shots:</strong> Frame product closely and centered; avoid tiny subject or far-away shots.</li>
-                  <li><strong>Clean Background:</strong> Use bright lighting with neutral/light background for true colors & texture.</li>
+                  <li><strong>Max Size:</strong> Maximum file size is <strong>1 MB</strong> per image.</li>
                   <li><strong>Ratio:</strong> 1:1 square or 3:4 portrait ratio is recommended.</li>
+                  <li><strong>Clean Background:</strong> Use bright lighting with neutral/light background for true colors.</li>
                 </ul>
                 <div className="flex items-center gap-1.5 text-destructive font-semibold text-[11px] bg-destructive/10 border border-destructive/20 rounded-md px-2.5 py-1.5 mt-1">
-                  <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-white px-1.5 py-0.5 rounded">Recommendation</span>
-                  <span>Upload in <strong>.webp</strong> format to ensure 100% original sharpness, zero quality loss, and instant loading!</span>
+                  <span className="font-bold uppercase tracking-wider text-[10px] bg-destructive text-white px-1.5 py-0.5 rounded">Max 1 MB • WebP</span>
+                  <span>Upload in <strong>.webp</strong> format (Max 1 MB) to ensure 100% original sharpness, zero quality loss, and instant loading!</span>
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">

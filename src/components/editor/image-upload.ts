@@ -52,8 +52,9 @@ export const uploadFn = createImageUpload({
             toast.error("File type not supported.");
             return false;
         }
-        if (file.size / 1024 / 1024 > 20) {
-            toast.error("File size too big (max 20MB).");
+        if (file.size > 1 * 1024 * 1024) {
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            toast.error(`Image size cannot exceed 1 MB! Your file is ${sizeMB} MB.`);
             return false;
         }
         return true;

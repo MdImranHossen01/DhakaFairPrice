@@ -72,6 +72,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unsupported image format' }, { status: 400 });
     }
 
+    // Strict 1 MB File Size Guard across all uploads (product, blog, banner, category, etc.)
+    const MAX_ALLOWED_BYTES = 1 * 1024 * 1024; // 1 MB
+    if (buffer.length > MAX_ALLOWED_BYTES) {
+      const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
+      return NextResponse.json(
+        { message: `Image size cannot exceed 1 MB! Your file is ${sizeMB} MB.` },
+        { status: 400 }
+      );
+    }
+
     // Convert raster images to WebP via Sharp if not SVG or animated GIF
     const isSvg = contentType.includes('svg');
     const isGif = contentType.includes('gif');

@@ -133,6 +133,13 @@ export async function uploadImageToR2(
   let filename = 'image.webp';
 
   if (typeof window !== 'undefined' && file instanceof File) {
+    // 1 MB File Size Guard: Strictly block any image over 1 MB
+    const MAX_ALLOWED_BYTES = 1 * 1024 * 1024; // 1 MB
+    if (file.size > MAX_ALLOWED_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      throw new Error(`Image size cannot exceed 1 MB! Your file is ${sizeMB} MB. Please upload an image under 1 MB.`);
+    }
+
     if (compress && file.type.startsWith('image/') && !file.type.includes('svg') && !file.type.includes('gif')) {
       try {
         uploadFile = await compressImageInBrowser(file, targetMaxKB, maxWidthOrHeight);

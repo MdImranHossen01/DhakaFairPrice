@@ -57,6 +57,18 @@ export function ImageUpload({
       return;
     }
 
+    // 1 MB File Size Guard: Disallow any image over 1 MB
+    const MAX_ALLOWED_BYTES = 1 * 1024 * 1024; // 1 MB
+    if (file.size > MAX_ALLOWED_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      toast.error(`Image size cannot exceed 1 MB! Your file is ${sizeMB} MB. Please choose an image under 1 MB.`);
+      if ('target' in e && 'value' in e.target) {
+        (e.target as any).value = '';
+      }
+      setIsDragging(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const isBanner = folder === 'banners' || (!compact && aspect === 'banner' && folder !== 'products');
