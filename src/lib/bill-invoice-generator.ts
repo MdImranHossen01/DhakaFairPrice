@@ -478,15 +478,25 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
       if (hasPrinted) return;
       hasPrinted = true;
       printWindow.focus();
-      printWindow.print();
       if (mode === 'print') {
-        printWindow.close();
+        printWindow.onafterprint = () => {
+          try {
+            printWindow.close();
+          } catch (e) {}
+        };
       }
+      printWindow.print();
     };
 
     printWindow.onload = triggerPrint;
     
-    setTimeout(triggerPrint, 800);
+    setTimeout(() => {
+      if (!hasPrinted) {
+        triggerPrint();
+      }
+    }, 500);
+  } else {
+    toast.error('Pop-up was blocked. Please allow pop-ups for this website to print bill.');
   }
 }
 
