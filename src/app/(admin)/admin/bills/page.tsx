@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -154,7 +154,7 @@ function ClientBillsContent() {
   const [activeSuggestions, setActiveSuggestions] = useState<any[]>([]);
   const [showSuggestionsFor, setShowSuggestionsFor] = useState<'name' | 'email' | 'phone' | null>(null);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/suggest-clients');
       if (res.ok) {
@@ -166,7 +166,7 @@ function ClientBillsContent() {
     } catch (err) {
       console.error('Error fetching client suggestions:', err);
     }
-  };
+  }, []);
 
   const handleNameChange = (val: string) => {
     setClientName(val);
@@ -221,14 +221,7 @@ function ClientBillsContent() {
     setShowSuggestionsFor(null);
   };
 
-  useEffect(() => {
-    fetchBills();
-    fetchProducts();
-    fetchSettings();
-    fetchSuggestions();
-  }, [statusFilter]);
-
-  const fetchBills = async () => {
+  const fetchBills = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/admin/bills?filter=${statusFilter}&type=bill`);
@@ -240,9 +233,9 @@ function ClientBillsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const res = await fetch('/api/products?limit=100');
       if (res.ok) {
@@ -252,9 +245,9 @@ function ClientBillsContent() {
     } catch (err) {
       console.error('Error fetching products:', err);
     }
-  };
+  }, []);
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const res = await fetch('/api/settings');
       if (res.ok) {
@@ -264,7 +257,14 @@ function ClientBillsContent() {
     } catch (err) {
       console.error('Error fetching settings:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchBills();
+    fetchProducts();
+    fetchSettings();
+    fetchSuggestions();
+  }, [fetchBills, fetchProducts, fetchSettings, fetchSuggestions]);
 
   // Calculations
   const subtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
