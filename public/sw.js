@@ -1,4 +1,4 @@
-const CACHE_NAME = 'Swapnobaz-cache-v2';
+const CACHE_NAME = 'dhakafairprice-cache-v3';
 const OFFLINE_URL = '/offline';
 
 const ASSETS_TO_CACHE = [
@@ -45,9 +45,15 @@ self.addEventListener('fetch', (event) => {
   // Skip non-http schemes
   if (!['http:', 'https:'].includes(url.protocol)) return;
 
-  // 1. API & Admin Requests - Bypass Service Worker Completely
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) {
-    return; // Let browser handle it normally without SW interception
+  // 1. API, Admin, and Next.js RSC / Data Prefetch Requests - Bypass Service Worker Completely
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/admin') ||
+    url.searchParams.has('_rsc') ||
+    event.request.headers.get('RSC') === '1' ||
+    url.pathname.startsWith('/_next/data/')
+  ) {
+    return; // Let browser and Next.js handle prefetch and RSC navigation directly
   }
 
   // 2. Next.js Static Assets (Hashed/Immutable) - Cache First
