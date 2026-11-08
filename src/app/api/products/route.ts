@@ -89,8 +89,8 @@ export async function GET(req: NextRequest) {
         andConditions.push({
           $or: [
             { isMotherProduct: true },
-            { uploadedBy: null, isMotherProduct: { $ne: false } },
-            { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+            { uploadedBy: null },
+            { uploadedBy: { $exists: false } },
           ]
         });
       } else if (tab === 'reseller') {
@@ -107,15 +107,15 @@ export async function GET(req: NextRequest) {
       }
     } else if (isReseller) {
       // Logged-in reseller querying products for order editing or catalog lookup
-      andConditions.push({ isPublished: true });
+      andConditions.push({ isPublished: { $ne: false } });
     } else {
       // Non-admin storefront customers: strictly show active Mother Shop products
       andConditions.push({
-        isPublished: true,
+        isPublished: { $ne: false },
         $or: [
           { isMotherProduct: true },
-          { uploadedBy: null, isMotherProduct: { $ne: false } },
-          { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+          { uploadedBy: null },
+          { uploadedBy: { $exists: false } },
         ]
       });
     }
@@ -326,8 +326,9 @@ export async function POST(req: NextRequest) {
           videoUrl: videoUrl ? String(videoUrl).trim() : undefined,
         });
 
-        revalidateTag('products', 'max');
+        revalidateTag('products', { expire: 0 });
         revalidatePath('/');
+        revalidatePath('/shop');
         return NextResponse.json(newProduct, { status: 201 });
       } catch (error: any) {
         lastError = error;
@@ -479,7 +480,7 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    revalidateTag('products', 'max');
+    revalidateTag('products', { expire: 0 });
     revalidatePath('/');
     revalidatePath('/shop');
 

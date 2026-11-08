@@ -168,8 +168,8 @@ ProductSchema.index({ categories: 1 }); // Optimized for category filtering
 ProductSchema.pre('validate', function(this: any) {
   // If no uploadedBy reseller is specified, this product is owned by Mother Shop Admin
   if (!this.uploadedBy) {
-    if (this.isMotherProduct === undefined) this.isMotherProduct = true;
-    if (this.isApprovedByAdmin === undefined) this.isApprovedByAdmin = true;
+    this.isMotherProduct = true;
+    this.isApprovedByAdmin = true;
   }
 
   // Main product validation
@@ -206,8 +206,8 @@ const Product: Model<IProduct> = mongoose.model<IProduct>('Product', ProductSche
 export const MOTHER_SHOP_PRODUCT_FILTER = {
   $or: [
     { isMotherProduct: true },
-    { uploadedBy: null, isMotherProduct: { $ne: false } },
-    { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
+    { uploadedBy: null },
+    { uploadedBy: { $exists: false } },
   ],
 };
 

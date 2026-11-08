@@ -41,20 +41,21 @@ export const getCachedProducts = (query = {}, limit = 10, sort: any = { createdA
       // Ensure Reseller model is registered
       if (!Reseller) {}
       const motherCondition = {
-        isPublished: true,
+        isPublished: { $ne: false },
         ...MOTHER_SHOP_PRODUCT_FILTER,
       };
       const finalQuery = Object.keys(query).length > 0 ? { $and: [motherCondition, query] } : motherCondition;
       const products = await Product.find(finalQuery)
-        .populate('categories')
-        .populate('brand')
+        .select('-embedding -description -batches -variants.batches -attributes')
+        .populate('categories', 'name slug parentCategory isActive')
+        .populate('brand', 'name slug image isActive')
         .populate('uploadedBy', 'storeName subdomain')
         .sort(sort as any)
         .limit(limit)
         .lean();
       return serialize(products);
     },
-    ['products-list', JSON.stringify(query), limit.toString(), JSON.stringify(sort)],
+    ['products-list-v2', JSON.stringify(query), limit.toString(), JSON.stringify(sort)],
     { revalidate: 31536000, tags: [CACHE_TAGS.products] }
   )();
 };
@@ -71,17 +72,18 @@ export const getCachedProductBySlug = (slug: string) => {
       const product = await Product.findOne({
         $and: [
           slugCondition,
-          { isPublished: true },
+          { isPublished: { $ne: false } },
           MOTHER_SHOP_PRODUCT_FILTER,
         ],
       })
+        .select('-embedding')
         .populate('categories')
         .populate('brand')
         .populate('uploadedBy', 'storeName subdomain')
         .lean();
       return serialize(product);
     },
-    ['product-detail', slug],
+    ['product-detail-v2', slug],
     { revalidate: 31536000, tags: [CACHE_TAGS.products] }
   )();
 };
@@ -107,9 +109,12 @@ export const getTrendingProducts = (limit = 10) => {
 
       let trendingProducts = await Product.find({
         _id: { $in: topSellingIds },
-        isPublished: true,
+        isPublished: { $ne: false },
         ...MOTHER_SHOP_PRODUCT_FILTER,
-      }).populate('categories').lean();
+      })
+        .select('-embedding -description -batches -variants.batches -attributes')
+        .populate('categories', 'name slug parentCategory isActive')
+        .lean();
 
       // Ensure they are in the order of totalSales
       trendingProducts.sort((a: any, b: any) => {
@@ -123,11 +128,12 @@ export const getTrendingProducts = (limit = 10) => {
         const remaining = limit - trendingProducts.length;
         const topRated = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
-          isPublished: true,
+          isPublished: { $ne: false },
           ratings: { $gt: 0 },
           ...MOTHER_SHOP_PRODUCT_FILTER,
         })
-          .populate('categories')
+          .select('-embedding -description -batches -variants.batches -attributes')
+          .populate('categories', 'name slug parentCategory isActive')
           .sort({ ratings: -1, numReviews: -1 } as any)
           .limit(remaining)
           .lean();
@@ -139,11 +145,12 @@ export const getTrendingProducts = (limit = 10) => {
         const remaining = limit - trendingProducts.length;
         const topViewed = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
-          isPublished: true,
+          isPublished: { $ne: false },
           views: { $gt: 0 },
           ...MOTHER_SHOP_PRODUCT_FILTER,
         })
-          .populate('categories')
+          .select('-embedding -description -batches -variants.batches -attributes')
+          .populate('categories', 'name slug parentCategory isActive')
           .sort({ views: -1 } as any)
           .limit(remaining)
           .lean();
@@ -155,10 +162,11 @@ export const getTrendingProducts = (limit = 10) => {
         const remaining = limit - trendingProducts.length;
         const latest = await Product.find({
           _id: { $nin: trendingProducts.map(p => p._id) },
-          isPublished: true,
+          isPublished: { $ne: false },
           ...MOTHER_SHOP_PRODUCT_FILTER,
         })
-          .populate('categories')
+          .select('-embedding -description -batches -variants.batches -attributes')
+          .populate('categories', 'name slug parentCategory isActive')
           .sort({ createdAt: -1 } as any)
           .limit(remaining)
           .lean();
@@ -167,7 +175,7 @@ export const getTrendingProducts = (limit = 10) => {
 
       return serialize(trendingProducts);
     },
-    ['trending-products', limit.toString()],
+    ['trending-products-v2', limit.toString()],
     { revalidate: 3600, tags: [CACHE_TAGS.products] }
   )();
 };
@@ -224,12 +232,13 @@ export const getCachedRootCategoriesWithProducts = (productsPerCategory = 10) =>
         // Convert to ObjectIds so MongoDB $in query matches correctly
         const allObjectIds = allStringIds.map(id => new mongoose.Types.ObjectId(id));
         const products = await Product.find({
-          isPublished: true,
+          isPublished: { $ne: false },
           categories: { $in: allObjectIds },
           ...MOTHER_SHOP_PRODUCT_FILTER,
         })
-          .populate('categories')
-          .populate('brand')
+          .select('-embedding -description -batches -variants.batches -attributes')
+          .populate('categories', 'name slug parentCategory isActive')
+          .populate('brand', 'name slug image isActive')
           .sort({ createdAt: -1 })
           .limit(productsPerCategory)
           .lean();
@@ -244,7 +253,7 @@ export const getCachedRootCategoriesWithProducts = (productsPerCategory = 10) =>
 
       return serialize(results);
     },
-    ['root-categories-with-products', productsPerCategory.toString()],
+    ['root-categories-with-products-v2', productsPerCategory.toString()],
     { revalidate: 31536000, tags: [CACHE_TAGS.products, CACHE_TAGS.categories] }
   )();
 };
