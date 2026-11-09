@@ -73,19 +73,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'pub-0dadb28394cd4ea8b1f69260c1774617.r2.dev',
+        hostname: 'pub-b7ce5f2325b4417ab3d6cfe2021f8651.r2.dev',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'cdn.swapnobaz.com',
+        hostname: 'cdn.dhakafairprice.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: '*.swapnobaz.com',
+        hostname: '*.dhakafairprice.com',
         port: '',
         pathname: '/**',
       },
