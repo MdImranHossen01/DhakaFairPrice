@@ -326,9 +326,9 @@ export async function POST(req: NextRequest) {
           videoUrl: videoUrl ? String(videoUrl).trim() : undefined,
         });
 
-        revalidateTag('products', { expire: 0 });
-        revalidatePath('/');
-        revalidatePath('/shop');
+        revalidateTag('products', 'max');
+        revalidatePath('/', 'layout');
+        revalidatePath('/shop', 'page');
         return NextResponse.json(newProduct, { status: 201 });
       } catch (error: any) {
         lastError = error;
@@ -480,9 +480,9 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
-    revalidateTag('products', { expire: 0 });
-    revalidatePath('/');
-    revalidatePath('/shop');
+    revalidateTag('products', 'max');
+    revalidatePath('/', 'layout');
+    revalidatePath('/shop', 'page');
 
     let message = `Deleted ${deleteResult.deletedCount} Mother Shop product(s) successfully and purged images from Cloudflare R2.`;
     if (resellerProducts.length > 0) {

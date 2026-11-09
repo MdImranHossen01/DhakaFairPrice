@@ -364,9 +364,9 @@ export async function PATCH(request: NextRequest) {
       { upsert: true, new: true }
     );
 
-    revalidateTag('products', { expire: 0 });
-    revalidatePath('/');
-    revalidatePath('/shop');
+    revalidateTag('products', 'max');
+    revalidatePath('/', 'layout');
+    revalidatePath('/shop', 'page');
 
     return NextResponse.json({ product });
   } catch (error: any) {
@@ -481,9 +481,9 @@ export async function DELETE(request: NextRequest) {
       console.error('Failed to clean up reseller product images from Cloudflare R2:', r2CleanErr);
     }
 
-    revalidateTag('products', { expire: 0 });
-    revalidatePath('/');
-    revalidatePath('/shop');
+    revalidateTag('products', 'max');
+    revalidatePath('/', 'layout');
+    revalidatePath('/shop', 'page');
 
     return NextResponse.json({
       success: true,

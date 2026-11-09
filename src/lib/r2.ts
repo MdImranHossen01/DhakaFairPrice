@@ -4,7 +4,7 @@ const accountId = process.env.R2_ACCOUNT_ID || '';
 const accessKeyId = process.env.R2_ACCESS_KEY_ID || '';
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || '';
 export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'jiapixelmedia';
-export const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-0dadb28394cd4ea8b1f69260c1774617.r2.dev';
+export const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL || 'https://pub-b7ce5f2325b4417ab3d6cfe2021f8651.r2.dev';
 
 export const r2Client = new S3Client({
   region: 'auto',
