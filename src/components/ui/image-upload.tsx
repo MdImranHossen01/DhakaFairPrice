@@ -17,7 +17,7 @@ interface ImageUploadProps {
   className?: string;
   iconClassName?: string;
   compact?: boolean;
-  aspect?: "square" | "video" | "banner";
+  aspect?: "square" | "video" | "banner" | "circle";
   folder?: string;
   maxWidthOrHeight?: number;
   targetMaxKB?: number;
@@ -117,6 +117,7 @@ export function ImageUpload({
               ? "border-primary bg-primary/5 scale-[0.99]" 
               : !compact && "border-gray-200 bg-gray-50/50 hover:bg-white hover:border-primary hover:shadow-xl hover:shadow-primary/5",
             loading && "opacity-70 cursor-not-allowed",
+            aspect === "circle" && !compact && "rounded-full w-32 h-32 min-h-0 mx-auto",
             className
           )}
         >
@@ -132,7 +133,9 @@ export function ImageUpload({
                   compact ? "h-full w-full rounded-none border-0 shadow-none" : "w-full max-h-[400px]",
                   !compact && aspect === "banner" && "aspect-[21/9]",
                   !compact && aspect === "video" && "aspect-video",
-                  !compact && aspect === "square" && "aspect-square max-w-[200px]"
+                  !compact && aspect === "square" && "aspect-square max-w-[200px]",
+                  !compact && aspect === "circle" && "aspect-square max-w-[200px] rounded-full",
+                  compact && aspect === "circle" && "rounded-full"
                 )}>
                   <Image src={value} alt="Preview" fill unoptimized className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
@@ -142,7 +145,7 @@ export function ImageUpload({
                       </div>
                   </div>
                </div>
-               {!compact && (
+               {!compact && aspect !== "circle" && (
                  <div className="flex items-center justify-between w-full mt-4 bg-white/50 p-3 rounded-2xl border border-gray-100 shadow-sm">
                   <div className="flex-1 min-w-0 pr-4">
                       <p className="text-sm font-bold text-gray-900 truncate">Image Selected</p>
@@ -159,12 +162,24 @@ export function ImageUpload({
                   </Button>
                  </div>
                )}
+               {!compact && aspect === "circle" && (
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                    onClick={removeImage}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Remove
+                  </Button>
+               )}
             </div>
           ) : (
             <div className={cn("flex flex-col items-center text-center", compact ? "gap-1 p-0" : "gap-2 p-6")}>
               <div className={cn(
                 "rounded-2xl bg-white shadow-sm border border-gray-100 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500",
                 compact ? "p-1.5 rounded-lg" : "p-3",
+                aspect === "circle" && "rounded-full",
                 iconClassName
               )}>
                 <Upload className={cn("text-primary", compact ? "h-4 w-4" : "h-6 w-6")} />
@@ -175,7 +190,7 @@ export function ImageUpload({
                     Click to <span className="text-primary underline underline-offset-4">upload</span>
                   </p>
                   <p className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
-                    PNG, JPG or WEBP (Max 5MB)
+                    PNG, JPG or WEBP (Max 1MB)
                   </p>
                 </div>
               )}
@@ -195,6 +210,3 @@ export function ImageUpload({
     </div>
   );
 }
-
-
-
