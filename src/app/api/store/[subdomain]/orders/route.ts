@@ -69,7 +69,7 @@ export async function POST(
 
     const resellerFeeRate = reseller.systemFeePercent !== undefined 
       ? reseller.systemFeePercent 
-      : (reseller.commissionRate ?? 10);
+      : (reseller.commissionRate ?? 15);
 
     for (const item of items) {
       const qty = parseInt(item.quantity, 10);
@@ -134,7 +134,7 @@ export async function POST(
         let unitFee = Math.max(0, (Number(matchedVariant?.purchasePrice || rp.purchasePrice) || 0) - varBaseCost);
         if (unitFee === 0 && varBaseCost > 0) {
           const uploaderReseller = await Reseller.findById(uploaderId).select('systemFeePercent').lean();
-          const feePct = uploaderReseller?.systemFeePercent ?? 10;
+          const feePct = uploaderReseller?.systemFeePercent ?? 15;
           unitFee = Math.round(varBaseCost * (feePct / 100));
         }
 
@@ -189,8 +189,8 @@ export async function POST(
           ? Number(productDoc.purchasePrice)
           : effectivePurchase;
 
-        // Ensure wholesale price includes Mother Shop's platform fee margin (Swapnobaz / Janopriyo default: 10%)
-        const feeRatePct = resellerFeeRate > 0 ? resellerFeeRate : 10;
+        // Ensure wholesale price includes Mother Shop's platform fee margin (DhakaFairPrice default: 15%)
+        const feeRatePct = resellerFeeRate > 0 ? resellerFeeRate : 15;
         const minWholesale = motherBaseCost > 0 ? Math.round(motherBaseCost * (1 + feeRatePct / 100)) : effectivePurchase;
 
         if (effectivePurchase < minWholesale && !productDoc?.resellerPrice) {

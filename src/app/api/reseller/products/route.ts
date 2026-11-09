@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 15;
 
     const hasVariants = Array.isArray(variants) && variants.length > 0;
     if (!hasVariants) {
@@ -311,7 +311,7 @@ export async function PATCH(request: NextRequest) {
 
     const resellerDoc = await Reseller.findById(resellerId).lean();
     const settings = await GlobalSettings.findOne().lean();
-    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 10;
+    const commissionPct = resellerDoc?.systemFeePercent ?? resellerDoc?.commissionRate ?? settings?.platformCommissionRate ?? 15;
 
     if (updateData.purchasePrice !== undefined) {
       const pPrice = Number(updateData.purchasePrice) || 0;
