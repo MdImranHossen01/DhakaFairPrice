@@ -405,31 +405,6 @@ export default function SettingsPage() {
                     />
                   )}
 
-                  <FormField
-                    control={form.control}
-                    name="platformCommissionRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-semibold text-gray-700">Platform System Commission Rate (%)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            placeholder="15"
-                            {...field}
-                            value={field.value ?? 15}
-                            onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                            className="h-12 rounded-xl bg-gray-50 border-2 border-gray-100 focus:border-primary transition-all font-semibold"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Global percentage fee added on top of reseller base price when shared across the system / other resellers (e.g. 15%).
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   {/* Delivery Charges & Free Delivery Threshold */}
                   <div className="border-t border-gray-100 pt-5 mt-2 space-y-4">
