@@ -55,35 +55,35 @@ export default function ProductCardV2({ product: initialProduct, isFlashSale }: 
   const router = useRouter();
   const isAdmin = (session?.user as any)?.role === 'admin';
 
-  const firstVariant = initialProduct.variants && initialProduct.variants.length > 0 ? initialProduct.variants[0] : null;
-  const initialBasePrice = Number(initialProduct.price ?? (initialProduct as any).retailPrice ?? 0);
-  const initialSalePrice = initialProduct.salePrice !== undefined && initialProduct.salePrice !== null
-    ? Number(initialProduct.salePrice)
-    : (initialProduct.price !== undefined ? Number(initialProduct.price) : Number((initialProduct as any).retailPrice ?? 0));
+  const hasVariants = Boolean(initialProduct.variants && initialProduct.variants.length > 0);
+  const firstVariant = hasVariants ? initialProduct.variants![0] : null;
 
-  const variantPrice = firstVariant && (firstVariant.price !== undefined && firstVariant.price !== null)
+  const displayPrice = firstVariant && (firstVariant.price !== undefined && firstVariant.price !== null)
     ? Number(firstVariant.price)
-    : initialBasePrice;
-  const variantSalePrice = firstVariant && (firstVariant.salePrice !== undefined && firstVariant.salePrice !== null)
-    ? Number(firstVariant.salePrice)
-    : (firstVariant && firstVariant.price !== undefined ? Number(firstVariant.price) : initialSalePrice);
+    : Number(initialProduct.price ?? (initialProduct as any).retailPrice ?? 0);
+
+  // If product has variants, discount MUST come strictly from firstVariant. Never fall back to main product salePrice!
+  const rawSale = firstVariant
+    ? (firstVariant.salePrice !== undefined && firstVariant.salePrice !== null ? Number(firstVariant.salePrice) : undefined)
+    : (initialProduct.salePrice !== undefined && initialProduct.salePrice !== null ? Number(initialProduct.salePrice) : undefined);
+
+  const hasDiscount = Boolean(rawSale !== undefined && rawSale > 0 && rawSale < displayPrice);
+  const displaySalePrice = hasDiscount ? rawSale : undefined;
 
   const product = {
     ...initialProduct,
-    price: isNaN(variantPrice) ? 0 : variantPrice,
-    salePrice: isNaN(variantSalePrice) ? variantPrice : variantSalePrice,
+    price: isNaN(displayPrice) ? 0 : displayPrice,
+    salePrice: displaySalePrice,
     stock: firstVariant?.stock ?? initialProduct.stock ?? 0,
     sku: firstVariant?.sku ?? initialProduct.sku,
     images: firstVariant?.image ? [firstVariant.image, ...((initialProduct.images || []).filter((img: string) => img !== firstVariant.image))] : (initialProduct.images || [])
   };
 
-  const hasVariants = initialProduct.variants && initialProduct.variants.length > 0;
-
   const [showQuickViewModal, setShowQuickViewModal] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const quickAddRef = useRef<HTMLButtonElement>(null);
 
-  const discount = (product.price > 0 && product.salePrice && product.salePrice < product.price)
+  const discount = hasDiscount && product.salePrice
     ? Math.round(((product.price - product.salePrice) / product.price) * 100)
     : 0;
 
@@ -289,9 +289,9 @@ export default function ProductCardV2({ product: initialProduct, isFlashSale }: 
 
         <div className="flex items-center gap-3">
           <span className="text-xl font-black text-[#00a870]">
-            ৳{Math.round(product.salePrice ?? product.price ?? 0)}
+            ৳{Math.round(hasDiscount && product.salePrice ? product.salePrice : (product.price || 0))}
           </span>
-          {product.salePrice != null && product.price != null && product.price > product.salePrice && (
+          {hasDiscount && (
             <span className="text-sm text-muted-foreground line-through decoration-primary/20">
               ৳{Math.round(product.price ?? 0)}
             </span>

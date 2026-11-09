@@ -206,11 +206,16 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     }, 100);
   };
 
-  const hasVariants = (uniqueColors.length > 0 || uniqueSizes.length > 0);
+  const hasVariants = Boolean(product.variants && product.variants.length > 0);
   const currentVariant = activeVariant || defaultVariant;
 
-  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : product.price;
-  const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
+  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : (product.price ?? 0);
+  const rawSalePrice = hasVariants
+    ? (currentVariant?.salePrice !== undefined && currentVariant?.salePrice !== null ? Number(currentVariant.salePrice) : undefined)
+    : (product.salePrice !== undefined && product.salePrice !== null ? Number(product.salePrice) : undefined);
+  const hasDiscount = Boolean(rawSalePrice && displayPrice && Number(rawSalePrice) > 0 && Number(rawSalePrice) < Number(displayPrice));
+  const displaySalePrice = hasDiscount ? Number(rawSalePrice) : undefined;
+  const finalPrice = hasDiscount ? displaySalePrice! : displayPrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
   const displaySku = hasVariants ? (currentVariant?.sku ?? '') : product.sku;
 
@@ -238,7 +243,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
     const itemToAdd = {
       productId: product._id,
       name: product.name,
-      price: displaySalePrice || displayPrice,
+      price: finalPrice,
       basePrice: displayPrice,
       quantity: finalQuantity,
       image: activeVariant?.images?.[0] || activeVariant?.image || (product.variants && product.variants.length > 0 ? (product.variants[0]?.images?.[0] || product.variants[0]?.image) : product.images?.[0]),
@@ -258,7 +263,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
           content_category: product.categories?.[0]?.name || 'Uncategorized',
           content_ids: [product._id],
           content_type: 'product',
-          value: (displaySalePrice || displayPrice) * finalQuantity,
+          value: finalPrice * finalQuantity,
           currency: 'BDT',
           quantity: finalQuantity
         };
@@ -345,7 +350,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
           content_category: product.categories?.[0]?.name || 'Uncategorized',
           content_ids: [product._id],
           content_type: 'product',
-          value: displaySalePrice || displayPrice,
+          value: finalPrice,
           currency: 'BDT'
         };
         const trackingUser = {
@@ -580,9 +585,9 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
         <div className="flex flex-col gap-1">
           <div className="flex items-baseline gap-4">
             <span className="text-3xl font-extrabold text-primary">
-              {CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}
+              {CURRENCY_SYMBOL}{Math.round(finalPrice)}
             </span>
-            {displaySalePrice && displayPrice > displaySalePrice && (
+            {hasDiscount && (
               <span className="text-xl text-muted-foreground line-through font-medium">
                 {CURRENCY_SYMBOL}{Math.round(displayPrice)}
               </span>
@@ -781,7 +786,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
               variant="outline"
               className="w-full h-14 rounded-full font-black text-xs uppercase tracking-[0.2em] border-2 border-[#075E54] text-[#075E54] hover:bg-[#075E54] hover:text-white transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center gap-2"
               onClick={() => {
-                const message = encodeURIComponent(`Hi, I'm interested in ${product.name}. Price: ${CURRENCY_SYMBOL}${Math.round(displaySalePrice || displayPrice)}`);
+                const message = encodeURIComponent(`Hi, I'm interested in ${product.name}. Price: ${CURRENCY_SYMBOL}${Math.round(finalPrice)}`);
 
                 // Parse whatsappNumber robustly
                 let cleanNumber = (whatsappNumber || '').trim();

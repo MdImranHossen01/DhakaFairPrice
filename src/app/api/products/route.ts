@@ -89,8 +89,8 @@ export async function GET(req: NextRequest) {
         andConditions.push({
           $or: [
             { isMotherProduct: true },
-            { uploadedBy: null },
-            { uploadedBy: { $exists: false } },
+            { uploadedBy: null, isMotherProduct: { $ne: false } },
+            { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
           ]
         });
       } else if (tab === 'reseller') {
@@ -107,15 +107,15 @@ export async function GET(req: NextRequest) {
       }
     } else if (isReseller) {
       // Logged-in reseller querying products for order editing or catalog lookup
-      andConditions.push({ isPublished: { $ne: false } });
+      andConditions.push({ isPublished: true });
     } else {
       // Non-admin storefront customers: strictly show active Mother Shop products
       andConditions.push({
-        isPublished: { $ne: false },
+        isPublished: true,
         $or: [
           { isMotherProduct: true },
-          { uploadedBy: null },
-          { uploadedBy: { $exists: false } },
+          { uploadedBy: null, isMotherProduct: { $ne: false } },
+          { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
         ]
       });
     }
@@ -224,7 +224,10 @@ export async function POST(req: NextRequest) {
     const parsedPrice = Number.isFinite(rawPrice) ? rawPrice : 0;
 
     const rawSalePrice = parseFloat(salePrice);
-    const parsedSalePrice = Number.isFinite(rawSalePrice) ? rawSalePrice : undefined;
+    // Strict Rule: If salePrice <= 0 or >= parsedPrice, treat as NO DISCOUNT (undefined)
+    const parsedSalePrice = (Number.isFinite(rawSalePrice) && rawSalePrice > 0 && (parsedPrice === 0 || rawSalePrice < parsedPrice))
+      ? rawSalePrice
+      : undefined;
 
     const rawPurchasePrice = parseFloat(purchasePrice);
     const parsedPurchasePrice = Number.isFinite(rawPurchasePrice) ? rawPurchasePrice : undefined;
@@ -236,7 +239,9 @@ export async function POST(req: NextRequest) {
     const parsedStock = Number.isFinite(rawStock) ? rawStock : 0;
 
     const rawDiscountRate = parseFloat(discountRate);
-    const parsedDiscountRate = Number.isFinite(rawDiscountRate) ? rawDiscountRate : undefined;
+    const parsedDiscountRate = (parsedSalePrice !== undefined && Number.isFinite(rawDiscountRate) && rawDiscountRate > 0 && rawDiscountRate < 100)
+      ? rawDiscountRate
+      : undefined;
 
     // Validate required fields and price
     const hasVariants = variants && variants.length > 0;
@@ -247,36 +252,53 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validate salePrice logic
-    if (parsedSalePrice !== undefined) {
-      if (isNaN(parsedSalePrice) || parsedSalePrice < 0 || parsedSalePrice > parsedPrice) {
-        return NextResponse.json({
-          message: 'Sale price must be a non-negative number and less than or equal to the regular price.'
-        }, { status: 400 });
-      }
-    }
-
     // Coerce variant numeric fields and whitelist properties
-    const coercedVariants = (variants || []).map((v: any) => ({
-      _id: v._id || v.id,
-      color: v.color,
-      size: v.size,
-      sku: v.sku,
-      barcode: v.barcode?.trim() || undefined,
-      image: v.image,
-      images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
-      price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
-      salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
-      purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
-      resellerPrice: Number.isFinite(parseFloat(v.resellerPrice)) ? parseFloat(v.resellerPrice) : undefined,
-      stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
-      discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
-      batches: Array.isArray(v.batches) ? v.batches.map((b: any) => ({
-        batchNumber: b.batchNumber,
-        expiryDate: b.expiryDate ? new Date(b.expiryDate) : undefined,
-        stock: Number.isFinite(parseInt(b.stock, 10)) ? parseInt(b.stock, 10) : 0,
-      })) : [],
-    }));
+    const coercedVariants = (variants || []).map((v: any) => {
+      const vPrice = Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0;
+      const rawVSale = parseFloat(v.salePrice);
+      const vSalePrice = (Number.isFinite(rawVSale) && rawVSale > 0 && (vPrice === 0 || rawVSale < vPrice)) ? rawVSale : undefined;
+      const rawVDisc = parseFloat(v.discountRate);
+      const vDiscountRate = (vSalePrice !== undefined && Number.isFinite(rawVDisc) && rawVDisc > 0 && rawVDisc < 100) ? rawVDisc : undefined;
+
+      return {
+        _id: v._id || v.id,
+        color: v.color,
+        size: v.size,
+        sku: v.sku,
+        barcode: v.barcode?.trim() || undefined,
+        image: v.image,
+        images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
+        price: vPrice,
+        salePrice: vSalePrice,
+        purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
+        resellerPrice: Number.isFinite(parseFloat(v.resellerPrice)) ? parseFloat(v.resellerPrice) : undefined,
+        stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
+        discountRate: vDiscountRate,
+        batches: Array.isArray(v.batches) ? v.batches.map((b: any) => ({
+          batchNumber: b.batchNumber,
+          expiryDate: b.expiryDate ? new Date(b.expiryDate) : undefined,
+          stock: Number.isFinite(parseInt(b.stock, 10)) ? parseInt(b.stock, 10) : 0,
+        })) : [],
+      };
+    });
+
+    let finalPrice = parsedPrice;
+    let finalSalePrice = parsedSalePrice;
+    let finalDiscountRate = parsedDiscountRate;
+    let finalPurchasePrice = parsedPurchasePrice;
+    let finalResellerPrice = parsedResellerPrice;
+    let finalStock = parsedStock;
+
+    // Strict Rule: If product has variants, root pricing MUST be derived strictly from the first variant (ignore main pricing)
+    if (coercedVariants.length > 0) {
+      const firstV = coercedVariants[0];
+      finalPrice = firstV.price || 0;
+      finalSalePrice = (firstV.salePrice !== undefined && firstV.salePrice > 0 && firstV.salePrice < finalPrice) ? firstV.salePrice : undefined;
+      finalDiscountRate = finalSalePrice ? (firstV.discountRate || Math.round((1 - finalSalePrice / finalPrice) * 100)) : undefined;
+      finalPurchasePrice = firstV.purchasePrice;
+      finalResellerPrice = firstV.resellerPrice;
+      finalStock = coercedVariants.reduce((sum: number, v: any) => sum + (v.stock || 0), 0);
+    }
 
     const sanitizedBatches = Array.isArray(batches) ? batches.map((b: any) => ({
       batchNumber: b.batchNumber,
@@ -300,14 +322,14 @@ export async function POST(req: NextRequest) {
           name,
           slug: uniqueSlug,
           description,
-          price: parsedPrice,
-          salePrice: parsedSalePrice,
-          purchasePrice: parsedPurchasePrice,
-          resellerPrice: parsedResellerPrice,
-          discountRate: parsedDiscountRate,
+          price: finalPrice,
+          salePrice: finalSalePrice,
+          purchasePrice: finalPurchasePrice,
+          resellerPrice: finalResellerPrice,
+          discountRate: finalDiscountRate,
           sku,
           barcode: barcode?.trim() || undefined,
-          stock: parsedStock,
+          stock: finalStock,
           categories: categories || [],
           brand: brand || undefined,
           tags: tags || [],

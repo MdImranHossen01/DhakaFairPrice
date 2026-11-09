@@ -172,26 +172,40 @@ ProductSchema.pre('validate', function(this: any) {
     this.isApprovedByAdmin = true;
   }
 
-  // Main product validation
-  if (this.salePrice !== undefined && this.salePrice !== null && this.salePrice > this.price) {
-    throw new Error(
-      `Discounted price (৳${this.salePrice}) should be lower than or equal to price (৳${this.price})`
-    );
+  // Strict Rule: If product has variants, root pricing MUST be derived strictly from the first variant (ignore main pricing)
+  if (this.variants && Array.isArray(this.variants) && this.variants.length > 0) {
+    const firstV = this.variants[0];
+    if (firstV) {
+      this.price = Number(firstV.price || 0);
+      const rawVSale = firstV.salePrice !== undefined && firstV.salePrice !== null ? Number(firstV.salePrice) : undefined;
+      if (rawVSale !== undefined && rawVSale > 0 && rawVSale < this.price) {
+        this.salePrice = rawVSale;
+        this.discountRate = firstV.discountRate;
+      } else {
+        this.salePrice = undefined;
+        this.discountRate = undefined;
+        firstV.salePrice = undefined;
+        firstV.discountRate = undefined;
+      }
+    }
+  } else {
+    // If no variants, validate main salePrice: if <= 0 or >= price, treat as NO DISCOUNT
+    if (this.salePrice !== undefined && this.salePrice !== null) {
+      if (this.salePrice <= 0 || (this.price !== undefined && this.salePrice >= this.price)) {
+        this.salePrice = undefined;
+        this.discountRate = undefined;
+      }
+    }
   }
 
-  // Variants validation
+  // Variants validation and sanitization
   if (this.variants && Array.isArray(this.variants)) {
-    this.variants.forEach((v: any, index: number) => {
-      if (
-        v.salePrice !== undefined &&
-        v.salePrice !== null &&
-        typeof v.price === 'number' &&
-        v.salePrice > v.price
-      ) {
-        const variantDesc = [v.color, v.size].filter(Boolean).join(' / ') || `at index ${index}`;
-        throw new Error(
-          `Variant "${variantDesc}" has a discounted price (৳${v.salePrice}) higher than its price (৳${v.price})`
-        );
+    this.variants.forEach((v: any) => {
+      if (v.salePrice !== undefined && v.salePrice !== null) {
+        if (v.salePrice <= 0 || (v.price !== undefined && v.salePrice >= v.price)) {
+          v.salePrice = undefined;
+          v.discountRate = undefined;
+        }
       }
     });
   }

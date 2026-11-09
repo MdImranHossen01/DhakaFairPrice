@@ -75,8 +75,10 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
   const wholesaleCost = Math.round(
     Number(product.resellerPrice ?? product.purchasePrice ?? product.price ?? 0)
   );
+  const rawMenuSale = Number(product.salePrice);
+  const hasMenuDiscount = Boolean(rawMenuSale && Number(product.price) && rawMenuSale > 0 && rawMenuSale < Number(product.price));
   const initialRetail = Math.round(
-    Number(product.salePrice ?? product.price ?? wholesaleCost)
+    hasMenuDiscount ? rawMenuSale : Number(product.price ?? wholesaleCost)
   );
   const [retailPrice, setRetailPrice] = useState<number>(initialRetail);
 
@@ -511,7 +513,7 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Customers on your storefront (<Badge variant="outline" className="text-[10px] py-0 px-1 font-mono">subdomain.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'store.com'}</Badge>) will buy at this price.
+                  Customers on your storefront (<Badge variant="outline" className="text-[10px] py-0 px-1 font-mono">subdomain.store.com</Badge>) will buy at this price.
                 </p>
               </div>
 

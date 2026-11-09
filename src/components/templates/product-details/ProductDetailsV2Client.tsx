@@ -73,15 +73,20 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
     [product?.variants, selectedColor, selectedSize]
   );
 
-  const hasVariants = (uniqueColors.length > 0 || uniqueSizes.length > 0);
+  const hasVariants = Boolean(product?.variants && product.variants.length > 0);
   const currentVariant = activeVariant || defaultVariant;
 
-  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : product?.price;
-  const displaySalePrice = hasVariants ? currentVariant?.salePrice : product?.salePrice;
+  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : (product?.price ?? 0);
+  const rawSale = hasVariants
+    ? (currentVariant?.salePrice !== undefined && currentVariant?.salePrice !== null ? Number(currentVariant.salePrice) : undefined)
+    : (product?.salePrice !== undefined && product?.salePrice !== null ? Number(product?.salePrice) : undefined);
+  const hasDiscount = Boolean(rawSale && displayPrice && Number(rawSale) > 0 && Number(rawSale) < Number(displayPrice));
+  const displaySalePrice = hasDiscount ? Number(rawSale) : undefined;
+  const finalPrice = hasDiscount ? displaySalePrice! : displayPrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product?.stock ?? 0);
 
-  const discount = (displayPrice && displayPrice > 0 && displaySalePrice && displaySalePrice < displayPrice)
-    ? Math.max(0, Math.round(((displayPrice - displaySalePrice) / displayPrice) * 100))
+  const discount = hasDiscount
+    ? Math.max(0, Math.round(((displayPrice - displaySalePrice!) / displayPrice) * 100))
     : 0;
 
   const allImages = useMemo(() => {
@@ -170,7 +175,7 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
     const itemToAdd = {
       productId: product._id,
       name: product.name,
-      price: displaySalePrice ?? displayPrice,
+      price: finalPrice,
       basePrice: displayPrice,
       quantity,
       image: activeImage,
@@ -290,20 +295,9 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
     toast.success(isInWishlist ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
-  // Default specifications for fashion clothes if product attributes are empty
   const displayAttributes = product?.attributes && product.attributes.length > 0
     ? product.attributes
-    : [
-      { key: 'Colour', value: selectedColor || 'Multicolor' },
-      { key: 'Fabric', value: 'Cotton' },
-      { key: 'Value Addition', value: 'Block Print' },
-      { key: 'Cut /Fit', value: 'A-Line' },
-      { key: 'Side Cut', value: 'Side Open' },
-      { key: 'Collar/Neck', value: 'Band Collar' },
-      { key: 'Sleeve', value: '3-Quarter Sleeve' },
-      { key: 'Length', value: 'Long' },
-      { key: 'Care', value: 'Hand Wash With Mild Detergent In Cold Water' }
-    ];
+    : [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 font-jost text-foreground relative items-start w-full">
@@ -433,9 +427,9 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
 
           {/* Price */}
           <div className="flex items-center gap-2 pt-2">
-            {displaySalePrice && displayPrice > displaySalePrice ? (
+            {hasDiscount ? (
               <>
-                <span className="text-base sm:text-lg font-medium text-foreground">Tk {Math.round(displaySalePrice).toLocaleString()}</span>
+                <span className="text-base sm:text-lg font-medium text-foreground">Tk {Math.round(displaySalePrice!).toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground line-through font-normal">Tk {Math.round(displayPrice ?? 0).toLocaleString()}</span>
                 {discount > 0 && (
                   <span className="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold px-2 py-0.5 rounded">-{discount}% OFF</span>
@@ -652,20 +646,22 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
               </div>
 
               {/* Specifications List Table */}
-              <div className="space-y-4 pt-4 border-t border-border/60">
-                <h4 className="font-black text-xs uppercase tracking-wider text-foreground">Specifications</h4>
-                <div className="border border-border/80 divide-y divide-border/60 text-xs rounded-none overflow-hidden">
-                  {displayAttributes.map((attr: any, idx: number) => (
-                    <div
-                      key={attr.key || idx}
-                      className={`grid grid-cols-5 p-3 ${idx % 2 === 0 ? 'bg-muted/15' : 'bg-transparent'}`}
-                    >
-                      <span className="col-span-2 font-bold text-foreground/80 uppercase tracking-wide text-[10px]">{attr.key}</span>
-                      <span className="col-span-3 text-muted-foreground">{attr.value}</span>
-                    </div>
-                  ))}
+              {displayAttributes.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-border/60">
+                  <h4 className="font-black text-xs uppercase tracking-wider text-foreground">Specifications</h4>
+                  <div className="border border-border/80 divide-y divide-border/60 text-xs rounded-none overflow-hidden">
+                    {displayAttributes.map((attr: any, idx: number) => (
+                      <div
+                        key={attr.key || idx}
+                        className={`grid grid-cols-5 p-3 ${idx % 2 === 0 ? 'bg-muted/15' : 'bg-transparent'}`}
+                      >
+                        <span className="col-span-2 font-bold text-foreground/80 uppercase tracking-wide text-[10px]">{attr.key}</span>
+                        <span className="col-span-3 text-muted-foreground">{attr.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </>
         )}

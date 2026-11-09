@@ -18,6 +18,50 @@ import Reseller from '@/models/Reseller';
 const serialize = (data: any) => JSON.parse(JSON.stringify(data));
 
 /**
+ * Strict Rule: If product has variants, root pricing and discount MUST strictly follow firstVariant.
+ * If firstVariant has no discount, root salePrice & discountRate MUST be completely removed!
+ * If discounted price is <= 0 or >= price, treat as NO DISCOUNT at all.
+ */
+export const sanitizeProductPrices = (product: any) => {
+  if (!product) return product;
+  const p = { ...product };
+
+  if (Array.isArray(p.variants) && p.variants.length > 0) {
+    p.variants = p.variants.map((v: any) => {
+      const vObj = { ...v };
+      const vPrice = Number(vObj.price || 0);
+      const rawVSale = vObj.salePrice !== undefined && vObj.salePrice !== null ? Number(vObj.salePrice) : undefined;
+      if (rawVSale !== undefined && (rawVSale <= 0 || (vPrice > 0 && rawVSale >= vPrice))) {
+        delete vObj.salePrice;
+        delete vObj.discountRate;
+      }
+      return vObj;
+    });
+
+    const firstV = p.variants[0];
+    const firstPrice = Number(firstV?.price || 0);
+    p.price = firstPrice > 0 ? firstPrice : Number(p.price || 0);
+
+    const firstSale = firstV?.salePrice !== undefined && firstV?.salePrice !== null ? Number(firstV.salePrice) : undefined;
+    if (firstSale !== undefined && firstSale > 0 && firstSale < p.price) {
+      p.salePrice = firstSale;
+      p.discountRate = firstV.discountRate;
+    } else {
+      delete p.salePrice;
+      delete p.discountRate;
+    }
+  } else {
+    const price = Number(p.price || 0);
+    const rawSale = p.salePrice !== undefined && p.salePrice !== null ? Number(p.salePrice) : undefined;
+    if (rawSale !== undefined && (rawSale <= 0 || (price > 0 && rawSale >= price))) {
+      delete p.salePrice;
+      delete p.discountRate;
+    }
+  }
+  return p;
+};
+
+/**
  * CACHE_TAGS constants for consistency
  */
 export const CACHE_TAGS = {
@@ -53,7 +97,7 @@ export const getCachedProducts = (query = {}, limit = 10, sort: any = { createdA
         .sort(sort as any)
         .limit(limit)
         .lean();
-      return serialize(products);
+      return serialize(products.map(sanitizeProductPrices));
     },
     ['products-list-v2', JSON.stringify(query), limit.toString(), JSON.stringify(sort)],
     { revalidate: 31536000, tags: [CACHE_TAGS.products] }
@@ -81,7 +125,7 @@ export const getCachedProductBySlug = (slug: string) => {
         .populate('brand')
         .populate('uploadedBy', 'storeName subdomain')
         .lean();
-      return serialize(product);
+      return serialize(sanitizeProductPrices(product));
     },
     ['product-detail-v2', slug],
     { revalidate: 31536000, tags: [CACHE_TAGS.products] }
@@ -173,7 +217,7 @@ export const getTrendingProducts = (limit = 10) => {
         trendingProducts = [...trendingProducts, ...latest] as any;
       }
 
-      return serialize(trendingProducts);
+      return serialize(trendingProducts.map(sanitizeProductPrices));
     },
     ['trending-products-v2', limit.toString()],
     { revalidate: 3600, tags: [CACHE_TAGS.products] }
@@ -246,7 +290,7 @@ export const getCachedRootCategoriesWithProducts = (productsPerCategory = 10) =>
         if (products.length > 0) {
           results.push({
             category: root,
-            products: serialize(products),
+            products: serialize(products.map(sanitizeProductPrices)),
           });
         }
       }

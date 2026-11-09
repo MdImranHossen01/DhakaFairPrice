@@ -38,11 +38,11 @@ export async function GET(
       : { slug: slug };
 
     if (!isAdmin) {
-      query.isPublished = { $ne: false };
+      query.isPublished = true;
       query.$or = [
         { isMotherProduct: true },
-        { uploadedBy: null },
-        { uploadedBy: { $exists: false } },
+        { uploadedBy: null, isMotherProduct: { $ne: false } },
+        { uploadedBy: { $exists: false }, isMotherProduct: { $ne: false } },
       ];
     }
 
@@ -111,30 +111,45 @@ export async function PUT(
             const parsed = key === 'stock' ? parseInt(value, 10) : parseFloat(value);
             value = Number.isFinite(parsed) ? parsed : ((key === 'salePrice' || key === 'purchasePrice' || key === 'resellerPrice' || key === 'discountRate') ? undefined : 0);
           }
+          // Strict Rule: If salePrice <= 0, treat as NO DISCOUNT
+          if (key === 'salePrice' && typeof value === 'number' && value <= 0) {
+            value = undefined;
+          }
+          if (key === 'discountRate' && typeof value === 'number' && value <= 0) {
+            value = undefined;
+          }
         }
 
         // Deep coercion for variants
         if (key === 'variants' && Array.isArray(value)) {
-          value = value.map((v: any) => ({
-            _id: v._id || v.id,
-            color: v.color,
-            size: v.size,
-            sku: v.sku,
-            barcode: v.barcode?.trim() || undefined,
-            image: v.image,
-            images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
-            price: Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0,
-            purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
-            resellerPrice: Number.isFinite(parseFloat(v.resellerPrice)) ? parseFloat(v.resellerPrice) : undefined,
-            salePrice: Number.isFinite(parseFloat(v.salePrice)) ? parseFloat(v.salePrice) : undefined,
-            stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
-            discountRate: Number.isFinite(parseFloat(v.discountRate)) ? parseFloat(v.discountRate) : undefined,
-            batches: Array.isArray(v.batches) ? v.batches.map((b: any) => ({
-              batchNumber: b.batchNumber,
-              expiryDate: b.expiryDate ? new Date(b.expiryDate) : undefined,
-              stock: Number.isFinite(parseInt(b.stock, 10)) ? parseInt(b.stock, 10) : 0,
-            })) : [],
-          }));
+          value = value.map((v: any) => {
+            const vPrice = Number.isFinite(parseFloat(v.price)) ? parseFloat(v.price) : 0;
+            const rawVSale = parseFloat(v.salePrice);
+            const vSalePrice = (Number.isFinite(rawVSale) && rawVSale > 0 && (vPrice === 0 || rawVSale < vPrice)) ? rawVSale : undefined;
+            const rawVDisc = parseFloat(v.discountRate);
+            const vDiscountRate = (vSalePrice !== undefined && Number.isFinite(rawVDisc) && rawVDisc > 0 && rawVDisc < 100) ? rawVDisc : undefined;
+
+            return {
+              _id: v._id || v.id,
+              color: v.color,
+              size: v.size,
+              sku: v.sku,
+              barcode: v.barcode?.trim() || undefined,
+              image: v.image,
+              images: Array.isArray(v.images) ? v.images : (v.image ? [v.image] : []),
+              price: vPrice,
+              purchasePrice: Number.isFinite(parseFloat(v.purchasePrice)) ? parseFloat(v.purchasePrice) : undefined,
+              resellerPrice: Number.isFinite(parseFloat(v.resellerPrice)) ? parseFloat(v.resellerPrice) : undefined,
+              salePrice: vSalePrice,
+              stock: Number.isFinite(parseInt(v.stock, 10)) ? parseInt(v.stock, 10) : 0,
+              discountRate: vDiscountRate,
+              batches: Array.isArray(v.batches) ? v.batches.map((b: any) => ({
+                batchNumber: b.batchNumber,
+                expiryDate: b.expiryDate ? new Date(b.expiryDate) : undefined,
+                stock: Number.isFinite(parseInt(b.stock, 10)) ? parseInt(b.stock, 10) : 0,
+              })) : [],
+            };
+          });
         }
 
         // Deep coercion for batches
@@ -191,20 +206,42 @@ export async function PUT(
     }
 
     const unsetFields: Record<string, 1> = {};
-    if (
-      body.salePrice === null || 
-      body.salePrice === '' || 
-      (existingProduct.uploadedBy && (body.salePrice === null || body.salePrice === undefined || (safeUpdate.price && existingProduct.salePrice && existingProduct.salePrice >= safeUpdate.price)))
-    ) {
-      if (!body.salePrice || Number(body.salePrice) <= 0 || (safeUpdate.price && Number(body.salePrice) >= safeUpdate.price)) {
-        unsetFields.salePrice = 1;
-        delete safeUpdate.salePrice;
+
+    // Strict Rule: If product has variants, root pricing MUST be derived strictly from the first variant (ignore main pricing)
+    const activeVariants = safeUpdate.variants !== undefined ? safeUpdate.variants : existingProduct.variants;
+    if (activeVariants && Array.isArray(activeVariants) && activeVariants.length > 0) {
+      const firstV = activeVariants[0];
+      if (firstV) {
+        safeUpdate.price = Number(firstV.price || 0);
+        const rawVSale = firstV.salePrice !== undefined && firstV.salePrice !== null ? Number(firstV.salePrice) : undefined;
+        if (rawVSale !== undefined && rawVSale > 0 && rawVSale < safeUpdate.price) {
+          safeUpdate.salePrice = rawVSale;
+          safeUpdate.discountRate = firstV.discountRate;
+          delete unsetFields.salePrice;
+          delete unsetFields.discountRate;
+        } else {
+          delete safeUpdate.salePrice;
+          delete safeUpdate.discountRate;
+          unsetFields.salePrice = 1;
+          unsetFields.discountRate = 1;
+        }
       }
-    }
-    if (body.discountRate === null || body.discountRate === '' || unsetFields.salePrice) {
-      if (!body.discountRate || unsetFields.salePrice) {
-        unsetFields.discountRate = 1;
-        delete safeUpdate.discountRate;
+    } else {
+      if (
+        body.salePrice === null || 
+        body.salePrice === '' || 
+        (existingProduct.uploadedBy && (body.salePrice === null || body.salePrice === undefined || (safeUpdate.price && existingProduct.salePrice && existingProduct.salePrice >= safeUpdate.price)))
+      ) {
+        if (!body.salePrice || Number(body.salePrice) <= 0 || (safeUpdate.price && Number(body.salePrice) >= safeUpdate.price)) {
+          unsetFields.salePrice = 1;
+          delete safeUpdate.salePrice;
+        }
+      }
+      if (body.discountRate === null || body.discountRate === '' || unsetFields.salePrice) {
+        if (!body.discountRate || unsetFields.salePrice) {
+          unsetFields.discountRate = 1;
+          delete safeUpdate.discountRate;
+        }
       }
     }
 
@@ -290,8 +327,8 @@ export async function PUT(
           await createNotification({
             userId: reseller.userId,
             resellerId: reseller._id,
-            title: '🚀 প্রডাক্ট অনুমোদিত হয়েছে!',
-            message: 'আপনার "' + updatedProduct.name + '" প্রডাক্টটি অনুমোদিত হয়েছে এবং স্টোরে লাইভ হয়েছে।',
+            title: '🚀 Product Approved!',
+            message: 'Your product "' + updatedProduct.name + '" has been approved and is now live in store.',
             type: 'product',
             link: '/reseller/products',
             sendPush: true,

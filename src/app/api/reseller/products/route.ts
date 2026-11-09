@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     const resellerId = await getResellerId(session.user.id);
     const body = await request.json();
 
-    const { name, slug, description, sku, barcode, categories, tags, images, attributes, variants, isFeatured, isNewArrival, isPublished, isShared, discountRate } = body;
+    const { name, slug, description, sku, barcode, categories, tags, images, attributes, variants, isFeatured, isNewArrival, isFlashSale, isPublished, isShared, discountRate } = body;
     let { price, salePrice, purchasePrice, resellerPrice, stock } = body;
 
     const parsedPrice = Number(price) || 0;
@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
       variants: processedVariants.length > 0 ? processedVariants : (variants || []),
       isFeatured: !!isFeatured,
       isNewArrival: !!isNewArrival,
+      isFlashSale: isFlashSale !== undefined ? Boolean(isFlashSale) : false,
       isPublished: body.isPublished !== undefined ? Boolean(body.isPublished) : true,
       isApprovedByAdmin: false, // Default unapproved until Mother Shop approves
       isShared: isShared !== undefined ? !!isShared : false,
@@ -272,7 +273,7 @@ export async function PATCH(request: NextRequest) {
     const allowedFields = [
       'name', 'slug', 'description', 'price', 'salePrice', 'purchasePrice', 'discountRate',
       'sku', 'barcode', 'stock', 'categories', 'tags', 'images', 'batches',
-      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isPublished', 'isShared', 'deliveryCharge',
+      'attributes', 'variants', 'isFeatured', 'isNewArrival', 'isFlashSale', 'isPublished', 'isShared', 'deliveryCharge',
       'metaTitle', 'metaDescription', 'videoUrl'
     ];
     const updateData: any = {};
@@ -281,6 +282,22 @@ export async function PATCH(request: NextRequest) {
         updateData[key] = body[key];
       }
     });
+
+    if (updateData.isFlashSale !== undefined) {
+      updateData.isFlashSale = Boolean(updateData.isFlashSale);
+    }
+    if (updateData.isFeatured !== undefined) {
+      updateData.isFeatured = Boolean(updateData.isFeatured);
+    }
+    if (updateData.isNewArrival !== undefined) {
+      updateData.isNewArrival = Boolean(updateData.isNewArrival);
+    }
+    if (updateData.isPublished !== undefined) {
+      updateData.isPublished = Boolean(updateData.isPublished);
+    }
+    if (updateData.isShared !== undefined) {
+      updateData.isShared = Boolean(updateData.isShared);
+    }
 
     if (updateData.metaTitle !== undefined) {
       updateData.metaTitle = updateData.metaTitle ? String(updateData.metaTitle).slice(0, 70) : '';

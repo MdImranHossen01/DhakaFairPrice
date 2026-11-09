@@ -110,11 +110,16 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
     ? selectedImage
     : (allImages[0] || '/placeholder.png');
 
-  const hasVariants = (uniqueColors.length > 0 || uniqueSizes.length > 0);
+  const hasVariants = Boolean(product?.variants && product.variants.length > 0);
   const currentVariant = activeVariant || defaultVariant;
 
-  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : product.price;
-  const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
+  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : (product.price ?? 0);
+  const rawSale = hasVariants
+    ? (currentVariant?.salePrice !== undefined && currentVariant?.salePrice !== null ? Number(currentVariant.salePrice) : undefined)
+    : (product.salePrice !== undefined && product.salePrice !== null ? Number(product.salePrice) : undefined);
+  const hasDiscount = Boolean(rawSale && displayPrice && Number(rawSale) > 0 && Number(rawSale) < Number(displayPrice));
+  const displaySalePrice = hasDiscount ? Number(rawSale) : undefined;
+  const finalPrice = hasDiscount ? displaySalePrice! : displayPrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const handleAddToCart = async () => {
@@ -122,7 +127,7 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
     const itemToAdd = {
       productId: product._id,
       name: product.name,
-      price: displaySalePrice || displayPrice,
+      price: finalPrice,
       basePrice: displayPrice,
       quantity: quantity,
       image: displayImage || activeVariant?.image || (product.variants && product.variants.length > 0 ? product.variants[0]?.image : product.images?.[0]),
@@ -247,9 +252,9 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
             </div>
             <h1 className="text-6xl md:text-8xl font-serif italic tracking-tighter leading-none">{product.name}</h1>
             <div className="flex items-baseline gap-6">
-              <span className="text-5xl font-black">{CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}</span>
-              {displaySalePrice && displayPrice > displaySalePrice && <span className="text-2xl text-muted-foreground line-through opacity-30 font-medium">{CURRENCY_SYMBOL}{Math.round(displayPrice)}</span>}
-              {discount > 0 && <Badge variant="outline" className="rounded-full border-primary text-primary px-4 py-1 font-black text-xs uppercase tracking-widest">Saving {discount}%</Badge>}
+              <span className="text-5xl font-black">{CURRENCY_SYMBOL}{Math.round(finalPrice)}</span>
+              {hasDiscount && <span className="text-2xl text-muted-foreground line-through opacity-30 font-medium">{CURRENCY_SYMBOL}{Math.round(displayPrice)}</span>}
+              {hasDiscount && discount > 0 && <Badge variant="outline" className="rounded-full border-primary text-primary px-4 py-1 font-black text-xs uppercase tracking-widest">Saving {discount}%</Badge>}
             </div>
           </div>
 

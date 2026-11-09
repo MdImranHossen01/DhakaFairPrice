@@ -104,11 +104,16 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
     return product.images || [];
   }, [product.images, activeVariant]);
 
-  const hasVariants = (uniqueColors.length > 0 || uniqueSizes.length > 0);
+  const hasVariants = Boolean(product?.variants && product.variants.length > 0);
   const currentVariant = activeVariant || defaultVariant;
 
-  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : product.price;
-  const displaySalePrice = hasVariants ? currentVariant?.salePrice : product.salePrice;
+  const displayPrice = hasVariants ? (currentVariant?.price ?? 0) : (product.price ?? 0);
+  const rawSale = hasVariants
+    ? (currentVariant?.salePrice !== undefined && currentVariant?.salePrice !== null ? Number(currentVariant.salePrice) : undefined)
+    : (product.salePrice !== undefined && product.salePrice !== null ? Number(product.salePrice) : undefined);
+  const hasDiscount = Boolean(rawSale && displayPrice && Number(rawSale) > 0 && Number(rawSale) < Number(displayPrice));
+  const displaySalePrice = hasDiscount ? Number(rawSale) : undefined;
+  const finalPrice = hasDiscount ? displaySalePrice! : displayPrice;
   const displayStock = hasVariants ? (currentVariant?.stock ?? 0) : (product.stock ?? 0);
 
   const handleAddToCart = async () => {
@@ -126,7 +131,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
     const res = await addItem({
       productId: product._id,
       name: product.name,
-      price: displaySalePrice || displayPrice,
+      price: finalPrice,
       basePrice: displayPrice,
       quantity: quantity,
       image: activeVariant?.image || (product.variants && product.variants.length > 0 ? product.variants[0]?.image : product.images?.[0]),
@@ -271,8 +276,8 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
 
           <div className="flex items-center gap-6">
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-black">{CURRENCY_SYMBOL}{Math.round(displaySalePrice || displayPrice)}</span>
-              {displaySalePrice && displayPrice > displaySalePrice && <span className="text-xl text-muted-foreground line-through opacity-40 font-medium">{CURRENCY_SYMBOL}{Math.round(displayPrice)}</span>}
+              <span className="text-4xl font-black">{CURRENCY_SYMBOL}{Math.round(finalPrice)}</span>
+              {hasDiscount && <span className="text-xl text-muted-foreground line-through opacity-40 font-medium">{CURRENCY_SYMBOL}{Math.round(displayPrice)}</span>}
             </div>
             {discount > 0 && <Badge variant="outline" className="rounded-full border-primary text-primary px-4 py-1 font-black text-[10px] uppercase tracking-widest">Saving {discount}%</Badge>}
           </div>

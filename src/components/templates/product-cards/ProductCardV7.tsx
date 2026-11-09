@@ -45,15 +45,29 @@ export default function ProductCardV7({ product: initialProduct, isFlashSale, pr
   const wishlist = useAppSelector((state) => state.wishlist.items);
   const isInWishlist = wishlist.includes(initialProduct._id);
 
-  const firstVariant = initialProduct.variants && initialProduct.variants.length > 0 ? initialProduct.variants[0] : null;
-  const product = firstVariant ? {
+  const hasVariants = Boolean(initialProduct.variants && initialProduct.variants.length > 0);
+  const firstVariant = hasVariants ? initialProduct.variants![0] : null;
+
+  const displayPrice = firstVariant && (firstVariant.price !== undefined && firstVariant.price !== null)
+    ? Number(firstVariant.price)
+    : Number(initialProduct.price ?? (initialProduct as any).retailPrice ?? 0);
+
+  // If product has variants, discount MUST come strictly from firstVariant. Never fall back to main product salePrice!
+  const rawSale = firstVariant
+    ? (firstVariant.salePrice !== undefined && firstVariant.salePrice !== null ? Number(firstVariant.salePrice) : undefined)
+    : (initialProduct.salePrice !== undefined && initialProduct.salePrice !== null ? Number(initialProduct.salePrice) : undefined);
+
+  const hasDiscount = Boolean(rawSale !== undefined && rawSale > 0 && rawSale < displayPrice);
+  const displaySalePrice = hasDiscount ? rawSale : undefined;
+
+  const product = {
     ...initialProduct,
-    price: firstVariant.price ?? initialProduct.price,
-    salePrice: firstVariant.salePrice ?? initialProduct.salePrice,
-    stock: firstVariant.stock ?? initialProduct.stock,
-    sku: firstVariant.sku ?? initialProduct.sku,
-    images: firstVariant.image ? [firstVariant.image, ...initialProduct.images.filter((img: string) => img !== firstVariant.image)] : initialProduct.images
-  } : initialProduct;
+    price: isNaN(displayPrice) ? 0 : displayPrice,
+    salePrice: displaySalePrice,
+    stock: firstVariant?.stock ?? initialProduct.stock ?? 0,
+    sku: firstVariant?.sku ?? initialProduct.sku,
+    images: firstVariant?.image ? [firstVariant.image, ...((initialProduct.images || []).filter((img: string) => img !== firstVariant.image))] : (initialProduct.images || [])
+  };
 
   const [showQuickViewModal, setShowQuickViewModal] = useState(false);
 
@@ -133,9 +147,9 @@ export default function ProductCardV7({ product: initialProduct, isFlashSale, pr
         </Link>
 
         <div className="flex items-center gap-2">
-          {product.salePrice && product.price && product.price > product.salePrice ? (
+          {hasDiscount ? (
             <>
-              <span className="text-xs sm:text-sm font-black text-foreground">Tk {Math.round(product.salePrice).toLocaleString()}</span>
+              <span className="text-xs sm:text-sm font-black text-foreground">Tk {Math.round(product.salePrice ?? product.price).toLocaleString()}</span>
               <span className="text-[10px] sm:text-xs text-muted-foreground line-through font-normal">Tk {Math.round(product.price).toLocaleString()}</span>
             </>
           ) : (
