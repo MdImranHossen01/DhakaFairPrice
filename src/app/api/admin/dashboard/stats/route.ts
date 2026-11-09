@@ -232,15 +232,49 @@ export async function GET(req: NextRequest) {
       // 6. Subscribers
       Subscriber.countDocuments({ isActive: true }).catch(() => 0),
 
-      // 7. Total Stock & Stock Purchase Value
+      // 7. Total Stock & Stock Purchase Value (accounting for variant stocks)
       Product.aggregate([
         { $match: { isPublished: true } },
         {
+          $addFields: {
+            effectiveStock: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $isArray: '$variants' },
+                    { $gt: [{ $size: '$variants' }, 0] }
+                  ]
+                },
+                then: { $sum: '$variants.stock' },
+                else: { $ifNull: ['$stock', 0] }
+              }
+            },
+            effectivePurchasePrice: {
+              $ifNull: [
+                '$purchasePrice',
+                {
+                  $cond: {
+                    if: {
+                      $and: [
+                        { $isArray: '$variants' },
+                        { $gt: [{ $size: '$variants' }, 0] },
+                        { $ne: [{ $arrayElemAt: ['$variants.purchasePrice', 0] }, null] }
+                      ]
+                    },
+                    then: { $arrayElemAt: ['$variants.purchasePrice', 0] },
+                    else: { $multiply: ['$price', 0.7] }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
           $group: {
             _id: null,
-            totalStockQuantity: { $sum: '$stock' },
+            totalStockQuantity: { $sum: '$effectiveStock' },
             totalStockValue: {
-              $sum: { $multiply: ['$stock', { $ifNull: ['$purchasePrice', { $multiply: ['$price', 0.7] }] }] }
+              $sum: { $multiply: ['$effectiveStock', '$effectivePurchasePrice'] }
             },
             totalProductsCount: { $sum: 1 }
           }

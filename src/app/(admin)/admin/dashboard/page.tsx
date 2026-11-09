@@ -1004,27 +1004,57 @@ export default function AdminDashboard() {
             </div>
 
             {/* Visual Stock Metrics with Progress Bars */}
-            <div className="py-3 space-y-3">
-              <div>
-                <div className="flex justify-between text-xs font-medium mb-1">
-                  <span className="text-muted-foreground">Total Stock Units</span>
-                  <span className="font-bold text-foreground">{(stats?.totalStockQuantity || 0).toLocaleString()} pcs</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full w-full" />
-                </div>
-              </div>
+            {(() => {
+              const totalStockQuantity = stats?.totalStockQuantity || 0;
+              const totalStockValue = stats?.totalStockValue || 0;
+              const totalAssetValue = stats?.totalAssetValue || 0;
+              const totalProductsCount = stats?.totalProductsCount || 0;
+              const lowStockCount = lowStockProducts?.length || 0;
 
-              <div>
-                <div className="flex justify-between text-xs font-medium mb-1">
-                  <span className="text-muted-foreground">Stock Value (at cost)</span>
-                  <span className="font-bold text-foreground">৳{Math.round(stats?.totalStockValue || 0).toLocaleString()}</span>
+              // Stock Units Health: If 0 units -> 0%. If products exist, ratio of healthy (non-low-stock) products.
+              const stockQuantityPercentage = totalStockQuantity <= 0
+                ? 0
+                : totalProductsCount > 0
+                  ? Math.min(100, Math.max(8, Math.round(((totalProductsCount - lowStockCount) / totalProductsCount) * 100)))
+                  : 100;
+
+              // Stock Value Ratio: % of total business assets represented by inventory stock
+              const stockValuePercentage = totalStockValue <= 0
+                ? 0
+                : totalAssetValue > 0
+                  ? Math.min(100, Math.max(5, Math.round((totalStockValue / totalAssetValue) * 100)))
+                  : 100;
+
+              return (
+                <div className="py-3 space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs font-medium mb-1">
+                      <span className="text-muted-foreground">Total Stock Units</span>
+                      <span className="font-bold text-foreground">{totalStockQuantity.toLocaleString()} pcs</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${stockQuantityPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-medium mb-1">
+                      <span className="text-muted-foreground">Stock Value (at cost)</span>
+                      <span className="font-bold text-foreground">৳{Math.round(totalStockValue).toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all duration-500"
+                        style={{ width: `${stockValuePercentage}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                  <div className="bg-primary h-full rounded-full w-[85%]" />
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           <div className="pt-2 border-t border-muted/50 flex justify-between items-center text-xs">
