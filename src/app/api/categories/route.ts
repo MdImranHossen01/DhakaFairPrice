@@ -3,6 +3,7 @@ import { revalidateTag, revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Category from '@/models/Category';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 // GET all categories
 export async function GET() {
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
 
     revalidateTag('categories', 'max');
     revalidatePath('/');
+    purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {

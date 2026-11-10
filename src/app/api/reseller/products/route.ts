@@ -8,6 +8,7 @@ import ResellerProduct from '@/models/ResellerProduct';
 import { generateUniqueSlug } from '@/lib/slugify-server';
 import { slugify } from '@/lib/slugify';
 import { addProductToReseller } from '@/lib/syncEngine';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 import GlobalSettings from '@/models/GlobalSettings';
 
@@ -244,6 +245,12 @@ export async function POST(request: NextRequest) {
       console.error('[Reseller Product Notification Error]', notifErr);
     }
 
+    revalidateTag('products', 'max');
+    revalidatePath('/', 'layout');
+    revalidatePath('/shop', 'page');
+    purgeCloudflareCache().catch(() => {});
+    purgeCloudflareCache().catch(() => {});
+
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -384,6 +391,8 @@ export async function PATCH(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
+    purgeCloudflareCache().catch(() => {});
+    purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({ product });
   } catch (error: any) {
@@ -501,6 +510,7 @@ export async function DELETE(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
+    purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({
       success: true,

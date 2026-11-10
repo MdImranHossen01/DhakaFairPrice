@@ -3,6 +3,7 @@ import { revalidateTag, revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Banner from '@/models/Banner';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 export async function GET() {
   try {
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
 
     revalidateTag('banners', 'max');
     revalidatePath('/');
+    purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json(banner, { status: 201 });
   } catch (error) {

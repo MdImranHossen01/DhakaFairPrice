@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import dbConnect from '@/lib/db';
 import Banner from '@/models/Banner';
 import Reseller from '@/models/Reseller';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 async function getResellerId(userId: string) {
   await dbConnect();
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       isActive: isActive ?? true,
     });
 
+    purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true, banner }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -94,6 +96,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!banner) return NextResponse.json({ error: 'Banner not found' }, { status: 404 });
 
+    purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true, banner });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -126,6 +129,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
+    purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
