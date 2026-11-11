@@ -166,11 +166,11 @@ export const sendResetEmail = async (
         </div>
         <p style="color: #334155; font-size: 15px; margin-top: 0;">Hello,</p>
         <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-          We received a request to reset your password for your account on <strong>${escapeHtml(storeDisplayName)}</strong>${resellerContext ? ` (operated on ${escapeHtml(brandName)} network)` : ''}. Click the button below to set a new password. This link will expire in 1 hour.
+          We received a request to reset your password for your account on <strong>${escapeHtml(storeDisplayName)}</strong>${resellerContext ? ` (operated on ${escapeHtml(brandName)} network)` : ''}. Click the link below to set a new password. This link will expire in 1 hour.
         </p>
-        <div style="text-align: center; margin: 28px 0;">
-          <a href="${resetUrl}" style="background-color: #0d9488; color: #ffffff; padding: 12px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 14px;">
-            Reset Password
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${resetUrl}" target="_blank" style="color: #0d9488; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+            ${resetUrl}
           </a>
         </div>
         <p style="color: #64748b; font-size: 13px; line-height: 1.5;">If you didn't request this password reset, you can safely ignore this email.</p>
@@ -458,15 +458,12 @@ export const sendResellerApprovalEmail = async ({
             </p>
           </div>
 
-          <!-- Storefront & Action Box -->
+          <!-- Storefront URL Box -->
           <div style="background-color: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 18px; margin: 14px 0; text-align: center;">
             <p style="margin: 0 0 8px 0; font-size: 14px; color: #0f766e; font-weight: 600;">Your Storefront URL is Live:</p>
-            <p style="margin: 0 0 16px 0;">
+            <p style="margin: 0;">
               <a href="${storefrontUrl}" target="_blank" style="font-size: 16px; font-weight: 700; color: #0d9488; font-family: monospace; text-decoration: underline;">${storefrontUrl}</a>
             </p>
-            <a href="${dashboardUrl}" style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">
-              Go to Reseller Dashboard
-            </a>
           </div>
 
           <!-- Instructions -->
@@ -670,10 +667,11 @@ export const sendCustomerOrderPlacedEmail = async ({
             </p>
           </div>
 
-          <!-- Tracking Button -->
-          <div style="text-align: center; margin: 24px 0 16px 0;">
-            <a href="${trackingUrl}" style="background-color: #0d9488; color: white; padding: 11px 22px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 13px;">
-              অর্ডার লাইভ ট্র্যাক করুন ➔
+          <!-- Tracking Link -->
+          <div style="text-align: center; margin: 20px 0 16px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">লাইভ অর্ডার ট্র্যাকিং লিংক:</p>
+            <a href="${trackingUrl}" target="_blank" style="color: #0d9488; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+              ${trackingUrl}
             </a>
           </div>
 
@@ -772,10 +770,11 @@ export const sendCustomerOrderConfirmedEmail = async ({
             <strong>পরবর্তী ধাপ:</strong> খুব শীঘ্রই পার্সেলটি কুরিয়ারে হস্তান্তর করা হবে এবং ডেলিভারি ম্যান আপনার সাথে যোগাযোগ করে দ্রুত পার্সেলটি পৌঁছে দেবে।
           </div>
 
-          <!-- Button -->
-          <div style="text-align: center; margin: 24px 0 16px 0;">
-            <a href="${trackingUrl}" style="background-color: #0d9488; color: white; padding: 11px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 13px;">
-              লাইভ ট্র্যাকিং দেখুন ➔
+          <!-- Tracking Link -->
+          <div style="text-align: center; margin: 20px 0 16px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">লাইভ ট্র্যাকিং লিংক:</p>
+            <a href="${trackingUrl}" target="_blank" style="color: #0d9488; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+              ${trackingUrl}
             </a>
           </div>
 
@@ -847,11 +846,12 @@ export const sendCustomerOrderDeliveredEmail = async ({
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #0f766e; font-weight: 600;">
               আমাদের সাথে কেনাকাটা করার জন্য আন্তরিক ধন্যবাদ!
             </p>
-            <p style="font-size: 13px; color: #475569; margin: 0 0 16px 0; line-height: 1.5;">
+            <p style="font-size: 13px; color: #475569; margin: 0 0 12px 0; line-height: 1.5;">
               আপনার অভিজ্ঞতা কেমন ছিল? আমাদের প্রোডাক্ট ও সার্ভিসের মান সম্পর্কে আপনার যেকোনো মতামত আমাদের উৎসাহিত করে।
             </p>
-            <a href="${shopUrl}" style="background-color: #0d9488; color: white; padding: 11px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 13px;">
-              আরও পণ্য দেখুন ও কেনাকাটা করুন ➔
+            <p style="margin: 0 0 4px 0; font-size: 13px; color: #64748b; font-weight: 600;">আরও পণ্য দেখতে ভিজিট করুন:</p>
+            <a href="${shopUrl}" target="_blank" style="color: #0d9488; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+              ${shopUrl}
             </a>
           </div>
 
@@ -1020,10 +1020,11 @@ export const sendResellerPayoutStatusEmail = async ({
             </table>
           </div>
 
-          <!-- Action Button -->
-          <div style="text-align: center; margin: 22px 0 16px 0;">
-            <a href="${walletUrl}" style="background-color: #0d9488; color: white; padding: 11px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 13px;">
-              রিসেলার ওয়ালেট ও লেজার দেখুন ➔
+          <!-- Action Link -->
+          <div style="text-align: center; margin: 20px 0 16px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b; font-weight: 600;">রিসেলার ওয়ালেট ও লেজার লিংক:</p>
+            <a href="${walletUrl}" target="_blank" style="color: #0d9488; font-size: 14px; font-weight: 700; text-decoration: underline; word-break: break-all;">
+              ${walletUrl}
             </a>
           </div>
 
