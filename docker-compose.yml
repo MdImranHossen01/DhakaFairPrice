@@ -1,10 +1,10 @@
 services:
   web:
-    image: ${DOCKER_IMAGE_TAG}
+    image: imranshuvo101/dhakafairprice-app:latest
     container_name: dhakafairprice-app
     restart: unless-stopped
     ports:
-      - "3004:3000"
+      - "3014:3000"
     environment:
       - NODE_OPTIONS=--max-old-space-size=125
     env_file:
