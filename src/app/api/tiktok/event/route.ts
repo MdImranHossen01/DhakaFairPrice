@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
                 content_type: customData.content_type || 'product',
                 ...(contents.length > 0 && { contents }),
             },
+            ...(settings?.tiktokTestEventCode?.trim() && { test_event_code: settings.tiktokTestEventCode.trim() }),
         };
 
         const response = await fetch(

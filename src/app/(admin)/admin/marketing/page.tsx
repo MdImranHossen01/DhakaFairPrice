@@ -107,6 +107,8 @@ const marketingSettingsSchema = z.object({
   googleTagManagerId: z.string().nullish().transform(val => val ?? ''),
   tiktokPixelId: z.string().nullish().transform(val => val ?? ''),
   tiktokAccessToken: z.string().nullish().transform(val => val ?? ''),
+  tiktokDomainVerification: z.string().nullish().transform(val => val ?? ''),
+  tiktokTestEventCode: z.string().nullish().transform(val => val ?? ''),
 });
 
 type MarketingSettingsFormValues = z.infer<typeof marketingSettingsSchema>;
@@ -167,6 +169,8 @@ export default function MarketingSettingsPage() {
       googleTagManagerId: '',
       tiktokPixelId: '',
       tiktokAccessToken: '',
+      tiktokDomainVerification: '',
+      tiktokTestEventCode: '',
     },
   });
 
@@ -251,6 +255,8 @@ export default function MarketingSettingsPage() {
                 googleTagManagerId: result.data.googleTagManagerId || '',
                 tiktokPixelId: result.data.tiktokPixelId || '',
                 tiktokAccessToken: result.data.tiktokAccessToken || '',
+                tiktokDomainVerification: result.data.tiktokDomainVerification || '',
+                tiktokTestEventCode: result.data.tiktokTestEventCode || '',
               };
               form.reset(sanitizedData);
             }
@@ -1337,7 +1343,7 @@ export default function MarketingSettingsPage() {
                     />
                   </div>
 
-                  <div className="border-t pt-6 mt-6">
+                  <div className="border-t pt-6 mt-6 space-y-4">
                     <h4 className="font-black text-xs uppercase opacity-50 mb-4">TikTok Pixel & Events API</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
@@ -1361,6 +1367,34 @@ export default function MarketingSettingsPage() {
                             <FormLabel className="font-bold text-xs">TikTok Access Token</FormLabel>
                             <FormControl>
                               <Input type="text" placeholder="Enter Access Token" {...field} className="h-12 rounded-xl" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="tiktokDomainVerification"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel className="font-bold text-xs">TikTok Domain Verification</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter TikTok Domain Verification Key" {...field} className="h-12 rounded-xl" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="tiktokTestEventCode"
+                        render={({ field }) => (
+                          <FormItem className="space-y-2">
+                            <FormLabel className="font-bold text-xs">TikTok Test Event Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter TikTok Test Event Code (e.g. TEST81538)" {...field} className="h-12 rounded-xl" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

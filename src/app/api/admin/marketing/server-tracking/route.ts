@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         results.tiktok = { success: false, error: 'TikTok Pixel ID or Access Token not configured' };
       } else {
         const eventId = crypto.randomUUID();
-        const payload = {
+        const payload: any = {
           pixel_code: pixelId,
           event: eventName === 'Purchase' ? 'CompletePayment' : eventName,
           event_id: eventId,
@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
             currency: 'BDT',
             test: true,
           },
+          ...(settings?.tiktokTestEventCode?.trim() && { test_event_code: settings.tiktokTestEventCode.trim() }),
         };
 
         try {

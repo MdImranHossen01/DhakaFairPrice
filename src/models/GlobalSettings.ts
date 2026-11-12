@@ -32,6 +32,8 @@ export interface IGlobalSettings extends Document {
   facebookTestEventCode?: string;
   tiktokPixelId?: string;
   tiktokAccessToken?: string;
+  tiktokDomainVerification?: string;
+  tiktokTestEventCode?: string;
   courierConfig?: {
     activeProvider?: 'steadfast' | 'pathao' | 'redx' | 'none';
     steadfast?: {
@@ -147,6 +149,8 @@ const GlobalSettingsSchema: Schema<IGlobalSettings> = new Schema(
     facebookTestEventCode: { type: String },
     tiktokPixelId: { type: String },
     tiktokAccessToken: { type: String },
+    tiktokDomainVerification: { type: String },
+    tiktokTestEventCode: { type: String },
     courierConfig: { type: Object, default: { activeProvider: 'none' } },
     subscriptionConfig: { type: Object, default: { activationThreshold: 5000, rewardPercentage: 5 } },
     paymentConfig: { type: Object, default: { activeMethod: 'none' } },
