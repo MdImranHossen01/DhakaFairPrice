@@ -24,13 +24,19 @@ export async function GET(req: NextRequest) {
       const { backfillPayoutsToLedger, cleanOrphanLedgerTransactions, syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
       await cleanOrphanLedgerTransactions();
       await backfillPayoutsToLedger();
-      await syncBillsToLedger();
-      await syncOrdersToLedger();
-      await syncPayablesToLedger();
+      await Promise.all([
+        (async () => {
+          await syncBillsToLedger(true);
+          await syncOrdersToLedger(true);
+        })(),
+        syncPayablesToLedger(true)
+      ]);
     } else {
       const { syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
-      await syncOrdersToLedger();
-      await syncPayablesToLedger();
+      await Promise.all([
+        syncOrdersToLedger(),
+        syncPayablesToLedger()
+      ]);
     }
 
     const queryFilter: any = {

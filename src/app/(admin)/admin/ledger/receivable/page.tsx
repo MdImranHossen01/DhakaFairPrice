@@ -25,10 +25,10 @@ export default function ReceivableLedgerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  const fetchReceivables = async () => {
+  const fetchReceivables = async (forceSync = false) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/ledger/receivable');
+      const res = await fetch(forceSync ? '/api/admin/ledger/receivable?sync=true' : '/api/admin/ledger/receivable');
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -106,7 +106,7 @@ export default function ReceivableLedgerPage() {
             </div>
           </div>
 
-          <Button variant="outline" size="icon" onClick={fetchReceivables} disabled={loading} className="h-10 w-10 shrink-0">
+          <Button variant="outline" size="icon" onClick={() => fetchReceivables(true)} disabled={loading} className="h-10 w-10 shrink-0">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

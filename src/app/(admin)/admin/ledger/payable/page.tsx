@@ -25,10 +25,10 @@ export default function PayableLedgerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  const fetchPayables = async () => {
+  const fetchPayables = async (forceSync = false) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/ledger/payable');
+      const res = await fetch(forceSync ? '/api/admin/ledger/payable?sync=true' : '/api/admin/ledger/payable');
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -106,7 +106,7 @@ export default function PayableLedgerPage() {
             </div>
           </div>
 
-          <Button variant="outline" size="icon" onClick={fetchPayables} disabled={loading} className="h-10 w-10 shrink-0">
+          <Button variant="outline" size="icon" onClick={() => fetchPayables(true)} disabled={loading} className="h-10 w-10 shrink-0">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

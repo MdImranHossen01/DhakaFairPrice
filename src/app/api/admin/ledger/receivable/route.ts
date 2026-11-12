@@ -16,11 +16,12 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
+    const forceSync = req.nextUrl.searchParams.get('sync') === 'true';
 
     // Auto-sync bills and orders to ledger so receivables stay 100% reconciled
     try {
-      await syncBillsToLedger();
-      await syncOrdersToLedger();
+      await syncBillsToLedger(forceSync);
+      await syncOrdersToLedger(forceSync);
     } catch (syncErr) {
       console.error('[Ledger Receivable API] Sync Error:', syncErr);
     }

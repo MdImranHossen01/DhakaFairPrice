@@ -14,9 +14,13 @@ export async function GET() {
     await connectToDatabase();
 
     const { syncBillsToLedger, syncOrdersToLedger, syncPayablesToLedger } = await import('@/lib/ledgerHelper');
-    await syncBillsToLedger();
-    await syncOrdersToLedger();
-    await syncPayablesToLedger();
+    await Promise.all([
+      (async () => {
+        await syncBillsToLedger();
+        await syncOrdersToLedger();
+      })(),
+      syncPayablesToLedger()
+    ]);
 
     const accounts = await LedgerAccount.find({
       $or: [{ resellerId: null }, { resellerId: { $exists: false } }]

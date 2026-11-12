@@ -15,12 +15,12 @@ export interface ILedgerTransaction extends Document {
 
 const LedgerTransactionSchema: Schema<ILedgerTransaction> = new Schema(
   {
-    account: { type: Schema.Types.ObjectId, ref: 'LedgerAccount', required: true },
+    account: { type: Schema.Types.ObjectId, ref: 'LedgerAccount', required: true, index: true },
     date: { type: Date, default: Date.now, required: true },
     description: { type: String, required: true },
     type: { type: String, required: true, enum: ['debit', 'credit'] },
     amount: { type: Number, required: true, min: [0, 'Amount cannot be negative'] },
-    reference: { type: String },
+    reference: { type: String, index: true },
     balanceAfter: { type: Number, required: true },
     resellerId: {
       type: Schema.Types.ObjectId,
@@ -33,6 +33,7 @@ const LedgerTransactionSchema: Schema<ILedgerTransaction> = new Schema(
 );
 
 LedgerTransactionSchema.index({ resellerId: 1, account: 1, date: -1 });
+LedgerTransactionSchema.index({ account: 1, reference: 1, type: 1 });
 
 const LedgerTransaction: Model<ILedgerTransaction> =
   mongoose.models.LedgerTransaction || mongoose.model<ILedgerTransaction>('LedgerTransaction', LedgerTransactionSchema);

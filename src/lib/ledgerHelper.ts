@@ -64,6 +64,37 @@ export async function seedDefaultTransactionCategories(resellerId?: any) {
   }
 }
 
+const SYNC_TTL_MS = 15000;
+const lastSyncTimestamps: Record<string, number> = {};
+const inFlightSyncPromises: Record<string, Promise<any> | null> = {};
+let legacyCodeIndexDropped = false;
+
+export function invalidateLedgerSyncCache() {
+  for (const key of Object.keys(lastSyncTimestamps)) {
+    delete lastSyncTimestamps[key];
+  }
+}
+
+async function runDeduplicatedSync(key: string, force: boolean, fn: () => Promise<void>) {
+  if (!force && lastSyncTimestamps[key] && Date.now() - lastSyncTimestamps[key] < SYNC_TTL_MS) {
+    return;
+  }
+  if (inFlightSyncPromises[key]) {
+    await inFlightSyncPromises[key];
+    return;
+  }
+  const promise = (async () => {
+    try {
+      await fn();
+      lastSyncTimestamps[key] = Date.now();
+    } finally {
+      inFlightSyncPromises[key] = null;
+    }
+  })();
+  inFlightSyncPromises[key] = promise;
+  await promise;
+}
+
 /**
  * Seed primary ledger accounts if they do not exist
  */
@@ -71,10 +102,13 @@ export async function seedLedgerAccounts() {
   await connectToDatabase();
 
   // One-time migration: drop stale single-field unique index on 'code'
-  try {
-    await LedgerAccount.collection.dropIndex('code_1');
-  } catch {
-    // Index doesn't exist or already dropped — safe to ignore
+  if (!legacyCodeIndexDropped) {
+    legacyCodeIndexDropped = true;
+    try {
+      await LedgerAccount.collection.dropIndex('code_1');
+    } catch {
+      // Index doesn't exist or already dropped — safe to ignore
+    }
   }
 
   const accounts: { name: string; code: 'CASH' | 'BANK' | 'AR' | 'AP'; type: 'asset' | 'liability'; category: 'Cash' | 'Bank' | 'Other' }[] = [
@@ -84,22 +118,25 @@ export async function seedLedgerAccounts() {
     { name: 'Accounts Payable', code: 'AP', type: 'liability', category: 'Other' },
   ];
 
-  for (const acc of accounts) {
-    await LedgerAccount.updateOne(
-      { code: acc.code, resellerId: null },
-      {
-        $setOnInsert: {
-          name: acc.name,
-          code: acc.code,
-          type: acc.type,
-          category: acc.category,
-          openingBalance: 0,
-          currentBalance: 0,
+  await LedgerAccount.bulkWrite(
+    accounts.map((acc) => ({
+      updateOne: {
+        filter: { code: acc.code, resellerId: null },
+        update: {
+          $setOnInsert: {
+            name: acc.name,
+            code: acc.code,
+            type: acc.type,
+            category: acc.category,
+            openingBalance: 0,
+            currentBalance: 0,
+          },
         },
+        upsert: true,
       },
-      { upsert: true }
-    );
-  }
+    })),
+    { ordered: false }
+  );
 }
 
 /**
@@ -154,13 +191,20 @@ export async function logLedgerTransaction(
   amount: number,
   description: string,
   reference?: string,
-  date: Date = new Date()
+  date: Date = new Date(),
+  skipRecalculate: boolean = false
 ) {
   await connectToDatabase();
-  await seedLedgerAccounts();
+  if (!skipRecalculate) {
+    await seedLedgerAccounts();
+    invalidateLedgerSyncCache();
+  }
 
   // Find account
-  const account = await LedgerAccount.findOne({ code: accountCode });
+  const account = await LedgerAccount.findOne({
+    code: accountCode,
+    $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+  });
   if (!account) {
     throw new Error(`Ledger account not found with code: ${accountCode}`);
   }
@@ -186,12 +230,14 @@ export async function logLedgerTransaction(
 
   await transaction.save();
 
-  // Update current account balance
-  account.currentBalance = balanceAfter;
-  await account.save();
+  if (!skipRecalculate) {
+    // Update current account balance
+    account.currentBalance = balanceAfter;
+    await account.save();
 
-  // Recalculate to keep chronological order correct in the DB running balances
-  await recalculateLedgerBalance(accountCode);
+    // Recalculate to keep chronological order correct in the DB running balances
+    await recalculateLedgerBalance(accountCode);
+  }
 
   return transaction;
 }
@@ -303,14 +349,28 @@ export async function recalculateLedgerBalance(accountCode: 'CASH' | 'BANK' | 'A
   sortTransactionsChronologically(transactions, account);
 
   let runningBalance = account.openingBalance || 0;
+  const bulkOps: any[] = [];
 
   for (const tx of transactions) {
     const change = calculateTransactionChange(tx, account);
     runningBalance += change;
-    await LedgerTransaction.updateOne({ _id: tx._id }, { $set: { balanceAfter: runningBalance } });
+    if (Math.abs((tx.balanceAfter ?? 0) - runningBalance) > 0.001) {
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: tx._id },
+          update: { $set: { balanceAfter: runningBalance } }
+        }
+      });
+    }
   }
 
-  await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
+  if (bulkOps.length > 0) {
+    await LedgerTransaction.bulkWrite(bulkOps, { ordered: false });
+  }
+
+  if (Math.abs((account.currentBalance ?? 0) - runningBalance) > 0.001) {
+    await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
+  }
 }
 
 /**
@@ -326,14 +386,28 @@ export async function recalculateLedgerBalanceByAccountId(accountId: any) {
   sortTransactionsChronologically(transactions, account);
 
   let runningBalance = account.openingBalance || 0;
+  const bulkOps: any[] = [];
 
   for (const tx of transactions) {
     const change = calculateTransactionChange(tx, account);
     runningBalance += change;
-    await LedgerTransaction.updateOne({ _id: tx._id }, { $set: { balanceAfter: runningBalance } });
+    if (Math.abs((tx.balanceAfter ?? 0) - runningBalance) > 0.001) {
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: tx._id },
+          update: { $set: { balanceAfter: runningBalance } }
+        }
+      });
+    }
   }
 
-  await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
+  if (bulkOps.length > 0) {
+    await LedgerTransaction.bulkWrite(bulkOps, { ordered: false });
+  }
+
+  if (Math.abs((account.currentBalance ?? 0) - runningBalance) > 0.001) {
+    await LedgerAccount.updateOne({ _id: account._id }, { $set: { currentBalance: runningBalance } });
+  }
 }
 
 /**
@@ -527,106 +601,117 @@ export async function backfillPayoutsToLedger() {
 /**
  * Sync active bills to ledger: ensures Bill Generated AR debit entry and upfront cash entries exist.
  */
-export async function syncBillsToLedger() {
-  try {
-    await connectToDatabase();
-    const Bill = (await import('@/models/Bill')).default;
-    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
-    const arAccount = await LedgerAccount.findOne({
-      code: 'AR',
-      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-    });
-    const cashAccount = await LedgerAccount.findOne({
-      code: 'CASH',
-      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-    });
-    const bankAccount = await LedgerAccount.findOne({
-      code: 'BANK',
-      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-    });
+export async function syncBillsToLedger(force: boolean = false) {
+  return runDeduplicatedSync('bills', force, async () => {
+    try {
+      await connectToDatabase();
+      const Bill = (await import('@/models/Bill')).default;
+      const LedgerAccount = (await import('@/models/LedgerAccount')).default;
 
-    if (!arAccount || !cashAccount) return;
+      const [arAccount, cashAccount, bankAccount, bills] = await Promise.all([
+        LedgerAccount.findOne({
+          code: 'AR',
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        }),
+        LedgerAccount.findOne({
+          code: 'CASH',
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        }),
+        LedgerAccount.findOne({
+          code: 'BANK',
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        }),
+        Bill.find({
+          $or: [{ documentType: 'bill' }, { documentType: { $exists: false } }]
+        }).lean()
+      ]);
 
-    const bills = await Bill.find({
-      $or: [{ documentType: 'bill' }, { documentType: { $exists: false } }]
-    });
+      if (!arAccount || !cashAccount) return;
 
-    for (const bill of bills) {
-      if (!bill.invoiceNo) continue;
+      const invoiceNos = bills.map((b: any) => b.invoiceNo).filter(Boolean);
+      const existingBillTxs = invoiceNos.length > 0
+        ? await LedgerTransaction.find({ reference: { $in: invoiceNos } })
+        : [];
 
-      const billDate = bill.date ? new Date(bill.date) : (bill.createdAt ? new Date(bill.createdAt) : new Date());
+      const arIdStr = arAccount._id.toString();
+      const paymentAccSet = new Set<string>();
+      if (cashAccount?._id) paymentAccSet.add(cashAccount._id.toString());
+      if (bankAccount?._id) paymentAccSet.add(bankAccount._id.toString());
 
-      // 1. Check AR Debit entry for Bill Generated
-      const billDebitExists = await LedgerTransaction.findOne({
-        account: arAccount._id,
-        reference: bill.invoiceNo,
-        type: 'debit'
-      });
+      for (const bill of bills as any[]) {
+        if (!bill.invoiceNo) continue;
 
-      if (!billDebitExists && bill.gTotal > 0) {
-        await logLedgerTransaction(
-          'AR',
-          'debit',
-          bill.gTotal,
-          `Bill Generated for ${bill.clientName || 'Client'}`,
-          bill.invoiceNo,
-          billDate
+        const billDate = bill.date ? new Date(bill.date) : (bill.createdAt ? new Date(bill.createdAt) : new Date());
+
+        // 1. Check AR Debit entry for Bill Generated
+        const billDebitExists = existingBillTxs.find(
+          (tx: any) => tx.account?.toString() === arIdStr && tx.reference === bill.invoiceNo && tx.type === 'debit'
         );
-      } else if (billDebitExists && bill.gTotal > 0) {
-        // If debit exists but date is later than bill date, sync date
-        if (new Date(billDebitExists.date).getTime() > billDate.getTime()) {
-          billDebitExists.date = billDate;
-          await billDebitExists.save();
-        }
-      }
 
-      // 2. Check Upfront payment if cashIn > 0
-      if (bill.cashIn > 0) {
-        const paymentAccountIds: any[] = [];
-        if (cashAccount?._id) paymentAccountIds.push(cashAccount._id);
-        if (bankAccount?._id) paymentAccountIds.push(bankAccount._id);
-
-        // Find all payment debit transactions already logged for this bill (in CASH, BANK, etc.)
-        const existingPaymentTxs = await LedgerTransaction.find({
-          account: { $in: paymentAccountIds },
-          reference: bill.invoiceNo,
-          type: 'debit',
-          description: { $not: /Bill Generated/i }
-        });
-
-        const totalAlreadyLogged = existingPaymentTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-        const unloggedCash = (bill.cashIn || 0) - totalAlreadyLogged;
-
-        if (unloggedCash > 0) {
-          await logLedgerTransaction(
-            'CASH',
-            'debit',
-            unloggedCash,
-            `Cash Paid Upfront for Bill ${bill.invoiceNo}`,
-            bill.invoiceNo,
-            billDate
-          );
-
+        if (!billDebitExists && bill.gTotal > 0) {
           await logLedgerTransaction(
             'AR',
-            'credit',
-            unloggedCash,
-            `Upfront payment credit for Bill ${bill.invoiceNo}`,
+            'debit',
+            bill.gTotal,
+            `Bill Generated for ${bill.clientName || 'Client'}`,
             bill.invoiceNo,
-            billDate
+            billDate,
+            true
           );
+        } else if (billDebitExists && bill.gTotal > 0) {
+          // If debit exists but date is later than bill date, sync date
+          if (new Date(billDebitExists.date).getTime() > billDate.getTime()) {
+            billDebitExists.date = billDate;
+            await billDebitExists.save();
+          }
+        }
+
+        // 2. Check Upfront payment if cashIn > 0
+        if (bill.cashIn > 0) {
+          const existingPaymentTxs = existingBillTxs.filter(
+            (tx: any) =>
+              paymentAccSet.has(tx.account?.toString()) &&
+              tx.reference === bill.invoiceNo &&
+              tx.type === 'debit' &&
+              !/Bill Generated/i.test(tx.description || '')
+          );
+
+          const totalAlreadyLogged = existingPaymentTxs.reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0);
+          const unloggedCash = (bill.cashIn || 0) - totalAlreadyLogged;
+
+          if (unloggedCash > 0) {
+            await logLedgerTransaction(
+              'CASH',
+              'debit',
+              unloggedCash,
+              `Cash Paid Upfront for Bill ${bill.invoiceNo}`,
+              bill.invoiceNo,
+              billDate,
+              true
+            );
+
+            await logLedgerTransaction(
+              'AR',
+              'credit',
+              unloggedCash,
+              `Upfront payment credit for Bill ${bill.invoiceNo}`,
+              bill.invoiceNo,
+              billDate,
+              true
+            );
+          }
         }
       }
-    }
 
-    await recalculateLedgerBalance('AR');
-    await recalculateLedgerBalance('CASH');
-    if (bankAccount) {
-      await recalculateLedgerBalance('BANK');
+      await Promise.all([
+        recalculateLedgerBalance('AR'),
+        recalculateLedgerBalance('CASH'),
+        bankAccount ? recalculateLedgerBalance('BANK') : Promise.resolve()
+      ]);
+    } catch (err) {
+      console.error('[Ledger] Error syncing bills to ledger:', err);
     }
-  } catch (err) {
-    console.error('[Ledger] Error syncing bills to ledger:', err);
-  }
+  });
 }
 
 /**
@@ -634,549 +719,606 @@ export async function syncBillsToLedger() {
  * settled orders have their AR cleared, and collected payments & shipping deductions
  * are recorded in the default BANK account and Expenses/Incomes journal.
  */
-export async function syncOrdersToLedger() {
-  try {
-    await connectToDatabase();
-    const Order = (await import('@/models/Order')).default;
-    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
-    const Expense = (await import('@/models/Expense')).default;
+export async function syncOrdersToLedger(force: boolean = false) {
+  return runDeduplicatedSync('orders', force, async () => {
+    try {
+      await connectToDatabase();
+      const Order = (await import('@/models/Order')).default;
+      const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+      const Expense = (await import('@/models/Expense')).default;
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
 
-    const [arAccount, bankAccount, cashAccount] = await Promise.all([
-      LedgerAccount.findOne({
-        code: 'AR',
-        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-      }),
-      LedgerAccount.findOne({
-        $and: [
-          { $or: [{ category: 'Bank' }, { code: 'BANK' }] },
-          { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
-        ]
-      }),
-      LedgerAccount.findOne({
-        $and: [
-          { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
-          { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
-        ]
-      })
-    ]);
+      const [arAccount, bankAccount, cashAccount] = await Promise.all([
+        LedgerAccount.findOne({
+          code: 'AR',
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        }),
+        LedgerAccount.findOne({
+          $and: [
+            { $or: [{ category: 'Bank' }, { code: 'BANK' }] },
+            { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
+          ]
+        }),
+        LedgerAccount.findOne({
+          $and: [
+            { $or: [{ category: 'Cash' }, { code: 'CASH' }] },
+            { $or: [{ resellerId: null }, { resellerId: { $exists: false } }] }
+          ]
+        })
+      ]);
 
-    if (!arAccount || !bankAccount) return;
+      if (!arAccount || !bankAccount) return;
 
-    // Clean any old order transactions mistakenly placed into CASH so Cash account stays 0 for auto orders
-    if (cashAccount) {
-      await LedgerTransaction.deleteMany({
-        account: cashAccount._id,
-        reference: { $regex: /^(ORDER|SHIPPING|DELIVERY)-/i }
-      });
-      await recalculateLedgerBalance('CASH');
-    }
-
-    // 0. Auto-reconcile COD delivered orders: in COD e-commerce, Delivered means cash has been collected by courier
-    await Order.updateMany(
-      { status: 'Delivered', paymentStatus: { $ne: 'Paid' }, deletedAt: null },
-      { $set: { paymentStatus: 'Paid' } }
-    );
-
-    // 0b. Auto-sync resellerCommission from ResellerOrder to Order
-    await Order.updateMany(
-      {
-        orderSource: { $ne: 'reseller_storefront' },
-        resellerCommission: { $gt: 0 }
-      },
-      { $set: { resellerCommission: 0 } }
-    );
-
-    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
-    const resellerOrdersWithComm = await ResellerOrder.find({
-      resellerCommission: { $gt: 0 },
-      deletedAt: null
-    }).select('shortId resellerCommission commissionStatus').lean();
-
-    for (const ro of resellerOrdersWithComm) {
-      if (!ro.shortId) continue;
-      await Order.updateOne(
-        { shortId: ro.shortId, orderSource: 'reseller_storefront' },
-        {
-          $set: {
-            resellerCommission: ro.resellerCommission,
-            ...(ro.commissionStatus ? { commissionStatus: ro.commissionStatus } : {})
-          }
-        }
-      );
-    }
-
-    // Fetch active/valid orders OR any paid/delivered orders (to maintain financial trail)
-    const orders = await Order.find({
-      $or: [
-        {
-          status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
-          deletedAt: null
-        },
-        { paymentStatus: 'Paid' },
-        { status: 'Delivered' }
-      ]
-    }).lean();
-
-    for (const order of orders) {
-      if (!order.shortId) continue;
-
-      const totalAmount = Number(order.totalAmount) || 0;
-      if (totalAmount <= 0) continue;
-
-      const deliveryCharge = Number(order.deliveryCharge) || 0;
-      const orderRef = `ORD-${order.shortId}`;
-      const payRef = `ORDER-${order.shortId}`;
-      const shippingRef = `SHIPPING-${order.shortId}`;
-      const baseTime = (order.createdAt ? new Date(order.createdAt) : new Date()).getTime();
-      const orderDate = new Date(baseTime);
-      const customerName = order.shippingAddress?.fullName || 'Customer';
-      const desc = `Customer Receivable for Order #${order.shortId} (${customerName})`;
-
-      // 1. Ensure AR Debit entry exists (represents customer/courier receivable) - FIRST EVENT
-      const arDebit = await LedgerTransaction.findOne({
-        account: arAccount._id,
-        reference: orderRef,
-        type: 'debit'
-      });
-
-      if (!arDebit) {
-        await logLedgerTransaction('AR', 'debit', totalAmount, desc, orderRef, orderDate);
-      } else {
-        let changed = false;
-        if (Math.abs(arDebit.amount - totalAmount) > 0.01) {
-          arDebit.amount = totalAmount;
-          changed = true;
-        }
-        if (arDebit.description !== desc) {
-          arDebit.description = desc;
-          changed = true;
-        }
-        if (new Date(arDebit.date).getTime() !== baseTime) {
-          arDebit.date = new Date(baseTime);
-          changed = true;
-        }
-        if (changed) {
-          await arDebit.save();
+      // Clean any old order transactions mistakenly placed into CASH so Cash account stays 0 for auto orders
+      if (cashAccount) {
+        const cashDel = await LedgerTransaction.deleteMany({
+          account: cashAccount._id,
+          reference: { $regex: /^(ORDER|SHIPPING|DELIVERY)-/i }
+        });
+        if (cashDel.deletedCount > 0) {
+          await recalculateLedgerBalance('CASH');
         }
       }
 
-      // 2. Determine payment details (All courier COD & online collections settle into default Bank account)
-      const isPaid = order.paymentStatus === 'Paid' || order.status === 'Delivered';
+      // 0 & 0b. Auto-reconcile COD delivered orders & sync resellerCommission
+      const [, , resellerOrdersWithComm] = await Promise.all([
+        Order.updateMany(
+          { status: 'Delivered', paymentStatus: { $ne: 'Paid' }, deletedAt: null },
+          { $set: { paymentStatus: 'Paid' } }
+        ),
+        Order.updateMany(
+          {
+            orderSource: { $ne: 'reseller_storefront' },
+            resellerCommission: { $gt: 0 }
+          },
+          { $set: { resellerCommission: 0 } }
+        ),
+        ResellerOrder.find({
+          resellerCommission: { $gt: 0 },
+          deletedAt: null
+        }).select('shortId resellerCommission commissionStatus').lean()
+      ]);
 
-      if (isPaid) {
-        // 2a. Record collection into default BANK account - SECOND EVENT
-        const payDate = new Date(baseTime + 1000);
-        const payTx = await LedgerTransaction.findOne({ reference: payRef });
-        const payDesc = `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`;
+      const commBulkOps = resellerOrdersWithComm
+        .filter((ro: any) => ro.shortId)
+        .map((ro: any) => ({
+          updateOne: {
+            filter: { shortId: ro.shortId, orderSource: 'reseller_storefront' },
+            update: {
+              $set: {
+                resellerCommission: ro.resellerCommission,
+                ...(ro.commissionStatus ? { commissionStatus: ro.commissionStatus } : {})
+              }
+            }
+          }
+        }));
 
-        if (!payTx) {
-          await logLedgerTransaction('BANK', 'debit', totalAmount, payDesc, payRef, payDate);
+      if (commBulkOps.length > 0) {
+        await Order.bulkWrite(commBulkOps, { ordered: false });
+      }
+
+      // Fetch orders, returnLossOrders, invalidOrders, and existing Mother Shop LedgerTransactions & Expenses in parallel
+      const [orders, returnLossOrders, invalidOrders, motherTxs, motherExpenses] = await Promise.all([
+        Order.find({
+          $or: [
+            {
+              status: { $in: ['Order Placed', 'Confirmed', 'Processing', 'Ready for Delivery', 'Released for Delivery', 'Delivered'] },
+              deletedAt: null
+            },
+            { paymentStatus: 'Paid' },
+            { status: 'Delivered' }
+          ]
+        }).lean(),
+        Order.find({
+          courierReturnLossDeducted: true,
+          deletedAt: null
+        }).lean(),
+        Order.find({
+          $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }],
+          paymentStatus: { $ne: 'Paid' },
+          status: { $ne: 'Delivered' },
+          courierReturnLossDeducted: { $ne: true }
+        } as any).select('shortId').lean(),
+        LedgerTransaction.find({
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        }),
+        Expense.find({
+          $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
+        })
+      ]);
+
+      const arIdStr = arAccount._id.toString();
+      const bankIdStr = bankAccount._id.toString();
+
+      // Index existing transactions & expenses in memory for O(1) lookup
+      const arDebitMap = new Map<string, any>();
+      const arCreditMap = new Map<string, any>();
+      const txByRefMap = new Map<string, any>();
+      const allRefSet = new Set<string>();
+
+      for (const tx of motherTxs) {
+        if (!tx.reference) continue;
+        allRefSet.add(tx.reference);
+        const accStr = tx.account?.toString();
+        if (accStr === arIdStr) {
+          if (tx.type === 'debit') arDebitMap.set(tx.reference, tx);
+          else if (tx.type === 'credit') arCreditMap.set(tx.reference, tx);
+        }
+        if (/^(ORDER|SHIPPING|REC-SHIPPING)-/i.test(tx.reference)) {
+          txByRefMap.set(tx.reference, tx);
+        }
+      }
+
+      const expByRefMap = new Map<string, any>();
+      for (const exp of motherExpenses) {
+        if (exp.reference) {
+          expByRefMap.set(exp.reference, exp);
+        }
+      }
+
+      const staleArCreditRefsToDelete: string[] = [];
+      const staleTxRefsToDelete: string[] = [];
+      const staleExpRefsToDelete: string[] = [];
+
+      for (const order of orders) {
+        if (!order.shortId) continue;
+
+        const totalAmount = Number(order.totalAmount) || 0;
+        if (totalAmount <= 0) continue;
+
+        const deliveryCharge = Number(order.deliveryCharge) || 0;
+        const orderRef = `ORD-${order.shortId}`;
+        const payRef = `ORDER-${order.shortId}`;
+        const shippingRef = `SHIPPING-${order.shortId}`;
+        const baseTime = (order.createdAt ? new Date(order.createdAt) : new Date()).getTime();
+        const orderDate = new Date(baseTime);
+        const customerName = order.shippingAddress?.fullName || 'Customer';
+        const desc = `Customer Receivable for Order #${order.shortId} (${customerName})`;
+
+        // 1. Ensure AR Debit entry exists (represents customer/courier receivable) - FIRST EVENT
+        const arDebit = arDebitMap.get(orderRef);
+
+        if (!arDebit) {
+          await logLedgerTransaction('AR', 'debit', totalAmount, desc, orderRef, orderDate, true);
         } else {
           let changed = false;
-          if (payTx.account.toString() !== bankAccount._id.toString()) {
-            payTx.account = bankAccount._id;
+          if (Math.abs(arDebit.amount - totalAmount) > 0.01) {
+            arDebit.amount = totalAmount;
             changed = true;
           }
-          if (Math.abs(payTx.amount - totalAmount) > 0.01) {
-            payTx.amount = totalAmount;
+          if (arDebit.description !== desc) {
+            arDebit.description = desc;
             changed = true;
           }
-          if (payTx.type !== 'debit') {
-            payTx.type = 'debit';
-            changed = true;
-          }
-          if (payTx.description !== payDesc) {
-            payTx.description = payDesc;
-            changed = true;
-          }
-          if (new Date(payTx.date).getTime() !== payDate.getTime()) {
-            payTx.date = payDate;
+          if (new Date(arDebit.date).getTime() !== baseTime) {
+            arDebit.date = new Date(baseTime);
             changed = true;
           }
           if (changed) {
-            await payTx.save();
+            await arDebit.save();
           }
         }
 
-        // 2b. Settle AR: ensure AR credit exists - THIRD EVENT
-        const settleDate = new Date(baseTime + 2000);
-        const arCredit = await LedgerTransaction.findOne({
-          account: arAccount._id,
-          reference: orderRef,
-          type: 'credit'
-        });
+        // 2. Determine payment details (All courier COD & online collections settle into default Bank account)
+        const isPaid = order.paymentStatus === 'Paid' || order.status === 'Delivered';
 
-        if (!arCredit) {
-          const clearDesc = `Payment settled for Order #${order.shortId}`;
-          await logLedgerTransaction('AR', 'credit', totalAmount, clearDesc, orderRef, settleDate);
-        } else {
-          let changed = false;
-          if (Math.abs(arCredit.amount - totalAmount) > 0.01) {
-            arCredit.amount = totalAmount;
-            changed = true;
-          }
-          if (new Date(arCredit.date).getTime() !== settleDate.getTime()) {
-            arCredit.date = settleDate;
-            changed = true;
-          }
-          if (changed) {
-            await arCredit.save();
-          }
-        }
+        if (isPaid) {
+          // 2a. Record collection into default BANK account - SECOND EVENT
+          const payDate = new Date(baseTime + 1000);
+          const payTx = txByRefMap.get(payRef);
+          const payDesc = `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`;
 
-        // 2c. Record courier delivery charge deduction from default BANK account - FOURTH EVENT
-        if (deliveryCharge > 0) {
-          const shipDate = new Date(baseTime + 3000);
-          const shipTx = await LedgerTransaction.findOne({ reference: shippingRef });
-          const shipDesc = `Courier delivery charge deducted for Order #${order.shortId}`;
-
-          if (!shipTx) {
-            await logLedgerTransaction('BANK', 'credit', deliveryCharge, shipDesc, shippingRef, shipDate);
+          if (!payTx) {
+            await logLedgerTransaction('BANK', 'debit', totalAmount, payDesc, payRef, payDate, true);
           } else {
             let changed = false;
-            if (shipTx.account.toString() !== bankAccount._id.toString()) {
-              shipTx.account = bankAccount._id;
+            if (payTx.account.toString() !== bankIdStr) {
+              payTx.account = bankAccount._id;
               changed = true;
             }
-            if (Math.abs(shipTx.amount - deliveryCharge) > 0.01) {
-              shipTx.amount = deliveryCharge;
+            if (Math.abs(payTx.amount - totalAmount) > 0.01) {
+              payTx.amount = totalAmount;
               changed = true;
             }
-            if (shipTx.type !== 'credit') {
-              shipTx.type = 'credit';
+            if (payTx.type !== 'debit') {
+              payTx.type = 'debit';
               changed = true;
             }
-            if (shipTx.description !== shipDesc) {
-              shipTx.description = shipDesc;
+            if (payTx.description !== payDesc) {
+              payTx.description = payDesc;
               changed = true;
             }
-            if (new Date(shipTx.date).getTime() !== shipDate.getTime()) {
-              shipTx.date = shipDate;
+            if (new Date(payTx.date).getTime() !== payDate.getTime()) {
+              payTx.date = payDate;
               changed = true;
             }
             if (changed) {
-              await shipTx.save();
+              await payTx.save();
             }
           }
-        } else {
-          await LedgerTransaction.deleteMany({ reference: shippingRef });
-        }
 
-        // 2d. Auto-sync to Expense & Income records for /admin/expenses-incomes
-        const incomeExp = await Expense.findOne({ reference: payRef });
-        if (!incomeExp) {
-          await Expense.create({
-            title: `Order Revenue #${order.shortId}`,
-            amount: totalAmount,
-            category: 'Sales Revenue',
-            type: 'income',
-            paymentAccountId: bankAccount._id,
-            date: orderDate,
-            description: `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`,
-            reference: payRef,
-            resellerId: null
-          });
-        } else {
-          let expChanged = false;
-          if (Math.abs(incomeExp.amount - totalAmount) > 0.01) {
-            incomeExp.amount = totalAmount;
-            expChanged = true;
-          }
-          if (incomeExp.paymentAccountId?.toString() !== bankAccount._id.toString()) {
-            incomeExp.paymentAccountId = bankAccount._id;
-            expChanged = true;
-          }
-          if (expChanged) await incomeExp.save();
-        }
+          // 2b. Settle AR: ensure AR credit exists - THIRD EVENT
+          const settleDate = new Date(baseTime + 2000);
+          const arCredit = arCreditMap.get(orderRef);
 
-        if (deliveryCharge > 0) {
-          const shipExp = await Expense.findOne({ reference: shippingRef });
-          if (!shipExp) {
+          if (!arCredit) {
+            const clearDesc = `Payment settled for Order #${order.shortId}`;
+            await logLedgerTransaction('AR', 'credit', totalAmount, clearDesc, orderRef, settleDate, true);
+          } else {
+            let changed = false;
+            if (Math.abs(arCredit.amount - totalAmount) > 0.01) {
+              arCredit.amount = totalAmount;
+              changed = true;
+            }
+            if (new Date(arCredit.date).getTime() !== settleDate.getTime()) {
+              arCredit.date = settleDate;
+              changed = true;
+            }
+            if (changed) {
+              await arCredit.save();
+            }
+          }
+
+          // 2c. Record courier delivery charge deduction from default BANK account - FOURTH EVENT
+          if (deliveryCharge > 0) {
+            const shipDate = new Date(baseTime + 3000);
+            const shipTx = txByRefMap.get(shippingRef);
+            const shipDesc = `Courier delivery charge deducted for Order #${order.shortId}`;
+
+            if (!shipTx) {
+              await logLedgerTransaction('BANK', 'credit', deliveryCharge, shipDesc, shippingRef, shipDate, true);
+            } else {
+              let changed = false;
+              if (shipTx.account.toString() !== bankIdStr) {
+                shipTx.account = bankAccount._id;
+                changed = true;
+              }
+              if (Math.abs(shipTx.amount - deliveryCharge) > 0.01) {
+                shipTx.amount = deliveryCharge;
+                changed = true;
+              }
+              if (shipTx.type !== 'credit') {
+                shipTx.type = 'credit';
+                changed = true;
+              }
+              if (shipTx.description !== shipDesc) {
+                shipTx.description = shipDesc;
+                changed = true;
+              }
+              if (new Date(shipTx.date).getTime() !== shipDate.getTime()) {
+                shipTx.date = shipDate;
+                changed = true;
+              }
+              if (changed) {
+                await shipTx.save();
+              }
+            }
+          } else if (txByRefMap.has(shippingRef)) {
+            staleTxRefsToDelete.push(shippingRef);
+          }
+
+          // 2d. Auto-sync to Expense & Income records for /admin/expenses-incomes
+          const incomeExp = expByRefMap.get(payRef);
+          if (!incomeExp) {
             await Expense.create({
-              title: `Courier Delivery Charge #${order.shortId}`,
-              amount: deliveryCharge,
-              category: 'Courier & Shipping',
-              type: 'expense',
+              title: `Order Revenue #${order.shortId}`,
+              amount: totalAmount,
+              category: 'Sales Revenue',
+              type: 'income',
               paymentAccountId: bankAccount._id,
               date: orderDate,
-              description: `Courier shipping fee deducted for Order #${order.shortId}`,
-              reference: shippingRef,
+              description: `Customer payment received for Order #${order.shortId} (${order.paymentMethod || 'Courier COD'})`,
+              reference: payRef,
               resellerId: null
             });
           } else {
-            let shipExpChanged = false;
-            if (Math.abs(shipExp.amount - deliveryCharge) > 0.01) {
-              shipExp.amount = deliveryCharge;
-              shipExpChanged = true;
+            let expChanged = false;
+            if (Math.abs(incomeExp.amount - totalAmount) > 0.01) {
+              incomeExp.amount = totalAmount;
+              expChanged = true;
             }
-            if (shipExp.paymentAccountId?.toString() !== bankAccount._id.toString()) {
-              shipExp.paymentAccountId = bankAccount._id;
-              shipExpChanged = true;
+            if (incomeExp.paymentAccountId?.toString() !== bankIdStr) {
+              incomeExp.paymentAccountId = bankAccount._id;
+              expChanged = true;
             }
-            if (shipExpChanged) await shipExp.save();
+            if (expChanged) await incomeExp.save();
+          }
+
+          if (deliveryCharge > 0) {
+            const shipExp = expByRefMap.get(shippingRef);
+            if (!shipExp) {
+              await Expense.create({
+                title: `Courier Delivery Charge #${order.shortId}`,
+                amount: deliveryCharge,
+                category: 'Courier & Shipping',
+                type: 'expense',
+                paymentAccountId: bankAccount._id,
+                date: orderDate,
+                description: `Courier shipping fee deducted for Order #${order.shortId}`,
+                reference: shippingRef,
+                resellerId: null
+              });
+            } else {
+              let shipExpChanged = false;
+              if (Math.abs(shipExp.amount - deliveryCharge) > 0.01) {
+                shipExp.amount = deliveryCharge;
+                shipExpChanged = true;
+              }
+              if (shipExp.paymentAccountId?.toString() !== bankIdStr) {
+                shipExp.paymentAccountId = bankAccount._id;
+                shipExpChanged = true;
+              }
+              if (shipExpChanged) await shipExp.save();
+            }
+          } else if (expByRefMap.has(shippingRef)) {
+            staleExpRefsToDelete.push(shippingRef);
           }
         } else {
-          await Expense.deleteMany({ reference: shippingRef });
+          // If order is not paid, queue any stale AR credit, payment entries, and expense records for batch removal
+          if (arCreditMap.has(orderRef)) staleArCreditRefsToDelete.push(orderRef);
+          if (txByRefMap.has(payRef)) staleTxRefsToDelete.push(payRef);
+          if (txByRefMap.has(shippingRef)) staleTxRefsToDelete.push(shippingRef);
+          if (expByRefMap.has(payRef)) staleExpRefsToDelete.push(payRef);
+          if (expByRefMap.has(shippingRef)) staleExpRefsToDelete.push(shippingRef);
         }
-      } else {
-        // If order is not paid, remove any stale AR credit, payment entries, and expense records
+      }
+
+      if (staleArCreditRefsToDelete.length > 0) {
         await LedgerTransaction.deleteMany({
           account: arAccount._id,
-          reference: orderRef,
+          reference: { $in: staleArCreditRefsToDelete },
           type: 'credit'
         });
-        await LedgerTransaction.deleteMany({ reference: { $in: [payRef, shippingRef] } });
-        await Expense.deleteMany({ reference: { $in: [payRef, shippingRef] } });
       }
-    }
-
-    // 2.5 Handle Cancelled Orders with Courier Return Losses (Mother Shop pays courier, recovered from Reseller)
-    const returnLossOrders = await Order.find({
-      courierReturnLossDeducted: true,
-      deletedAt: null
-    }).lean();
-
-    for (const ro of returnLossOrders) {
-      if (!ro.shortId) continue;
-      const shipFee = Number(ro.courierReturnLossAmount) || Number(ro.courierCharge) || Number(ro.deliveryCharge) || 120;
-      if (shipFee <= 0) continue;
-
-      const shippingRef = `SHIPPING-${ro.shortId}`;
-      const recRef = `REC-SHIPPING-${ro.shortId}`;
-      const txDate = ro.updatedAt ? new Date(ro.updatedAt) : (ro.createdAt ? new Date(ro.createdAt) : new Date());
-
-      // 1. Mother Shop Courier Delivery Charge (Expense: Paid to Courier)
-      const shipTx = await LedgerTransaction.findOne({ reference: shippingRef });
-      const shipDesc = `Courier delivery charge deducted for Order #${ro.shortId}`;
-      if (!shipTx) {
-        await logLedgerTransaction('BANK', 'credit', shipFee, shipDesc, shippingRef, txDate);
+      if (staleTxRefsToDelete.length > 0) {
+        await LedgerTransaction.deleteMany({ reference: { $in: staleTxRefsToDelete } });
+      }
+      if (staleExpRefsToDelete.length > 0) {
+        await Expense.deleteMany({ reference: { $in: staleExpRefsToDelete } });
       }
 
-      const shipExp = await Expense.findOne({ reference: shippingRef });
-      if (!shipExp) {
-        await Expense.create({
-          title: `Courier Delivery Charge #${ro.shortId}`,
-          amount: shipFee,
-          category: 'Courier & Shipping',
-          type: 'expense',
-          paymentAccountId: bankAccount._id,
-          date: txDate,
-          description: `Courier shipping fee deducted for Order #${ro.shortId}`,
-          reference: shippingRef,
-          resellerId: null
+      // 2.5 Handle Cancelled Orders with Courier Return Losses (Mother Shop pays courier, recovered from Reseller)
+      for (const ro of returnLossOrders) {
+        if (!ro.shortId) continue;
+        const shipFee = Number(ro.courierReturnLossAmount) || Number(ro.courierCharge) || Number(ro.deliveryCharge) || 120;
+        if (shipFee <= 0) continue;
+
+        const shippingRef = `SHIPPING-${ro.shortId}`;
+        const recRef = `REC-SHIPPING-${ro.shortId}`;
+        const txDate = ro.updatedAt ? new Date(ro.updatedAt) : (ro.createdAt ? new Date(ro.createdAt) : new Date());
+
+        // 1. Mother Shop Courier Delivery Charge (Expense: Paid to Courier)
+        const shipTx = txByRefMap.get(shippingRef);
+        const shipDesc = `Courier delivery charge deducted for Order #${ro.shortId}`;
+        if (!shipTx) {
+          await logLedgerTransaction('BANK', 'credit', shipFee, shipDesc, shippingRef, txDate, true);
+        }
+
+        const shipExp = expByRefMap.get(shippingRef);
+        if (!shipExp) {
+          await Expense.create({
+            title: `Courier Delivery Charge #${ro.shortId}`,
+            amount: shipFee,
+            category: 'Courier & Shipping',
+            type: 'expense',
+            paymentAccountId: bankAccount._id,
+            date: txDate,
+            description: `Courier shipping fee deducted for Order #${ro.shortId}`,
+            reference: shippingRef,
+            resellerId: null
+          });
+        }
+
+        // 2. Mother Shop Recovery from Reseller (Income: Recovered from Reseller Wallet)
+        const recTx = txByRefMap.get(recRef);
+        const recDesc = `Courier return loss recovered from Reseller for Order #${ro.shortId}`;
+        if (!recTx) {
+          await logLedgerTransaction('BANK', 'debit', shipFee, recDesc, recRef, new Date(txDate.getTime() + 1000), true);
+        }
+
+        const recExp = expByRefMap.get(recRef);
+        if (!recExp) {
+          await Expense.create({
+            title: `Courier Return Loss Recovered from Reseller #${ro.shortId}`,
+            amount: shipFee,
+            category: 'Other Income',
+            type: 'income',
+            paymentAccountId: bankAccount._id,
+            date: new Date(txDate.getTime() + 1000),
+            description: `Courier return loss recovered from Reseller for Cancelled Order #${ro.shortId}`,
+            reference: recRef,
+            resellerId: null
+          });
+        }
+      }
+
+      // 3. Clean AR, Payment, and Expense transactions ONLY for cancelled/deleted orders that were NEVER Paid, NEVER Delivered, and NO courier return loss
+      const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter((r: string) => allRefSet.has(r));
+      const invalidPayRefs = invalidOrders.map((o: any) => `ORDER-${o.shortId}`).filter(Boolean);
+      const invalidShipRefs = invalidOrders.map((o: any) => `SHIPPING-${o.shortId}`).filter(Boolean);
+      const allInvalidRefs = [...invalidPayRefs, ...invalidShipRefs].filter((r: string) => allRefSet.has(r) || expByRefMap.has(r));
+
+      if (invalidRefs.length > 0) {
+        await LedgerTransaction.deleteMany({
+          account: arAccount._id,
+          reference: { $in: invalidRefs }
         });
       }
-
-      // 2. Mother Shop Recovery from Reseller (Income: Recovered from Reseller Wallet)
-      const recTx = await LedgerTransaction.findOne({ reference: recRef });
-      const recDesc = `Courier return loss recovered from Reseller for Order #${ro.shortId}`;
-      if (!recTx) {
-        await logLedgerTransaction('BANK', 'debit', shipFee, recDesc, recRef, new Date(txDate.getTime() + 1000));
+      if (allInvalidRefs.length > 0) {
+        await Promise.all([
+          LedgerTransaction.deleteMany({ reference: { $in: allInvalidRefs } }),
+          Expense.deleteMany({ reference: { $in: allInvalidRefs } })
+        ]);
       }
 
-      const recExp = await Expense.findOne({ reference: recRef });
-      if (!recExp) {
-        await Expense.create({
-          title: `Courier Return Loss Recovered from Reseller #${ro.shortId}`,
-          amount: shipFee,
-          category: 'Other Income',
-          type: 'income',
-          paymentAccountId: bankAccount._id,
-          date: new Date(txDate.getTime() + 1000),
-          description: `Courier return loss recovered from Reseller for Cancelled Order #${ro.shortId}`,
-          reference: recRef,
-          resellerId: null
-        });
-      }
+      await Promise.all([
+        recalculateLedgerBalance('CASH'),
+        recalculateLedgerBalance('BANK'),
+        recalculateLedgerBalance('AR')
+      ]);
+    } catch (err) {
+      console.error('[Ledger] Error syncing orders to ledger:', err);
     }
-
-    // 3. Clean AR, Payment, and Expense transactions ONLY for cancelled/deleted orders that were NEVER Paid, NEVER Delivered, and NO courier return loss
-    const invalidOrders = await Order.find({
-      $or: [{ status: 'Cancelled' }, { paymentStatus: 'Failed' }, { deletedAt: { $ne: null } }],
-      paymentStatus: { $ne: 'Paid' },
-      status: { $ne: 'Delivered' },
-      courierReturnLossDeducted: { $ne: true }
-    } as any).select('shortId').lean();
-
-    const invalidRefs = invalidOrders.map((o: any) => `ORD-${o.shortId}`).filter(Boolean);
-    const invalidPayRefs = invalidOrders.map((o: any) => `ORDER-${o.shortId}`).filter(Boolean);
-    const invalidShipRefs = invalidOrders.map((o: any) => `SHIPPING-${o.shortId}`).filter(Boolean);
-    const allInvalidRefs = [...invalidPayRefs, ...invalidShipRefs];
-
-    if (invalidRefs.length > 0) {
-      await LedgerTransaction.deleteMany({
-        account: arAccount._id,
-        reference: { $in: invalidRefs }
-      });
-    }
-    if (allInvalidRefs.length > 0) {
-      await LedgerTransaction.deleteMany({
-        reference: { $in: allInvalidRefs }
-      });
-      await Expense.deleteMany({
-        reference: { $in: allInvalidRefs }
-      });
-    }
-
-    await recalculateLedgerBalance('CASH');
-    await recalculateLedgerBalance('BANK');
-    await recalculateLedgerBalance('AR');
-  } catch (err) {
-    console.error('[Ledger] Error syncing orders to ledger:', err);
-  }
+  });
 }
 
 /**
  * Sync active supplier bills and reseller payables (commissions & product payouts) to AP in ledger.
  */
-export async function syncPayablesToLedger() {
-  try {
-    await connectToDatabase();
-    await import('@/models/Reseller');
-    const ResellerOrder = (await import('@/models/ResellerOrder')).default;
-    const SupplierBill = (await import('@/models/SupplierBill')).default;
-    const LedgerAccount = (await import('@/models/LedgerAccount')).default;
+export async function syncPayablesToLedger(force: boolean = false) {
+  return runDeduplicatedSync('payables', force, async () => {
+    try {
+      await connectToDatabase();
+      await import('@/models/Reseller');
+      const ResellerOrder = (await import('@/models/ResellerOrder')).default;
+      const SupplierBill = (await import('@/models/SupplierBill')).default;
+      const LedgerAccount = (await import('@/models/LedgerAccount')).default;
 
-    const apAccount = await LedgerAccount.findOne({
-      code: 'AP',
-      $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
-    });
-    if (!apAccount) return;
-
-    // 1. Sync active reseller order liabilities OR cleared/delivered liabilities
-    const activeResellerOrders = await ResellerOrder.find({
-      $or: [
-        { status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null },
-        { commissionStatus: 'cleared' },
-        { status: 'Delivered' }
-      ]
-    } as any).populate('resellerId', 'storeName').lean();
-
-    for (const ro of activeResellerOrders) {
-      if (!ro.shortId) continue;
-      const commissionAmount = Number(ro.resellerCommission) || 0;
-      if (commissionAmount <= 0) continue;
-
-      const apRef = `AP-RO-${ro.shortId}`;
-      const storeName = (ro.resellerId as any)?.storeName || 'Reseller';
-      const isFulfillment = ro.shortId.includes('-F');
-      const baseTime = (ro.createdAt ? new Date(ro.createdAt) : new Date()).getTime();
-      const orderDate = new Date(baseTime + (isFulfillment ? 5000 : 4000));
-
-      const desc = isFulfillment
-        ? `Product Payout Payable for Order #${ro.shortId} (${storeName})`
-        : `Reseller Commission Payable for Order #${ro.shortId} (${storeName})`;
-
-      const apCredit = await LedgerTransaction.findOne({
-        account: apAccount._id,
-        reference: apRef,
-        type: 'credit'
+      const apAccount = await LedgerAccount.findOne({
+        code: 'AP',
+        $or: [{ resellerId: null }, { resellerId: { $exists: false } }]
       });
+      if (!apAccount) return;
 
-      if (!apCredit) {
-        await logLedgerTransaction('AP', 'credit', commissionAmount, desc, apRef, orderDate);
-      } else {
-        let changed = false;
-        if (Math.abs(apCredit.amount - commissionAmount) > 0.01) {
-          apCredit.amount = commissionAmount;
-          changed = true;
-        }
-        if (apCredit.description !== desc) {
-          apCredit.description = desc;
-          changed = true;
-        }
-        if (new Date(apCredit.date).getTime() !== orderDate.getTime()) {
-          apCredit.date = orderDate;
-          changed = true;
-        }
-        if (changed) {
-          await apCredit.save();
+      const [activeResellerOrders, dueSupplierBills, paidOrZeroSupplierBills, cancelledOrders, apTransactions] = await Promise.all([
+        ResellerOrder.find({
+          $or: [
+            { status: { $nin: ['Cancelled', 'Failed'] }, deletedAt: null },
+            { commissionStatus: 'cleared' },
+            { status: 'Delivered' }
+          ]
+        } as any).populate('resellerId', 'storeName').lean(),
+        SupplierBill.find({
+          status: 'Due'
+        }).populate('supplier', 'name companyName').lean(),
+        SupplierBill.find({
+          $or: [{ status: 'Paid' }, { dueAmount: { $lte: 0 } }]
+        }).select('billNo').lean(),
+        ResellerOrder.find({
+          $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }],
+          status: { $ne: 'Delivered' },
+          commissionStatus: { $ne: 'cleared' }
+        } as any).select('shortId').lean(),
+        LedgerTransaction.find({ account: apAccount._id })
+      ]);
+
+      const apCreditMap = new Map<string, any>();
+      const allApRefSet = new Set<string>();
+      for (const tx of apTransactions) {
+        if (tx.reference) {
+          allApRefSet.add(tx.reference);
+          if (tx.type === 'credit') {
+            apCreditMap.set(tx.reference, tx);
+          }
         }
       }
-    }
 
-    // 2. Sync active due supplier bills
-    const dueSupplierBills = await SupplierBill.find({
-      status: 'Due'
-    }).populate('supplier', 'name companyName').lean();
+      // 1. Sync active reseller order liabilities OR cleared/delivered liabilities
+      for (const ro of activeResellerOrders) {
+        if (!ro.shortId) continue;
+        const commissionAmount = Number(ro.resellerCommission) || 0;
+        if (commissionAmount <= 0) continue;
 
-    for (const sb of dueSupplierBills) {
-      const billNo = (sb as any).billNo || sb._id.toString();
-      const apRef = `AP-SB-${billNo}`;
-      const dueAmount = Number((sb as any).dueAmount || (sb as any).totalAmount) || 0;
-      if (dueAmount <= 0) continue;
+        const apRef = `AP-RO-${ro.shortId}`;
+        const storeName = (ro.resellerId as any)?.storeName || 'Reseller';
+        const isFulfillment = ro.shortId.includes('-F');
+        const baseTime = (ro.createdAt ? new Date(ro.createdAt) : new Date()).getTime();
+        const orderDate = new Date(baseTime + (isFulfillment ? 5000 : 4000));
 
-      const supplierName = (sb as any).supplier?.companyName || (sb as any).supplier?.name || 'Supplier';
-      let billDate = (sb as any).createdAt ? new Date((sb as any).createdAt) : ((sb as any).date ? new Date((sb as any).date) : new Date());
-      if ((sb as any).date) {
-        const d = new Date((sb as any).date);
-        if ((sb as any).createdAt && d.toISOString().slice(0, 10) === new Date((sb as any).createdAt).toISOString().slice(0, 10)) {
-          billDate = new Date((sb as any).createdAt);
+        const desc = isFulfillment
+          ? `Product Payout Payable for Order #${ro.shortId} (${storeName})`
+          : `Reseller Commission Payable for Order #${ro.shortId} (${storeName})`;
+
+        const apCredit = apCreditMap.get(apRef);
+
+        if (!apCredit) {
+          await logLedgerTransaction('AP', 'credit', commissionAmount, desc, apRef, orderDate, true);
         } else {
-          billDate = d;
+          let changed = false;
+          if (Math.abs(apCredit.amount - commissionAmount) > 0.01) {
+            apCredit.amount = commissionAmount;
+            changed = true;
+          }
+          if (apCredit.description !== desc) {
+            apCredit.description = desc;
+            changed = true;
+          }
+          if (new Date(apCredit.date).getTime() !== orderDate.getTime()) {
+            apCredit.date = orderDate;
+            changed = true;
+          }
+          if (changed) {
+            await apCredit.save();
+          }
         }
       }
-      const desc = `Supplier Bill Payable for ${supplierName} (${billNo})`;
 
-      const apCredit = await LedgerTransaction.findOne({
-        account: apAccount._id,
-        reference: apRef,
-        type: 'credit'
-      });
+      // 2. Sync active due supplier bills
+      for (const sb of dueSupplierBills) {
+        const billNo = (sb as any).billNo || sb._id.toString();
+        const apRef = `AP-SB-${billNo}`;
+        const dueAmount = Number((sb as any).dueAmount || (sb as any).totalAmount) || 0;
+        if (dueAmount <= 0) continue;
 
-      if (!apCredit) {
-        await logLedgerTransaction('AP', 'credit', dueAmount, desc, apRef, billDate);
-      } else {
-        let changed = false;
-        if (Math.abs(apCredit.amount - dueAmount) > 0.01) {
-          apCredit.amount = dueAmount;
-          changed = true;
+        const supplierName = (sb as any).supplier?.companyName || (sb as any).supplier?.name || 'Supplier';
+        let billDate = (sb as any).createdAt ? new Date((sb as any).createdAt) : ((sb as any).date ? new Date((sb as any).date) : new Date());
+        if ((sb as any).date) {
+          const d = new Date((sb as any).date);
+          if ((sb as any).createdAt && d.toISOString().slice(0, 10) === new Date((sb as any).createdAt).toISOString().slice(0, 10)) {
+            billDate = new Date((sb as any).createdAt);
+          } else {
+            billDate = d;
+          }
         }
-        if (apCredit.description !== desc) {
-          apCredit.description = desc;
-          changed = true;
-        }
-        if (new Date(apCredit.date).getTime() !== billDate.getTime()) {
-          apCredit.date = billDate;
-          changed = true;
-        }
-        if (changed) {
-          await apCredit.save();
+        const desc = `Supplier Bill Payable for ${supplierName} (${billNo})`;
+
+        const apCredit = apCreditMap.get(apRef);
+
+        if (!apCredit) {
+          await logLedgerTransaction('AP', 'credit', dueAmount, desc, apRef, billDate, true);
+        } else {
+          let changed = false;
+          if (Math.abs(apCredit.amount - dueAmount) > 0.01) {
+            apCredit.amount = dueAmount;
+            changed = true;
+          }
+          if (apCredit.description !== desc) {
+            apCredit.description = desc;
+            changed = true;
+          }
+          if (new Date(apCredit.date).getTime() !== billDate.getTime()) {
+            apCredit.date = billDate;
+            changed = true;
+          }
+          if (changed) {
+            await apCredit.save();
+          }
         }
       }
+
+      // Clean up AP entries for supplier bills that are now Paid or no longer Due
+      const paidSbRefs = paidOrZeroSupplierBills.map((s: any) => `AP-SB-${s.billNo}`).filter((r: string) => allApRefSet.has(r));
+      if (paidSbRefs.length > 0) {
+        await LedgerTransaction.deleteMany({
+          account: apAccount._id,
+          reference: { $in: paidSbRefs }
+        });
+      }
+
+      // 3. Remove AP liabilities ONLY for cancelled/deleted orders that were NEVER Delivered and NEVER cleared
+      const cancelledRefs = cancelledOrders.map((o: any) => `AP-RO-${o.shortId}`).filter((r: string) => allApRefSet.has(r));
+      if (cancelledRefs.length > 0) {
+        await LedgerTransaction.deleteMany({
+          account: apAccount._id,
+          reference: { $in: cancelledRefs }
+        });
+      }
+
+      await recalculateLedgerBalance('AP');
+    } catch (err) {
+      console.error('[Ledger] Error syncing payables to ledger:', err);
     }
-
-    // Clean up AP entries for supplier bills that are now Paid or no longer Due
-    const paidOrZeroSupplierBills = await SupplierBill.find({
-      $or: [{ status: 'Paid' }, { dueAmount: { $lte: 0 } }]
-    }).select('billNo').lean();
-    const paidSbRefs = paidOrZeroSupplierBills.map((s: any) => `AP-SB-${s.billNo}`).filter(Boolean);
-    if (paidSbRefs.length > 0) {
-      await LedgerTransaction.deleteMany({
-        account: apAccount._id,
-        reference: { $in: paidSbRefs }
-      });
-    }
-
-    // 3. Remove AP liabilities ONLY for cancelled/deleted orders that were NEVER Delivered and NEVER cleared
-    const cancelledOrders = await ResellerOrder.find({
-      $or: [{ status: 'Cancelled' }, { status: 'Failed' }, { deletedAt: { $ne: null } }],
-      status: { $ne: 'Delivered' },
-      commissionStatus: { $ne: 'cleared' }
-    } as any).select('shortId').lean();
-
-    const cancelledRefs = cancelledOrders.map((o: any) => `AP-RO-${o.shortId}`).filter(Boolean);
-    if (cancelledRefs.length > 0) {
-      await LedgerTransaction.deleteMany({
-        account: apAccount._id,
-        reference: { $in: cancelledRefs }
-      });
-    }
-
-    await recalculateLedgerBalance('AP');
-  } catch (err) {
-    console.error('[Ledger] Error syncing payables to ledger:', err);
-  }
+  });
 }
 
 /**

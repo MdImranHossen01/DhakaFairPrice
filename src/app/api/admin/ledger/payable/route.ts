@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
+    const forceSync = req.nextUrl.searchParams.get('sync') === 'true';
 
     // Auto-sync payables to ledger so payable transactions stay 100% reconciled
     try {
-      await syncPayablesToLedger();
+      await syncPayablesToLedger(forceSync);
     } catch (syncErr) {
       console.error('[Ledger Payable API] Sync Error:', syncErr);
     }
