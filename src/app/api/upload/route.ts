@@ -92,23 +92,26 @@ export async function POST(req: NextRequest) {
         const sharp = (await import('sharp')).default;
         const isBanner = folder === 'banners' || folder.includes('banner') || folder.includes('hero');
         const maxDim = isBanner ? 2160 : 1200;
-        const targetSize = isBanner ? 450 * 1024 : 155 * 1024;
-        const initialQuality = 82;
-        const fallbackQuality = 78;
+        const targetSize = isBanner ? 400 * 1024 : 150 * 1024;
 
-        let optimized = await sharp(buffer)
-          .rotate()
-          .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: initialQuality, effort: 5 })
-          .toBuffer();
+        const steps = [
+          { scale: 1.0, quality: 82 },
+          { scale: 1.0, quality: 78 },
+          { scale: 0.94, quality: 74 },
+          { scale: 0.88, quality: 70 },
+          { scale: 0.80, quality: 65 },
+          { scale: 0.72, quality: 60 },
+        ];
 
-        // If highly detailed image exceeds targetSize, adaptively adjust keeping quality pristine
-        if (optimized.length > targetSize) {
+        let optimized: Buffer = buffer;
+        for (const step of steps) {
+          const dim = Math.max(1, Math.round(maxDim * step.scale));
           optimized = await sharp(buffer)
             .rotate()
-            .resize({ width: Math.round(maxDim * 0.94), height: Math.round(maxDim * 0.94), fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: fallbackQuality, effort: 5 })
+            .resize({ width: dim, height: dim, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: step.quality, effort: 5 })
             .toBuffer();
+          if (optimized.length <= targetSize) break;
         }
 
         buffer = optimized;
