@@ -392,8 +392,8 @@ export const getCachedSettings = () => {
     async () => {
       await connectToDatabase();
 
-      // Find the first available settings record
-      const settings = await GlobalSettings.findOne().lean();
+      // Find the latest available settings record
+      const settings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean();
 
       return serialize(settings);
     },
