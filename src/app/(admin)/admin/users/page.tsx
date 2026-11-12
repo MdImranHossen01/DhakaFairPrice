@@ -31,7 +31,8 @@ import {
   Trash2,
   Search,
   Store,
-  KeyRound
+  KeyRound,
+  Download
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -111,6 +112,7 @@ function UsersContent() {
   const [adminImage, setAdminImage] = useState('');
   const [assignRole, setAssignRole] = useState<'admin' | 'manager' | 'moderator' | 'user'>('admin');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { data: session } = useSession();
   const isSuperAdmin = (session?.user as any)?.role === 'super_admin' || session?.user?.email === 'imranshuvo101@gmail.com';
@@ -152,6 +154,72 @@ function UsersContent() {
   const openUserDetails = (user: UserData) => {
     setSelectedUser(user);
     setIsDetailsOpen(true);
+  };
+
+  const handleExportCSV = async () => {
+    if (totalCount === 0 && users.length === 0) {
+      toast.error('No users available to export');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      let exportList: UserData[] = users;
+      if (totalCount > users.length) {
+        const searchEncoded = encodeURIComponent(debouncedSearchTerm || '');
+        const roleEncoded = encodeURIComponent(roleParam || '');
+        const sourceEncoded = encodeURIComponent(sourceFilter || 'mother');
+        const res = await fetch(
+          `/api/admin/users?page=1&limit=${Math.max(totalCount, 5000)}&search=${searchEncoded}&role=${roleEncoded}&source=${sourceEncoded}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.users)) {
+            exportList = data.users;
+          }
+        }
+      }
+
+      const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const headers = ['Name', 'Email', 'Phone', 'Role', 'Store Origin', 'Total Orders', 'Total Spent (BDT)', 'Joined Date', 'Address'];
+      const rows = exportList.map((u) => {
+        const primaryAddr = Array.isArray(u.addresses) && u.addresses.length > 0
+          ? [u.addresses[0].streetAddress || u.addresses[0].address, u.addresses[0].area, u.addresses[0].city, u.addresses[0].district]
+              .filter(Boolean)
+              .join(', ')
+          : '';
+        const joinedDate = u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : '';
+        return [
+          escapeCsv(u.name || ''),
+          escapeCsv(u.email || ''),
+          escapeCsv(u.phone || (Array.isArray(u.addresses) && u.addresses[0]?.phone) || ''),
+          escapeCsv(u.role || 'user'),
+          escapeCsv(u.storeOrigin || 'Mother Shop'),
+          escapeCsv(u.totalOrders ?? 0),
+          escapeCsv(u.totalSpent ?? 0),
+          escapeCsv(joinedDate),
+          escapeCsv(primaryAddr),
+        ].join(',');
+      });
+
+      const csvString = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const roleSlug = roleParam === 'all' ? 'all_users' : roleParam;
+      link.href = url;
+      link.setAttribute('download', `${roleSlug}_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${exportList.length} users to CSV`);
+    } catch (error) {
+      console.error('Export CSV error:', error);
+      toast.error('Failed to export users CSV');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
@@ -334,6 +402,16 @@ function UsersContent() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleExportCSV}
+            disabled={loading || isExporting || totalCount === 0}
+            variant="outline"
+            size="sm"
+            className="rounded-full px-4 h-9 text-xs font-bold gap-1.5"
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Export CSV
+          </Button>
           {(isSuperAdmin || (session?.user as any)?.role === 'admin') && (
             <Button 
               onClick={() => {

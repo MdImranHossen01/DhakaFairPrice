@@ -56,7 +56,7 @@ export default function SubscribersPage() {
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text:"This subscriber will be removed permanently.",
+      text: 'This subscriber will be removed permanently.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -93,18 +93,32 @@ export default function SubscribersPage() {
   );
 
   const handleExportCSV = () => {
-    if (subscribers.length === 0) return;
-    const csvContent ="data:text/csv;charset=utf-8," 
-      +"Email,Subscribed Date\n"
-      + subscribers.map(s => `"${s.email}","${new Date(s.createdAt).toISOString()}"`).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `subscribers_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    const listToExport = filteredSubscribers.length > 0 ? filteredSubscribers : subscribers;
+    if (listToExport.length === 0) {
+      toast.error('No subscribers available to export');
+      return;
+    }
+
+    const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const headers = ['Email Address', 'Subscribed Date'];
+    const rows = listToExport.map((s) =>
+      [
+        escapeCsv(s.email || ''),
+        escapeCsv(s.createdAt ? format(new Date(s.createdAt), 'yyyy-MM-dd hh:mm a') : ''),
+      ].join(',')
+    );
+
+    const csvString = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `subscribers_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${listToExport.length} subscribers to CSV`);
   };
 
   return (
