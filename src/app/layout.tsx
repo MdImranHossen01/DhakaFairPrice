@@ -11,7 +11,6 @@ import "./prosemirror.css";
 import Script from "next/script";
 import { PWARegistry } from "@/components/pwa-registry";
 import GoogleTagManager from "./components/GoogleTagManager";
-import { SmoothScroll } from "@/components/layout/SmoothScroll";
 import { ScrollProgress } from "@/components/layout/ScrollProgress";
 import { generateOrganizationSchema } from "@/lib/seo";
 import FacebookPixel from "./components/FacebookPixel";
@@ -287,7 +286,7 @@ export default async function RootLayout({
         <link rel="preload" as="image" href="/assets/forgetpassrod.webp" />
       </head>
       <body
-        className="antialiased min-h-full flex flex-col overflow-x-hidden font-sans"
+        className="antialiased min-h-full flex flex-col overflow-x-clip font-sans"
         suppressHydrationWarning
       >
         <PWARegistry />
@@ -342,11 +341,9 @@ export default async function RootLayout({
               />
             </>
           )}
-
-          <SmoothScroll>
             {children}
             <ScrollProgress />
-          </SmoothScroll>
+
         </Providers>
         <Toaster position="bottom-right" richColors />
       </body>
