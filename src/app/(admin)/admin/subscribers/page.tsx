@@ -8,7 +8,9 @@ import {
   Download, 
   Calendar,
   Loader2,
-  Users
+  Users,
+  MoreHorizontal,
+  Copy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +22,16 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
+} from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { format } from 'date-fns';
@@ -92,6 +103,61 @@ export default function SubscribersPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  const getStoreDisplayName = () => {
+    if (process.env.NEXT_PUBLIC_STORE_NAME) return process.env.NEXT_PUBLIC_STORE_NAME;
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.replace(/^www\./, '').toLowerCase();
+      if (host.includes('dhakafairprice')) return 'Dhaka Fair Price';
+      if (host.includes('janopriyo')) return 'Janopriyo';
+      if (host.includes('swapnobaz')) return 'Swapnobaz';
+    }
+    return 'Our Store';
+  };
+
+  const handleSendEmail = (email?: string) => {
+    if (!email || !email.includes('@')) {
+      toast.error('Invalid email address');
+      return;
+    }
+    const storeName = getStoreDisplayName();
+    const subject = encodeURIComponent(`Newsletter Update from ${storeName}`);
+    const body = encodeURIComponent(`Hello,\n\n\n\nBest regards,\n${storeName}`);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email.trim())}&su=${subject}&body=${body}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleBulkSendEmail = () => {
+    const listToEmail = filteredSubscribers.length > 0 ? filteredSubscribers : subscribers;
+    const validEmails = Array.from(
+      new Set(
+        listToEmail
+          .map((s) => (s.email || '').trim())
+          .filter((em) => em && em.includes('@'))
+      )
+    );
+    if (validEmails.length === 0) {
+      toast.error('No subscribers available to email');
+      return;
+    }
+    const storeName = getStoreDisplayName();
+    const subject = encodeURIComponent(`Newsletter Update from ${storeName}`);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(validEmails.join(','))}&su=${subject}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyEmail = async (email?: string) => {
+    if (!email) {
+      toast.error('No email address available');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(email.trim());
+      toast.success('Email address copied to clipboard');
+    } catch {
+      toast.error('Failed to copy email address');
+    }
+  };
+
   const handleExportCSV = () => {
     const listToExport = filteredSubscribers.length > 0 ? filteredSubscribers : subscribers;
     if (listToExport.length === 0) {
@@ -128,10 +194,16 @@ export default function SubscribersPage() {
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Newsletter Subscribers</h1>
           <p className="text-xs md:text-sm text-muted-foreground">Manage your store newsletter subscriber list.</p>
         </div>
-        <Button onClick={handleExportCSV} disabled={subscribers.length === 0} variant="outline" size="sm" className="gap-2">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={handleBulkSendEmail} disabled={subscribers.length === 0} variant="outline" size="sm" className="gap-2">
+            <Mail className="h-4 w-4" />
+            Send Email to All
+          </Button>
+          <Button onClick={handleExportCSV} disabled={subscribers.length === 0} variant="outline" size="sm" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -213,14 +285,43 @@ export default function SubscribersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => handleDelete(subscriber._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-full hover:bg-primary/10 hover:text-primary h-8 w-8"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-2 py-1.5">
+                                Subscriber Actions
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleSendEmail(subscriber.email)}
+                                className="cursor-pointer text-xs font-medium"
+                              >
+                                <Mail className="mr-2 h-3.5 w-3.5 text-primary" /> Send Email
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleCopyEmail(subscriber.email)}
+                                className="cursor-pointer text-xs"
+                              >
+                                <Copy className="mr-2 h-3.5 w-3.5" /> Copy Email
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(subscriber._id)}
+                                className="text-destructive cursor-pointer font-bold bg-red-50 hover:bg-red-100 mt-1 text-xs"
+                              >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Subscriber
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))

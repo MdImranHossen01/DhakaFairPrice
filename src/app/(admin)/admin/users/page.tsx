@@ -32,7 +32,9 @@ import {
   Search,
   Store,
   KeyRound,
-  Download
+  Download,
+  Mail,
+  Copy
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -222,6 +224,90 @@ function UsersContent() {
     }
   };
 
+  const isRealEmail = (email?: string) => {
+    if (!email || !email.includes('@')) return false;
+    const lower = email.trim().toLowerCase();
+    if (lower.endsWith('@guest.com') || /^01\d{9}@/.test(lower)) return false;
+    return true;
+  };
+
+  const getStoreDisplayName = () => {
+    if (process.env.NEXT_PUBLIC_STORE_NAME) return process.env.NEXT_PUBLIC_STORE_NAME;
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.replace(/^www\./, '').toLowerCase();
+      if (host.includes('dhakafairprice')) return 'Dhaka Fair Price';
+      if (host.includes('janopriyo')) return 'Janopriyo';
+      if (host.includes('swapnobaz')) return 'Swapnobaz';
+    }
+    return 'Our Store';
+  };
+
+  const handleSendEmail = (user: UserData) => {
+    if (!isRealEmail(user.email)) {
+      toast.error('This user registered with a phone number only and has no valid email address.');
+      return;
+    }
+    const storeName = getStoreDisplayName();
+    const subject = encodeURIComponent(`Update from ${storeName}`);
+    const body = encodeURIComponent(`Hello ${user.name || 'Customer'},\n\n\n\nBest regards,\n${storeName}`);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(user.email.trim())}&su=${subject}&body=${body}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyEmail = async (email?: string) => {
+    if (!email) {
+      toast.error('No email address available');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(email.trim());
+      toast.success('Email address copied to clipboard');
+    } catch {
+      toast.error('Failed to copy email address');
+    }
+  };
+
+  const handleBulkSendEmail = async () => {
+    if (totalCount === 0 && users.length === 0) {
+      toast.error('No users available to email');
+      return;
+    }
+    try {
+      let targetUsers: UserData[] = users;
+      if (totalCount > users.length) {
+        const searchEncoded = encodeURIComponent(debouncedSearchTerm || '');
+        const roleEncoded = encodeURIComponent(roleParam || '');
+        const sourceEncoded = encodeURIComponent(sourceFilter || 'mother');
+        const res = await fetch(
+          `/api/admin/users?page=1&limit=${Math.max(totalCount, 5000)}&search=${searchEncoded}&role=${roleEncoded}&source=${sourceEncoded}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.users)) {
+            targetUsers = data.users;
+          }
+        }
+      }
+      const validEmails = Array.from(
+        new Set(
+          targetUsers
+            .map((u) => (u.email || '').trim())
+            .filter((em) => isRealEmail(em))
+        )
+      );
+      if (validEmails.length === 0) {
+        toast.error('No valid email addresses found in this list');
+        return;
+      }
+      const storeName = getStoreDisplayName();
+      const subject = encodeURIComponent(`Update from ${storeName}`);
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(validEmails.join(','))}&su=${subject}`;
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      toast.error('Failed to open bulk email composer');
+    }
+  };
+
   const handleUpdateRole = async (userId: string, newRole: string) => {
     const result = await Swal.fire({
       title: 'Change User Role?',
@@ -403,6 +489,16 @@ function UsersContent() {
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Button
+            onClick={handleBulkSendEmail}
+            disabled={loading || totalCount === 0}
+            variant="outline"
+            size="sm"
+            className="rounded-full px-4 h-9 text-xs font-bold gap-1.5"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Send Email to All
+          </Button>
+          <Button
             onClick={handleExportCSV}
             disabled={loading || isExporting || totalCount === 0}
             variant="outline"
@@ -580,6 +676,12 @@ function UsersContent() {
                             <DropdownMenuItem onClick={() => openUserDetails(user)} className="cursor-pointer text-xs">
                               <Eye className="mr-2 h-3.5 w-3.5" /> View Details
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendEmail(user)} className="cursor-pointer text-xs font-medium">
+                              <Mail className="mr-2 h-3.5 w-3.5 text-primary" /> Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCopyEmail(user.email)} className="cursor-pointer text-xs">
+                              <Copy className="mr-2 h-3.5 w-3.5" /> Copy Email
+                            </DropdownMenuItem>
                             {isSuperAdmin && (session?.user as any)?.id !== user._id && (
                               <DropdownMenuItem
                                 onClick={() => handleImpersonateUser(user._id, user.name, user.role, user.phone || user.email)}
@@ -692,6 +794,12 @@ function UsersContent() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleSendEmail(user)} className="text-xs font-medium">
+                          <Mail className="mr-1.5 h-3.5 w-3.5 text-primary" /> Send Email
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCopyEmail(user.email)} className="text-xs">
+                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email
+                        </DropdownMenuItem>
                         {isSuperAdmin && (session?.user as any)?.id !== user._id && (
                           <DropdownMenuItem
                             onClick={() => handleImpersonateUser(user._id, user.name, user.role, user.phone || user.email)}
