@@ -73,26 +73,20 @@ export const fbEvent = (
       "Purchase", "AddToCart", "InitiateCheckout", "AddToWishlist"
     ];
 
-    // If user data is provided, use Advanced Matching safely
+    // If user data is provided, use Advanced Matching
     if (userData && (userData.em || userData.ph)) {
-      try {
-        const advancedMatchingData = {
-          ...(userData.em && { em: userData.em.trim().toLowerCase() }),
-          ...(userData.ph && { ph: userData.ph.replace(/\D/g, '') }),
-          ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
-          ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
-          ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
-          ...(userData.st && { st: userData.st.trim().toLowerCase() }),
-          ...(userData.zp && { zp: userData.zp.trim().toLowerCase() }),
-          ...(userData.country && { country: userData.country.trim().toLowerCase() }),
-        };
-        const pixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
-        if (pixelId && typeof (window as any).fbq === 'function') {
-          (window as any).fbq('setUserProperties', pixelId, advancedMatchingData);
-        }
-      } catch (err) {
-        console.warn('[Meta Pixel] Failed to set user properties:', err);
-      }
+      // We call 'set' to update user data before tracking the event
+      // This improves matching between Browser and Server events
+      (window as any).fbq('set', 'user_data', {
+        ...(userData.em && { em: userData.em.trim().toLowerCase() }),
+        ...(userData.ph && { ph: userData.ph.replace(/\D/g, '') }),
+        ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
+        ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
+        ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
+        ...(userData.st && { st: userData.st.trim().toLowerCase() }),
+        ...(userData.zp && { zp: userData.zp.trim().toLowerCase() }),
+        ...(userData.country && { country: userData.country.trim().toLowerCase() }),
+      });
     }
 
     // If it's not a standard event, track as Custom
