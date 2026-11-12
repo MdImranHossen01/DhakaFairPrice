@@ -8,15 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Loader2, User as UserIcon, Eye, Calendar, Phone, MapPin,
-  ShoppingBag, Search, RefreshCcw, MoreHorizontal
+  ShoppingBag, Search, RefreshCcw, MoreHorizontal, Download, Mail, Copy
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from"@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-} from"@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 function UsersContent() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -53,6 +54,129 @@ function UsersContent() {
     fetchUsers();
   };
 
+  const isRealEmail = (email?: string) => {
+    if (!email || !email.includes('@')) return false;
+    const lower = email.trim().toLowerCase();
+    if (lower.endsWith('@guest.com') || /^01\d{9}@/.test(lower)) return false;
+    return true;
+  };
+
+  const handleSendEmail = (user: any) => {
+    if (!isRealEmail(user?.email)) {
+      toast.error('This customer registered with a phone number only and has no valid email address.');
+      return;
+    }
+    const subject = encodeURIComponent('Update from Store');
+    const body = encodeURIComponent(`Hello ${user.name || 'Customer'},\n\n\n\nBest regards`);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(user.email.trim())}&su=${subject}&body=${body}`;
+    window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyEmail = async (email?: string) => {
+    if (!email) {
+      toast.error('No email address available');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(email.trim());
+      toast.success('Email address copied to clipboard');
+    } catch {
+      toast.error('Failed to copy email address');
+    }
+  };
+
+  const handleBulkSendEmail = async () => {
+    if (total === 0 && users.length === 0) {
+      toast.error('No customers available to email');
+      return;
+    }
+    try {
+      let targetUsers: any[] = users;
+      if (total > users.length) {
+        const params = new URLSearchParams({ page: '1', limit: String(Math.max(total, 5000)) });
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/reseller/users?${params}`);
+        if (res.ok) {
+          const d = await res.json();
+          if (Array.isArray(d.users)) {
+            targetUsers = d.users;
+          }
+        }
+      }
+      const validEmails = Array.from(
+        new Set(
+          targetUsers
+            .map((u) => (u.email || '').trim())
+            .filter((em) => isRealEmail(em))
+        )
+      );
+      if (validEmails.length === 0) {
+        toast.error('No valid email addresses found in this list');
+        return;
+      }
+      const subject = encodeURIComponent('Update from Store');
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${encodeURIComponent(validEmails.join(','))}&su=${subject}`;
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      toast.error('Failed to open bulk email composer');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (total === 0 && users.length === 0) {
+      toast.error('No customers available to export');
+      return;
+    }
+    setIsExporting(true);
+    try {
+      let exportList: any[] = users;
+      if (total > users.length) {
+        const params = new URLSearchParams({ page: '1', limit: String(Math.max(total, 5000)) });
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/reseller/users?${params}`);
+        if (res.ok) {
+          const d = await res.json();
+          if (Array.isArray(d.users)) {
+            exportList = d.users;
+          }
+        }
+      }
+
+      const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const headers = ['Name', 'Email', 'Phone', 'Address', 'Total Orders', 'Total Spent (BDT)', 'Joined Date', 'Status'];
+      const rows = exportList.map((u) => {
+        const joinedDate = u.createdAt ? format(new Date(u.createdAt), 'yyyy-MM-dd') : '';
+        return [
+          escapeCsv(u.name || ''),
+          escapeCsv(u.email || ''),
+          escapeCsv(u.phone || ''),
+          escapeCsv(u.address || ''),
+          escapeCsv(u.totalOrders ?? 0),
+          escapeCsv(u.totalSpent ?? 0),
+          escapeCsv(joinedDate),
+          escapeCsv(u.isBlocked ? 'Blocked' : 'Active'),
+        ].join(',');
+      });
+
+      const csvString = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `customers_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${exportList.length} customers to CSV`);
+    } catch (error) {
+      console.error('Export CSV error:', error);
+      toast.error('Failed to export customers CSV');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -62,9 +186,31 @@ function UsersContent() {
           <h2 className="text-xl md:text-2xl font-bold tracking-tight">Customer Management</h2>
           <p className="text-xs md:text-sm text-muted-foreground">All customers registered to your store ({total} total)</p>
         </div>
-        <Button variant="outline" size="sm" className="h-9 self-start sm:self-auto" onClick={fetchUsers} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs gap-1.5"
+            onClick={handleBulkSendEmail}
+            disabled={loading || (total === 0 && users.length === 0)}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Send Email to All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs gap-1.5"
+            onClick={handleExportCSV}
+            disabled={loading || isExporting || (total === 0 && users.length === 0)}
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Export CSV
+          </Button>
+          <Button variant="outline" size="sm" className="h-9" onClick={fetchUsers} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       <form onSubmit={handleSearch} className="flex gap-2  max-w-sm">
@@ -155,14 +301,20 @@ function UsersContent() {
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
-                        <DropdownMenuTrigger render={
+                        <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        } />
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedUser(user)}>
-                            <Eye className="mr-2 h-4 w-4" /> View Details
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => setSelectedUser(user)} className="cursor-pointer text-xs">
+                            <Eye className="mr-2 h-3.5 w-3.5" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSendEmail(user)} className="cursor-pointer text-xs font-medium">
+                            <Mail className="mr-2 h-3.5 w-3.5 text-primary" /> Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleCopyEmail(user.email)} className="cursor-pointer text-xs">
+                            <Copy className="mr-2 h-3.5 w-3.5" /> Copy Email
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -215,10 +367,25 @@ function UsersContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-1 border-t">
+                <div className="flex items-center justify-between pt-1 border-t">
                   <Button size="sm" variant="outline" className="h-7 text-xs px-2.5" onClick={() => setSelectedUser(user)}>
                     <Eye className="h-3 w-3 mr-1" /> View Details
                   </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2">
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleSendEmail(user)} className="text-xs font-medium">
+                        <Mail className="mr-1.5 h-3.5 w-3.5 text-primary" /> Send Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleCopyEmail(user.email)} className="text-xs">
+                        <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Email
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))
