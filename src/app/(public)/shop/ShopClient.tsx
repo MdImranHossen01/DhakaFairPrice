@@ -191,10 +191,10 @@ export default function ShopClient({ initialProducts, initialCategories }: ShopC
   };
 
   const renderSidebar = () => (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Categories</h3>
-        <div className="space-y-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider mb-3">Categories</h3>
+        <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1.5 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 overscroll-contain">
           {categories.map((cat) => (
             <div key={cat._id} className="flex items-center space-x-2">
               <Checkbox
@@ -250,7 +250,7 @@ export default function ShopClient({ initialProducts, initialCategories }: ShopC
     <div className="container mx-auto px-4 md:px-0 py-10">
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Desktop Sidebar */}
-        <aside className="hidden w-64 shrink-0 md:block sticky top-20 self-start h-fit max-h-[calc(100vh-6rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+        <aside className="hidden w-64 shrink-0 md:block sticky top-20 self-start h-fit max-h-[calc(100vh-5.5rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/15 hover:scrollbar-thumb-muted-foreground/30 overscroll-contain">
           {renderSidebar()}
         </aside>
 

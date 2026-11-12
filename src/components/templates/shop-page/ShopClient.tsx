@@ -390,9 +390,9 @@ export default function ShopClient({ initialProducts, initialCategories, initial
   };
 
   const renderSidebar = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-bold uppercase tracking-wider">Categories</h3>
           {selectedCategories.length > 0 && (
             <button
@@ -405,7 +405,7 @@ export default function ShopClient({ initialProducts, initialCategories, initial
         </div>
 
         {/* Scrollable Category Tree */}
-        <div className="max-h-[360px] overflow-y-auto space-y-1.5 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 overscroll-contain">
           {mainCategories.map((mainCat) => {
             const subs = getSubcategories(mainCat._id);
             const hasSubs = subs.length > 0;
@@ -520,7 +520,7 @@ export default function ShopClient({ initialProducts, initialCategories, initial
       {/* Brands Filter */}
       {brands.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-bold uppercase tracking-wider">Brands</h3>
             {selectedBrands.length > 0 && (
               <button
@@ -533,7 +533,7 @@ export default function ShopClient({ initialProducts, initialCategories, initial
           </div>
 
           {/* Scrollable Brands List */}
-          <div className="max-h-[220px] overflow-y-auto space-y-1.5 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="max-h-[130px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 overscroll-contain">
             {brands.map((b) => {
               const isBrandSelected = selectedBrands.includes(b.slug || '') || selectedBrands.includes(b._id) || selectedBrands.includes(b.name.toLowerCase());
               return (
@@ -558,8 +558,8 @@ export default function ShopClient({ initialProducts, initialCategories, initial
 
       {/* Quick Filters */}
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-wider mb-3">Quick Filters</h3>
-        <div className="space-y-2">
+        <h3 className="text-sm font-bold uppercase tracking-wider mb-2">Quick Filters</h3>
+        <div className="space-y-1.5">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="show-all"
@@ -637,7 +637,7 @@ export default function ShopClient({ initialProducts, initialCategories, initial
 
       {/* Price Range */}
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Price Range</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider mb-2">Price Range</h3>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <span className="absolute left-2.5 top-2.5 text-xs text-muted-foreground">৳</span>
@@ -673,7 +673,7 @@ export default function ShopClient({ initialProducts, initialCategories, initial
     <div className="container mx-auto px-4 md:px-0 py-10">
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Desktop Sidebar */}
-        <aside className="hidden w-64 shrink-0 md:block sticky top-20 self-start h-fit max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <aside className="hidden w-64 shrink-0 md:block sticky top-20 self-start h-fit max-h-[calc(100vh-5.5rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/15 hover:scrollbar-thumb-muted-foreground/30 overscroll-contain">
           {renderSidebar()}
         </aside>
 
