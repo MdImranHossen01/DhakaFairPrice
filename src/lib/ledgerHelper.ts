@@ -779,11 +779,11 @@ export async function syncOrdersToLedger(force: boolean = false) {
         }).select('shortId resellerCommission commissionStatus').lean()
       ]);
 
-      const commBulkOps = resellerOrdersWithComm
+      const commBulkOps: any[] = resellerOrdersWithComm
         .filter((ro: any) => ro.shortId)
         .map((ro: any) => ({
           updateOne: {
-            filter: { shortId: ro.shortId, orderSource: 'reseller_storefront' },
+            filter: { shortId: ro.shortId, orderSource: 'reseller_storefront' as const },
             update: {
               $set: {
                 resellerCommission: ro.resellerCommission,
