@@ -184,11 +184,19 @@ function UsersContent() {
       const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
       const headers = ['Name', 'Email', 'Phone', 'Role', 'Store Origin', 'Total Orders', 'Total Spent (BDT)', 'Joined Date', 'Address'];
       const rows = exportList.map((u) => {
-        const primaryAddr = Array.isArray(u.addresses) && u.addresses.length > 0
-          ? [u.addresses[0].streetAddress || u.addresses[0].address, u.addresses[0].area, u.addresses[0].city, u.addresses[0].district]
-              .filter(Boolean)
-              .join(', ')
-          : '';
+        let primaryAddr = '';
+        if (Array.isArray(u.addresses) && u.addresses.length > 0) {
+          const a = u.addresses[0] || {};
+          const fullStreet = a.street || a.streetAddress || a.address || '';
+          const stateOrArea = a.state || a.area || a.thana || '';
+          const cityOrDistrict = a.city || a.district || '';
+          const division = a.division || '';
+          const parts = [fullStreet, stateOrArea, cityOrDistrict, division]
+            .map((s) => String(s || '').trim())
+            .filter(Boolean);
+          // deduplicate parts (e.g. if city and division both say "Dhaka")
+          primaryAddr = parts.filter((p, idx) => parts.indexOf(p) === idx).join(', ');
+        }
         const joinedDate = u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : '';
         return [
           escapeCsv(u.name || ''),
@@ -915,9 +923,19 @@ function UsersContent() {
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Address</p>
                       <p className="font-bold text-slate-700 leading-snug">
-                        {selectedUser.addresses && selectedUser.addresses.length > 0 
-                          ? `${selectedUser.addresses[0].street || ''}, ${selectedUser.addresses[0].city || ''}`
-                          : 'No address saved'}
+                        {(() => {
+                          if (!selectedUser.addresses || selectedUser.addresses.length === 0) return 'No address saved';
+                          const a = selectedUser.addresses[0] || {};
+                          const fullStreet = a.street || a.streetAddress || a.address || '';
+                          const stateOrArea = a.state || a.area || a.thana || '';
+                          const cityOrDistrict = a.city || a.district || '';
+                          const division = a.division || '';
+                          const parts = [fullStreet, stateOrArea, cityOrDistrict, division]
+                            .map((s) => String(s || '').trim())
+                            .filter(Boolean);
+                          const unique = parts.filter((p, idx) => parts.indexOf(p) === idx).join(', ');
+                          return unique || 'No address saved';
+                        })()}
                       </p>
                     </div>
                   </div>
