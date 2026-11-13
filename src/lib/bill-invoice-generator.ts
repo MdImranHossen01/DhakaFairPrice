@@ -124,377 +124,314 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
 
   const amountToConvert = docType === 'bill' ? Math.round((bill.gTotal ?? bill.total) ?? 0) : Math.round(bill.total || 0);
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>${title} #${invoiceId}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-        <style>
-          :root {
-            --primary: ${primary};
-            --primary-foreground: ${primaryForeground};
-            --border: ${border};
-            --muted-foreground: ${mutedForeground};
-            --foreground: ${foreground};
-            --background: ${background};
-          }
-          * {
-            box-sizing: border-box;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body {
-            font-family: 'Inter', 'Noto Sans Bengali', sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: var(--foreground);
-            background-color: var(--background);
-            font-size: 14px;
-            line-height: 1.5;
-          }
-          .bill-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: var(--background);
-            padding: 20px;
-            min-height: 260mm;
-            display: flex;
-            flex-direction: column;
-          }
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-          }
-          .brand-logo-container {
-            display: flex;
-            flex-direction: column;
-          }
-          .brand-logo-img {
-            max-height: 60px;
-            max-width: 220px;
-            object-fit: contain;
-            margin-bottom: 5px;
-          }
-          .brand-logo {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            margin-bottom: 5px;
-          }
-          .brand-details {
-            font-size: 12px;
-            color: var(--muted-foreground);
-          }
-          .bill-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--border);
-            text-align: right;
-            margin: 0;
-          }
-          .details-grid {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-          }
-          .bill-to, .bill-info {
-            width: 48%;
-          }
-          .bill-to h3, .bill-info h3 {
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-bottom: 10px;
-            color: var(--muted-foreground);
-          }
-          .bill-to p, .bill-info p {
-            margin: 4px 0;
-          }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-          }
-          .info-label {
-            font-weight: 600;
-            color: var(--muted-foreground);
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-            page-break-inside: auto;
-          }
-          tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-          }
-          thead {
-            display: table-header-group;
-          }
-          tfoot {
-            display: table-footer-group;
-          }
-          th {
-            background-color: var(--primary);
-            color: var(--primary-foreground);
-            text-align: left;
-            padding: 10px;
-            font-size: 12px;
-            text-transform: uppercase;
-          }
-          td {
-            padding: 12px 10px;
-            border-bottom: 1px solid var(--border);
-          }
-          .text-right {
-            text-align: right;
-          }
-          .text-center {
-            text-align: center;
-          }
-          .totals-container {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 20px;
-          }
-          .totals-box {
-            width: 320px;
-          }
-          .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            font-size: 13px;
-          }
-          .total-row.highlight {
-            font-weight: 600;
-            color: var(--foreground);
-          }
-          .total-row.grand-total {
-            border-top: 2px solid var(--border);
-            font-size: 15px;
-            font-weight: 700;
-            padding-top: 8px;
-          }
-          .footer {
-            text-align: center;
-            font-size: 11px;
-            color: var(--muted-foreground);
-            border-top: 1px solid var(--border);
-            padding-top: 20px;
-            margin-top: auto;
-          }
-          @media print {
-            body {
-              padding: 0;
-              margin: 0;
-            }
-            .bill-container {
-              padding: 0;
-              max-width: 100%;
-              width: 100%;
-              min-height: 277mm;
-            }
-            @page {
-              size: A4 portrait;
-              margin: 10mm;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="bill-container">
-          <div class="header">
-            <div class="brand-logo-container">
-              <div class="brand-logo">${brandName}</div>
-              <div class="brand-details">
-                ${brandAddress ? `<div>${brandAddress}</div>` : ''}
-                <div>Email: ${brandEmail} | Phone: ${brandPhone}</div>
-              </div>
-            </div>
-            <div>
-              <h1 class="bill-title">${title}</h1>
-            </div>
+  const esc = (v: any) =>
+    String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+  const brandLogoUrl = settings?.logoUrl || settings?.logo || '/logo.webp';
+  const finalLogoUrl = getAbsoluteUrl(brandLogoUrl);
+
+  const isBill = docType === 'bill';
+  const isOffer = docType === 'offer';
+  const isChalan = docType === 'chalan';
+
+  const subtitle = isOffer
+    ? 'Price Quotation / Offer'
+    : isChalan
+      ? 'Goods Delivery Note'
+      : 'Tax Invoice / Bill';
+  const clientLabel = isOffer ? 'Quotation To' : isChalan ? 'Deliver To' : 'Bill To';
+  const noLabel = isOffer ? 'Quotation No' : isChalan ? 'Challan No' : 'Bill No';
+
+  const fmt = (n: any) => `৳${Math.round(Number(n) || 0).toLocaleString()}`;
+  const safeDate = (d: any) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return isValid(dt) ? format(dt, 'dd MMM yyyy') : '';
+  };
+
+  const subtotalVal = Math.round(bill.subtotal || 0);
+  const deliveryVal = Math.round(bill.deliveryCharge || 0);
+  const serviceVal = Math.round(bill.serviceFee || 0);
+  const discountVal = Math.round(bill.discount || 0);
+  const totalVal = Math.round(bill.total || 0);
+  const prevDueVal = Math.round(bill.prevDue || 0);
+  const grandVal = Math.round(bill.gTotal ?? bill.total ?? 0);
+  const paidVal = Math.round(bill.cashIn || 0);
+  const remainingVal = Math.round(bill.currentBillDue ?? Math.max(0, grandVal - paidVal));
+
+  const itemRows = items
+    .map((item: any, idx: number) => {
+      const descLines = getDescriptionLines(item.description);
+      const hasDesc = descLines.length > 0;
+      let rowHtml = `
+        <tr class="item-main-row" style="border-top:1px solid ${border};${!hasDesc ? `border-bottom:1px solid ${border};` : ''}">
+          <td style="padding:7px 8px;color:${mutedForeground};font-size:11px;vertical-align:top;">${idx + 1}</td>
+          <td style="padding:7px 8px;font-weight:600;font-size:12px;vertical-align:top;">${esc(item.name)}</td>
+          <td style="padding:7px 8px;text-align:center;font-size:12px;vertical-align:top;">${item.quantity || 1}</td>
+          ${!isChalan ? `
+          <td style="padding:7px 8px;text-align:right;font-size:12px;vertical-align:top;">${fmt(item.price)}</td>
+          <td style="padding:7px 8px;text-align:right;font-size:12px;font-weight:600;vertical-align:top;">${fmt((item.price || 0) * (item.quantity || 1))}</td>
+          ` : ''}
+        </tr>`;
+      descLines.forEach((line: string, lineIdx: number) => {
+        const isLast = lineIdx === descLines.length - 1;
+        rowHtml += `
+        <tr class="item-desc-row" style="${isLast ? `border-bottom:1px solid ${border};` : ''}">
+          <td></td>
+          <td style="padding:1px 8px 4px 8px;color:${mutedForeground};font-size:10.5px;line-height:1.4;">${line}</td>
+          <td></td>
+          ${!isChalan ? '<td></td><td></td>' : ''}
+        </tr>`;
+      });
+      return rowHtml;
+    })
+    .join('');
+
+  const summaryLine = (label: string, value: string, extra = '') =>
+    `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;${extra}"><span style="color:${mutedForeground};">${label}</span><strong>${value}</strong></div>`;
+
+  const summaryHtml = !isChalan
+    ? `
+      <div class="bill-summary-container">
+        <div class="bill-summary-box">
+          <div class="info-label" style="margin-bottom:5px;border-bottom:1px solid ${border};padding-bottom:3px;">${isOffer ? 'Quotation Summary' : 'Bill Summary'}</div>
+          ${summaryLine('Subtotal:', fmt(subtotalVal))}
+          ${deliveryVal > 0 ? summaryLine('Delivery Charge:', fmt(deliveryVal)) : ''}
+          ${serviceVal > 0 ? summaryLine('Service Fee:', fmt(serviceVal)) : ''}
+          ${discountVal > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;"><span style="color:${mutedForeground};">${bill.discountType === 'percentage' ? `Discount (${esc(bill.discountValue)}%):` : 'Discount:'}</span><strong style="color:#ef4444;">-${fmt(discountVal)}</strong></div>` : ''}
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:${primary};border-top:1px solid ${border};margin-top:4px;padding-top:4px;">
+            <span>${isBill ? 'Total:' : 'Total Amount:'}</span><span>${fmt(totalVal)}</span>
           </div>
-
-          <div class="details-grid">
-            <div class="bill-to">
-              <h3>${labelTo}</h3>
-              <p><strong>${bill.clientName || "Client Name"}</strong></p>
-              ${bill.clientAddress ? `<p>Address: ${bill.clientAddress}</p>` : ''}
-              <p>Phone: ${bill.clientPhone || ""}</p>
+          ${isBill ? `
+            ${prevDueVal > 0 ? summaryLine('Previous Due:', fmt(prevDueVal)) : ''}
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;border-top:1px solid ${border};margin-top:3px;padding-top:3px;">
+              <span>Grand Total:</span><span>${fmt(grandVal)}</span>
             </div>
-            <div class="bill-info">
-              <h3>Document Info</h3>
-              <div class="info-row">
-                <span class="info-label">${labelNo}</span>
-                <span>${invoiceId}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Date</span>
-                <span>${formattedDate}</span>
-              </div>
-              ${docType === 'bill' ? `
-                <div class="info-row">
-                  <span class="info-label">Status</span>
-                  <span>${bill.status || "Pending"}</span>
-                </div>
-                ${bill.status === 'Due' && bill.expectedReceivableDate ? `
-                  <div class="info-row">
-                    <span class="info-label">Expected Date</span>
-                    <span>${format(new Date(bill.expectedReceivableDate), "dd MMM yyyy")}</span>
-                  </div>
-                ` : ''}
-              ` : ''}
-              ${bill.expectedDeliveryDate ? `
-                <div class="info-row">
-                  <span class="info-label">Expected Delivery</span>
-                  <span>${format(new Date(bill.expectedDeliveryDate), "dd MMM yyyy")}</span>
-                </div>
-              ` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;border-top:1px dashed ${border};margin-top:3px;padding-top:3px;">
+              <span style="color:${primary};font-weight:600;">Paid Amount:</span><strong style="color:${primary};">${fmt(paidVal)}</strong>
             </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 50px;">#</th>
-                <th>Description</th>
-                <th class="text-center" style="width: 80px;">Qty</th>
-                ${docType !== 'chalan' ? `
-                  <th class="text-right" style="width: 120px;">Rate</th>
-                  <th class="text-right" style="width: 120px;">Amount</th>
-                ` : ''}
-              </tr>
-            </thead>
-            <tbody>
-              ${items.map((item: any, index: number) => `
-                <tr>
-                  <td style="vertical-align: top;">${index + 1}</td>
-                  <td style="vertical-align: top;">
-                    <div style="font-weight: 700; color: var(--foreground);">${item.name || ""}</div>
-                    ${item.description ? `<div style="font-size: 11px; color: var(--muted-foreground); margin-top: 2px; white-space: pre-wrap; line-height: 1.35;">${item.description}</div>` : ''}
-                  </td>
-                  <td class="text-center" style="vertical-align: top;">${item.quantity || 1}</td>
-                  ${docType !== 'chalan' ? `
-                    <td class="text-right" style="vertical-align: top;">৳${Math.round(item.price || 0)}</td>
-                    <td class="text-right" style="vertical-align: top;">৳${Math.round((item.price || 0) * (item.quantity || 1))}</td>
-                  ` : ''}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-
-          ${docType !== 'chalan' ? `
-            <div class="totals-container">
-              <div class="totals-box">
-                <div class="total-row">
-                  <span>Subtotal:</span>
-                  <span>৳${Math.round(bill.subtotal || 0)}</span>
-                </div>
-                ${bill.deliveryCharge > 0 ? `
-                  <div class="total-row">
-                    <span>Delivery Charge:</span>
-                    <span>৳${Math.round(bill.deliveryCharge)}</span>
-                  </div>
-                ` : ''}
-                ${bill.serviceFee > 0 ? `
-                  <div class="total-row">
-                    <span>Service Fee:</span>
-                    <span>৳${Math.round(bill.serviceFee)}</span>
-                  </div>
-                ` : ''}
-                ${bill.discount > 0 ? `
-                  <div class="total-row" style="color: var(--primary);">
-                    <span>${bill.discountType === 'percentage' ? `Discount (${bill.discountValue}%):` : 'Discount:'}</span>
-                    <span>- ৳${Math.round(bill.discount)}</span>
-                  </div>
-                ` : ''}
-                <div class="total-row highlight">
-                  <span>Total:</span>
-                  <span>৳${Math.round(bill.total || 0)}</span>
-                </div>
-                
-                ${docType === 'bill' ? `
-                  ${bill.prevDue > 0 ? `
-                    <div class="total-row">
-                      <span>Previous Due:</span>
-                      <span>৳${Math.round(bill.prevDue)}</span>
-                    </div>
-                  ` : ''}
-                  <div class="total-row grand-total">
-                    <span>Grand Total:</span>
-                    <span>৳${Math.round(bill.gTotal || 0)}</span>
-                  </div>
-                  <div class="total-row">
-                    <span>Paid Amount:</span>
-                    <span>৳${Math.round(bill.cashIn || 0)}</span>
-                  </div>
-                  <div class="total-row highlight" style="${bill.currentBillDue > 0 ? 'color: #ef4444;' : 'color: var(--primary);'}">
-                    <span>Remaining Due:</span>
-                    <span>৳${Math.round(bill.currentBillDue || 0)}</span>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-            
-            <div style="margin-top: 15px; margin-bottom: 25px; font-size: 13px; border-top: 1px dashed var(--border); padding-top: 10px;">
-              <div>
-                <strong>Amount in Words:</strong> ${numberToWords(amountToConvert)} Taka Only ${bill.vatTaxIncluded !== undefined ? `(${bill.vatTaxIncluded ? 'VAT & Tax Included' : 'VAT & Tax Excluded'})` : ''}
-              </div>
-              ${bill.termsAndConditions ? `
-                <div style="margin-top: 8px;">
-                  <strong>Terms &amp; Conditions:</strong>
-                  <div style="white-space: pre-wrap; font-style: italic; color: #555; margin-top: 3px; font-size: 12px; line-height: 1.4;">${bill.termsAndConditions}</div>
-                </div>
-              ` : ''}
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:2px 0;border-top:1px solid ${border};margin-top:3px;padding-top:3px;">
+              <span style="font-weight:600;">Remaining Due:</span>
+              <strong style="${remainingVal > 0 ? 'color:#ef4444;' : 'color:#10b981;'}">${remainingVal > 0 ? fmt(remainingVal) : '৳0 (Fully Paid)'}</strong>
             </div>
           ` : ''}
+        </div>
+      </div>`
+    : '';
 
-          <div class="footer">
-            <p style="margin: 5px 0; font-weight: 600;">${footerThankYou}</p>
-            <p style="margin: 5px 0; font-style: italic;">${footerGenerated}</p>
+  const bannerHtml = !isChalan
+    ? `
+      <div class="payment-banner">
+        <div class="left-side">
+          <div class="label">${isOffer ? 'Total Quotation Amount' : 'Total Payable Amount'}</div>
+          <div class="amount">${fmt(amountToConvert)}</div>
+          <div class="words">${numberToWords(amountToConvert)} Taka Only${bill.vatTaxIncluded !== undefined ? ` (${bill.vatTaxIncluded ? 'VAT &amp; Tax Included' : 'VAT &amp; Tax Excluded'})` : ''}</div>
+        </div>
+        <div class="right-side">
+          ${isBill
+            ? (remainingVal <= 0
+                ? `<div class="due-label">Status</div><div class="due-amount due-zero">Fully Paid</div>`
+                : `<div class="due-label">Remaining Due</div><div class="due-amount">${fmt(remainingVal)}</div>`)
+            : (bill.expectedDeliveryDate
+                ? `<div class="due-label">Expected Delivery</div><div class="due-amount">${safeDate(bill.expectedDeliveryDate)}</div>`
+                : `<div class="due-label">Document</div><div class="due-amount">Quotation</div>`)}
+        </div>
+      </div>`
+    : '';
+
+  const termsHtml =
+    !isChalan && bill.termsAndConditions
+      ? `
+      <div class="terms-box">
+        <div class="info-label">Terms &amp; Conditions</div>
+        <div style="white-space:pre-wrap;color:${mutedForeground};font-size:10.5px;line-height:1.5;">${esc(bill.termsAndConditions)}</div>
+      </div>`
+      : '';
+
+  const sigLabels = isOffer
+    ? ['Client Acceptance', 'Authorized Signature']
+    : isChalan
+      ? ['Received By', 'Delivered By', 'Authorized Signature']
+      : ['Client Signature', 'Authorized Signature'];
+  const sigHtml = sigLabels
+    .map((l, i) => `<div style="text-align:${i === 0 ? 'left' : i === sigLabels.length - 1 ? 'right' : 'center'};"><div class="sig-line">${l}</div></div>`)
+    .join('');
+
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title} #${esc(invoiceId)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Inter', 'Noto Sans Bengali', sans-serif; margin: 0; padding: 0; background: #f1f5f9; color: ${foreground}; font-size: 12.5px; }
+    .no-print { position: sticky; top: 0; z-index: 999; background: #fff; border-bottom: 1px solid ${border}; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .no-print h3 { margin: 0; font-size: 15px; color: ${foreground}; }
+    .no-print button { padding: 7px 20px; border-radius: 6px; border: none; background: ${primary}; color: ${primaryForeground}; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .page-wrap { padding: 28px 0 40px 0; }
+    .receipt-card { width: 190mm; margin: 0 auto; background: #fff; border: 1px solid ${border}; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); position: relative; min-height: 270mm; display: flex; flex-direction: column; }
+    .receipt-card > .grow { flex: 1; }
+    .receipt-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 12px 20px; border-bottom: 3px solid ${primary}; background: linear-gradient(135deg, ${primary}12 0%, transparent 60%); gap: 16px; }
+    .receipt-logo-container { display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; }
+    .receipt-logo-img { height: 70px; max-height: 80px; max-width: 200px; object-fit: contain; display: block; }
+    .brand-name { font-size: 16px; font-weight: 800; color: ${primary}; letter-spacing: 0.04em; text-transform: uppercase; }
+    .brand-sub { font-size: 11px; color: ${mutedForeground}; line-height: 1.4; margin-top: 2px; }
+    .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-bottom: 1px solid ${border}; }
+    .info-block { padding: 12px 20px; }
+    .info-block + .info-block { border-left: 1px solid ${border}; }
+    .info-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${mutedForeground}; margin-bottom: 5px; }
+    .info-value { font-size: 13px; font-weight: 700; color: ${foreground}; }
+    .info-small { font-size: 10.5px; color: ${mutedForeground}; margin-top: 2px; }
+    .receipt-title { font-size: 20px; font-weight: 900; color: ${primary}; letter-spacing: -0.02em; text-transform: uppercase; margin: 0; }
+    .receipt-sub { font-size: 10px; color: ${mutedForeground}; margin-top: 1px; }
+    .receipt-meta { font-size: 11px; color: ${foreground}; margin-top: 5px; }
+    .receipt-meta span { font-weight: 700; }
+    .items-section { padding: 0 20px 10px 20px; }
+    .items-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${mutedForeground}; padding: 12px 0 6px 0; }
+    .items-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .items-table thead { display: table-header-group; }
+    .items-table thead th { background: ${primary}18; color: ${mutedForeground}; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; text-align: left; border-bottom: 2px solid ${primary}40; }
+    .items-table thead th.num { text-align: right; }
+    .items-table thead th.ctr { text-align: center; }
+    .bill-summary-container { display: flex; justify-content: flex-end; padding: 4px 20px 12px 20px; }
+    .bill-summary-box { width: 270px; border: 1px solid ${border}; border-radius: 6px; padding: 8px 12px; background: #fafafa; }
+    .payment-banner { margin: 0 20px 16px 20px; background: ${primary}; color: ${primaryForeground}; border-radius: 8px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; }
+    .payment-banner .left-side .label { font-size: 10px; font-weight: 600; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+    .payment-banner .left-side .amount { font-size: 22px; font-weight: 900; letter-spacing: -0.02em; margin-top: 2px; }
+    .payment-banner .left-side .words { font-size: 9.5px; opacity: 0.8; margin-top: 3px; }
+    .payment-banner .right-side { text-align: right; }
+    .payment-banner .right-side .due-label { font-size: 9px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.06em; }
+    .payment-banner .right-side .due-amount { font-size: 16px; font-weight: 800; margin-top: 2px; }
+    .due-zero { opacity: 0.85; }
+    .terms-box { margin: 0 20px 14px 20px; padding: 10px 14px; border: 1px dashed ${border}; border-radius: 6px; background: #fafafa; }
+    .thanks { text-align: center; font-size: 10.5px; color: ${mutedForeground}; padding: 6px 20px 0 20px; }
+    .thanks strong { color: ${foreground}; }
+    .receipt-footer { padding: 10px 20px 14px 20px; border-top: 1px solid ${border}; display: flex; justify-content: space-between; align-items: flex-end; font-size: 10px; color: ${mutedForeground}; margin-top: 10px; }
+    .sig-line { width: 140px; border-top: 1.5px solid ${foreground}; padding-top: 5px; text-align: center; font-size: 11px; color: ${foreground}; margin-top: 42px; }
+    .generated-note { text-align: center; font-size: 9.5px; font-style: italic; color: ${mutedForeground}; padding: 0 20px 12px 20px; }
+    .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-35deg); font-size: 56px; font-weight: 900; opacity: 0.045; color: ${primary}; text-transform: uppercase; letter-spacing: 0.1em; pointer-events: none; white-space: nowrap; z-index: 0; }
+    @media print {
+      @page { size: A4 portrait; margin: 8mm; }
+      .no-print { display: none !important; }
+      body { background: #fff !important; }
+      .page-wrap { padding: 0 !important; }
+      .receipt-card { box-shadow: none !important; border: none !important; width: 100% !important; border-radius: 0 !important; overflow: visible !important; min-height: 277mm; }
+      tr { page-break-inside: avoid; break-inside: avoid; }
+      .payment-banner, .receipt-footer, .bill-summary-container, .info-row, .receipt-header, .terms-box { page-break-inside: avoid; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <h3>${title}</h3>
+    <button onclick="window.print()">Print / Save PDF</button>
+  </div>
+
+  <div class="page-wrap">
+    <div class="receipt-card">
+      <div class="watermark">${isOffer ? 'Quotation' : isChalan ? 'Challan' : 'Invoice'}</div>
+
+      <div class="receipt-header">
+        <div>
+          <div class="brand-name">${esc(brandName)}</div>
+          <div class="brand-sub">
+            ${brandAddress ? esc(brandAddress) + '<br>' : ''}
+            ${brandPhone ? 'Phone: ' + esc(brandPhone) : ''} ${brandPhone && brandEmail ? '&nbsp;|&nbsp; ' : ''}${brandEmail ? 'Email: ' + esc(brandEmail) : ''}
           </div>
         </div>
-      </body>
-    </html>
-  `;
+        <div class="receipt-logo-container">
+          <img src="${finalLogoUrl}" alt="${esc(brandName)}" class="receipt-logo-img" />
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-block">
+          <div class="receipt-title">${title}</div>
+          <div class="receipt-sub">${subtitle}</div>
+          <div class="receipt-meta">
+            <div>${noLabel}: <span>${esc(invoiceId)}</span></div>
+            <div>Date: <span>${formattedDate}</span></div>
+            ${isBill ? `<div>Status: <span>${esc(bill.status || 'Pending')}</span></div>` : ''}
+            ${isBill && bill.status === 'Due' && bill.expectedReceivableDate ? `<div>Expected Payment: <span>${safeDate(bill.expectedReceivableDate)}</span></div>` : ''}
+            ${isBill && bill.expectedDeliveryDate ? `<div>Expected Delivery: <span>${safeDate(bill.expectedDeliveryDate)}</span></div>` : ''}
+            ${isChalan && bill.expectedDeliveryDate ? `<div>Delivery Date: <span>${safeDate(bill.expectedDeliveryDate)}</span></div>` : ''}
+          </div>
+        </div>
+        <div class="info-block">
+          <div class="info-label">${clientLabel}</div>
+          <div class="info-value">${esc(bill.clientName || 'Client Name')}</div>
+          ${bill.clientPhone ? `<div class="info-small">Phone: ${esc(bill.clientPhone)}</div>` : ''}
+          ${bill.clientEmail ? `<div class="info-small">Email: ${esc(bill.clientEmail)}</div>` : ''}
+          ${bill.clientAddress ? `<div class="info-small">Address: ${esc(bill.clientAddress)}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="grow">
+        ${items.length > 0 ? `
+        <div class="items-section">
+          <div class="items-label">Items / Services</div>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width:30px;">#</th>
+                <th>Description</th>
+                <th class="ctr" style="width:50px;">Qty</th>
+                ${!isChalan ? `<th class="num" style="width:90px;">${isOffer ? 'Rate' : 'Unit Price'}</th><th class="num" style="width:100px;">Amount</th>` : ''}
+              </tr>
+            </thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+        </div>` : ''}
+
+        ${summaryHtml}
+        ${bannerHtml}
+        ${termsHtml}
+      </div>
+
+      <div class="thanks"><strong>${footerThankYou}</strong></div>
+      <div class="receipt-footer">${sigHtml}</div>
+      <div class="generated-note">${footerGenerated}</div>
+    </div>
+  </div>
+
+  <script>
+    var __isPrintMode = ${mode === 'print' ? 'true' : 'false'};
+    function triggerBillPrint() {
+      if (window.__printed) return;
+      window.__printed = true;
+      if (__isPrintMode) {
+        window.onafterprint = function () { try { window.close(); } catch (e) {} };
+      }
+      var go = function () { window.focus(); window.print(); };
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () { setTimeout(go, 250); });
+      } else {
+        setTimeout(go, 400);
+      }
+    }
+    window.addEventListener('load', function () {
+      var logo = document.querySelector('.receipt-logo-img');
+      if (logo && !logo.complete) {
+        logo.onload = triggerBillPrint;
+        logo.onerror = triggerBillPrint;
+        setTimeout(triggerBillPrint, 3000);
+      } else {
+        triggerBillPrint();
+      }
+    });
+  </script>
+</body>
+</html>`;
 
   const printWindow = window.open('', '_blank');
   if (printWindow) {
+    printWindow.document.open();
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-    
-    let hasPrinted = false;
-    const triggerPrint = () => {
-      if (hasPrinted) return;
-      hasPrinted = true;
-      printWindow.focus();
-      if (mode === 'print') {
-        printWindow.onafterprint = () => {
-          try {
-            printWindow.close();
-          } catch (e) {}
-        };
-      }
-      printWindow.print();
-    };
-
-    printWindow.onload = triggerPrint;
-    
-    setTimeout(() => {
-      if (!hasPrinted) {
-        triggerPrint();
-      }
-    }, 500);
   } else {
     toast.error('Pop-up was blocked. Please allow pop-ups for this website to print bill.');
   }
