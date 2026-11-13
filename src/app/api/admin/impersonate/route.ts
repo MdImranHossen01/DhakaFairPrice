@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       success: true,
       token: impersonationToken,
       impersonationToken,
-      redirectUrl: targetUser.role === 'reseller' ? '/reseller/dashboard' : '/dashboard',
+      redirectUrl: targetUser.role === 'reseller' ? '/reseller-dashboard' : '/dashboard',
       targetUser: {
         id: targetUser._id.toString(),
         name: targetUser.name,
