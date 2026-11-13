@@ -151,7 +151,9 @@ export const proxy = auth(async (req) => {
   if (nextUrl.pathname === '/reseller-dashboard' || nextUrl.pathname.startsWith('/reseller-dashboard/')) {
     const sub = nextUrl.pathname.replace(/^\/reseller-dashboard/, '') || '/dashboard';
     const target = sub === '/' ? '/dashboard' : (sub.startsWith('/') ? sub : `/${sub}`);
-    return NextResponse.redirect(getSafeRedirectUrl(req, `/reseller${target}`));
+    const redir = NextResponse.redirect(getSafeRedirectUrl(req, `/reseller${target}`));
+    redir.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    return redir;
   }
 
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
@@ -253,6 +255,10 @@ export const proxy = auth(async (req) => {
     request: { headers: req.headers },
   });
   response.headers.set('x-pathname', nextUrl.pathname);
+  if (isAdminRoute || isResellerRoute || nextUrl.pathname.startsWith('/dashboard')) {
+    response.headers.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    response.headers.set('Vary', 'RSC, Next-Router-State-Tree, Next-Router-Prefetch, Cookie');
+  }
   return response;
 });
 

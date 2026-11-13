@@ -466,7 +466,7 @@ export default function AdminResellersPage() {
       }
 
       toast.success(`Logged in as ${targetName}`, { id: 'impersonate-reseller' });
-      window.location.href = data.redirectUrl || '/reseller-dashboard';
+      window.location.href = data.redirectUrl || '/reseller/dashboard';
     } catch (err: any) {
       toast.error(err.message || 'Error logging in as reseller', { id: 'impersonate-reseller' });
     }
