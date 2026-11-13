@@ -70,7 +70,7 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
     const getHsl = (varName: string, fallback: string) => {
       const val = rootStyle.getPropertyValue(varName).trim();
       if (!val) return fallback;
-      if (val.startsWith('#') || val.startsWith('rgb') || val.startsWith('hsl')) return val;
+      if (val.startsWith('#') || val.startsWith('rgb') || val.startsWith('hsl') || val.startsWith('oklch') || val.includes('(')) return val;
       return `hsl(${val})`;
     };
     primary = getHsl('--primary', primary);
@@ -275,7 +275,7 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
     .page-wrap { padding: 28px 0 40px 0; }
     .receipt-card { width: 190mm; margin: 0 auto; background: #fff; border: 1px solid ${border}; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); position: relative; min-height: 270mm; display: flex; flex-direction: column; }
     .receipt-card > .grow { flex: 1; }
-    .receipt-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 12px 20px; border-bottom: 3px solid ${primary}; background: linear-gradient(135deg, ${primary}12 0%, transparent 60%); gap: 16px; }
+    .receipt-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 12px 20px; border-bottom: 3px solid ${primary}; background: linear-gradient(135deg, color-mix(in srgb, ${primary} 8%, transparent) 0%, transparent 60%); gap: 16px; }
     .receipt-logo-container { display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; }
     .receipt-logo-img { height: 70px; max-height: 80px; max-width: 200px; object-fit: contain; display: block; }
     .brand-name { font-size: 16px; font-weight: 800; color: ${primary}; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -294,7 +294,7 @@ export async function generateBillPDF(bill: any, settings: any, mode: 'download'
     .items-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: ${mutedForeground}; padding: 12px 0 6px 0; }
     .items-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .items-table thead { display: table-header-group; }
-    .items-table thead th { background: ${primary}18; color: ${mutedForeground}; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; text-align: left; border-bottom: 2px solid ${primary}40; }
+    .items-table thead th { background: color-mix(in srgb, ${primary} 10%, transparent); color: ${mutedForeground}; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 6px 8px; text-align: left; border-bottom: 2px solid color-mix(in srgb, ${primary} 25%, transparent); }
     .items-table thead th.num { text-align: right; }
     .items-table thead th.ctr { text-align: center; }
     .bill-summary-container { display: flex; justify-content: flex-end; padding: 4px 20px 12px 20px; }
