@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     const [products, total, allCount, approvedCount, pendingCount, publishedCount, draftCount] = await Promise.all([
       Product.find(query)
         .populate('uploadedBy', 'storeName subdomain')
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, _id: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .lean(),

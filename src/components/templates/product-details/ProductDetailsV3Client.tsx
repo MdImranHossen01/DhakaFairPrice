@@ -210,7 +210,7 @@ export default function ProductDetailsV3Client({ product }: ProductDetailsV3Clie
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-neutral-100 shadow-2xl">
-                      <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}`)} className="rounded-xl cursor-pointer">
+                      <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}/edit`)} className="rounded-xl cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" /> Edit Parameters
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleDeleteProduct} className="rounded-xl cursor-pointer text-destructive">

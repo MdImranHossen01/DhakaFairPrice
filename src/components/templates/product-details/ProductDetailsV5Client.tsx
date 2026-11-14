@@ -244,7 +244,7 @@ export default function ProductDetailsV5Client({ product }: ProductDetailsV5Clie
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-3xl w-52">
-                    <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}`)}>Edit Piece</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}/edit`)}>Edit Piece</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setShowDeleteModal(true)} className="text-destructive">Remove Piece</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

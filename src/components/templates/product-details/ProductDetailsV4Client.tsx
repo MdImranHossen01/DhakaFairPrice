@@ -265,7 +265,7 @@ export default function ProductDetailsV4Client({ product }: ProductDetailsV4Clie
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-2xl">
-                  <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}`)}>Edit Selection</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}/edit`)}>Edit Selection</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowDeleteModal(true)} className="text-destructive">Remove Selection</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

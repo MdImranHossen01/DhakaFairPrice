@@ -377,7 +377,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
                   <MoreVertical className="h-6 w-6 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}`)} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => router.push(`/admin/products/${product.slug}/edit`)} className="cursor-pointer">
                     <Edit className="mr-2 h-4 w-4" /> Edit Product
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowDeleteModal(true)} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
