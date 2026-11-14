@@ -74,7 +74,7 @@ export default async function ResellerShopPage({ params, searchParams }: Props) 
           { path: 'brand' }
         ]
       })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .lean(),
     getCachedCategories(),
     getCachedBrands(),

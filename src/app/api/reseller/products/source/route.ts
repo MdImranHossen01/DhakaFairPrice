@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // Build query based on source filter
     let query: Record<string, any> = { isPublished: true };
-    let sortOption: Record<string, any> = { createdAt: -1 };
+    let sortOption: Record<string, any> = { createdAt: -1, _id: -1 };
 
     if (sourceFilter === 'sourced') {
       const sourcedProductIds = await ResellerProduct.find({ resellerId }).distinct('productId');
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
         { uploadedBy: { $exists: false } },
         { uploadedBy: { $ne: resellerId }, isShared: true, isApprovedByAdmin: true },
       ];
-      sortOption = { totalSales: -1, views: -1, ratings: -1, createdAt: -1 };
+      sortOption = { totalSales: -1, views: -1, ratings: -1, createdAt: -1, _id: -1 };
     } else {
       // 'all' — default: show admin + other resellers' shared products that are approved
       query.$or = [

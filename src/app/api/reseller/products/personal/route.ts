@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const products = await Product.find({ uploadedBy: reseller._id })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .lean();
     return NextResponse.json({ products });
   } catch (error: any) {

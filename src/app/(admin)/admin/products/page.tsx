@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,9 +103,10 @@ function ProductsContent() {
   };
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(initialSearch);
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -144,7 +145,8 @@ function ProductsContent() {
     signal?: AbortSignal,
     page = currentPage,
     tab = activeTab,
-    reseller = resellerFilter
+    reseller = resellerFilter,
+    searchQuery = search
   ) => {
     try {
       setLoading(true);
@@ -155,6 +157,9 @@ function ProductsContent() {
       });
       if (reseller && reseller !== 'all') {
         queryParams.set('resellerId', reseller);
+      }
+      if (searchQuery && searchQuery.trim()) {
+        queryParams.set('search', searchQuery.trim());
       }
       const response = await fetch(`/api/products?${queryParams.toString()}`, { signal });
       if (!response.ok) {
@@ -205,7 +210,7 @@ function ProductsContent() {
     fetchProducts(undefined, 1, tab, targetReseller);
   };
 
-  const handleResellerChange = (val: string) => {
+  const handleResellerChange = (val: string, searchOverride?: string) => {
     setResellerFilter(val);
     setCurrentPage(1);
 
@@ -222,6 +227,7 @@ function ProductsContent() {
       }
     }
 
+    const activeSearch = searchOverride !== undefined ? searchOverride : search;
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', '1');
     if (val !== 'all') {
@@ -234,8 +240,13 @@ function ProductsContent() {
     } else {
       params.delete('tab');
     }
+    if (activeSearch.trim()) {
+      params.set('search', activeSearch.trim());
+    } else {
+      params.delete('search');
+    }
     router.push(`?${params.toString()}`);
-    fetchProducts(undefined, 1, targetTab, val);
+    fetchProducts(undefined, 1, targetTab, val, activeSearch);
   };
 
   const openAddToMotherModal = (product: AdminProduct) => {
@@ -322,9 +333,34 @@ function ProductsContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProducts(controller.signal, currentPage, activeTab, initialReseller);
+    fetchProducts(controller.signal, currentPage, activeTab, initialReseller, initialSearch);
     return () => controller.abort();
   }, []);
+
+  const isFirstSearchRender = useRef(true);
+  useEffect(() => {
+    if (isFirstSearchRender.current) {
+      isFirstSearchRender.current = false;
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('page', '1');
+      if (search.trim()) {
+        params.set('search', search.trim());
+      } else {
+        params.delete('search');
+      }
+      router.replace(`?${params.toString()}`, { scroll: false });
+      fetchProducts(controller.signal, 1, activeTab, resellerFilter, search);
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search]);
 
   // Fetch resellers for the filter dropdown
   useEffect(() => {
@@ -840,10 +876,7 @@ function ProductsContent() {
     return product.stock || 0;
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(search.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProducts = products;
 
   return (
     <div className="flex-1 space-y-3 sm:space-y-4">
@@ -1040,7 +1073,7 @@ function ProductsContent() {
             size="sm"
             onClick={() => {
               setSearch('');
-              handleResellerChange('all');
+              handleResellerChange('all', '');
             }}
             className="text-xs text-muted-foreground hover:text-primary shrink-0 h-9 px-2.5"
           >
