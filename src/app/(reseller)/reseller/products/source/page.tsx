@@ -152,8 +152,8 @@ function SourceProductsContent() {
 
   const openSourcingDialog = (product: any) => {
     setSelectedProduct(product);
-    // In Swapnobaz, default system fee is 10% (0.10)
-    const defaultFeeRatio = 0.10;
+    // In DhakaFairPrice, default system fee is 15% (0.15)
+    const defaultFeeRatio = 0.15;
     const wholesalePrice = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
 
     const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
@@ -258,8 +258,8 @@ function SourceProductsContent() {
       }));
     } else {
       const priceNum = parseFloat(retailPrice);
-      // In Swapnobaz, default system fee is 10%
-      const defaultFeeRatio = 0.10;
+      // In DhakaFairPrice, default system fee is 15%
+      const defaultFeeRatio = 0.15;
       const wholesalePrice = selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * (1 + defaultFeeRatio)) : (selectedProduct.price || 0));
 
       if (isNaN(priceNum) || priceNum <= 0) {
@@ -302,7 +302,7 @@ function SourceProductsContent() {
   };
 
   const profit = selectedProduct
-    ? Math.max(0, parseFloat(retailPrice || '0') - (selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.10) : (selectedProduct.price || 0))))
+    ? Math.max(0, parseFloat(retailPrice || '0') - (selectedProduct.resellerPrice || (selectedProduct.purchasePrice ? Math.round(selectedProduct.purchasePrice * 1.15) : (selectedProduct.price || 0))))
     : 0;
 
   return (
@@ -453,7 +453,7 @@ function SourceProductsContent() {
           <p className="text-xs text-muted-foreground">{total} products found</p>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
             {products.map(product => {
-              const defaultFeeRatio = 0.10;
+              const defaultFeeRatio = 0.15;
               const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
               let minWholesale = product.resellerPrice || (product.purchasePrice ? Math.round(product.purchasePrice * (1 + defaultFeeRatio)) : (product.price || 0));
               let maxWholesale = minWholesale;
