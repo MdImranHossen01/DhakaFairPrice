@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock, Percent, KeyRound } from 'lucide-react';
+import { Loader2, Check, X, ShieldAlert, Store, Search, ExternalLink, RefreshCw, Globe, MoreVertical, XCircle, Trash2, Truck, Calendar, CalendarDays, Clock, Percent, KeyRound, Copy } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -297,6 +297,15 @@ export default function AdminResellersPage() {
   useEffect(() => {
     fetchResellers();
   }, []);
+
+  const handleCopyValue = async (value: string, label = 'Domain') => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied: ${value}`);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  };
 
   const openDomainModal = (reseller: any) => {
     setSelectedReseller(reseller);
@@ -638,12 +647,28 @@ export default function AdminResellersPage() {
                                 <span className="truncate">{r.subdomain}.{ROOT_DOMAIN}</span>
                                 <ExternalLink className="h-3 w-3 shrink-0" />
                               </a>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyValue(`${r.subdomain}.${ROOT_DOMAIN}`, 'Subdomain')}
+                                className="inline-flex items-center justify-center h-5 w-5 rounded border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors shrink-0"
+                                title={`Copy ${r.subdomain}.${ROOT_DOMAIN}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
                             </div>
                             {r.customDomain ? (
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-mono truncate max-w-full bg-primary/10 text-primary border border-primary/20" title={r.customDomain}>
                                   🌐 {r.customDomain}
                                 </Badge>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyValue(r.customDomain, 'Custom Domain')}
+                                  className="inline-flex items-center justify-center h-5 w-5 rounded border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors shrink-0"
+                                  title={`Copy ${r.customDomain}`}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
                               </div>
                             ) : (
                               <span className="text-[11px] text-muted-foreground italic block">No custom domain linked</span>
@@ -879,30 +904,48 @@ export default function AdminResellersPage() {
                     </div>
 
                     <div className="text-xs space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <a
-                          href={`https://${r.subdomain}.${ROOT_DOMAIN}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
-                        >
-                          {r.subdomain}.{ROOT_DOMAIN}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <a
+                            href={`https://${r.subdomain}.${ROOT_DOMAIN}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline font-semibold truncate"
+                          >
+                            {r.subdomain}.{ROOT_DOMAIN}
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyValue(`${r.subdomain}.${ROOT_DOMAIN}`, 'Subdomain')}
+                            className="inline-flex items-center justify-center h-5 w-5 rounded border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors shrink-0"
+                            title={`Copy ${r.subdomain}.${ROOT_DOMAIN}`}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 text-[10px] px-2 text-primary"
+                          className="h-6 text-[10px] px-2 text-primary shrink-0"
                           onClick={() => openDomainModal(r)}
                         >
                           <Globe className="h-3 w-3 mr-1" /> Domain
                         </Button>
                       </div>
                       {r.customDomain && (
-                        <div>
+                        <div className="flex items-center gap-1">
                           <Badge variant="secondary" className="text-[9px] px-1 py-0 font-mono bg-primary/10 text-primary">
                             🌐 {r.customDomain}
                           </Badge>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyValue(r.customDomain, 'Custom Domain')}
+                            className="inline-flex items-center justify-center h-5 w-5 rounded border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors shrink-0"
+                            title={`Copy ${r.customDomain}`}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
                         </div>
                       )}
                     </div>

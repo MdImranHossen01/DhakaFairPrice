@@ -258,6 +258,6 @@ export const proxy = auth(async (req) => {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|sitemap.xml|robots.txt|manifest.json|assets|icons).*)',
+    '/((?!api|_next/static|_next/image|sitemap.xml|robots.txt|manifest.json|manifest.webmanifest|sw.js|assets|icons|.*\\.(?:png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|css|js)$).*)',
   ],
 };
