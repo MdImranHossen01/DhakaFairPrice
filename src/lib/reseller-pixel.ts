@@ -93,7 +93,9 @@ export const resellerFbEvent = (
   // 1. Browser Pixel
   //    Since proxy.ts now correctly blocks the mother shop pixel, 
   //    we can safely trust window.fbq if it exists.
-  if (typeof window !== "undefined" && typeof (window as any).fbq === "function") {
+  if (typeof window !== "undefined") {
+    const fireResellerBrowserPixel = (attempts = 25) => {
+      if (typeof (window as any).fbq === "function") {
     const standardEvents = [
       "ViewContent", "AddToCart", "AddToWishlist", "InitiateCheckout",
       "Purchase", "Lead", "PageView", "Contact", "Search"
@@ -122,6 +124,11 @@ export const resellerFbEvent = (
     } else {
       (window as any).fbq("trackCustom", eventName, formattedCustomData, { eventID: eventId });
     }
+      } else if (attempts > 0) {
+        setTimeout(() => fireResellerBrowserPixel(attempts - 1), 100);
+      }
+    };
+    fireResellerBrowserPixel();
   }
 
   // 2. Server-side CAPI using reseller's own pixel config

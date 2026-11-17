@@ -57,7 +57,7 @@ export default function FacebookPixel({
       <Script
         id="fb-pixel"
         strategy="afterInteractive"
-        onLoad={() => setScriptLoaded(true)}
+        onReady={() => setScriptLoaded(true)}
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)
