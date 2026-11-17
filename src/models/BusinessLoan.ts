@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './LedgerAccount';
+import './LoanProvider';
 export interface IBusinessLoanRepayment {
   amount: number;
   paymentAccountId: mongoose.Types.ObjectId;

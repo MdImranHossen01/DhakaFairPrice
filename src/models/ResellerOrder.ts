@@ -1,5 +1,10 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './Reseller';
+import './User';
+import './Order';
+import './ResellerProduct';
+import './Product';
 /**
  * ResellerOrder: An order placed on a reseller's storefront.
  * It is linked to a Mother Order (created once the reseller's order is confirmed).

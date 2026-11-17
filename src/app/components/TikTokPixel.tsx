@@ -47,6 +47,15 @@ export default function TikTokPixel({
 
   useEffect(() => {
     if (!sanitizedPixelId || !scriptLoaded) return;
+    if (
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/reseller') ||
+      pathname.startsWith('/dashboard') ||
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/register')
+    ) {
+      return;
+    }
     // The inline script already calls ttq.page() on initial load;
     // Still call ttEvent("PageView") for CAPI deduplication & SPA route transitions
     if (isFirstRender.current) {

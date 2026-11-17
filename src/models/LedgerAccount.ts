@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './Reseller';
 export interface ILedgerAccount extends Document {
   name: string;
   code: string;

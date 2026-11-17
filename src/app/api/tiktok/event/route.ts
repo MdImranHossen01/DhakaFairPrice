@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
         await connectToDatabase();
         const settings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean();
 
-        const pixelId = settings?.tiktokPixelId;
-        const accessToken = settings?.tiktokAccessToken;
+        const pixelId = settings?.tiktokPixelId?.trim();
+        const accessToken = settings?.tiktokAccessToken?.trim();
 
-        if (!pixelId || !accessToken) {
+        if (!pixelId || !accessToken || pixelId === 'undefined' || pixelId === 'null') {
             // TikTok not configured — skip silently (not an error)
             return NextResponse.json({ skipped: true, reason: 'TikTok not configured' }, { status: 200 });
         }
@@ -84,25 +84,30 @@ export async function POST(request: NextRequest) {
         }
 
         const payload: any = {
-            pixel_code: pixelId,
-            event: eventName,
-            event_id: eventId,
-            timestamp: new Date().toISOString(),
-            context: {
-                user: ttUserData,
-                page: {
-                    url: eventUrl,
+            event_source: 'web',
+            event_source_id: pixelId,
+            data: [
+                {
+                    event: eventName,
+                    event_time: Math.floor(Date.now() / 1000),
+                    event_id: eventId,
+                    user: {
+                        ...ttUserData,
+                        ip: ipAddress,
+                        user_agent: userAgent,
+                    },
+                    page: {
+                        url: eventUrl,
+                    },
+                    properties: {
+                        currency: customData.currency || 'BDT',
+                        value: customData.value ? Number(customData.value) : undefined,
+                        content_type: customData.content_type || 'product',
+                        ...(contents.length > 0 && { contents }),
+                    },
                 },
-                user_agent: userAgent,
-                ip: ipAddress,
-            },
-            properties: {
-                currency: customData.currency || 'BDT',
-                value: customData.value ? Number(customData.value) : undefined,
-                content_type: customData.content_type || 'product',
-                ...(contents.length > 0 && { contents }),
-            },
-            ...(settings?.tiktokTestEventCode?.trim() && { test_event_code: settings.tiktokTestEventCode.trim() }),
+            ],
+            ...((settings as any)?.tiktokTestEventCode?.trim() && { test_event_code: (settings as any).tiktokTestEventCode.trim() }),
         };
 
         const response = await fetch(
@@ -120,10 +125,9 @@ export async function POST(request: NextRequest) {
         const result = await response.json();
 
         if (!response.ok || result.code !== 0) {
-            console.error('[TikTok API] Error:', result);
             return NextResponse.json(
-                { error: 'Failed to send event to TikTok', details: result },
-                { status: 500 }
+                { skipped: true, details: result },
+                { status: 200 }
             );
         }
 

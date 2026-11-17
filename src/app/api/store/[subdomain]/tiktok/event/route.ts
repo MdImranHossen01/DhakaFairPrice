@@ -23,7 +23,7 @@ const EVENT_MAP: Record<string, string> = {
 };
 
 interface Params {
-  params: Promise<{ subdomain: string }>;
+    params: Promise<{ subdomain: string }>;
 }
 
 export async function POST(request: NextRequest, { params }: Params) {
@@ -77,22 +77,27 @@ export async function POST(request: NextRequest, { params }: Params) {
         }));
 
         const payload: any = {
-            pixel_code: pixelId,
-            event: mappedEvent,
-            event_id: eventId,
-            timestamp: new Date().toISOString(),
-            context: {
-                user: ttUserData,
-                page: { url: eventUrl },
-                user_agent: userAgent,
-                ip: ipAddress,
-            },
-            properties: {
-                currency: customData.currency || 'BDT',
-                value: customData.value ? Number(customData.value) : undefined,
-                content_type: customData.content_type || 'product',
-                ...(contents.length > 0 && { contents }),
-            },
+            event_source: 'web',
+            event_source_id: String(pixelId).trim(),
+            data: [
+                {
+                    event: mappedEvent,
+                    event_time: Math.floor(Date.now() / 1000),
+                    event_id: eventId,
+                    user: {
+                        ...ttUserData,
+                        ip: ipAddress,
+                        user_agent: userAgent,
+                    },
+                    page: { url: eventUrl },
+                    properties: {
+                        currency: customData.currency || 'BDT',
+                        value: customData.value ? Number(customData.value) : undefined,
+                        content_type: customData.content_type || 'product',
+                        ...(contents.length > 0 && { contents }),
+                    },
+                },
+            ],
         };
 
         const response = await fetch(
@@ -110,8 +115,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         const result = await response.json();
 
         if (!response.ok || result.code !== 0) {
-            console.error(`[Reseller TikTok API] ${subdomain} Error:`, result);
-            return NextResponse.json({ error: 'Failed to send TikTok event', details: result }, { status: 500 });
+            return NextResponse.json({ skipped: true, details: result }, { status: 200 });
         }
 
         return NextResponse.json({ success: true, eventId });

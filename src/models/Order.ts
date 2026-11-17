@@ -1,5 +1,8 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './User';
+import './Product';
+import './Reseller';
 export interface IOrderItem {
   product: mongoose.Types.ObjectId;
   name: string;

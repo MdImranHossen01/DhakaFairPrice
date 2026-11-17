@@ -1,5 +1,6 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './User';
 export interface IReseller extends Document {
   userId: mongoose.Types.ObjectId;          // linked User account
   storeName: string;

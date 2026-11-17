@@ -75,9 +75,6 @@ const BillSchema: Schema<IBill> = new Schema(
   { timestamps: true }
 );
 
-if (mongoose.models && mongoose.models.Bill) {
-  delete (mongoose.models as any).Bill;
-}
 const Bill: Model<IBill> = mongoose.models.Bill || mongoose.model<IBill>('Bill', BillSchema);
 
 export default Bill;

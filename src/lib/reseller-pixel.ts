@@ -99,15 +99,23 @@ export const resellerFbEvent = (
       "Purchase", "Lead", "PageView", "Contact", "Search"
     ];
     if (userData?.em || userData?.ph) {
-      (window as any).fbq('set', 'user_data', {
-        ...(userData.em && { em: userData.em.trim().toLowerCase() }),
-        ...(userData.ph && { ph: userData.ph.replace(/\D/g, '') }),
-        ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
-        ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
-        ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
-        ...(userData.st && { st: userData.st.trim().toLowerCase() }),
-        ...(userData.country && { country: userData.country.trim().toLowerCase() }),
-      });
+      const activePixelId =
+        pixelId ||
+        (window as any).__fbPixelId ||
+        Object.keys((window as any)._fbq?.instance?.pixelsByID || {})[0];
+      if (activePixelId) {
+        const cleanPh = userData.ph ? userData.ph.replace(/\D/g, '') : '';
+        const normalizedPh = cleanPh && !cleanPh.startsWith('88') ? `88${cleanPh}` : cleanPh;
+        (window as any).fbq('init', activePixelId, {
+          ...(userData.em && { em: userData.em.trim().toLowerCase() }),
+          ...(normalizedPh && { ph: normalizedPh }),
+          ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
+          ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
+          ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
+          ...(userData.st && { st: userData.st.trim().toLowerCase() }),
+          ...(userData.country && { country: userData.country.trim().toLowerCase() }),
+        });
+      }
     }
     if (standardEvents.includes(eventName)) {
       (window as any).fbq("track", eventName, formattedCustomData, { eventID: eventId });

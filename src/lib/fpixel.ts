@@ -73,20 +73,25 @@ export const fbEvent = (
       "Purchase", "AddToCart", "InitiateCheckout", "AddToWishlist"
     ];
 
-    // If user data is provided, use Advanced Matching
+    // Official Meta Advanced Matching via fbq('init', pixelId, userData)
     if (userData && (userData.em || userData.ph)) {
-      // We call 'set' to update user data before tracking the event
-      // This improves matching between Browser and Server events
-      (window as any).fbq('set', 'user_data', {
-        ...(userData.em && { em: userData.em.trim().toLowerCase() }),
-        ...(userData.ph && { ph: userData.ph.replace(/\D/g, '') }),
-        ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
-        ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
-        ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
-        ...(userData.st && { st: userData.st.trim().toLowerCase() }),
-        ...(userData.zp && { zp: userData.zp.trim().toLowerCase() }),
-        ...(userData.country && { country: userData.country.trim().toLowerCase() }),
-      });
+      const activePixelId =
+        (window as any).__fbPixelId ||
+        Object.keys((window as any)._fbq?.instance?.pixelsByID || {})[0];
+      if (activePixelId) {
+        const cleanPh = userData.ph ? userData.ph.replace(/\D/g, '') : '';
+        const normalizedPh = cleanPh && !cleanPh.startsWith('88') ? `88${cleanPh}` : cleanPh;
+        window.fbq("init", activePixelId, {
+          ...(userData.em && { em: userData.em.trim().toLowerCase() }),
+          ...(normalizedPh && { ph: normalizedPh }),
+          ...(userData.fn && { fn: userData.fn.trim().toLowerCase() }),
+          ...(userData.ln && { ln: userData.ln.trim().toLowerCase() }),
+          ...(userData.ct && { ct: userData.ct.trim().toLowerCase() }),
+          ...(userData.st && { st: userData.st.trim().toLowerCase() }),
+          ...(userData.zp && { zp: userData.zp.trim().toLowerCase() }),
+          ...(userData.country && { country: userData.country.trim().toLowerCase() }),
+        });
+      }
     }
 
     // If it's not a standard event, track as Custom

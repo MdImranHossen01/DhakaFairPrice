@@ -1,5 +1,9 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './Reseller';
+import './ResellerOrder';
+import './LedgerAccount';
+import './User';
 /**
  * ResellerWalletTransaction: Ledger entry for every financial movement
  * in a reseller's wallet (commission earned, payout released, reversal on cancellation).

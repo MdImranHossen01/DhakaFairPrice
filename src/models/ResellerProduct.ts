@@ -1,5 +1,7 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+import './Product';
+import './Reseller';
 /**
  * ResellerProduct: Links a Mother product to a specific Reseller storefront.
  * Resellers select products from the Mother catalog and set their own retail price.
