@@ -308,13 +308,15 @@ export default function AdminResellersPage() {
   };
 
   const openDomainModal = (reseller: any) => {
+    if (!isSuperAdmin) return;
     setSelectedReseller(reseller);
     setEditSubdomain(reseller.subdomain || '');
     setEditCustomDomain(reseller.customDomain || '');
     setDomainDialogOpen(true);
   };
 
-  const handleSaveDomain = async () => {
+  const handleSaveDomain = async (autoProvision = false) => {
+    if (!isSuperAdmin) return;
     if (!selectedReseller) return;
     const cleanSub = editSubdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (!cleanSub) {
@@ -331,11 +333,20 @@ export default function AdminResellersPage() {
           resellerId: selectedReseller._id,
           subdomain: cleanSub,
           customDomain: editCustomDomain.trim().toLowerCase(),
+          autoProvisionDomain: autoProvision,
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('Domain configuration updated successfully');
+        if (autoProvision && data.domainProvision) {
+          if (data.domainProvision.success) {
+            toast.success(data.domainProvision.message || 'Connected to Vercel & Cloudflare!');
+          } else {
+            toast.warning(`Domain saved in DB, but auto-connect issue: ${data.domainProvision.message}`);
+          }
+        } else {
+          toast.success('Domain configuration updated successfully');
+        }
         setDomainDialogOpen(false);
         fetchResellers();
       } else {
@@ -674,14 +685,16 @@ export default function AdminResellersPage() {
                               <span className="text-[11px] text-muted-foreground italic block">No custom domain linked</span>
                             )}
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 text-[11px] px-2 text-primary border-primary/30 hover:bg-primary/5 gap-1"
-                                onClick={() => openDomainModal(r)}
-                              >
-                                <Globe className="h-3 w-3" /> Domain
-                              </Button>
+                              {isSuperAdmin && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 text-[11px] px-2 text-primary border-primary/30 hover:bg-primary/5 gap-1"
+                                  onClick={() => openDomainModal(r)}
+                                >
+                                  <Globe className="h-3 w-3" /> Domain
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -828,13 +841,15 @@ export default function AdminResellersPage() {
                                 <Percent className="mr-2 h-4 w-4 text-indigo-600" />
                                 Set System Fee (%)
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="cursor-pointer text-xs"
-                                onClick={() => openDomainModal(r)}
-                              >
-                                <Globe className="mr-2 h-4 w-4 text-primary" />
-                                Configure Domain
-                              </DropdownMenuItem>
+                              {isSuperAdmin && (
+                                <DropdownMenuItem
+                                  className="cursor-pointer text-xs"
+                                  onClick={() => openDomainModal(r)}
+                                >
+                                  <Globe className="mr-2 h-4 w-4 text-primary" />
+                                  Configure Domain
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 className="cursor-pointer text-xs"
                                 onClick={() => openCourierModal(r)}
@@ -924,14 +939,16 @@ export default function AdminResellersPage() {
                             <Copy className="h-3 w-3" />
                           </button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 text-[10px] px-2 text-primary shrink-0"
-                          onClick={() => openDomainModal(r)}
-                        >
-                          <Globe className="h-3 w-3 mr-1" /> Domain
-                        </Button>
+                        {isSuperAdmin && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] px-2 text-primary shrink-0"
+                            onClick={() => openDomainModal(r)}
+                          >
+                            <Globe className="h-3 w-3 mr-1" /> Domain
+                          </Button>
+                        )}
                       </div>
                       {r.customDomain && (
                         <div className="flex items-center gap-1">
@@ -1046,13 +1063,15 @@ export default function AdminResellersPage() {
                             <Percent className="mr-2 h-4 w-4 text-indigo-600" />
                             Set System Fee (%)
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="cursor-pointer text-xs"
-                            onClick={() => openDomainModal(r)}
-                          >
-                            <Globe className="mr-2 h-4 w-4 text-primary" />
-                            Configure Domain
-                          </DropdownMenuItem>
+                          {isSuperAdmin && (
+                            <DropdownMenuItem
+                              className="cursor-pointer text-xs"
+                              onClick={() => openDomainModal(r)}
+                            >
+                              <Globe className="mr-2 h-4 w-4 text-primary" />
+                              Configure Domain
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             className="cursor-pointer text-xs"
                             onClick={() => window.open(`https://${r.subdomain}.${ROOT_DOMAIN}`, '_blank')}
@@ -1094,7 +1113,8 @@ export default function AdminResellersPage() {
         </CardContent>
       </Card>
 
-      {/* Reseller Domain Configuration Dialog */}
+      {/* Reseller Domain Configuration Dialog (super_admin only) */}
+      {isSuperAdmin && (
       <Dialog open={domainDialogOpen} onOpenChange={setDomainDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -1146,7 +1166,7 @@ export default function AdminResellersPage() {
             <div className="space-y-1.5 p-3.5 rounded-lg border bg-background">
               <label className="text-xs font-bold text-foreground">Custom Branded Domain (Optional)</label>
               <p className="text-[11px] text-muted-foreground">
-                Link reseller's purchased custom domain (e.g. www.bhootbazar.com)
+                Link reseller&apos;s purchased custom domain (e.g. www.bhootbazar.com)
               </p>
               <Input
                 value={editCustomDomain}
@@ -1156,29 +1176,39 @@ export default function AdminResellersPage() {
               />
             </div>
 
-            {/* DNS Instructions for Server Admin */}
+            {/* DNS Instructions for Super Admin */}
             <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-foreground flex items-center gap-1.5">
                   <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">i</span>
-                  DNS Configuration (A Records)
+                  DNS Configuration (Vercel + Cloudflare)
                 </span>
-                <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">IP: 68.183.191.215</span>
+                <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded font-semibold">Vercel DNS</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono bg-background p-2 rounded border">
+              <div className="space-y-2 text-[11px] font-mono bg-background p-2.5 rounded border">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block font-sans font-semibold">ROOT DOMAIN</span>
-                  <span className="font-semibold text-foreground">@ &rarr; 68.183.191.215</span>
+                  <span className="text-[10px] text-muted-foreground block font-sans font-semibold">
+                    1. FOR SUBDOMAIN (In {ROOT_DOMAIN} Cloudflare DNS — CNAME, Proxied)
+                  </span>
+                  <span className="font-semibold text-foreground block">
+                    {editSubdomain || 'sub'} &rarr; ea172862f2983d73.vercel-dns-017.com
+                  </span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-muted-foreground block font-sans font-semibold">WWW SUBDOMAIN</span>
-                  <span className="font-semibold text-foreground">www &rarr; 68.183.191.215</span>
+                <div className="pt-1.5 border-t">
+                  <span className="text-[10px] text-muted-foreground block font-sans font-semibold">
+                    2. FOR CUSTOM DOMAIN (In Client&apos;s DNS — A &amp; CNAME)
+                  </span>
+                  <span className="font-semibold text-foreground block">@ &rarr; 76.76.21.21 (A)</span>
+                  <span className="font-semibold text-foreground block">www &rarr; cname.vercel-dns.com (CNAME)</span>
                 </div>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                Note: Click &quot;Save &amp; Auto-Connect&quot; to automatically configure Vercel &amp; Cloudflare DNS.
+              </p>
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+          <DialogFooter className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
@@ -1188,17 +1218,27 @@ export default function AdminResellersPage() {
               Cancel
             </Button>
             <Button
+              variant="secondary"
               size="sm"
-              onClick={handleSaveDomain}
+              onClick={() => handleSaveDomain(false)}
+              disabled={savingDomain}
+              className="font-semibold"
+            >
+              Save Only
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleSaveDomain(true)}
               disabled={savingDomain}
               className="font-semibold"
             >
               {savingDomain && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Save Domain Configuration
+              Save &amp; Auto-Connect (Vercel + CF)
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Courier Hub Configuration Dialog */}
       <Dialog open={courierDialogOpen} onOpenChange={setCourierDialogOpen}>
