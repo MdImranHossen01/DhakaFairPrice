@@ -191,7 +191,7 @@ export async function PATCH(request: NextRequest) {
       { new: true }
     );
 
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({ success: true, reseller: updated });
   } catch (error: any) {

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       isActive: isActive ?? true,
     });
 
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true, banner }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -96,7 +96,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!banner) return NextResponse.json({ error: 'Banner not found' }, { status: 404 });
 
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true, banner });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -129,7 +129,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

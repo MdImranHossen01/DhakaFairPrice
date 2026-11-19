@@ -248,8 +248,7 @@ export async function POST(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    purgeCloudflareCache().catch(() => {});
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
@@ -391,8 +390,7 @@ export async function PATCH(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    purgeCloudflareCache().catch(() => {});
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({ product });
   } catch (error: any) {
@@ -510,7 +508,7 @@ export async function DELETE(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({
       success: true,

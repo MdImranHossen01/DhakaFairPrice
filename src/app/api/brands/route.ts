@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Brand from '@/models/Brand';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 // GET all brands
 export async function GET(req: NextRequest) {
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       isActive: isActive !== undefined ? isActive : true,
     });
 
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json(brand, { status: 201 });
   } catch (error: any) {
     console.error('Error creating brand:', error);

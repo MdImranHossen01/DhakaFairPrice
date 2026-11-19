@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/db';
 import Brand from '@/models/Brand';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 // GET a single brand
 export async function GET(
@@ -54,6 +55,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Brand not found' }, { status: 404 });
     }
 
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('Error updating brand:', error);
@@ -92,6 +94,7 @@ export async function DELETE(
       }
     }
 
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json({ message: 'Brand deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting brand:', error);

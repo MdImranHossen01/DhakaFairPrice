@@ -3,6 +3,7 @@ import { revalidateTag, revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Banner from '@/models/Banner';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 // GET all active global banners (admin only, not reseller banners)
 export async function GET() {
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
     revalidateTag('banners', 'max');
     revalidatePath('/');
 
+    await purgeCloudflareCache().catch(() => {});
     return NextResponse.json(newBanner, { status: 201 });
   } catch (error) {
     console.error('Error creating banner:', error);

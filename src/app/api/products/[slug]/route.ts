@@ -285,7 +285,7 @@ export async function PUT(
           revalidateTag(CACHE_TAGS.products, 'max');
           revalidatePath('/', 'layout');
           revalidatePath('/shop', 'page');
-          purgeCloudflareCache().catch(() => {});
+          await purgeCloudflareCache().catch(() => {});
           return NextResponse.json(updatedProduct);
         } catch (error: any) {
           lastError = error;
@@ -344,7 +344,7 @@ export async function PUT(
     revalidateTag(CACHE_TAGS.products, 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    purgeCloudflareCache().catch(() => {});
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json(updatedProduct);
   } catch (error) {
@@ -446,7 +446,7 @@ export async function DELETE(
       revalidateTag(CACHE_TAGS.products, 'max');
       revalidatePath('/', 'layout');
       revalidatePath('/shop', 'page');
-      purgeCloudflareCache().catch(() => {});
+      await purgeCloudflareCache().catch(() => {});
     } catch (revalidateError) {
       console.error('Failed to revalidate product tags:', revalidateError);
     }
