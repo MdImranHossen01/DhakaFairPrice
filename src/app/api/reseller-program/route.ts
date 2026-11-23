@@ -5,6 +5,7 @@ import ResellerProgramPage from '@/models/ResellerProgramPage';
 import { DEFAULT_RESELLER_PROGRAM_DATA } from '@/lib/default-reseller-program';
 import { CACHE_TAGS } from '@/lib/data-fetching';
 import { auth } from '@/auth';
+import { purgeCloudflareCache } from '@/lib/cloudflareCache';
 
 export async function GET() {
   try {
@@ -126,6 +127,7 @@ export async function POST(req: NextRequest) {
     }
     revalidatePath('/reseller-program');
     revalidatePath('/');
+    await purgeCloudflareCache().catch(() => {});
 
     return NextResponse.json({
       success: true,
