@@ -10,7 +10,7 @@ import { DEFAULT_RESELLER_PROGRAM_DATA } from '@/lib/default-reseller-program';
 import { IResellerProgramData } from '@/types/reseller-program';
 import { EditHeroDialog } from '@/components/reseller-program/EditHeroDialog';
 
-export function ResellerCTA() {
+export function ResellerCTA({ initialHero }: { initialHero?: IResellerProgramData['hero'] }) {
   const { data: session } = useSession();
 
   // Role check: Admin or Super Admin
@@ -21,12 +21,16 @@ export function ResellerCTA() {
     userRole === 'super_admin' ||
     userEmail === 'imranshuvo101@gmail.com';
 
-  const [hero, setHero] = useState<IResellerProgramData['hero']>(DEFAULT_RESELLER_PROGRAM_DATA.hero);
+  const [hero, setHero] = useState<IResellerProgramData['hero']>(initialHero || DEFAULT_RESELLER_PROGRAM_DATA.hero);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [, setIsSaving] = useState<boolean>(false);
 
   // Fetch dynamic hero data from MongoDB (/api/reseller-program)
   useEffect(() => {
+    if (initialHero) {
+      setHero(initialHero);
+      return;
+    }
     let isMounted = true;
     async function fetchHeroData() {
       try {

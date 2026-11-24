@@ -83,7 +83,9 @@ export default function NavbarV2() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<any>(null);
   const [profile, setProfile] = useState<any>(null);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>(() =>
+    Array.isArray(settings?.categories) ? settings.categories.filter((c: any) => c.isActive && !c.parentCategory) : []
+  );
 
   const cartCount = useAppSelector((state) => state.cart.totalQuantity);
   const totalAmount = useAppSelector((state) => state.cart.totalAmount);
@@ -97,6 +99,7 @@ export default function NavbarV2() {
 
   // Fetch Categories for Mobile
   useEffect(() => {
+    if (Array.isArray(settings?.categories)) { setCategories(settings.categories.filter((c: any) => c.isActive && !c.parentCategory)); return; }
     fetch('/api/categories')
       .then(res => res.json())
       .then(data => setCategories(data.filter((c: any) => c.isActive && !c.parentCategory)))

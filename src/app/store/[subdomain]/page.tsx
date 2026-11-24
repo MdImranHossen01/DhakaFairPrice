@@ -14,6 +14,7 @@ import {
 import { CategoryShowcase } from '@/components/storefront/CategoryShowcase';
 import { FooterSelector } from '@/components/templates/ServerRegistry';
 import { SettingsProvider } from '@/components/SettingsProvider';
+import { getCachedSettings } from '@/lib/data-fetching';
 import { FreeDeliveryBanner } from '@/components/storefront/FreeDeliveryBanner';
 import { ResellerPixels } from '@/components/reseller/ResellerPixels';
 import { ProductCarouselSection } from '@/components/storefront/ProductCarouselSection';
@@ -286,6 +287,24 @@ export default async function ResellerStorePage({ params }: Props) {
   });
   const storeCategories = Array.from(categoryMap.values());
 
+  // Extract unique brands from reseller's products
+  const brandMap = new Map<string, any>();
+  products.forEach((p: any) => {
+    if (p.brand && (p.brand._id || p.brand.slug || p.brand.name)) {
+      const bId = p.brand._id ? p.brand._id.toString() : (p.brand.slug || p.brand.name);
+      if (!brandMap.has(bId)) {
+        brandMap.set(bId, {
+          _id: bId,
+          name: p.brand.name || 'Brand',
+          slug: p.brand.slug || bId,
+          image: p.brand.image || '',
+          isActive: true,
+        });
+      }
+    }
+  });
+  const storeBrands = Array.from(brandMap.values());
+
   // Filtered product collections
   const featuredProducts = products.filter((p: any) => p.isFeatured);
   const flashSaleProducts = products.filter((p: any) => p.isFlashSale || (p.salePrice && p.price && p.salePrice < p.price));
@@ -306,14 +325,15 @@ export default async function ResellerStorePage({ params }: Props) {
   const storeName = reseller.storeName;
   const logo = reseller.logoUrl;
   const description = reseller.description;
-  const GlobalSettings = (await import('@/models/GlobalSettings')).default;
-  const globalSettings = await GlobalSettings.findOne().sort({ updatedAt: -1 }).lean() as any;
+  const globalSettings = await getCachedSettings() as any;
   const deliveryInside = globalSettings?.deliveryChargeInsideDhaka ?? 60;
   const deliveryOutside = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
   const freeDeliveryThreshold = reseller.deliveryConfig?.freeDeliveryThreshold || 0;
 
   const settingsData = {
     isReseller: true,
+    categories: storeCategories,
+    brands: storeBrands,
     brandName: storeName,
     logoUrl: logo,
     freeDeliveryThreshold,
@@ -380,7 +400,7 @@ export default async function ResellerStorePage({ params }: Props) {
         />
 
         {/* Store Header */}
-        <NavbarSelector style={navStyle} initialCategories={storeCategories} />
+        <NavbarSelector style={navStyle} initialCategories={storeCategories} initialBrands={storeBrands} />
 
         {/* Hero Slider */}
         <HeroSelector style={heroStyle} banners={dynamicBanners} layout={layout} />

@@ -335,7 +335,7 @@ export const getCachedBanners = () => {
       return serialize(banners);
     },
     ['banners-list'],
-    { revalidate: 60, tags: [CACHE_TAGS.banners] }
+    { revalidate: 31536000, tags: [CACHE_TAGS.banners] }
   )();
 };
 
@@ -398,7 +398,7 @@ export const getCachedSettings = () => {
       return serialize(settings);
     },
     ['global-settings'],
-    { tags: [CACHE_TAGS.settings], revalidate: 3600 }
+    { tags: [CACHE_TAGS.settings], revalidate: 31536000 }
   )();
 };
 

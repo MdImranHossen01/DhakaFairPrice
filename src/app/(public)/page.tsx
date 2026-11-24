@@ -25,6 +25,7 @@ import {
   getCachedBanners,
   getCachedSettings,
   getCachedCategories,
+  getCachedResellerProgram,
 } from '@/lib/data-fetching';
 import { generateOrganizationSchema } from '@/lib/seo';
 
@@ -75,10 +76,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
   // Only fetch above-the-fold critical data upfront.
   // All other sections stream in independently via Suspense.
-  const [banners, settings, categories] = await Promise.all([
+  const [banners, settings, categories, resellerProgramData] = await Promise.all([
     getCachedBanners(),
     getCachedSettings(),
     getCachedCategories(),
+    getCachedResellerProgram(),
   ]);
 
   const ui = {
@@ -175,7 +177,7 @@ export default async function Home() {
           </div>
 
           {/* Reseller CTA */}
-          <ResellerCTA />
+          <ResellerCTA initialHero={resellerProgramData?.hero} />
         </>
       ) : (
         <>
@@ -210,7 +212,7 @@ export default async function Home() {
           <StreamedNewsletter layout={ui.layout} />
 
           {/* Reseller CTA */}
-          <ResellerCTA />
+          <ResellerCTA initialHero={resellerProgramData?.hero} />
         </>
       )}
     </div>

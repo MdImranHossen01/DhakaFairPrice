@@ -16,7 +16,7 @@ import { generateOrganizationSchema } from "@/lib/seo";
 import FacebookPixel from "./components/FacebookPixel";
 import TikTokPixel from "./components/TikTokPixel";
 import { headers } from "next/headers";
-import { getCachedSettings } from "@/lib/data-fetching";
+import { getCachedSettings, getCachedCategories, getCachedBrands } from "@/lib/data-fetching";
 import dbConnect from "@/lib/db";
 import Reseller from "@/models/Reseller";
 
@@ -237,7 +237,14 @@ export default async function RootLayout({
   const isResellerStorePage = !!reseller;
   const resellerFavicon = reseller?.faviconUrl || reseller?.logoUrl || null;
 
-  const settings = await getCachedSettings();
+  const [rawSettings, cachedCategories, cachedBrands] = await Promise.all([
+    getCachedSettings(),
+    getCachedCategories(),
+    getCachedBrands(),
+  ]);
+  const settings = rawSettings
+    ? { ...rawSettings, categories: cachedCategories || [], brands: cachedBrands || [] }
+    : { categories: cachedCategories || [], brands: cachedBrands || [] };
 
   let jsonLd = null;
   try {

@@ -31,7 +31,10 @@ export default function NavbarV3() {
   const router = useRouter();
   const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
+  const settings = useSettings();
+  const [categories, setCategories] = useState<any[]>(() =>
+    Array.isArray(settings?.categories) ? settings.categories.filter((c: any) => c.isActive && !c.parentCategory) : []
+  );
   const [profile, setProfile] = useState<any>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +48,7 @@ export default function NavbarV3() {
   const wishlistCount = useAppSelector((state) => state.wishlist.items.length);
 
   useEffect(() => {
+    if (Array.isArray(settings?.categories)) { setCategories(settings.categories.filter((c: any) => c.isActive && !c.parentCategory)); return; }
     fetch('/api/categories')
       .then(res => res.json())
       .then(data => setCategories(data.filter((c: any) => c.isActive && !c.parentCategory)))
@@ -97,7 +101,6 @@ export default function NavbarV3() {
   const handleResultClick = () => { setShowDropdown(false); setSearchTerm(''); setLiveResults([]); setSearchOpen(false); };
 
 
-  const settings = useSettings();
   const isResellerStore = Boolean(
     settings?.isReseller ||
     (typeof window !== 'undefined' && (
