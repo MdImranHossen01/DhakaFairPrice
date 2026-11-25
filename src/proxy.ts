@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import authConfig from "./auth.config"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 const { auth } = NextAuth(authConfig);
 
@@ -35,11 +35,9 @@ function getSafeRedirectUrl(req: any, path: string): URL {
   return new URL(path, req.nextUrl);
 }
 
-export const proxy = auth(async (req) => {
+export async function proxy(req: NextRequest, ctx: any) {
   const { nextUrl } = req;
   const hostname = req.headers.get('host') || '';
-  const isLoggedIn = !!req.auth;
-  const role = (req.auth?.user as any)?.role as string | undefined;
 
   // Redirect /track-order/:id -> /track-order?id=:id so all email tracking links use the main tracker route cleanly
   if (nextUrl.pathname.startsWith('/track-order/') && nextUrl.pathname.length > '/track-order/'.length) {
@@ -154,6 +152,37 @@ export const proxy = auth(async (req) => {
     return NextResponse.redirect(getSafeRedirectUrl(req, `/reseller${target}`));
   }
 
+  const isAuthRoute = nextUrl.pathname.startsWith("/login") ||
+                      nextUrl.pathname.startsWith("/register") ||
+                      nextUrl.pathname.startsWith("/forgot-password") ||
+                      nextUrl.pathname.startsWith("/reset-password");
+  const isAdminRoute = nextUrl.pathname.startsWith("/admin");
+  const isResellerRoute = nextUrl.pathname.startsWith("/reseller") && !nextUrl.pathname.startsWith("/reseller-program");
+  const isProtectedDashboard =
+    nextUrl.pathname === "/dashboard" ||
+    (nextUrl.pathname.startsWith("/dashboard/") && nextUrl.pathname !== "/dashboard/wishlist");
+
+  if (isAuthRoute || isAdminRoute || isResellerRoute || isProtectedDashboard) {
+    return (authProxy as any)(req, ctx);
+  }
+
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-pathname', nextUrl.pathname);
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set('x-pathname', nextUrl.pathname);
+  return response;
+}
+
+const authProxy = auth(async (req) => {
+  const { nextUrl } = req;
+  const isLoggedIn = !!req.auth;
+  const role = (req.auth?.user as any)?.role as string | undefined;
+  const isAuthRoute = nextUrl.pathname.startsWith("/login") ||
+                      nextUrl.pathname.startsWith("/register") ||
+                      nextUrl.pathname.startsWith("/forgot-password") ||
+                      nextUrl.pathname.startsWith("/reset-password");
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
   const isResellerRoute = nextUrl.pathname.startsWith("/reseller") && !nextUrl.pathname.startsWith("/reseller-program");
 

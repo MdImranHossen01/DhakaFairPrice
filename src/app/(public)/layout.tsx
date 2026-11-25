@@ -2,14 +2,10 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Marquee } from '@/components/layout/Marquee';
 import { getCachedSettings, getCachedCategories, getCachedBrands } from '@/lib/data-fetching';
-import { headers } from 'next/headers';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { MobileBottomNavbar } from '@/components/layout/MobileBottomNavbar';
-import { auth } from '@/auth';
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  const isSuperAdmin = (session?.user as any)?.role === 'super_admin';
 
   let settings = null;
   let initialCategories: any[] = [];
