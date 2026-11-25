@@ -5,6 +5,7 @@
  * appears instantly while below-fold sections load in parallel.
  */
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import {
   getCachedCategories,
   getCachedProducts,
@@ -13,17 +14,33 @@ import {
   getCachedActiveCoupon,
   getCachedRootCategoriesWithProducts,
 } from '@/lib/data-fetching';
-import { CategoryShowcase } from '@/components/storefront/CategoryShowcase';
-import { ProductCarouselSection } from '@/components/storefront/ProductCarouselSection';
-import { BlogRecent } from '@/components/storefront/BlogRecent';
-import { ComboOfferBanner } from '@/components/storefront/ComboOfferBanner';
-import { NewsletterV2 } from '@/components/storefront/NewsletterV2';
 import {
   SectionSkeleton,
   CategoryShowcaseSkeleton,
   BannerSkeleton,
   BlogRecentSkeleton,
 } from '@/components/storefront/Skeletons';
+
+const CategoryShowcase = dynamic(
+  () => import('@/components/storefront/CategoryShowcase').then((mod) => mod.CategoryShowcase),
+  { loading: () => <CategoryShowcaseSkeleton /> }
+);
+const ProductCarouselSection = dynamic(
+  () => import('@/components/storefront/ProductCarouselSection').then((mod) => mod.ProductCarouselSection),
+  { loading: () => <SectionSkeleton /> }
+);
+const BlogRecent = dynamic(
+  () => import('@/components/storefront/BlogRecent').then((mod) => mod.BlogRecent),
+  { loading: () => <BlogRecentSkeleton /> }
+);
+const ComboOfferBanner = dynamic(
+  () => import('@/components/storefront/ComboOfferBanner').then((mod) => mod.ComboOfferBanner),
+  { loading: () => <BannerSkeleton /> }
+);
+const NewsletterV2 = dynamic(
+  () => import('@/components/storefront/NewsletterV2').then((mod) => mod.NewsletterV2),
+  { loading: () => <BannerSkeleton /> }
+);
 
 // ─── Category Showcase ───────────────────────────────────────────────────────
 
