@@ -1,4 +1,3 @@
-import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import { getCachedProducts, getCachedCategories, getCachedBrands, getCachedSettings } from '@/lib/data-fetching';
 import { ShopHeaderSkeleton, ProductCardSkeleton } from '@/components/storefront/Skeletons';
@@ -6,13 +5,20 @@ import { ShopListingSelector } from '@/components/templates/ServerRegistry';
 
 import { Metadata } from 'next';
 
+export const revalidate = 31536000;
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getCachedSettings();
   const brandName = settings?.brandName || process.env.NEXT_PUBLIC_STORE_NAME || 'Store';
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const headersList = await headers();
-  const hostname = headersList.get('host') || 'localhost';
-  const baseUrl = `${protocol}://${hostname}`;
+  const rawSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'http://localhost:3000');
+  const baseUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
 
   return {
     title: `Shop All Products | ${brandName}`,
@@ -32,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+export default async function ShopPage() {
   // Fetch initial data on the server with caching
   const [initialProducts, initialCategories, initialBrands, settings] = await Promise.all([
     getCachedProducts({}, 1000),
@@ -52,7 +58,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         products={initialProducts}
         categories={initialCategories}
         brands={initialBrands}
-        searchParams={searchParams}
+        searchParams={{}}
       />
     </Suspense>
   );

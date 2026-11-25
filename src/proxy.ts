@@ -152,10 +152,6 @@ export async function proxy(req: NextRequest, ctx: any) {
     return NextResponse.redirect(getSafeRedirectUrl(req, `/reseller${target}`));
   }
 
-  const isAuthRoute = nextUrl.pathname.startsWith("/login") ||
-                      nextUrl.pathname.startsWith("/register") ||
-                      nextUrl.pathname.startsWith("/forgot-password") ||
-                      nextUrl.pathname.startsWith("/reset-password");
   const isAdminRoute = nextUrl.pathname.startsWith("/admin");
   const isResellerRoute = nextUrl.pathname.startsWith("/reseller") && !nextUrl.pathname.startsWith("/reseller-program");
   const isProtectedDashboard =

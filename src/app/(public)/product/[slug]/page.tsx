@@ -3,12 +3,11 @@ import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { generateProductSchema, generateBreadcrumbSchema, resolveRequestHost, getProductMeta } from '@/lib/seo';
 import { ProductDetailsSelector } from '@/components/templates/ServerRegistry';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { ViewTracker } from '@/components/common/ViewTracker';
-import { getCachedProductBySlug, getCachedSettings } from '@/lib/data-fetching';
+import { getCachedProductBySlug, getCachedProducts, getCachedSettings } from '@/lib/data-fetching';
 import { notFound } from 'next/navigation';
 
 const sanitizeForScript = (json: any) => {
@@ -19,6 +18,19 @@ const getProduct = async (slug: string) => {
   return getCachedProductBySlug(slug);
 };
 
+export const revalidate = 31536000;
+
+export async function generateStaticParams() {
+  try {
+    const products = await getCachedProducts({}, 200);
+    return (products || [])
+      .filter((p: any) => p?.slug)
+      .map((p: any) => ({ slug: String(p.slug) }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const [product, settings] = await Promise.all([
@@ -27,10 +39,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   ]);
   if (!product) return { title: 'Product Not Found' };
 
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const headersList = await headers();
-  const host = resolveRequestHost(headersList);
-  const baseUrl = `${protocol}://${host}`;
+  const rawSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'http://localhost:3000');
+  const baseUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
   const canonicalUrl = `${baseUrl}/product/${slug}`;
 
   const { safeTitle, safeDescription } = getProductMeta({

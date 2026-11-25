@@ -15,7 +15,6 @@ import { ScrollProgress } from "@/components/layout/ScrollProgress";
 import { generateOrganizationSchema } from "@/lib/seo";
 import FacebookPixel from "./components/FacebookPixel";
 import TikTokPixel from "./components/TikTokPixel";
-import { headers } from "next/headers";
 import { getCachedSettings, getCachedCategories, getCachedBrands } from "@/lib/data-fetching";
 import dbConnect from "@/lib/db";
 import Reseller from "@/models/Reseller";
@@ -75,8 +74,6 @@ function getGoogleFontsUrl(fonts: string[]) {
   return `https://fonts.googleapis.com/css2?${families.join('&')}&display=swap`;
 }
 
-export const dynamic = 'force-dynamic';
-
 async function getResellerFromHeaders(headersList: Headers) {
   try {
     const resellerSubdomain = headersList.get('x-reseller-subdomain');
@@ -121,12 +118,18 @@ async function getResellerFromHeaders(headersList: Headers) {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers();
-  const hostname = headersList.get('host') || 'localhost';
-  const baseUrl = `https://${hostname}`;
+  const rawSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'http://localhost:3000');
+  const baseUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
 
   try {
-    const reseller = await getResellerFromHeaders(headersList);
+    const reseller: any = null;
     if (reseller) {
       const favicon = (reseller as any).faviconUrl || (reseller as any).logoUrl || '/favicon.ico';
       const rawVerification = (reseller as any).seoConfig?.googleSiteVerification?.trim() || '';
@@ -232,8 +235,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersList = await headers();
-  const reseller = await getResellerFromHeaders(headersList);
+  const reseller: any = null;
   const isResellerStorePage = !!reseller;
   const resellerFavicon = reseller?.faviconUrl || reseller?.logoUrl || null;
 

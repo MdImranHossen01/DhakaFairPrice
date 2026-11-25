@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { getCachedBlogBySlug, getCachedSettings } from '@/lib/data-fetching';
+import { getCachedBlogBySlug, getCachedBlogs, getCachedSettings } from '@/lib/data-fetching';
 import { BlogDetailsSelector } from '@/components/templates/ServerRegistry';
 import { ViewTracker } from '@/components/common/ViewTracker';
 import { FBBlogTracker } from '@/components/common/FBBlogTracker';
@@ -26,6 +25,19 @@ async function getBlog(slug: string) {
   return getCachedBlogBySlug(slug);
 }
 
+export const revalidate = 31536000;
+
+export async function generateStaticParams() {
+  try {
+    const blogs = await getCachedBlogs(200);
+    return (blogs || [])
+      .filter((b: any) => b?.slug)
+      .map((b: any) => ({ slug: String(b.slug) }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: BlogDetailProps): Promise<Metadata> {
   const { slug } = await params;
   const [blog, settings] = await Promise.all([
@@ -35,10 +47,15 @@ export async function generateMetadata({ params }: BlogDetailProps): Promise<Met
 
   if (!blog) return { title: 'Blog Not Found' };
 
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const headersList = await headers();
-  const hostname = headersList.get('host') || 'localhost';
-  const baseUrl = `${protocol}://${hostname}`;
+  const rawSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : 'http://localhost:3000');
+  const baseUrl = rawSiteUrl.startsWith('http') ? rawSiteUrl : `https://${rawSiteUrl}`;
 
   const title = blog.metaTitle || blog.title;
   const description = blog.metaDescription || blog.title;
