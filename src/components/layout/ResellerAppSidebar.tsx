@@ -263,7 +263,7 @@ function ResellerNavCollapsibleItem({
               return (
                 <SidebarMenuSubItem key={sub.title}>
                   <SidebarMenuSubButton
-                    render={<Link href={sub.url} onClick={handleLinkClick} />}
+                    render={<Link prefetch={false} href={sub.url} onClick={handleLinkClick} />}
                     isActive={isSubActive}
                     className={`h-8 rounded-lg px-3 text-xs transition-all duration-150 ${
                       isSubActive

@@ -290,9 +290,6 @@ export default async function RootLayout({
             <link rel="shortcut icon" href="/favicon.ico" />
           </>
         )}
-        <link rel="preload" as="image" href="/assets/login_banner_v2.webp" />
-        <link rel="preload" as="image" href="/assets/register_banner_v2.webp" />
-        <link rel="preload" as="image" href="/assets/forgetpassrod.webp" />
       </head>
       <body
         className="antialiased min-h-full flex flex-col overflow-x-clip font-sans"

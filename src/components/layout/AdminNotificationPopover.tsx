@@ -85,8 +85,6 @@ export default function AdminNotificationPopover() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 20000);
-    return () => clearInterval(interval);
   }, [fetchData]);
 
   const markAllAsRead = async () => {
@@ -166,7 +164,7 @@ export default function AdminNotificationPopover() {
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (nextOpen) fetchData(); }}>
         <PopoverTrigger
           nativeButton={true}
           render={
