@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Find answers to commonly asked questions regarding orders, shipping, delivery, payments, returns, and reseller program.',
 };
 
-export const revalidate = 60; // Revalidate every 60 seconds
+export const revalidate = 31536000; // 1 year; updated on-demand
 
 export default async function FAQPage() {
   const faqs = await getCachedFAQs();

@@ -470,7 +470,7 @@ export function AIChatbot() {
                               >
                                 ট্র্যাক করুন
                               </Link>
-                              <Link
+                              <Link prefetch={false}
                                 href="/dashboard"
                                 className="flex-1 text-center py-1.5 px-2 bg-muted hover:bg-muted/80 text-foreground border rounded-lg font-medium text-[11px] transition-colors"
                                 onClick={() => setIsOpen(false)}

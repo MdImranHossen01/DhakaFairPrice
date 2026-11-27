@@ -214,7 +214,7 @@ export default function ResellerNotificationPopover() {
               Store Queues & Wallet
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <Link
+              <Link prefetch={false}
                 href="/reseller/orders"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
@@ -230,7 +230,7 @@ export default function ResellerNotificationPopover() {
                 </Badge>
               </Link>
 
-              <Link
+              <Link prefetch={false}
                 href="/reseller/products"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
@@ -246,7 +246,7 @@ export default function ResellerNotificationPopover() {
                 </Badge>
               </Link>
 
-              <Link
+              <Link prefetch={false}
                 href="/reseller/wallet"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
@@ -259,7 +259,7 @@ export default function ResellerNotificationPopover() {
                 </span>
               </Link>
 
-              <Link
+              <Link prefetch={false}
                 href="/reseller/low-stock"
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between p-2 rounded-lg bg-card hover:bg-primary/[0.06] border border-border/60 transition-colors"
@@ -338,7 +338,7 @@ export default function ResellerNotificationPopover() {
               Alert Settings
             </Button>
 
-            <Link
+            <Link prefetch={false}
               href="/reseller/notifications"
               onClick={() => setOpen(false)}
               className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-primary hover:underline pr-1"

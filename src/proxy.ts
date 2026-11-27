@@ -69,7 +69,7 @@ export async function proxy(req: NextRequest, ctx: any) {
       const lookupUrl = new URL(`/api/reseller/domain-lookup?domain=${encodeURIComponent(cleanHost)}`, nextUrl.origin);
       const res = await fetch(lookupUrl.toString(), {
         headers: { 'x-internal-lookup': 'true' },
-        next: { revalidate: 60 } // cache resolution for 60 seconds
+        next: { revalidate: 31536000, tags: ['settings', 'reseller-domains'] } // 1 year; purged on Save Configuration
       });
       if (res.ok) {
         const data = await res.json();

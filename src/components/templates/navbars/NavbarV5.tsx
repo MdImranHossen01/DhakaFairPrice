@@ -305,12 +305,12 @@ export default function NavbarV5() {
                       {(session.user as any)?.role === 'super_admin' && (
                         <>
                           <DropdownMenuItem asChild>
-                            <Link href="/admin/dashboard" className="cursor-pointer">
+                            <Link prefetch={false} href="/admin/dashboard" className="cursor-pointer">
                               <LayoutDashboard className="mr-2 h-4 w-4" /> Admin Dashboard
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/admin/system-design" className="cursor-pointer">
+                            <Link prefetch={false} href="/admin/system-design" className="cursor-pointer">
                               <Settings className="mr-2 h-4 w-4" /> Infrastructure & Marketing
                             </Link>
                           </DropdownMenuItem>
@@ -320,12 +320,12 @@ export default function NavbarV5() {
                       {(session.user as any)?.role === 'admin' && (
                         <>
                           <DropdownMenuItem asChild>
-                            <Link href="/admin/dashboard" className="cursor-pointer">
+                            <Link prefetch={false} href="/admin/dashboard" className="cursor-pointer">
                               <LayoutDashboard className="mr-2 h-4 w-4" /> Admin Dashboard
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/admin/orders" className="cursor-pointer">
+                            <Link prefetch={false} href="/admin/orders" className="cursor-pointer">
                               <Truck className="mr-2 h-4 w-4" /> Manage Orders
                             </Link>
                           </DropdownMenuItem>
@@ -335,17 +335,17 @@ export default function NavbarV5() {
                       {(session.user as any)?.role === 'reseller' && (
                         <>
                           <DropdownMenuItem asChild>
-                            <Link href="/reseller-dashboard" className="cursor-pointer">
+                            <Link prefetch={false} href="/reseller-dashboard" className="cursor-pointer">
                               <LayoutDashboard className="mr-2 h-4 w-4" /> Reseller Dashboard
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/reseller/products" className="cursor-pointer">
+                            <Link prefetch={false} href="/reseller/products" className="cursor-pointer">
                               <Store className="mr-2 h-4 w-4" /> My Products
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href="/reseller/orders" className="cursor-pointer">
+                            <Link prefetch={false} href="/reseller/orders" className="cursor-pointer">
                               <Truck className="mr-2 h-4 w-4" /> Store Orders
                             </Link>
                           </DropdownMenuItem>
@@ -355,7 +355,7 @@ export default function NavbarV5() {
                       {(session.user as any)?.role === 'user' && (
                         <>
                           <DropdownMenuItem asChild>
-                            <Link href="/dashboard" className="cursor-pointer">
+                            <Link prefetch={false} href="/dashboard" className="cursor-pointer">
                               <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                             </Link>
                           </DropdownMenuItem>

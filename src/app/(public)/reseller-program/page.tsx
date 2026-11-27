@@ -3,7 +3,7 @@ import { getCachedResellerProgram } from '@/lib/data-fetching';
 import ResellerProgramClient from './ResellerProgramClient';
 
 // SSG / ISR configuration
-export const revalidate = 3600; // Background revalidation fallback (1 hour); updated instantly on-demand via revalidateTag('reseller-program')
+export const revalidate = 31536000; // 1 year; updated instantly on-demand via revalidateTag('reseller-program')
 
 export async function generateMetadata(): Promise<Metadata> {
   const data = await getCachedResellerProgram();

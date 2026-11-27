@@ -220,7 +220,7 @@ export const getTrendingProducts = (limit = 10) => {
       return serialize(trendingProducts.map(sanitizeProductPrices));
     },
     ['trending-products-v2', limit.toString()],
-    { revalidate: 3600, tags: [CACHE_TAGS.products] }
+    { revalidate: 31536000, tags: [CACHE_TAGS.products] }
   )();
 };
 
@@ -415,7 +415,7 @@ export const getCachedActiveCoupon = () => {
       return serialize(coupon);
     },
     ['active-coupon'],
-    { revalidate: 3600, tags: [CACHE_TAGS.coupons] }
+    { revalidate: 31536000, tags: [CACHE_TAGS.coupons] }
   )();
 };
 

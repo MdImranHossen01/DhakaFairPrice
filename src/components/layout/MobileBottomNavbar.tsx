@@ -454,14 +454,14 @@ export function MobileBottomNavbar() {
                     {/* Role Based Navigation */}
                     {(session.user as any)?.role === 'super_admin' && (
                       <>
-                        <Link
+                        <Link prefetch={false}
                           href="/admin/dashboard"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
                         >
                           <LayoutDashboard className="h-5 w-5 text-primary" /> Admin Dashboard
                         </Link>
-                        <Link
+                        <Link prefetch={false}
                           href="/admin/system-design"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
@@ -473,14 +473,14 @@ export function MobileBottomNavbar() {
 
                     {(session.user as any)?.role === 'admin' && (
                       <>
-                        <Link
+                        <Link prefetch={false}
                           href="/admin/dashboard"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
                         >
                           <LayoutDashboard className="h-5 w-5 text-primary" /> Admin Dashboard
                         </Link>
-                        <Link
+                        <Link prefetch={false}
                           href="/admin/orders"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
@@ -492,21 +492,21 @@ export function MobileBottomNavbar() {
 
                     {(session.user as any)?.role === 'reseller' && (
                       <>
-                        <Link
+                        <Link prefetch={false}
                           href="/reseller-dashboard"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
                         >
                           <LayoutDashboard className="h-5 w-5 text-primary" /> Reseller Dashboard
                         </Link>
-                        <Link
+                        <Link prefetch={false}
                           href="/reseller/products"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
                         >
                           <Store className="h-5 w-5 text-primary" /> My Products
                         </Link>
-                        <Link
+                        <Link prefetch={false}
                           href="/reseller/orders"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
@@ -518,7 +518,7 @@ export function MobileBottomNavbar() {
 
                     {(session.user as any)?.role === 'user' && (
                       <>
-                        <Link
+                        <Link prefetch={false}
                           href="/dashboard"
                           onClick={() => setIsAccountOpen(false)}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-sm font-medium transition-colors"
@@ -547,7 +547,7 @@ export function MobileBottomNavbar() {
               </SheetContent>
             </Sheet>
           ) : (
-            <Link
+            <Link prefetch={false}
               href="/login"
               aria-label="Go to login page"
               className={`flex flex-col items-center justify-center gap-1 min-w-[64px] transition-all relative ${
