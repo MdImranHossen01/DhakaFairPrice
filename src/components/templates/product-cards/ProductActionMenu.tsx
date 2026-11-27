@@ -105,19 +105,24 @@ export function ProductActionMenu({ product, className }: ProductActionMenuProps
   const [resellerStoreName, setResellerStoreName] = useState<string | null>(initialStoreName);
 
   useEffect(() => {
+    if (!isAdmin && !isReseller) return;
     if (initialStoreName) {
       setResellerStoreName(initialStoreName);
     } else if (uploadedById && !isOwnProduct) {
-      fetch(`/api/reseller/store-lookup?id=${uploadedById}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.storeName) {
-            setResellerStoreName(data.storeName);
-          }
-        })
-        .catch(() => {});
+      const cache = ((globalThis as any).__storeLookupCache ||= new Map<string, Promise<string | null>>());
+      let req = cache.get(uploadedById);
+      if (!req) {
+        req = fetch(`/api/reseller/store-lookup?id=${uploadedById}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => data?.storeName || null)
+          .catch(() => null);
+        cache.set(uploadedById, req);
+      }
+      req.then((name: string | null) => {
+        if (name) setResellerStoreName(name);
+      });
     }
-  }, [uploadedById, initialStoreName, isOwnProduct]);
+  }, [uploadedById, initialStoreName, isOwnProduct, isAdmin, isReseller]);
 
   // If user is neither Admin nor Reseller, render nothing
   if (!isAdmin && !isReseller) {
