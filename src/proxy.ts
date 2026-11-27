@@ -5,7 +5,18 @@ import { NextRequest, NextResponse } from "next/server"
 const { auth } = NextAuth(authConfig);
 
 // Root domain — subdomains of this are treated as reseller stores
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
+const ROOT_DOMAIN = (
+  process.env.NEXT_PUBLIC_ROOT_DOMAIN ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  'dhakafairprice.com'
+)
+  .replace(/^https?:\/\//i, '')
+  .replace(/^www\./i, '')
+  .split('/')[0]
+  .split(':')[0]
+  .toLowerCase();
 // Subdomains reserved for the main platform (not reseller stores)
 const RESERVED_SUBDOMAINS = new Set(['www', 'admin', 'api', 'app', 'mail', 'smtp', 'ftp', 'cdn', 'static']);
 
@@ -57,10 +68,12 @@ export async function proxy(req: NextRequest, ctx: any) {
 
   // If not a subdomain of ${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'store.com'}, and not localhost/IP, check if it's a custom domain
   if (cleanHost &&
+      ROOT_DOMAIN &&
       !nextUrl.pathname.startsWith('/api/') &&
       !targetSubdomain && 
       cleanHost !== 'localhost' && 
       cleanHost !== '127.0.0.1' && 
+      !cleanHost.endsWith('.vercel.app') &&
       !/^\d+\.\d+\.\d+\.\d+$/.test(cleanHost) &&
       cleanHost !== ROOT_DOMAIN &&
       cleanHost !== `www.${ROOT_DOMAIN}`) {
@@ -71,7 +84,8 @@ export async function proxy(req: NextRequest, ctx: any) {
         headers: { 'x-internal-lookup': 'true' },
         next: { revalidate: 31536000, tags: ['settings', 'reseller-domains'] } // 1 year; purged on Save Configuration
       });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         if (data.found && data.subdomain) {
           targetSubdomain = data.subdomain;
