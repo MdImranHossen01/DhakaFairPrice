@@ -404,7 +404,7 @@ export default function ResellerProductDetailsClient({
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${displayStock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {displayStock > 0 ? `In Stock (${displayStock})` : 'Out of Stock'}
+              {displayStock > 0 ? 'Available' : 'Out of Stock'}
             </span>
             {product.sku && (
               <span className="text-xs text-muted-foreground">| SKU: {product.sku}</span>

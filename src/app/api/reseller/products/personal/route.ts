@@ -5,6 +5,7 @@ import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import Product from '@/models/Product';
 import ResellerProduct from '@/models/ResellerProduct';
+import { purgeProductCache, getResellerOrigins } from '@/lib/cloudflareCache';
 import { generateUniqueSlug } from '@/lib/slugify-server';
 import { addProductToReseller } from '@/lib/syncEngine';
 import { slugify } from '@/lib/slugify';
@@ -178,6 +179,7 @@ export async function POST(request: NextRequest) {
     } catch (notifErr) {
       console.error('[Product Submission Notification Error]', notifErr);
     }
+    await purgeProductCache({ productId: product?._id?.toString(), slug: product?.slug }).catch(() => {});
 
     return NextResponse.json({ success: true, product });
   } catch (error: any) {
@@ -308,6 +310,7 @@ export async function PATCH(request: NextRequest) {
       },
       { upsert: true, new: true }
     );
+    await purgeProductCache({ productId: product?._id?.toString(), slug: product?.slug }).catch(() => {});
 
     return NextResponse.json({ success: true, product });
   } catch (error: any) {
@@ -397,6 +400,12 @@ export async function DELETE(request: NextRequest) {
     // automatically hidden via isAvailableOnMother: false (set by unpublishProductFromResellers).
     // We don't delete other resellers' records - that would break their order history.
     await ResellerProduct.deleteOne({ resellerId: reseller._id, productId });
+    await purgeProductCache({
+      productId: product?._id?.toString(),
+      slug: product?.slug,
+      includeMother: Boolean(product?.isMotherProduct || product?.isApprovedByAdmin),
+      extraResellerOrigins: getResellerOrigins(reseller),
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, message: 'Personal product deleted' });
   } catch (error: any) {

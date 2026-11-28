@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import User from '@/models/User';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeResellerStoreCache } from '@/lib/cloudflareCache';
 
 // GET - Load current reseller's settings
 export async function GET() {
@@ -191,7 +191,7 @@ export async function PATCH(request: NextRequest) {
       { new: true }
     );
 
-    await purgeCloudflareCache().catch(() => {});
+    await purgeResellerStoreCache(updated as any).catch(() => {});
 
     return NextResponse.json({ success: true, reseller: updated });
   } catch (error: any) {

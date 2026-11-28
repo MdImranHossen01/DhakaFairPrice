@@ -8,7 +8,7 @@ import ResellerProduct from '@/models/ResellerProduct';
 import { generateUniqueSlug } from '@/lib/slugify-server';
 import { slugify } from '@/lib/slugify';
 import { addProductToReseller } from '@/lib/syncEngine';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeResellerStoreCache } from '@/lib/cloudflareCache';
 
 import GlobalSettings from '@/models/GlobalSettings';
 
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    await purgeCloudflareCache().catch(() => {});
+    await Reseller.findById(resellerId).select('subdomain customDomain').lean().then((r: any) => purgeResellerStoreCache(r, newProduct?.slug ? [`/product/${newProduct.slug}`] : [])).catch(() => {});
 
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
@@ -390,7 +390,7 @@ export async function PATCH(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    await purgeCloudflareCache().catch(() => {});
+    await Reseller.findById(resellerId).select('subdomain customDomain').lean().then((r: any) => purgeResellerStoreCache(r, product?.slug ? [`/product/${product.slug}`] : [])).catch(() => {});
 
     return NextResponse.json({ product });
   } catch (error: any) {
@@ -508,7 +508,7 @@ export async function DELETE(request: NextRequest) {
     revalidateTag('products', 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    await purgeCloudflareCache().catch(() => {});
+    await Reseller.findById(resellerId).select('subdomain customDomain').lean().then((r: any) => purgeResellerStoreCache(r)).catch(() => {});
 
     return NextResponse.json({
       success: true,

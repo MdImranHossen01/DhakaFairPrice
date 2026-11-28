@@ -3,7 +3,7 @@ import connectToDatabase from '@/lib/db';
 import FAQ from '@/models/FAQ';
 import { auth } from '@/auth';
 import { revalidateTag } from 'next/cache';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeHomeCache } from '@/lib/cloudflareCache';
 
 export async function GET() {
   try {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     // Revalidate Next.js Cache
     revalidateTag('faqs', 'max');
     
-    await purgeCloudflareCache().catch(() => {});
+    await purgeHomeCache().catch(() => {});
     return NextResponse.json(faq, { status: 201 });
   } catch (error) {
     console.error('Create FAQ Error:', error);

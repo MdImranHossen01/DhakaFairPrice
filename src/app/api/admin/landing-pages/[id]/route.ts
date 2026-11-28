@@ -3,7 +3,7 @@ import connectToDatabase from '@/lib/db';
 import LandingPage from '@/models/LandingPage';
 import { auth } from '@/auth';
 import mongoose from 'mongoose';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeLandingPageCache } from '@/lib/cloudflareCache';
 
 // Auth helper
 async function authorizeAdmin() {
@@ -82,7 +82,7 @@ export async function PATCH(
       return NextResponse.json({ message: 'Page not found' }, { status: 404 });
     }
 
-    await purgeCloudflareCache().catch(() => {});
+    await purgeLandingPageCache(updatedPage?.slug).catch(() => {});
     return NextResponse.json(updatedPage);
   } catch (error: any) {
     return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });

@@ -3,7 +3,7 @@ import { revalidateTag, revalidatePath } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Banner from '@/models/Banner';
 import { auth } from '@/auth';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeHomeCache } from '@/lib/cloudflareCache';
 import mongoose from 'mongoose';
 
 export async function PUT(
@@ -57,7 +57,7 @@ export async function PUT(
 
     revalidateTag('banners', 'max');
     revalidatePath('/');
-    await purgeCloudflareCache().catch(() => {});
+    await purgeHomeCache().catch(() => {});
 
     return NextResponse.json(banner);
   } catch (error) {
@@ -94,7 +94,7 @@ export async function DELETE(
 
     revalidateTag('banners', 'max');
     revalidatePath('/');
-    await purgeCloudflareCache().catch(() => {});
+    await purgeHomeCache().catch(() => {});
 
     return NextResponse.json({ message: 'Banner deleted successfully' });
   } catch (error) {

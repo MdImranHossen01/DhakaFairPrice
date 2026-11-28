@@ -595,7 +595,7 @@ export default function ProductDetailsClient({ product }: ProductDetailsClientPr
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${displayStock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {displayStock > 0 ? `In stock (${displayStock} units)` : 'Out of stock'}
+              {displayStock > 0 ? 'Available' : 'Out of stock'}
             </span>
             {displaySku && (
               <span className="text-xs text-muted-foreground">| SKU: {displaySku}</span>

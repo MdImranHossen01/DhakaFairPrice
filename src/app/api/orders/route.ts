@@ -740,8 +740,27 @@ export async function POST(req: NextRequest) {
 
     // Revalidate products cache to reflect new stock levels across the site
     try {
-      const { revalidateTag } = await import('next/cache');
-      revalidateTag(CACHE_TAGS.products, 'max');
+      const orderedProductIds = Array.from(new Set(validatedItems.map((it: any) => it.product)));
+      const checkedProducts = await Product.find({ _id: { $in: orderedProductIds } })
+        .select('slug stock variants.stock')
+        .lean();
+      const outOfStockSlugs = checkedProducts
+        .filter((p: any) => {
+          const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+          return (p.stock ?? 0) <= 0 || (hasVariants && p.variants.every((v: any) => (v.stock ?? 0) <= 0));
+        })
+        .map((p: any) => p.slug)
+        .filter(Boolean);
+
+      if (outOfStockSlugs.length > 0) {
+        const { revalidatePath } = await import('next/cache');
+        const { purgeOutOfStockProductUrls } = await import('@/lib/cloudflareCache');
+        for (const slug of outOfStockSlugs) {
+          revalidatePath(`/product/${slug}`);
+        }
+        await purgeOutOfStockProductUrls(outOfStockSlugs);
+      }
+
     } catch (e) {
       console.error('Failed to revalidate products cache:', e);
     }

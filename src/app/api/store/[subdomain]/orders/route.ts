@@ -610,6 +610,37 @@ export async function POST(
         for (const pId of uniqueProductIds) {
           await syncProductToResellers(pId).catch(err => console.error('[Reseller Sync Error]', err));
         }
+
+        // Surgically revalidate & purge Cloudflare ONLY for ordered products whose stock just hit 0
+        const ProductModel = (await import('@/models/Product')).default;
+        const checkedProducts = await ProductModel.find({ _id: { $in: uniqueProductIds } })
+          .select('slug stock variants.stock')
+          .lean();
+        const outOfStockSlugs = checkedProducts
+          .filter((p: any) => {
+            const hasVariants = Array.isArray(p.variants) && p.variants.length > 0;
+            return (p.stock ?? 0) <= 0 || (hasVariants && p.variants.every((v: any) => (v.stock ?? 0) <= 0));
+          })
+          .map((p: any) => p.slug)
+          .filter(Boolean);
+
+        if (outOfStockSlugs.length > 0) {
+          const { revalidatePath } = await import('next/cache');
+          const { purgeOutOfStockProductUrls } = await import('@/lib/cloudflareCache');
+          const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || '').trim().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+          const extraOrigins: string[] = [];
+          if (reseller.customDomain) {
+            extraOrigins.push(`https://${String(reseller.customDomain).replace(/^https?:\/\//, '').replace(/\/+$/, '')}`);
+          }
+          if (rootDomain && subdomain) {
+            extraOrigins.push(`https://${subdomain}.${rootDomain}`);
+          }
+          for (const slug of outOfStockSlugs) {
+            revalidatePath(`/product/${slug}`);
+            revalidatePath(`/store/${subdomain}/product/${slug}`);
+          }
+          await purgeOutOfStockProductUrls(outOfStockSlugs, { extraOrigins });
+        }
       } catch (syncErr) {
         console.error('[Sync Error after storefront order creation]', syncErr);
       }

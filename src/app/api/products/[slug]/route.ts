@@ -7,7 +7,7 @@ import Product from '@/models/Product';
 import { auth } from '@/auth';
 import { generateUniqueSlug } from '@/lib/slugify-server';
 import { CACHE_TAGS } from '@/lib/data-fetching';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeProductCache } from '@/lib/cloudflareCache';
 async function triggerResellerSyncBestEffort(productId: string) {
   try {
     const { enqueueProductSync } = await import('@/lib/queue');
@@ -285,7 +285,7 @@ export async function PUT(
           revalidateTag(CACHE_TAGS.products, 'max');
           revalidatePath('/', 'layout');
           revalidatePath('/shop', 'page');
-          await purgeCloudflareCache().catch(() => {});
+          await purgeProductCache({ productId: updatedProduct?._id?.toString(), slug: updatedProduct?.slug }).catch(() => {});
           return NextResponse.json(updatedProduct);
         } catch (error: any) {
           lastError = error;
@@ -344,7 +344,7 @@ export async function PUT(
     revalidateTag(CACHE_TAGS.products, 'max');
     revalidatePath('/', 'layout');
     revalidatePath('/shop', 'page');
-    await purgeCloudflareCache().catch(() => {});
+    await purgeProductCache({ productId: updatedProduct?._id?.toString(), slug: updatedProduct?.slug }).catch(() => {});
 
     return NextResponse.json(updatedProduct);
   } catch (error) {
@@ -446,7 +446,7 @@ export async function DELETE(
       revalidateTag(CACHE_TAGS.products, 'max');
       revalidatePath('/', 'layout');
       revalidatePath('/shop', 'page');
-      await purgeCloudflareCache().catch(() => {});
+      await purgeProductCache({ slug: typeof slug === "string" ? slug : undefined, includeMother: true }).catch(() => {});
     } catch (revalidateError) {
       console.error('Failed to revalidate product tags:', revalidateError);
     }

@@ -511,9 +511,9 @@ export default function ProductDetailsV2Client({ product }: ProductDetailsV2Clie
 
             {displayStock <= 0 ? (
               <span className="text-xs font-semibold uppercase text-destructive tracking-wider ml-1">Out of stock</span>
-            ) : displayStock <= 5 ? (
-              <span className="text-xs text-orange-600 font-medium ml-1">Only {displayStock} left in stock</span>
-            ) : null}
+            ) : (
+              <span className="text-xs font-semibold uppercase text-primary tracking-wider ml-1">Available</span>
+            )}
           </div>
         </div>
 

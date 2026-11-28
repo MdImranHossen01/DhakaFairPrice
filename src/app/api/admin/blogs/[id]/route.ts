@@ -3,7 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import connectToDatabase from '@/lib/db';
 import Blog from '@/models/Blog';
 import { auth } from '@/auth';
-import { purgeCloudflareCache } from '@/lib/cloudflareCache';
+import { purgeBlogCache } from '@/lib/cloudflareCache';
 import mongoose from 'mongoose';
 
 export async function GET(
@@ -91,7 +91,7 @@ export async function PUT(
       revalidatePath('/blog');
       revalidatePath(`/blog/${blog.slug}`);
       revalidateTag('blogs', 'max');
-      await purgeCloudflareCache().catch(() => {});
+      await purgeBlogCache(blog?.slug).catch(() => {});
     } catch (revalidateError) {
       console.error('[Admin Blog Update revalidatePath] error:', revalidateError);
     }
@@ -152,7 +152,7 @@ export async function DELETE(
       revalidatePath('/blog');
       revalidatePath(`/blogs/${blog.slug}`);
       revalidateTag('blogs', 'max');
-      await purgeCloudflareCache().catch(() => {});
+      await purgeBlogCache(blog?.slug).catch(() => {});
     } catch (revalidateError) {
       console.error('[Admin Blog Delete revalidatePath] error:', revalidateError);
     }
