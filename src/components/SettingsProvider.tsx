@@ -55,8 +55,10 @@ export function SettingsProvider({
   children: React.ReactNode; 
   settings: SettingsContextType;
 }) {
+  const parentSettings = useContext(SettingsContext);
+
   const sanitizedSettings = React.useMemo(() => {
-    if (!settings) return settings;
+    if (!settings) return parentSettings || settings;
     const socialLinks = settings.socialLinks ? { ...settings.socialLinks } : undefined;
     
     if (socialLinks) {
@@ -95,10 +97,13 @@ export function SettingsProvider({
     }
     
     return {
+      ...(parentSettings || {}),
       ...settings,
-      socialLinks,
+      categories: settings.categories !== undefined ? settings.categories : parentSettings?.categories,
+      brands: settings.brands !== undefined ? settings.brands : parentSettings?.brands,
+      socialLinks: socialLinks ?? parentSettings?.socialLinks,
     };
-  }, [settings]);
+  }, [settings, parentSettings]);
 
   return (
     <SettingsContext.Provider value={sanitizedSettings}>

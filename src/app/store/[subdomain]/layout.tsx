@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import dbConnect from '@/lib/db';
 import Reseller from '@/models/Reseller';
 import Script from 'next/script';
+import { getCachedCategories, getCachedBrands } from '@/lib/data-fetching';
+import { SettingsProvider } from '@/components/SettingsProvider';
 
 interface Props {
   params: Promise<{ subdomain: string }>;
@@ -62,7 +64,11 @@ export default async function ResellerStoreLayout({
 }) {
   const { subdomain } = await params;
   await dbConnect();
-  const reseller = await Reseller.findOne({ subdomain }).select('seoConfig').lean() as any;
+  const [reseller, motherCategories, motherBrands] = await Promise.all([
+    Reseller.findOne({ subdomain }).select('seoConfig').lean() as Promise<any>,
+    getCachedCategories(),
+    getCachedBrands(),
+  ]);
 
   const gaId = reseller?.seoConfig?.googleAnalyticsId?.trim();
   const gtmId = reseller?.seoConfig?.googleTagManagerId?.trim();
@@ -122,7 +128,9 @@ export default async function ResellerStoreLayout({
         </>
       )}
 
-      {children}
+      <SettingsProvider settings={{ isReseller: true, categories: motherCategories, brands: motherBrands }}>
+        {children}
+      </SettingsProvider>
     </>
   );
 }

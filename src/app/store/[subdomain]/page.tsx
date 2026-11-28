@@ -14,7 +14,7 @@ import {
 import { CategoryShowcase } from '@/components/storefront/CategoryShowcase';
 import { FooterSelector } from '@/components/templates/ServerRegistry';
 import { SettingsProvider } from '@/components/SettingsProvider';
-import { getCachedSettings } from '@/lib/data-fetching';
+import { getCachedSettings, getCachedCategories, getCachedBrands } from '@/lib/data-fetching';
 import { FreeDeliveryBanner } from '@/components/storefront/FreeDeliveryBanner';
 import { ResellerPixels } from '@/components/reseller/ResellerPixels';
 import { ProductCarouselSection } from '@/components/storefront/ProductCarouselSection';
@@ -264,46 +264,15 @@ export default async function ResellerStorePage({ params }: Props) {
   }
   const products = Array.from(slugMap.values());
 
-  // Extract unique categories from reseller's products
-  const categoryMap = new Map<string, any>();
-  products.forEach((p: any) => {
-    if (Array.isArray(p.categories)) {
-      p.categories.forEach((cat: any) => {
-        if (cat && (cat._id || cat.slug)) {
-          const catId = cat._id ? cat._id.toString() : cat.slug;
-          if (!categoryMap.has(catId)) {
-            categoryMap.set(catId, {
-              _id: catId,
-              name: cat.name || 'Category',
-              slug: cat.slug || catId,
-              image: cat.image || '',
-              icon: cat.icon || '',
-              parentCategory: cat.parentCategory || null,
-            });
-          }
-        }
-      });
-    }
-  });
-  const storeCategories = Array.from(categoryMap.values());
+  // Load all Mother Shop categories & brands so reseller navbar and Browse by Category always match Mother Shop
+  const [motherCategories, motherBrands, globalSettings] = await Promise.all([
+    getCachedCategories(),
+    getCachedBrands(),
+    getCachedSettings() as Promise<any>,
+  ]);
 
-  // Extract unique brands from reseller's products
-  const brandMap = new Map<string, any>();
-  products.forEach((p: any) => {
-    if (p.brand && (p.brand._id || p.brand.slug || p.brand.name)) {
-      const bId = p.brand._id ? p.brand._id.toString() : (p.brand.slug || p.brand.name);
-      if (!brandMap.has(bId)) {
-        brandMap.set(bId, {
-          _id: bId,
-          name: p.brand.name || 'Brand',
-          slug: p.brand.slug || bId,
-          image: p.brand.image || '',
-          isActive: true,
-        });
-      }
-    }
-  });
-  const storeBrands = Array.from(brandMap.values());
+  const storeCategories = Array.isArray(motherCategories) ? motherCategories : [];
+  const storeBrands = Array.isArray(motherBrands) ? motherBrands : [];
 
   // Filtered product collections
   const featuredProducts = products.filter((p: any) => p.isFeatured);
@@ -311,10 +280,11 @@ export default async function ResellerStorePage({ params }: Props) {
   const trendingProducts = products.filter((p: any) => p.isTrending || p.rating >= 4);
   const newArrivals = products.filter((p: any) => p.isNewArrival);
 
-  // Group products by category for Category Carousels
+  // Group products by category for Category Carousels (only show carousels that have products)
   const categorySections = storeCategories.map((cat: any) => {
+    const catId = cat._id ? cat._id.toString() : cat.slug;
     const catProducts = products.filter((p: any) =>
-      p.categories?.some((c: any) => (c._id ? c._id.toString() : (c.slug || c.toString())) === cat._id || (c.slug && c.slug === cat.slug))
+      p.categories?.some((c: any) => (c._id ? c._id.toString() : (c.slug || c.toString())) === catId || (c.slug && c.slug === cat.slug))
     );
     return {
       category: cat,
@@ -325,7 +295,6 @@ export default async function ResellerStorePage({ params }: Props) {
   const storeName = reseller.storeName;
   const logo = reseller.logoUrl;
   const description = reseller.description;
-  const globalSettings = await getCachedSettings() as any;
   const deliveryInside = globalSettings?.deliveryChargeInsideDhaka ?? 60;
   const deliveryOutside = globalSettings?.deliveryChargeOutsideDhaka ?? 120;
   const freeDeliveryThreshold = reseller.deliveryConfig?.freeDeliveryThreshold || 0;
